@@ -103,6 +103,20 @@ function StoreProvider({ children }) {
   const DEFAULT_INFO = {
     name: "Mon Restaurant", addr: "", phone: "", whatsapp: "", email: "",
     open: "11:00", close: "22:00", wave: "", orange: "",
+    mapsUrl: "", facebook: "", instagram: "", twitter: "",
+    primaryColor: "#D4A017", secondaryColor: "#1E1A28", fontStyle: "moderne",
+    footerText: "Powered by Teranga Resto",
+    // Paiements acceptés
+    payOnline: true, payLivraison: true, payEspeces: true,
+    payWave: false, payOrange: false, waveNum: "", orangeNum: "",
+  };
+
+  const DEFAULT_SUB = {
+    plan: "free",          // free | starter | pro
+    billing: "monthly",   // monthly | annual
+    startDate: null,
+    expiryDate: null,
+    active: false,
   };
 
   const [info,     setInfoRaw]     = useState(savedStore?.info     || DEFAULT_INFO);
@@ -110,6 +124,7 @@ function StoreProvider({ children }) {
   const [planJour, setPlanJourRaw] = useState(savedStore?.planJour || {});
   const [orders,   setOrdersRaw]   = useState(savedStore?.orders   || []);
   const [imgs,     setImgsRaw]     = useState(savedImgs            || {});
+  const [sub,      setSubRaw]      = useState(savedStore?.sub      || DEFAULT_SUB);
 
   const logoSrc  = imgs.logo  || null;
   const coverSrc = imgs.cover || IMGS.hero;
@@ -127,22 +142,37 @@ function StoreProvider({ children }) {
     };
   }, [orders]);
 
-  const persistAll = (nextInfo, nextDishes, nextPlanJour, nextOrders) => {
-    saveStore({ info: nextInfo, dishes: nextDishes, planJour: nextPlanJour, orders: nextOrders });
+  const persistAll = (nextInfo, nextDishes, nextPlanJour, nextOrders, nextSub) => {
+    saveStore({ info: nextInfo, dishes: nextDishes, planJour: nextPlanJour, orders: nextOrders, sub: nextSub || sub });
   };
 
   const setInfo = (upd) => {
     setInfoRaw(prev => {
       const next = typeof upd === "function" ? upd(prev) : { ...prev, ...upd };
-      saveStore({ info: next, dishes, planJour, orders });
+      saveStore({ info: next, dishes, planJour, orders, sub });
       return next;
     });
   };
 
+  const setSub = (upd) => {
+    setSubRaw(prev => {
+      const next = typeof upd === "function" ? upd(prev) : { ...prev, ...upd };
+      saveStore({ info, dishes, planJour, orders, sub: next });
+      return next;
+    });
+  };
+
+  // Calculate days remaining
+  const subDaysRemaining = React.useMemo(() => {
+    if (!sub.expiryDate) return 14;
+    const diff = new Date(sub.expiryDate) - new Date();
+    return Math.max(0, Math.ceil(diff / 86400000));
+  }, [sub.expiryDate]);
+
   const setDishes = (upd) => {
     setDishesRaw(prev => {
       const next = typeof upd === "function" ? upd(prev) : upd;
-      saveStore({ info, dishes: next, planJour, orders });
+      saveStore({ info, dishes: next, planJour, orders, sub });
       return next;
     });
   };
@@ -150,7 +180,7 @@ function StoreProvider({ children }) {
   const setPlanJour = (upd) => {
     setPlanJourRaw(prev => {
       const next = typeof upd === "function" ? upd(prev) : upd;
-      saveStore({ info, dishes, planJour: next, orders });
+      saveStore({ info, dishes, planJour: next, orders, sub });
       return next;
     });
   };
@@ -165,7 +195,7 @@ function StoreProvider({ children }) {
     };
     setOrdersRaw(prev => {
       const next = [newOrder, ...prev];
-      saveStore({ info, dishes, planJour, orders: next });
+      saveStore({ info, dishes, planJour, orders: next, sub });
       return next;
     });
     return newOrder;
@@ -174,7 +204,7 @@ function StoreProvider({ children }) {
   const updateOrderStatus = (id, status) => {
     setOrdersRaw(prev => {
       const next = prev.map(o => o.id === id ? { ...o, status } : o);
-      saveStore({ info, dishes, planJour, orders: next });
+      saveStore({ info, dishes, planJour, orders: next, sub });
       return next;
     });
   };
@@ -198,7 +228,7 @@ function StoreProvider({ children }) {
     setImgsRaw(prev => { const next = { ...prev, [key]: b64 }; saveImgs(next); return next; });
     setDishesRaw(prev => {
       const next = prev.map(d => d.id === id ? { ...d, img: b64 } : d);
-      saveStore({ info, dishes: next, planJour, orders });
+      saveStore({ info, dishes: next, planJour, orders, sub });
       return next;
     });
   };
@@ -216,6 +246,7 @@ function StoreProvider({ children }) {
       coverSrc, setCover,
       setDishImg, getDishImg,
       imgs,
+      sub, setSub, subDaysRemaining,
     }}>
       {children}
     </StoreCtx.Provider>
@@ -833,14 +864,18 @@ function CheckoutFlow({ items, onClose, onConfirm }) {
 function Landing({ nav }) {
   const [faq, setFaq] = useState(null);
 
+  const [landingBilling, setLandingBilling] = useState("monthly");
+  const ANNUAL_FACTOR = 0.84; // 16% off
+  const getLP = (monthly, b) => b==="annual" ? Math.round(monthly*12*ANNUAL_FACTOR).toLocaleString("fr-FR") : monthly.toLocaleString("fr-FR");
+  const getLSuffix = (id, b) => id==="free" ? "14 jours d'essai" : b==="annual" ? "/an" : "/mois";
   const PLANS = [
-    { id:"free",    n:"Gratuit",  pr:"0",     per:"14 jours d'essai", col:C.muted,
+    { id:"free",    n:"Gratuit",  pr:"0",     monthly:0, col:C.muted,
       feats:[{f:"1 thème",ok:true},{f:"50 produits",ok:true},{f:"QR Code",ok:true},{f:"Sans signature",ok:false},{f:"Thèmes premium",ok:false},{f:"Stats avancées",ok:false}],
       note:"Boutique limitée après 14 jours.", cta:"Commencer gratuitement", v:"secondary" },
-    { id:"starter", n:"Starter",  pr:"3 000", per:"/mois", col:"#A855F7",
+    { id:"starter", n:"Starter",  pr:"3 000", monthly:3000, col:"#A855F7",
       feats:[{f:"3 thèmes",ok:true},{f:"200 produits",ok:true},{f:"Sans signature",ok:true},{f:"Stats de base",ok:true},{f:"Support prioritaire",ok:true},{f:"Footer libre",ok:false}],
       cta:"Choisir Starter", v:"secondary", pay:true },
-    { id:"pro",     n:"Pro",      pr:"7 000", per:"/mois", col:C.amber, best:true,
+    { id:"pro",     n:"Pro",      pr:"7 000", monthly:7000, col:C.amber, best:true,
       feats:[{f:"Tous les thèmes",ok:true},{f:"Produits illimités",ok:true},{f:"Sans signature",ok:true},{f:"Footer libre",ok:true},{f:"Stats avancées",ok:true},{f:"Support dédié",ok:true}],
       cta:"Passer en Pro", v:"primary", pay:true },
   ];
@@ -1037,46 +1072,67 @@ function Landing({ nav }) {
       {/* PRICING */}
       <section style={{ padding:"96px clamp(16px,4vw,48px)" }}>
         <div style={{ maxWidth:1040, margin:"0 auto" }}>
-          <div style={{ textAlign:"center", marginBottom:56 }}>
+          <div style={{ textAlign:"center", marginBottom:40 }}>
             <Tag label="Tarifs" col={C.grn}/>
             <h2 style={{ fontFamily:"Fraunces,serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, marginTop:16, marginBottom:12, letterSpacing:"-.025em", color:C.txt }}>Simple, transparent, sans surprise</h2>
             <p style={{ color:C.muted, fontSize:16 }}>Commencez gratuitement. Passez en Pro quand vous êtes prêt.</p>
           </div>
+
+          {/* Billing toggle */}
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:16 }}>
+            <div style={{ display:"inline-flex", background:C.card, border:`1px solid ${C.bdr}`, borderRadius:14, padding:4, gap:4 }}>
+              {[["monthly","Mensuel"],["annual","Annuel"]].map(([val,label]) => (
+                <button key={val} onClick={()=>setLandingBilling(val)}
+                  style={{ padding:"9px 22px", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", border:"none", minHeight:"auto",
+                    background: landingBilling===val ? C.grad : "transparent",
+                    color: landingBilling===val ? "#160800" : C.muted,
+                    transition:"all .2s" }}>
+                  {label}
+                  {val==="annual" && <span style={{ marginLeft:7, fontSize:10, background:landingBilling===val?"rgba(0,0,0,.15)":"rgba(212,160,23,.18)", color:landingBilling===val?"#160800":C.amber, borderRadius:20, padding:"2px 7px", fontWeight:800 }}>−16%</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+          {landingBilling==="annual" && <div style={{ textAlign:"center", fontSize:13, color:C.grn, fontWeight:600, marginBottom:28 }}>🎉 Économisez 16 % avec la facturation annuelle</div>}
+
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }} className="m1">
-            {PLANS.map(p => (
-              <div key={p.id} style={{ background:p.best?"linear-gradient(145deg,rgba(212,160,23,.08),rgba(232,112,16,.04))":C.card, border:`2px solid ${p.best?C.amber:C.bdr}`, borderRadius:24, padding:"28px 24px", position:"relative", boxShadow:p.best?"0 0 0 1px rgba(212,160,23,.1), 0 24px 64px rgba(0,0,0,.4)":"none" }}>
-                {p.best && <div style={{ position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)", background:C.grad, color:"#160800", borderRadius:20, padding:"4px 18px", fontSize:11, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(212,160,23,.4)" }}>Le plus populaire</div>}
-                <div style={{ fontSize:11, fontWeight:700, color:p.col, marginBottom:10, textTransform:"uppercase", letterSpacing:"2px" }}>{p.n}</div>
-                <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:4 }}>
-                  <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:34, fontWeight:800, letterSpacing:"-.03em", color:C.txt }}>{p.pr}</span>
-                  <span style={{ fontSize:13, color:C.muted }}>FCFA</span>
-                </div>
-                <div style={{ fontSize:13, color:C.muted, marginBottom:24, paddingBottom:20, borderBottom:`1px solid ${C.bdr}` }}>{p.per}</div>
-                <div style={{ marginBottom:24 }}>
-                  {p.feats.map(f => (
-                    <div key={f.f} style={{ display:"flex", gap:10, alignItems:"center", marginBottom:11, fontSize:13, opacity:f.ok?1:.4 }}>
-                      <div style={{ flexShrink:0, width:18, height:18, borderRadius:"50%", background:f.ok?`${p.col}18`:"rgba(255,255,255,.04)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        {f.ok ? <Ic n="check" s={10} c={p.col}/> : <Ic n="x" s={10} c={C.muted}/>}
-                      </div>
-                      <span style={{ color:f.ok?C.txt:C.muted }}>{f.f}</span>
-                    </div>
-                  ))}
-                </div>
-                {p.note && <div style={{ background:"rgba(120,113,144,.08)", border:"1px solid rgba(120,113,144,.14)", borderRadius:10, padding:"10px 13px", fontSize:11, color:C.muted, marginBottom:16, lineHeight:1.55 }}>{p.note}</div>}
-                <Btn ch={p.cta} v={p.v} sx={{ width:"100%", justifyContent:"center" }} onClick={()=>nav("onboard")}/>
-                {p.pay && (
-                  <div style={{ marginTop:16 }}>
-                    <div style={{ fontSize:11, color:C.dim, textAlign:"center", marginBottom:10 }}>Payer via</div>
-                    <div style={{ display:"flex", gap:8, justifyContent:"center", alignItems:"center" }}>
-                      <WaveLogo w={68} h={38}/><OrangeLogo w={80} h={38}/>
-                    </div>
-                    <div style={{ textAlign:"center", marginTop:10, fontSize:11, color:C.dim }}>
-                      N° de paiement : <span style={{ color:C.amber, fontWeight:700 }}>{SUBS_PAYMENT_NUMBER}</span>
-                    </div>
+            {PLANS.map(p => {
+              const displayPrice = p.id==="free" ? "0" : getLP(p.monthly, landingBilling);
+              const suffix = getLSuffix(p.id, landingBilling);
+              const oldPrice = p.id!=="free" && landingBilling==="annual" ? (p.monthly*12).toLocaleString("fr-FR")+" FCFA" : null;
+              return (
+                <div key={p.id} style={{ background:p.best?"linear-gradient(145deg,rgba(212,160,23,.08),rgba(232,112,16,.04))":C.card, border:`2px solid ${p.best?C.amber:C.bdr}`, borderRadius:24, padding:"28px 24px", position:"relative", boxShadow:p.best?"0 0 0 1px rgba(212,160,23,.1), 0 24px 64px rgba(0,0,0,.4)":"none" }}>
+                  {p.best && <div style={{ position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)", background:C.grad, color:"#160800", borderRadius:20, padding:"4px 18px", fontSize:11, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(212,160,23,.4)" }}>Le plus populaire</div>}
+                  <div style={{ fontSize:11, fontWeight:700, color:p.col, marginBottom:10, textTransform:"uppercase", letterSpacing:"2px" }}>{p.n}</div>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:2 }}>
+                    <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:34, fontWeight:800, letterSpacing:"-.03em", color:C.txt }}>{displayPrice}</span>
+                    <span style={{ fontSize:13, color:C.muted }}>FCFA</span>
                   </div>
-                )}
-              </div>
-            ))}
+                  {oldPrice && <div style={{ fontSize:11, color:C.muted, textDecoration:"line-through", marginBottom:2 }}>{oldPrice}/an</div>}
+                  <div style={{ fontSize:13, color:C.muted, marginBottom:24, paddingBottom:20, borderBottom:`1px solid ${C.bdr}` }}>{suffix}</div>
+                  <div style={{ marginBottom:24 }}>
+                    {p.feats.map(f => (
+                      <div key={f.f} style={{ display:"flex", gap:10, alignItems:"center", marginBottom:11, fontSize:13, opacity:f.ok?1:.4 }}>
+                        <div style={{ flexShrink:0, width:18, height:18, borderRadius:"50%", background:f.ok?`${p.col}18`:"rgba(255,255,255,.04)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          {f.ok ? <Ic n="check" s={10} c={p.col}/> : <Ic n="x" s={10} c={C.muted}/>}
+                        </div>
+                        <span style={{ color:f.ok?C.txt:C.muted }}>{f.f}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {p.note && <div style={{ background:"rgba(120,113,144,.08)", border:"1px solid rgba(120,113,144,.14)", borderRadius:10, padding:"10px 13px", fontSize:11, color:C.muted, marginBottom:16, lineHeight:1.55 }}>{p.note}</div>}
+                  <Btn ch={p.cta} v={p.v} sx={{ width:"100%", justifyContent:"center" }} onClick={()=>nav("onboard")}/>
+                  {p.pay && (
+                    <div style={{ marginTop:16 }}>
+                      <div style={{ fontSize:11, color:C.dim, textAlign:"center", marginBottom:10 }}>Payer via</div>
+                      <div style={{ display:"flex", gap:8, justifyContent:"center", alignItems:"center" }}>
+                        <WaveLogo w={68} h={38}/><OrangeLogo w={80} h={38}/>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -1758,28 +1814,43 @@ function DashPage({ nav }) {
             Bonjour, {store.info.name.split(" ")[0] || "Restaurateur"} 👋
           </h1>
           <p style={{ color:C.muted, fontSize:13, marginTop:4 }}>
-            {store.info.name} · Plan Gratuit · <span style={{ color:C.amber }}>9 jours restants</span>
+            {store.info.name} · Plan {store.sub.plan==="pro"?"Pro":store.sub.plan==="starter"?"Starter":"Gratuit"} · <span style={{ color:store.subDaysRemaining<=3?C.red:C.amber }}>{store.subDaysRemaining} jour{store.subDaysRemaining!==1?"s":""} restant{store.subDaysRemaining!==1?"s":""}</span>
           </p>
         </div>
         <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
           <Btn ch={<><Ic n="eye" s={13}/>Mon site</>}                 v="secondary" sz="sm" onClick={()=>nav("site")}/>
-          <Btn ch={<><Ic n="zap" s={13} c="#160800"/>Passer en Pro</>} sz="sm"       onClick={()=>nav("subs")}/>
+          {store.sub.plan!=="pro" && <Btn ch={<><Ic n="zap" s={13} c="#160800"/>Passer en Pro</>} sz="sm" onClick={()=>nav("subs")}/>}
         </div>
       </div>
 
-      {/* ── Bannière essai ──────────────────────────────────── */}
-      <div style={{ background:"linear-gradient(135deg,rgba(212,160,23,.1),rgba(232,112,16,.05))", border:"1px solid rgba(212,160,23,.22)", borderRadius:18, padding:"15px 20px", marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
-          <div style={{ width:38, height:38, background:"rgba(212,160,23,.14)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            <Ic n="clock" s={17} c={C.amber}/>
+      {/* ── Bannière abonnement ──────────────────────────────── */}
+      {store.sub.plan==="free" ? (
+        <div style={{ background:"linear-gradient(135deg,rgba(212,160,23,.1),rgba(232,112,16,.05))", border:"1px solid rgba(212,160,23,.22)", borderRadius:18, padding:"15px 20px", marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+            <div style={{ width:38, height:38, background:"rgba(212,160,23,.14)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Ic n="clock" s={17} c={C.amber}/>
+            </div>
+            <div>
+              <div style={{ fontSize:13, fontWeight:600, color:C.txt }}>Essai gratuit — <span style={{ color:C.amber }}>{store.subDaysRemaining} jours restants</span></div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:1 }}>Passez en Pro à 7 000 FCFA/mois pour tout débloquer.</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize:13, fontWeight:600, color:C.txt }}>Essai gratuit — <span style={{ color:C.amber }}>9 jours restants</span></div>
-            <div style={{ fontSize:12, color:C.muted, marginTop:1 }}>Passez en Pro à 7 000 FCFA/mois pour tout débloquer.</div>
-          </div>
+          <Btn ch={<><Ic n="zap" s={13} c="#160800"/>Passer en Pro</>} sz="sm" onClick={()=>nav("subs")}/>
         </div>
-        <Btn ch={<><Ic n="zap" s={13} c="#160800"/>Passer en Pro</>} sz="sm" onClick={()=>nav("subs")}/>
-      </div>
+      ) : (
+        <div style={{ background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(21,128,61,.04))", border:"1px solid rgba(34,197,94,.2)", borderRadius:18, padding:"15px 20px", marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+            <div style={{ width:38, height:38, background:"rgba(34,197,94,.14)", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <Ic n="check" s={17} c={C.grn}/>
+            </div>
+            <div>
+              <div style={{ fontSize:13, fontWeight:600, color:C.txt }}>Plan <span style={{ color:C.grn }}>{store.sub.plan==="pro"?"Pro":"Starter"}</span> actif · {store.sub.billing==="annual"?"Annuel":"Mensuel"}</div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:1 }}>Expire le {store.sub.expiryDate?new Date(store.sub.expiryDate).toLocaleDateString("fr-FR"):"—"} · {store.subDaysRemaining} jours restants</div>
+            </div>
+          </div>
+          <Btn ch="Gérer l'abonnement" v="secondary" sz="sm" onClick={()=>nav("subs")}/>
+        </div>
+      )}
 
       {/* ── Sélecteur de période ────────────────────────────── */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:10 }}>
@@ -2314,82 +2385,237 @@ function QRPage() {
 
 /* SUBSCRIPTIONS */
 function SubsPage() {
-  const [selPlan, setSelPlan] = useState(null);
+  const store = useStore();
+  const [billing, setBilling]   = useState("monthly"); // monthly | annual
+  const [selPlan, setSelPlan]   = useState(null);
+  const [payStep, setPayStep]   = useState(1); // 1=choose method, 2=confirm
+  const [payMethod, setPayMethod] = useState("");
+  const [paying,  setPaying]    = useState(false);
+  const [paid,    setPaid]      = useState(false);
+
+  const DISCOUNT = 0.16; // 16% annual discount
+  const MONTHLY  = { starter: 3000, pro: 7000 };
+  const ANNUAL   = { starter: Math.round(3000*12*(1-DISCOUNT)), pro: Math.round(7000*12*(1-DISCOUNT)) };
+
+  const getPrice = (id, b) => {
+    if (id === "free") return "0";
+    const p = b==="annual" ? ANNUAL[id] : MONTHLY[id];
+    return p?.toLocaleString("fr-FR") || "0";
+  };
+
   const plans = [
-    { id:"free",    n:"Gratuit",  pr:"0",     per:"14 jours d'essai", col:C.muted, cur:true,
+    { id:"free",    n:"Gratuit",  col:C.muted,
       feats:[{f:"1 thème",y:true},{f:"50 produits",y:true},{f:"QR Code basique",y:true},{f:"Sans signature",y:false},{f:"Footer libre",y:false},{f:"Stats avancées",y:false}],
       note:"Boutique limitée après 14 jours." },
-    { id:"starter", n:"Starter",  pr:"3 000", per:"/mois", col:"#A855F7",
+    { id:"starter", n:"Starter",  col:"#A855F7",
       feats:[{f:"3 thèmes",y:true},{f:"200 produits",y:true},{f:"Sans signature",y:true},{f:"Stats de base",y:true},{f:"Support prioritaire",y:true},{f:"Footer libre",y:false}] },
-    { id:"pro",     n:"Pro",      pr:"7 000", per:"/mois", col:C.amber, best:true,
+    { id:"pro",     n:"Pro",      col:C.amber, best:true,
       feats:[{f:"Tous les thèmes",y:true},{f:"Produits illimités",y:true},{f:"Sans signature",y:true},{f:"Footer libre",y:true},{f:"Stats avancées",y:true},{f:"Support dédié",y:true}] },
   ];
+
+  const isCurrent = (id) => store.sub.plan === id;
+
+  const openPay = (plan) => { setSelPlan(plan); setPayStep(1); setPayMethod(""); setPaid(false); };
+
+  const confirmPayment = () => {
+    if (!payMethod || paying) return;
+    setPaying(true);
+    setTimeout(() => {
+      const now = new Date();
+      const expiry = new Date(now);
+      if (billing === "annual") expiry.setFullYear(expiry.getFullYear() + 1);
+      else expiry.setMonth(expiry.getMonth() + 1);
+      store.setSub({
+        plan: selPlan.id, billing,
+        startDate: now.toISOString(),
+        expiryDate: expiry.toISOString(),
+        active: true,
+      });
+      setPaying(false);
+      setPaid(true);
+    }, 2000);
+  };
+
+  const cancelSub = () => {
+    if (!window.confirm("Confirmer l'annulation de l'abonnement ?")) return;
+    store.setSub({ plan:"free", billing:"monthly", startDate:null, expiryDate:null, active:false });
+  };
+
+  // Current sub management panel
+  const hasPaidPlan = store.sub.plan !== "free" && store.sub.active;
+
   return (
-    <div style={{ padding:"clamp(16px,3vw,28px)", maxWidth:960, margin:"0 auto" }}>
-      <h2 style={{ fontFamily:"Fraunces,serif", fontSize:"clamp(20px,3vw,24px)", fontWeight:700, letterSpacing:"-.025em", marginBottom:6, color:C.txt }}>Abonnement</h2>
-      <p style={{ color:C.muted, fontSize:13, marginBottom:28 }}>Choisissez le plan adapté à votre restaurant.</p>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }} className="m1">
-        {plans.map(p => (
-          <div key={p.id} style={{ background:p.best?"linear-gradient(145deg,rgba(212,160,23,.08),rgba(232,112,16,.04))":C.card, border:`2px solid ${p.best?C.amber:C.bdr}`, borderRadius:24, padding:"26px 22px", position:"relative" }}>
-            {p.best && <div style={{ position:"absolute", top:-13, left:"50%", transform:"translateX(-50%)", background:C.grad, color:"#160800", borderRadius:20, padding:"4px 16px", fontSize:10, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(212,160,23,.4)" }}>Recommandé</div>}
-            {p.cur && <div style={{ position:"absolute", top:14, right:14 }}><Tag label="Actuel" col={C.muted}/></div>}
-            <div style={{ fontSize:11, fontWeight:700, color:p.col, marginBottom:10, textTransform:"uppercase", letterSpacing:"2px" }}>{p.n}</div>
-            <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:4 }}>
-              <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:30, fontWeight:800, letterSpacing:"-.03em", color:C.txt }}>{p.pr}</span>
-              <span style={{ fontSize:12, color:C.muted }}>FCFA</span>
-            </div>
-            <div style={{ fontSize:12, color:C.muted, marginBottom:22, paddingBottom:18, borderBottom:`1px solid ${C.bdr}` }}>{p.per}</div>
-            {p.feats.map(f => (
-              <div key={f.f} style={{ display:"flex", gap:9, alignItems:"center", marginBottom:9, fontSize:12, opacity:f.y?1:.4 }}>
-                <div style={{ flexShrink:0, width:17, height:17, borderRadius:"50%", background:f.y?`${p.col}18`:"rgba(255,255,255,.04)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  {f.y ? <Ic n="check" s={9} c={p.col}/> : <Ic n="x" s={9} c={C.muted}/>}
-                </div>
-                <span style={{ color:f.y?C.txt:C.muted }}>{f.f}</span>
+    <div style={{ padding:"clamp(16px,3vw,28px)", maxWidth:980, margin:"0 auto" }}>
+      <h2 style={{ fontFamily:"Fraunces,serif", fontSize:"clamp(20px,3vw,24px)", fontWeight:700, letterSpacing:"-.025em", marginBottom:4, color:C.txt }}>Abonnement</h2>
+      <p style={{ color:C.muted, fontSize:13, marginBottom:24 }}>Choisissez le plan adapté à votre restaurant. Changez à tout moment.</p>
+
+      {/* ── Gestion abonnement actuel (si plan payant) ── */}
+      {hasPaidPlan && (
+        <div style={{ background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(21,128,61,.03))", border:"1px solid rgba(34,197,94,.2)", borderRadius:20, padding:"20px 22px", marginBottom:28 }}>
+          <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:14, color:C.txt, display:"flex", alignItems:"center", gap:8 }}>
+            <Ic n="check" s={15} c={C.grn}/>Votre abonnement actuel
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:12, marginBottom:16 }}>
+            {[
+              ["Plan",          store.sub.plan==="pro"?"Pro":"Starter"],
+              ["Facturation",   store.sub.billing==="annual"?"Annuelle":"Mensuelle"],
+              ["Début",         store.sub.startDate?new Date(store.sub.startDate).toLocaleDateString("fr-FR"):"—"],
+              ["Expiration",    store.sub.expiryDate?new Date(store.sub.expiryDate).toLocaleDateString("fr-FR"):"—"],
+              ["Jours restants",String(store.subDaysRemaining)+" j"],
+            ].map(([k,v]) => (
+              <div key={k} style={{ background:C.bg2, borderRadius:12, padding:"12px 14px" }}>
+                <div style={{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:".06em", marginBottom:4 }}>{k}</div>
+                <div style={{ fontSize:14, fontWeight:700, color:C.txt }}>{v}</div>
               </div>
             ))}
-            {p.note && <div style={{ background:"rgba(120,113,144,.08)", border:"1px solid rgba(120,113,144,.14)", borderRadius:10, padding:"10px 12px", fontSize:11, color:C.muted, margin:"12px 0", lineHeight:1.55 }}>{p.note}</div>}
-            {!p.cur && <>
-              <div style={{ marginTop:16 }}>
-                <Btn ch={p.best?"Passer en Pro":`Choisir ${p.n}`} v={p.best?"primary":"secondary"} sx={{ width:"100%", justifyContent:"center", marginBottom:14 }} onClick={()=>setSelPlan(p)}/>
-                <div style={{ fontSize:11, color:C.dim, textAlign:"center", marginBottom:10 }}>Payer via</div>
-                <div style={{ display:"flex", gap:8, justifyContent:"center" }}><WaveLogo w={68} h={38}/><OrangeLogo w={80} h={38}/></div>
-                <div style={{ textAlign:"center", marginTop:10, fontSize:11, color:C.dim }}>
-                  N° : <span style={{ color:C.amber, fontWeight:700, letterSpacing:".05em" }}>{SUBS_PAYMENT_NUMBER}</span>
-                </div>
-              </div>
-            </>}
           </div>
-        ))}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <Btn ch="Renouveler" v="primary" sz="sm" onClick={()=>openPay(plans.find(p=>p.id===store.sub.plan))}/>
+            <Btn ch="Changer de plan" v="secondary" sz="sm" onClick={()=>{}}/>
+            <Btn ch="Annuler l'abonnement" v="danger" sz="sm" onClick={cancelSub}/>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sélecteur mensuel / annuel ── */}
+      <div style={{ display:"flex", justifyContent:"center", marginBottom:28 }}>
+        <div style={{ display:"inline-flex", background:C.card, border:`1px solid ${C.bdr}`, borderRadius:14, padding:4, gap:4 }}>
+          {[["monthly","Mensuel"],["annual","Annuel"]].map(([val,label]) => (
+            <button key={val} onClick={()=>setBilling(val)}
+              style={{ padding:"9px 22px", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer", border:"none", minHeight:"auto",
+                background: billing===val ? C.grad : "transparent",
+                color: billing===val ? "#160800" : C.muted,
+                transition:"all .2s",
+                boxShadow: billing===val ? "0 3px 12px rgba(212,160,23,.3)" : "none",
+              }}>
+              {label}
+              {val==="annual" && <span style={{ marginLeft:7, fontSize:10, background:"rgba(212,160,23,.18)", color:billing===val?"#160800":C.amber, borderRadius:20, padding:"2px 7px", fontWeight:800 }}>−16%</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+      {billing==="annual" && (
+        <div style={{ textAlign:"center", marginBottom:20, fontSize:13, color:C.grn, fontWeight:600 }}>
+          🎉 Économisez 16 % avec la facturation annuelle
+        </div>
+      )}
+
+      {/* ── Cartes des plans ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }} className="m1">
+        {plans.map(p => {
+          const cur = isCurrent(p.id);
+          const priceVal = getPrice(p.id, billing);
+          const suffix = p.id==="free" ? "14 jours d'essai" : billing==="annual" ? "/an" : "/mois";
+          const oldPrice = p.id!=="free" && billing==="annual" ? (MONTHLY[p.id]*12).toLocaleString("fr-FR")+" FCFA/an" : null;
+          return (
+            <div key={p.id} style={{ background:p.best?"linear-gradient(145deg,rgba(212,160,23,.08),rgba(232,112,16,.04))":C.card, border:`2px solid ${cur?C.grn:p.best?C.amber:C.bdr}`, borderRadius:24, padding:"26px 22px", position:"relative", transition:"border-color .2s" }}>
+              {p.best && !cur && <div style={{ position:"absolute", top:-13, left:"50%", transform:"translateX(-50%)", background:C.grad, color:"#160800", borderRadius:20, padding:"4px 16px", fontSize:10, fontWeight:800, whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(212,160,23,.4)" }}>Recommandé</div>}
+              {cur && <div style={{ position:"absolute", top:14, right:14 }}><Tag label="✓ Actuel" col={C.grn}/></div>}
+              <div style={{ fontSize:11, fontWeight:700, color:p.col, marginBottom:10, textTransform:"uppercase", letterSpacing:"2px" }}>{p.n}</div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:4, marginBottom:2 }}>
+                <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:p.id==="free"?28:30, fontWeight:800, letterSpacing:"-.03em", color:C.txt }}>{priceVal}</span>
+                <span style={{ fontSize:12, color:C.muted }}>FCFA</span>
+              </div>
+              {oldPrice && <div style={{ fontSize:11, color:C.muted, textDecoration:"line-through", marginBottom:2 }}>{oldPrice}</div>}
+              <div style={{ fontSize:12, color:C.muted, marginBottom:22, paddingBottom:18, borderBottom:`1px solid ${C.bdr}` }}>{suffix}</div>
+              {p.feats.map(f => (
+                <div key={f.f} style={{ display:"flex", gap:9, alignItems:"center", marginBottom:9, fontSize:12, opacity:f.y?1:.4 }}>
+                  <div style={{ flexShrink:0, width:17, height:17, borderRadius:"50%", background:f.y?`${p.col}18`:"rgba(255,255,255,.04)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {f.y ? <Ic n="check" s={9} c={p.col}/> : <Ic n="x" s={9} c={C.muted}/>}
+                  </div>
+                  <span style={{ color:f.y?C.txt:C.muted }}>{f.f}</span>
+                </div>
+              ))}
+              {p.note && <div style={{ background:"rgba(120,113,144,.08)", border:"1px solid rgba(120,113,144,.14)", borderRadius:10, padding:"10px 12px", fontSize:11, color:C.muted, margin:"12px 0", lineHeight:1.55 }}>{p.note}</div>}
+              {!cur && p.id!=="free" && (
+                <div style={{ marginTop:16 }}>
+                  <Btn ch={p.best?"Passer en Pro":`Choisir ${p.n}`} v={p.best?"primary":"secondary"} sx={{ width:"100%", justifyContent:"center" }} onClick={()=>openPay(p)}/>
+                </div>
+              )}
+              {cur && p.id!=="free" && (
+                <div style={{ marginTop:16, background:"rgba(34,197,94,.07)", border:"1px solid rgba(34,197,94,.15)", borderRadius:12, padding:"10px 14px", display:"flex", alignItems:"center", gap:8 }}>
+                  <Ic n="check" s={13} c={C.grn}/><span style={{ fontSize:12, color:C.grn, fontWeight:600 }}>Plan actif</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Payment modal */}
+      {/* ── Modal paiement ── */}
       {selPlan && (
-        <Modal open={!!selPlan} onClose={()=>setSelPlan(null)} title={`Passer en ${selPlan.n}`}>
-          <div style={{ textAlign:"center", marginBottom:24 }}>
-            <div style={{ fontSize:13, color:C.muted, marginBottom:6 }}>Montant mensuel</div>
-            <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:34, fontWeight:800, color:selPlan.col }}>{selPlan.pr} FCFA</div>
-          </div>
-          <div style={{ background:C.bg1, border:`1px solid ${C.bdr}`, borderRadius:16, padding:20, marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"1px", marginBottom:14 }}>Instructions de paiement</div>
-            <div style={{ fontSize:13, color:C.muted, lineHeight:1.75 }}>
-              Envoyez <strong style={{ color:C.txt }}>{selPlan.pr} FCFA</strong> via Wave ou Orange Money au numéro :
+        <Modal open={!!selPlan} onClose={()=>{ if(!paying) setSelPlan(null); }} title={paid ? "🎉 Abonnement activé !" : `S'abonner — ${selPlan.n}`} wide={480}>
+          {paid ? (
+            <div style={{ textAlign:"center", padding:"16px 0" }}>
+              <div style={{ width:72, height:72, background:"rgba(34,197,94,.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+                <Ic n="check" s={34} c={C.grn}/>
+              </div>
+              <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:800, fontSize:22, color:C.grn, marginBottom:8 }}>Félicitations !</div>
+              <div style={{ fontSize:14, color:C.muted, marginBottom:24, lineHeight:1.7 }}>
+                Votre plan <strong style={{ color:C.txt }}>{selPlan.n}</strong> est maintenant actif.<br/>
+                Toutes les fonctionnalités sont débloquées.
+              </div>
+              <Btn ch="Continuer" sx={{ width:"100%", justifyContent:"center" }} onClick={()=>setSelPlan(null)}/>
             </div>
-            <div style={{ background:C.bg2, border:`1px solid ${C.bdra}`, borderRadius:12, padding:"14px 16px", marginTop:14, display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
-              <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:22, fontWeight:800, color:C.amber, letterSpacing:".04em" }}>{SUBS_PAYMENT_NUMBER}</span>
-              <Btn ch={<><Ic n="copy" s={12} c="#160800"/>Copier</>} sz="xs" onClick={()=>navigator.clipboard?.writeText(SUBS_PAYMENT_NUMBER)}/>
-            </div>
-            <div style={{ fontSize:11, color:C.muted, marginTop:14, lineHeight:1.65 }}>
-              Ajoutez en note : votre nom + <strong style={{ color:C.txt }}>"{selPlan.n} Teranga Resto"</strong>. Votre compte sera activé dans les 2h.
-            </div>
-          </div>
-          <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-            <WaveLogo w={90} h={50}/><OrangeLogo w={106} h={50}/>
-          </div>
-          <div style={{ marginTop:20 }}>
-            <Btn ch="J'ai effectué le paiement" sx={{ width:"100%", justifyContent:"center" }} onClick={()=>setSelPlan(null)}/>
-          </div>
+          ) : (
+            <>
+              {/* Résumé prix */}
+              <div style={{ background:C.bg1, borderRadius:16, padding:"16px 18px", marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:12, color:C.muted, marginBottom:4 }}>Montant {billing==="annual"?"annuel":"mensuel"}</div>
+                  <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:26, fontWeight:800, color:selPlan.col }}>{getPrice(selPlan.id,billing)} FCFA</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:11, color:selPlan.col, fontWeight:700, textTransform:"uppercase" }}>{selPlan.n}</div>
+                  <div style={{ fontSize:11, color:C.muted, marginTop:3 }}>{billing==="annual"?"Facturation annuelle":"Facturation mensuelle"}</div>
+                </div>
+              </div>
+
+              {/* Choisir moyen de paiement */}
+              <div style={{ fontSize:12, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:".07em", marginBottom:12 }}>Moyen de paiement</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
+                {[{id:"wave",logo:<WaveLogo w={72} h={38}/>,label:"Wave",col:"#1AACF0"},{id:"orange",logo:<OrangeLogo w={84} h={38}/>,label:"Orange Money",col:"#FF6600"}].map(m => (
+                  <div key={m.id} onClick={()=>setPayMethod(m.id)}
+                    style={{ border:`2px solid ${payMethod===m.id?m.col:C.bdr}`, borderRadius:14, padding:"14px 12px", cursor:"pointer", textAlign:"center", background:payMethod===m.id?`${m.col}10`:C.bg2, transition:"all .18s", position:"relative" }}>
+                    <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>{m.logo}</div>
+                    <div style={{ fontSize:12, fontWeight:600, color:payMethod===m.id?m.col:C.muted }}>{m.label}</div>
+                    {payMethod===m.id && <div style={{ position:"absolute", top:7, right:7, width:18, height:18, borderRadius:"50%", background:m.col, display:"flex", alignItems:"center", justifyContent:"center" }}><Ic n="check" s={10} c="#fff"/></div>}
+                  </div>
+                ))}
+              </div>
+
+              {payMethod && (
+                <div style={{ background:C.bg1, border:`1px solid ${C.bdra}`, borderRadius:14, padding:"14px 16px", marginBottom:20 }}>
+                  <div style={{ fontSize:12, color:C.muted, marginBottom:8, lineHeight:1.65 }}>
+                    Envoyez <strong style={{ color:C.txt }}>{getPrice(selPlan.id,billing)} FCFA</strong> via {payMethod==="wave"?"Wave":"Orange Money"} au numéro :
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                    <span style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontSize:20, fontWeight:800, color:C.amber, letterSpacing:".04em" }}>{SUBS_PAYMENT_NUMBER}</span>
+                    <Btn ch={<><Ic n="copy" s={12} c="#160800"/>Copier</>} sz="xs" onClick={()=>navigator.clipboard?.writeText(SUBS_PAYMENT_NUMBER)}/>
+                  </div>
+                  <div style={{ fontSize:11, color:C.muted, marginTop:10, lineHeight:1.65 }}>
+                    Note : votre nom + <strong style={{ color:C.txt }}>"{selPlan.n} Teranga Resto"</strong>
+                  </div>
+                </div>
+              )}
+
+              <button onClick={confirmPayment} disabled={!payMethod||paying}
+                style={{ width:"100%", background:(!payMethod||paying)?"rgba(255,255,255,.06)":C.grad, border:"none", borderRadius:14, padding:16, color:(!payMethod||paying)?C.muted:"#160800", fontWeight:800, fontSize:15, cursor:(!payMethod||paying)?"not-allowed":"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif", minHeight:"auto", display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"all .2s" }}>
+                {paying ? <><div style={{ width:18, height:18, border:"2.5px solid rgba(0,0,0,.2)", borderTopColor:"#160800", borderRadius:"50%", animation:"spin .8s linear infinite" }}/> Traitement…</> : "J'ai effectué le paiement → Activer"}
+              </button>
+            </>
+          )}
         </Modal>
       )}
+    </div>
+  );
+}
+
+/* Toggle Switch Component */
+function Toggle({ val, set, col="#E8A020" }) {
+  return (
+    <div onClick={()=>set(!val)} style={{ width:44, height:24, borderRadius:12, background:val?col:"rgba(255,255,255,.1)", cursor:"pointer", position:"relative", flexShrink:0, transition:"background .2s" }}>
+      <div style={{ position:"absolute", top:3, left:val?22:3, width:18, height:18, borderRadius:"50%", background:"#fff", transition:"left .2s", boxShadow:"0 2px 6px rgba(0,0,0,.3)" }}/>
     </div>
   );
 }
@@ -2412,6 +2638,22 @@ function SettingsPage() {
   const [close,    setClose]    = useState(store.info.close   || "22:00");
   const [wave,     setWave]     = useState(store.info.wave    || "");
   const [orange,   setOrange]   = useState(store.info.orange  || "");
+  const [mapsUrl,  setMapsUrl]  = useState(store.info.mapsUrl || "");
+  const [facebook, setFacebook] = useState(store.info.facebook || "");
+  const [instagram,setInstagram]= useState(store.info.instagram || "");
+  const [twitter,  setTwitter]  = useState(store.info.twitter  || "");
+  const [primaryColor, setPrimaryColor] = useState(store.info.primaryColor || "#D4A017");
+  const [fontStyle,    setFontStyle]    = useState(store.info.fontStyle    || "moderne");
+  const [footerText,   setFooterText]   = useState(store.info.footerText   || "Powered by Teranga Resto");
+
+  // Payment toggles
+  const [payOnline,   setPayOnline]   = useState(store.info.payOnline   ?? true);
+  const [payLivraison,setPayLivraison]= useState(store.info.payLivraison ?? true);
+  const [payEspeces,  setPayEspeces]  = useState(store.info.payEspeces  ?? true);
+  const [payWave,     setPayWave]     = useState(store.info.payWave     ?? false);
+  const [payOrange,   setPayOrange]   = useState(store.info.payOrange   ?? false);
+  const [waveNum,     setWaveNum]     = useState(store.info.waveNum     || "");
+  const [orangeNum,   setOrangeNum]   = useState(store.info.orangeNum   || "");
 
   const handleLogoFile = async (e) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -2422,12 +2664,28 @@ function SettingsPage() {
     setSavingCover(true); await store.setCover(f); setSavingCover(false); e.target.value = "";
   };
   const handleSave = () => {
-    store.setInfo({ name, addr, phone, whatsapp, email: email2, open, close, wave, orange });
+    store.setInfo({ name, addr, phone, whatsapp, email: email2, open, close, wave, orange,
+      mapsUrl, facebook, instagram, twitter, primaryColor, fontStyle, footerText,
+      payOnline, payLivraison, payEspeces, payWave, payOrange, waveNum, orangeNum });
     setSaved(true); setTimeout(() => setSaved(false), 2400);
   };
 
+  const FONTS = [
+    { id:"moderne",    n:"Moderne (Plus Jakarta Sans)" },
+    { id:"classique",  n:"Classique (Georgia)" },
+    { id:"elegant",    n:"Élégant (Fraunces)" },
+  ];
+
+  const payMethods = [
+    { id:"payOnline",    label:"Paiement en ligne",      val:payOnline,    set:setPayOnline },
+    { id:"payLivraison", label:"Paiement à la livraison", val:payLivraison, set:setPayLivraison },
+    { id:"payEspeces",   label:"Espèces",                val:payEspeces,   set:setPayEspeces },
+    { id:"payWave",      label:"Wave",                   val:payWave,      set:setPayWave, logo:<WaveLogo w={52} h={28}/>, numKey:"waveNum", numVal:waveNum, numSet:setWaveNum, ph:"N° Wave" },
+    { id:"payOrange",    label:"Orange Money",           val:payOrange,    set:setPayOrange, logo:<OrangeLogo w={60} h={28}/>, numKey:"orangeNum", numVal:orangeNum, numSet:setOrangeNum, ph:"N° Orange Money" },
+  ];
+
   return (
-    <div style={{ padding:"clamp(16px,3vw,28px)", maxWidth:680, margin:"0 auto" }}>
+    <div style={{ padding:"clamp(16px,3vw,28px)", maxWidth:720, margin:"0 auto" }}>
       <input ref={logoRef}  type="file" accept="image/*" style={{ display:"none" }} onChange={handleLogoFile}/>
       <input ref={coverRef} type="file" accept="image/*" style={{ display:"none" }} onChange={handleCoverFile}/>
       <h2 style={{ fontFamily:"Fraunces,serif", fontSize:"clamp(20px,3vw,24px)", fontWeight:700, letterSpacing:"-.025em", marginBottom:24, color:C.txt }}>Paramètres</h2>
@@ -2470,6 +2728,7 @@ function SettingsPage() {
       <div style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:20, padding:22, marginBottom:14 }}>
         <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:16, color:C.txt }}>Informations du restaurant</div>
         <Field label="Nom du restaurant" val={name}     set={setName}/>
+        <Field label="Description"       val={store.info.desc||""} set={v=>store.setInfo({desc:v})} rows={2} ph="Décrivez votre restaurant en quelques mots…"/>
         <Field label="Adresse"           val={addr}     set={setAddr}     icon={<Ic n="map"   s={15} c={C.dim}/>}/>
         <Field label="Téléphone"         val={phone}    set={setPhone}    icon={<Ic n="phone" s={15} c={C.dim}/>}/>
         <Field label="WhatsApp"          val={whatsapp} set={setWhatsapp} icon={<Ic n="wa"    s={15} c={C.dim}/>}/>
@@ -2478,12 +2737,63 @@ function SettingsPage() {
           <Field label="Ouverture" val={open}  set={setOpen}/>
           <Field label="Fermeture" val={close} set={setClose}/>
         </div>
+        <Field label="Lien Google Maps" val={mapsUrl} set={setMapsUrl} ph="https://maps.google.com/..." icon={<Ic n="map" s={15} c={C.dim}/>}/>
       </div>
 
-      {/* PAIEMENTS CLIENTS */}
+      {/* RÉSEAUX SOCIAUX */}
+      <div style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:20, padding:22, marginBottom:14 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:16, color:C.txt }}>Réseaux sociaux</div>
+        <Field label="Facebook" val={facebook} set={setFacebook} ph="https://facebook.com/votre-page" icon={<Ic n="fb" s={15} c={C.dim}/>}/>
+        <Field label="Instagram" val={instagram} set={setInstagram} ph="https://instagram.com/votre-compte" icon={<Ic n="ig" s={15} c={C.dim}/>}/>
+        <Field label="Twitter / X" val={twitter} set={setTwitter} ph="https://twitter.com/votre-compte" icon={<Ic n="globe" s={15} c={C.dim}/>}/>
+      </div>
+
+      {/* COULEURS & THÈME */}
+      <div style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:20, padding:22, marginBottom:14 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:16, color:C.txt }}>Couleurs & Thème</div>
+        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:14, background:C.bg1, border:`1px solid ${C.bdr}`, borderRadius:14, padding:"14px 16px" }}>
+          <input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)} style={{ width:42, height:42, borderRadius:10, border:`1px solid ${C.bdr}`, cursor:"pointer", padding:3, background:"none", flexShrink:0 }}/>
+          <div>
+            <div style={{ fontSize:13, fontWeight:500, color:C.txt }}>Couleur principale</div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{primaryColor}</div>
+          </div>
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:700, color:C.muted, marginBottom:7, letterSpacing:".07em", textTransform:"uppercase" }}>Police</label>
+          <select value={fontStyle} onChange={e=>setFontStyle(e.target.value)}
+            style={{ width:"100%", background:C.bg1, border:`1px solid ${C.bdr}`, borderRadius:12, padding:"13px 14px", fontSize:14, color:C.txt, fontFamily:"'Inter',sans-serif" }}>
+            {FONTS.map(f=><option key={f.id} value={f.id} style={{ background:C.bg1 }}>{f.n}</option>)}
+          </select>
+        </div>
+        <Field label="Texte du pied de page" val={footerText} set={setFooterText} ph="Powered by Teranga Resto"/>
+      </div>
+
+      {/* PAIEMENTS ACCEPTÉS */}
+      <div style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:20, padding:22, marginBottom:14 }}>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:8, color:C.txt }}>Paiements acceptés</div>
+        <p style={{ fontSize:12, color:C.muted, marginBottom:18, lineHeight:1.65 }}>Activez les moyens de paiement que vous acceptez dans votre restaurant.</p>
+        {payMethods.map(m => (
+          <div key={m.id}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:C.bg1, border:`1px solid ${m.val?C.amber+"40":C.bdr}`, borderRadius:14, padding:"13px 16px", marginBottom:10, transition:"border .2s" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                {m.logo && m.logo}
+                <span style={{ fontSize:14, fontWeight:500, color:C.txt }}>{m.label}</span>
+              </div>
+              <Toggle val={m.val} set={m.set}/>
+            </div>
+            {m.numKey && m.val && (
+              <div style={{ marginLeft:16, marginBottom:10 }}>
+                <Field val={m.numVal} set={m.numSet} ph={m.ph} icon={<Ic n="phone" s={15} c={C.dim}/>}/>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* NUMÉROS PAIEMENT ABONNEMENT */}
       <div style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:20, padding:22, marginBottom:20 }}>
-        <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:8, color:C.txt }}>Paiements clients</div>
-        <p style={{ fontSize:12, color:C.muted, marginBottom:18, lineHeight:1.65 }}>Numéros affichés sur votre site pour recevoir les paiements des commandes.</p>
+        <div style={{ fontFamily:"'Plus Jakarta Sans',sans-serif", fontWeight:700, fontSize:13, marginBottom:8, color:C.txt }}>Numéros pour recevoir les commandes</div>
+        <p style={{ fontSize:12, color:C.muted, marginBottom:18, lineHeight:1.65 }}>Ces numéros seront utilisés pour recevoir directement les paiements des clients.</p>
         {[{Logo:WaveLogo,k:"wave",col:"#1AACF0",ph:"Votre numéro Wave",val:wave,set:setWave,lw:72,lh:40},
           {Logo:OrangeLogo,k:"orange",col:"#FF6600",ph:"Votre numéro Orange Money",val:orange,set:setOrange,lw:88,lh:40}
         ].map(({Logo,k,col,ph,val,set,lw,lh}) => (
