@@ -160,21 +160,19 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
   </div>
 </header>
 
-<!-- Connexion (démo — aucune authentification réelle) -->
+<!-- Connexion (démo — aucune authentification réelle, voir note dans le code) -->
 <div id="loginOverlay" class="hidden" style="position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:20px;">
   <div style="position:absolute;inset:0;background:rgba(43,24,16,.45);" onclick="closeLogin()"></div>
-  <div class="card" style="position:relative;width:100%;max-width:360px;padding:28px;">
+  <div class="card" style="position:relative;width:100%;max-width:380px;padding:28px;max-height:90vh;overflow-y:auto;">
     <div class="flex justify-center" style="margin-bottom:16px;">
       <img class="logo-asset" src="" style="width:40px;height:40px;object-fit:contain;">
     </div>
-    <h2 class="font-display" style="font-size:19px;text-align:center;margin-bottom:4px;">Connexion restaurateur</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:20px;">Accédez à votre tableau de bord.</p>
-    <label class="field-label">E-mail</label>
-    <input class="field-input" id="loginEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
-    <label class="field-label">Mot de passe</label>
-    <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="margin-bottom:18px;">
-    <button class="btn btn-secondary btn-lg w-full" onclick="submitLogin()">Se connecter</button>
-    <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — la connexion vous amène directement au tableau de bord de <span class="resto-name">Chez Fatou</span>.</p>
+    <div class="flex gap-1" style="background:var(--cream-deep);border-radius:12px;padding:3px;margin-bottom:18px;">
+      <button id="loginTabLogin" class="btn btn-sm" style="flex:1;background:#fff;" onclick="setLoginTab('login')">Connexion</button>
+      <button id="loginTabSignup" class="btn btn-sm btn-ghost" style="flex:1;" onclick="setLoginTab('signup')">Créer un compte</button>
+      <button id="loginTabInvite" class="btn btn-sm btn-ghost" style="flex:1;" onclick="setLoginTab('invite')">Invitation</button>
+    </div>
+    <div id="loginTabBody"></div>
   </div>
 </div>
 
@@ -459,6 +457,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
         </div>
       </div>
       <div id="planBanner"></div>
+      <div id="roleSimBanner"></div>
 
       <div style="padding:20px 18px 88px;max-width:100%;overflow-x:hidden;" id="dashContent"></div>
     </div>
@@ -587,13 +586,103 @@ function goToAnchor(id){
   setTimeout(()=>{ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth'}); }, 60);
 }
 function closeMobileNav(){ document.getElementById('gnavTabs').classList.remove('mobile-open'); }
-function openLogin(){ document.getElementById('loginOverlay').classList.remove('hidden'); hydrateIcons(); }
+function openLogin(tab){ document.getElementById('loginOverlay').classList.remove('hidden'); setLoginTab(tab||'login'); }
 function closeLogin(){ document.getElementById('loginOverlay').classList.add('hidden'); }
+
+let loginTab = 'login';
+function setLoginTab(tab){
+  loginTab = tab;
+  ['login','signup','invite'].forEach(t=>{
+    const btn = document.getElementById('loginTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn){ btn.className = t===tab ? 'btn btn-sm' : 'btn btn-sm btn-ghost'; btn.style.background = t===tab ? '#fff' : ''; }
+  });
+  const body = document.getElementById('loginTabBody');
+  if(tab==='login'){
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Pour les restaurateurs qui ont déjà un compte.</p>
+      <label class="field-label">E-mail</label>
+      <input class="field-input" id="loginEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <label class="field-label">Mot de passe</label>
+      <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="margin-bottom:8px;">
+      <a href="#" onclick="toast('Démo — lien de réinitialisation non envoyé dans cet aperçu.');return false;" style="font-size:11.5px;color:var(--amber-ink);">Mot de passe oublié ?</a>
+      <button class="btn btn-secondary btn-lg w-full" onclick="submitLogin()" style="margin-top:14px;">Se connecter</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — vous amène directement au tableau de bord de <span class="resto-name">Chez Fatou</span>.</p>`;
+  } else if(tab==='signup'){
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Créez votre compte pour ensuite créer votre restaurant.</p>
+      <label class="field-label">Nom complet</label>
+      <input class="field-input" id="signupName" placeholder="Fatou Diop" style="margin-bottom:12px;">
+      <label class="field-label">E-mail</label>
+      <input class="field-input" id="signupEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <label class="field-label">Mot de passe</label>
+      <input class="field-input" id="signupPassword" type="password" placeholder="8 caractères minimum" style="margin-bottom:12px;">
+      <label class="field-label">Confirmer le mot de passe</label>
+      <input class="field-input" id="signupPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
+      <button class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Une fois le compte créé, vous continuez vers la création de votre restaurant.</p>`;
+  } else {
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Vous avez été invité(e) à rejoindre un restaurant sur TerangaResto.</p>
+      <label class="field-label">Adresse e-mail invitée</label>
+      <input class="field-input" id="inviteEmail" placeholder="vous@exemple.com" style="margin-bottom:12px;">
+      <label class="field-label">Code d'invitation</label>
+      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:16px;text-transform:uppercase;">
+      <button class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — essayez : khady@chezfatou.sn / code affiché dans Personnel → Invitations en attente.</p>`;
+  }
+  hydrateIcons(body);
+}
+
 function submitLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email){ toast('Entrez votre e-mail.'); return; }
   closeLogin();
+  simulatedRole = null;
   setView('dashboard');
   setDashSection('overview');
   toast('Connecté — bienvenue sur votre tableau de bord.');
+}
+
+function submitSignup(){
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pw = document.getElementById('signupPassword').value;
+  const pw2 = document.getElementById('signupPassword2').value;
+  if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+  if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
+  // Démo — vérifie l'unicité de l'e-mail contre les comptes créés PENDANT
+  // cette session (en mémoire uniquement). La vraie contrainte d'unicité
+  // (persistante, entre tous les utilisateurs) existe dans la vraie
+  // application Supabase, via Auth — pas dans un fichier HTML statique.
+  if(SESSION_ACCOUNTS_DEMO.includes(email.toLowerCase())){
+    toast('Cette adresse e-mail possède déjà un compte. Connectez-vous plutôt.');
+    setLoginTab('login');
+    return;
+  }
+  SESSION_ACCOUNTS_DEMO.push(email.toLowerCase());
+  closeLogin();
+  startOnboarding();
+  obState.accountName = name;
+  obState.accountEmail = email;
+  renderOnboarding();
+  toast('Compte créé — continuons avec votre restaurant.');
+}
+
+function submitInviteAccept(){
+  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
+  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
+  const match = staffState.find(s => s.email.toLowerCase()===email && s.code.toUpperCase()===code);
+  if(!match){
+    const emailMatch = staffState.find(s => s.email.toLowerCase()===email);
+    toast(emailMatch ? "Code d'invitation incorrect." : "Cette invitation est destinée à une autre adresse e-mail, ou n'existe pas.");
+    return;
+  }
+  match.status = 'Actif';
+  closeLogin();
+  setSimulatedRole(match.role);
+  toast(`Invitation acceptée — bienvenue ${match.name}, accès ${match.role}.`);
 }
 </script>
 
@@ -786,6 +875,51 @@ function hydrateIcons(root){
 /* ---------------- FILTRE DE PÉRIODE — partagé par Vue d'ensemble,
    Analyses, Caisse et Comptabilité. Change réellement les données
    affichées ; jamais décoratif. ---------------- */
+/* ---------------- RÔLES ET PERMISSIONS ----------------
+   IMPORTANT — honnêteté sur la portée de cette démo : ce fichier est un
+   aperçu HTML autonome, sans backend ni base de données. Le filtrage de
+   menu ci-dessous est une VRAIE logique d'interface (le menu change
+   réellement selon le rôle simulé), mais ce n'est PAS une sécurité
+   réelle — n'importe qui avec les outils de développement du navigateur
+   pourrait la contourner. La sécurité réelle (comptes uniques, sessions,
+   e-mails d'invitation, isolation multi-restaurant au niveau base de
+   données) existe déjà dans la vraie application Next.js + Supabase
+   livrée séparément, où elle est appliquée par de vraies politiques RLS
+   côté serveur, pas par du JavaScript côté client. */
+const ROLE_SECTIONS = {
+  'Administrateur': ['overview','orders','products','inventory','pos','analytics','accounting','categories','variants','payments','customers','qrcode','staff','library','settings'],
+  'Gestionnaire': ['overview','orders','products','inventory','categories','variants','analytics','customers','library'],
+  'Caissier': ['pos','orders'],
+  'Cuisine': ['orders'],
+};
+let simulatedRole = null; // null = Administrateur (propriétaire), sinon un des STAFF_ROLES
+
+function canSeeSection(key){
+  if(!simulatedRole) return true;
+  return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
+}
+function firstAllowedSection(){
+  if(!simulatedRole) return 'overview';
+  return (ROLE_SECTIONS[simulatedRole]||['orders'])[0];
+}
+function setSimulatedRole(role){
+  simulatedRole = role || null;
+  toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
+  setView('dashboard');
+  setDashSection(firstAllowedSection());
+  renderDashNav();
+  renderRoleSimBanner();
+}
+function renderRoleSimBanner(){
+  const el = document.getElementById('roleSimBanner');
+  if(!el) return;
+  el.innerHTML = simulatedRole ? `<div style="background:rgba(232,135,30,.12);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    ${ic('userGroup',15)}Aperçu — vous visualisez le tableau de bord comme <b>${simulatedRole}</b>, avec ses permissions réelles.
+    <a href="#" onclick="setSimulatedRole(null);return false;" style="text-decoration:underline;font-weight:600;margin-left:auto;">Revenir à Administrateur</a>
+  </div>` : '';
+  hydrateIcons(el);
+}
+
 let dashPeriod = 'today';
 let dashPeriodFrom = '';
 let dashPeriodTo = '';
@@ -943,9 +1077,9 @@ const DEMO_ORDERS = [
 ];
 
 const DEMO_STAFF = [
-  {email:'aminata@chezfatou.sn',role:'Administrateur',status:'Actif'},
-  {email:'ousmane@chezfatou.sn',role:'Responsable commandes',status:'Actif'},
-  {email:'khady@chezfatou.sn',role:'Caissier',status:'Invité'},
+  {name:'Aminata Ndour', email:'aminata@chezfatou.sn', role:'Administrateur', status:'Actif', code:'TR-8F42K9', permissions:null},
+  {name:'Ousmane Diallo', email:'ousmane@chezfatou.sn', role:'Gestionnaire', status:'Actif', code:'TR-2R9LX3', permissions:null},
+  {name:'Khady Sow', email:'khady@chezfatou.sn', role:'Caissier', status:'En attente', code:'TR-7Q1WZ8', permissions:null},
 ];
 
 const DEMO_REVIEWS = [
@@ -992,6 +1126,8 @@ const RESTAURANT = {
     facebook:{enabled:false, value:''},
   },
   showMap:true,
+  mapsLink:'',
+  notificationsEnabled:true,
 };
 
 function isOpenNow(){
@@ -1106,7 +1242,7 @@ function setView(view){
   window.scrollTo({top:0,behavior:'instant' in window ? 'instant':'auto'});
   document.getElementById('mobileBottomNav').classList.toggle('active-grid', view==='dashboard' && window.innerWidth<=900);
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
-  if(view==='dashboard') { renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); }
+  if(view==='dashboard') { renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); }
   if(view==='pricing') renderPricing();
   if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); }
   if(view==='onboarding') renderOnboarding();
@@ -1553,23 +1689,32 @@ function renderStorefrontHero(){
     ${RESTAURANT.phone ? `<p style="font-size:14px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">${ic('phone',15,{stroke:'var(--ink-faint)'})}${RESTAURANT.phone}</p>` : ''}
     <div style="font-size:13px;color:var(--ink-soft);display:flex;align-items:flex-start;gap:8px;"><span style="margin-top:2px;">${ic('clock',15,{stroke:'var(--ink-faint)'})}</span><div>${hoursHtml}</div></div>`;
 
-  // Réseaux sociaux — uniquement ceux activés (spec §30-32), vrais logos de marque
+  // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
+  // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
+  function normalizeUrl(v){
+    v = (v||'').trim();
+    if(!v) return '#';
+    return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+  }
   const socialHrefMap = {
     whatsapp: whatsappLink(),
-    instagram: RESTAURANT.social.instagram.value ? 'https://instagram.com/'+RESTAURANT.social.instagram.value.replace(/^@/,'') : '#',
-    tiktok: RESTAURANT.social.tiktok.value ? 'https://tiktok.com/@'+RESTAURANT.social.tiktok.value.replace(/^@/,'') : '#',
-    facebook: RESTAURANT.social.facebook.value ? 'https://facebook.com/'+RESTAURANT.social.facebook.value : '#',
+    instagram: normalizeUrl(RESTAURANT.social.instagram.value),
+    tiktok: normalizeUrl(RESTAURANT.social.tiktok.value),
+    facebook: normalizeUrl(RESTAURANT.social.facebook.value),
   };
   const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
   document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
     `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,36)}</a>`
   ).join('');
 
-  // Carte — uniquement si activée ET adresse renseignée (spec §33)
+  // Localisation — uniquement si activée ET un vrai lien Google Maps est
+  // renseigné (spec §4/§29/§34) ; jamais de carte ou de lien fictif.
   const mapEl = document.getElementById('sfMapContainer');
-  if(RESTAURANT.showMap && RESTAURANT.address.trim()){
-    mapEl.innerHTML = `<div style="border-radius:20px;overflow:hidden;border:1px solid var(--cream-line);height:170px;background:var(--cream-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink-faint);">
-      ${ic('map',26)}<span style="font-size:12px;text-align:center;padding:0 20px;">${RESTAURANT.address}, ${RESTAURANT.city}</span>
+  if(RESTAURANT.showMap && RESTAURANT.mapsLink.trim()){
+    mapEl.innerHTML = `<div style="border-radius:20px;border:1px solid var(--cream-line);padding:18px;display:flex;flex-direction:column;gap:10px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);">Notre localisation</p>
+      ${RESTAURANT.address ? `<p style="font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">${ic('mapPin',15,{stroke:'var(--ink-faint)'})}${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
+      <a href="${normalizeUrl(RESTAURANT.mapsLink)}" target="_blank" rel="noreferrer" class="btn btn-outline btn-sm" style="align-self:flex-start;">${ic('map',14)} Voir sur Google Maps</a>
     </div>`;
   } else {
     mapEl.innerHTML = '';
@@ -1932,12 +2077,25 @@ const NAV_ITEMS = [
 ];
 const MOBILE_PRIMARY = ['overview','orders','products','analytics'];
 
-document.getElementById('dashNav').innerHTML = NAV_ITEMS.map(([key,icon,label])=>
-  `<button class="nav-item ${key==='overview'?'active':''}" data-key="${key}" onclick="setDashSection('${key}')">
-    <span class="nav-icon">${ic(icon,18)}</span><span class="nav-label">${label}</span>
-  </button>`).join('');
+function renderDashNav(){
+  document.getElementById('dashNav').innerHTML = NAV_ITEMS.filter(([key])=>canSeeSection(key)).map(([key,icon,label])=>
+    `<button class="nav-item ${key===state.dashSection?'active':''}" data-key="${key}" onclick="setDashSection('${key}')">
+      <span class="nav-icon">${ic(icon,18)}</span><span class="nav-label">${label}</span>
+    </button>`).join('');
+  hydrateIcons(document.getElementById('dashNav'));
+}
+renderDashNav();
 
 function setDashSection(key){
+  // Garde-fou de navigation : simule une vraie protection de page — si le
+  // rôle actuellement prévisualisé n'a pas accès à cette section, l'accès
+  // est refusé et l'utilisateur est renvoyé vers une section autorisée.
+  // (Rappel : ceci est une démonstration d'UX, pas une sécurité réelle —
+  // voir la note dans ROLE_SECTIONS.)
+  if(!canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${simulatedRole}.`, true);
+    key = firstAllowedSection();
+  }
   state.dashSection = key;
   document.querySelectorAll('#dashNav .nav-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key));
   document.querySelectorAll('.mbn-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key || (key==='more'&&n.dataset.key==='more')));
@@ -1947,8 +2105,8 @@ function setDashSection(key){
 }
 
 function openMoreSheet(){
-  const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k));
-  rest.push(['abonnement','wallet','Abonnement']);
+  const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k) && canSeeSection(k));
+  if(canSeeSection('settings')) rest.push(['abonnement','wallet','Abonnement']);
   document.getElementById('moreSheetGrid').innerHTML = rest.map(([key,icon,label])=>{
     const locked = (key==='staff' && state.plan!=='pro');
     return `<button class="more-tile ${locked?'locked':''}" onclick="setDashSection('${key}')">
@@ -1962,6 +2120,7 @@ function openMoreSheet(){
 function closeMoreSheet(){ document.getElementById('moreSheetOverlay').classList.add('hidden'); }
 
 function toggleNotifPanel(){
+  if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
   const newOrders = DEMO_ORDERS.filter(o=>o.status==='new');
   if(newOrders.length===0){ toast(ic('bell',14)+' Aucune nouvelle commande.', true); return; }
   const latest = newOrders[0];
@@ -1971,7 +2130,7 @@ function toggleNotifPanel(){
 function refreshNotifDot(){
   const dot = document.getElementById('notifDot');
   if(!dot) return;
-  const count = DEMO_ORDERS.filter(o=>o.status==='new').length;
+  const count = RESTAURANT.notificationsEnabled ? DEMO_ORDERS.filter(o=>o.status==='new').length : 0;
   if(count>0){ dot.style.display='flex'; dot.textContent = count>9?'9+':count; }
   else { dot.style.display='none'; }
 }
@@ -1981,6 +2140,7 @@ function markNotifsSeen(){
   refreshNotifDot();
 }
 function logoutDashboard(){
+  simulatedRole = null;
   setView('landing');
   toast('Déconnecté.');
 }
@@ -2283,9 +2443,13 @@ function productsListHtml(){
         <span class="font-tabular" style="font-size:14px;font-weight:700;">${fmt(p.price)}</span>
         <span style="font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:4px;">${ic('clock',12)}${p.prep} min</span>
       </div>
-      <div class="flex items-center gap-2" style="margin-bottom:10px;">
-        <button onclick="toggleProductActive('${p.id}')" class="pill ${p.active?'pill-forest':'pill-neutral'}" style="font-size:10.5px;">${p.active?'Actif':'Inactif'}</button>
-        <button onclick="toggleProductAvailable('${p.id}')" class="pill ${p.available?'pill-amber':'pill-terracotta'}" style="font-size:10.5px;">${p.available?'Disponible':'Rupture'}</button>
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <span style="font-size:11.5px;color:var(--ink-soft);">Actif (visible publiquement)</span>
+        <div class="toggle ${p.active?'on':''}" onclick="toggleProductActive('${p.id}')"><div class="dot"></div></div>
+      </div>
+      <div class="flex items-center justify-between" style="margin-bottom:10px;">
+        <span style="font-size:11.5px;color:var(--ink-soft);">Disponible</span>
+        <div class="toggle ${p.available?'on':''}" onclick="toggleProductAvailable('${p.id}')"><div class="dot"></div></div>
       </div>
       <div class="flex gap-2" style="margin-top:auto;">
         <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openProductForm('${p.id}')">${ic('pencil',13)} Modifier</button>
@@ -2740,15 +2904,26 @@ function drawQr(){
 </script>
 
 <script>
-/* ---------------- STAFF ---------------- */
+/* ---------------- STAFF / PERSONNEL ---------------- */
 const STAFF_ROLES = ['Administrateur','Caissier','Cuisine','Gestionnaire'];
 const STAFF_ROLE_DESC = {
   'Administrateur':'Accès complet à toutes les sections.',
   'Caissier':'Accès à la caisse et aux commandes.',
   'Cuisine':'Accès aux commandes et à leur préparation.',
-  'Gestionnaire':'Accès aux produits, commandes et analyses.',
+  'Gestionnaire':'Accès aux produits, à l\'inventaire, aux catégories et aux analyses.',
 };
+const SECTION_LABELS_MAP = Object.fromEntries(NAV_ITEMS.map(([k,,l])=>[k,l]));
 let staffState = JSON.parse(JSON.stringify(DEMO_STAFF));
+let inviteRole = 'Caissier';
+let invitePermissions = null; // null = suivre les permissions par défaut du rôle
+let editingStaffIndex = null;
+
+function genInviteCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'TR-';
+  for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
 
 function dashStaff(){
   if(state.plan!=='pro'){
@@ -2764,39 +2939,170 @@ function dashStaff(){
       </div>
     </div>`;
   }
+  const active = staffState.filter(s=>s.status==='Actif');
+  const pending = staffState.filter(s=>s.status==='En attente');
+  invitePermissions = invitePermissions || ROLE_SECTIONS[inviteRole];
+
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Invitez des membres de votre équipe et définissez leurs permissions.</p>
-  <div class="card" style="padding:16px;max-width:640px;margin-bottom:16px;">
-    <div class="flex gap-2" style="flex-wrap:wrap;">
-      <input class="field-input" id="staffEmail" placeholder="email@exemple.com" style="flex:1;min-width:180px;">
-      <select class="field-input" id="staffRole" style="width:170px;">
-        ${STAFF_ROLES.map((r,i)=>`<option ${i===1?'selected':''}>${r}</option>`).join('')}
-      </select>
-      <button class="btn btn-secondary" onclick="inviteStaff()">${ic('send',15)} Inviter</button>
-    </div>
-    <p style="font-size:11px;color:var(--ink-faint);margin-top:10px;">${STAFF_ROLES.map(r=>`<b>${r}</b> — ${STAFF_ROLE_DESC[r]}`).join(' &nbsp;·&nbsp; ')}</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Invitez des membres de votre équipe et définissez précisément ce qu'ils peuvent voir.</p>
+  <div class="card" style="padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    ${ic('info',14,{stroke:'var(--ink-faint)'})}
+    <span style="font-size:11.5px;color:var(--ink-faint);">Démo — aucun e-mail réel n'est envoyé ici. Aperçu par rôle :</span>
+    ${STAFF_ROLES.map(r=>`<button class="btn btn-outline btn-sm" onclick="setSimulatedRole('${r}')">${r}</button>`).join('')}
   </div>
-  <div class="card" style="max-width:640px;" id="staffList">${staffListHtml()}</div>`;
+
+  <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
+    <p style="font-size:13px;font-weight:600;margin-bottom:10px;">${ic('plus',14)} Inviter une personne</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <input class="field-input" id="staffEmail" placeholder="email@exemple.com">
+      <select class="field-input" id="staffRole" onchange="inviteRole=this.value;invitePermissions=ROLE_SECTIONS[this.value];renderDashSection('staff');">
+        ${STAFF_ROLES.map(r=>`<option ${inviteRole===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
+    <p style="font-size:11px;color:var(--ink-faint);margin-bottom:10px;">${STAFF_ROLE_DESC[inviteRole]}</p>
+    <p style="font-size:12px;font-weight:600;margin-bottom:8px;">Accès autorisés</p>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;">
+      ${NAV_ITEMS.map(([key,,label])=>`<label class="flex items-center gap-2" style="font-size:12px;cursor:pointer;">
+        <input type="checkbox" ${invitePermissions.includes(key)?'checked':''} onchange="toggleInvitePermission('${key}',this.checked)"> ${label}
+      </label>`).join('')}
+    </div>
+    <button class="btn btn-secondary" onclick="inviteStaff()">${ic('send',15)} Envoyer l'invitation</button>
+  </div>
+
+  <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Membres (${active.length})</p>
+  <div class="card" style="max-width:680px;margin-bottom:22px;" id="staffActiveList">${staffActiveListHtml()}</div>
+
+  <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Invitations en attente (${pending.length})</p>
+  <div class="card" style="max-width:680px;" id="staffPendingList">${staffPendingListHtml()}</div>
+  <div id="staffEditModal"></div>`;
 }
-function staffListHtml(){
-  if(staffState.length===0) return `<div class="empty-state">${ic('userGroup',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun membre pour le moment.</p></div>`;
-  return staffState.map((s,i)=>`<div class="flex items-center gap-3" style="padding:12px 16px;border-top:1px solid var(--cream-line);">
-    <div style="flex:1;"><p style="font-size:13.5px;">${s.email}</p><p style="font-size:11.5px;color:var(--ink-faint);">${s.role}</p></div>
-    <span class="pill ${s.status==='Actif'?'pill-forest':'pill-amber'}">${s.status}</span>
-    <button onclick="staffState.splice(${i},1);document.getElementById('staffList').innerHTML=staffListHtml();hydrateIcons();" style="color:var(--terracotta);">${ic('trash',15)}</button>
-  </div>`).join('');
+
+function toggleInvitePermission(key, checked){
+  invitePermissions = invitePermissions.slice();
+  if(checked && !invitePermissions.includes(key)) invitePermissions.push(key);
+  if(!checked) invitePermissions = invitePermissions.filter(k=>k!==key);
 }
-function inviteStaff(){
-  const email = document.getElementById('staffEmail').value.trim();
-  const role = document.getElementById('staffRole').value;
-  if(!email){ toast('Entrez un e-mail.'); return; }
-  staffState.push({email,role,status:'Invité'});
-  document.getElementById('staffList').innerHTML = staffListHtml();
-  document.getElementById('staffEmail').value='';
-  toast('Invitation envoyée à '+email);
+
+function staffActiveListHtml(){
+  const active = staffState.filter(s=>s.status==='Actif');
+  if(active.length===0) return `<div class="empty-state">${ic('userGroup',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun membre actif.</p></div>`;
+  return active.map((s)=>{
+    const i = staffState.indexOf(s);
+    const perms = s.permissions || ROLE_SECTIONS[s.role] || [];
+    return `<div style="padding:12px 16px;border-top:1px solid var(--cream-line);">
+      <div class="flex items-center gap-3">
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role}</p>
+        </div>
+        <span class="pill pill-forest">Actif</span>
+        <button class="btn btn-outline btn-sm" onclick="openStaffEdit(${i})">${ic('pencil',13)} Modifier</button>
+        <button class="btn btn-outline btn-sm" onclick="deactivateStaff(${i})" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);">${ic('x',13)} Désactiver</button>
+      </div>
+      <p style="font-size:10.5px;color:var(--ink-faint);margin-top:6px;">${perms.length} section${perms.length>1?'s':''} autorisée${perms.length>1?'s':''} : ${perms.map(k=>SECTION_LABELS_MAP[k]).join(', ')||'aucune'}</p>
+    </div>`;
+  }).join('');
+}
+function staffPendingListHtml(){
+  const pending = staffState.filter(s=>s.status==='En attente');
+  if(pending.length===0) return `<div class="empty-state">${ic('send',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune invitation en attente.</p></div>`;
+  return pending.map((s)=>{
+    const i = staffState.indexOf(s);
+    return `<div class="flex items-center gap-3" style="padding:12px 16px;border-top:1px solid var(--cream-line);">
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+        <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role} · Code ${s.code}</p>
+      </div>
+      <span class="pill pill-amber">Invitation envoyée</span>
+      <button class="btn btn-outline btn-sm" onclick="resendInvite(${i})">${ic('send',13)} Renvoyer</button>
+      <button class="btn btn-outline btn-sm" onclick="cancelInvite(${i})" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);">${ic('trash',13)}</button>
+    </div>`;
+  }).join('');
+}
+
+function refreshStaffLists(){
+  const a = document.getElementById('staffActiveList'); if(a) a.innerHTML = staffActiveListHtml();
+  const p = document.getElementById('staffPendingList'); if(p) p.innerHTML = staffPendingListHtml();
   hydrateIcons();
 }
+
+function inviteStaff(){
+  const email = document.getElementById('staffEmail').value.trim();
+  if(!email){ toast('Entrez un e-mail.'); return; }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  if(staffState.some(s=>s.email.toLowerCase()===email.toLowerCase())){
+    toast('Cette adresse a déjà été invitée à ce restaurant.');
+    return;
+  }
+  staffState.push({
+    name: email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+    email, role: inviteRole, status:'En attente', code: genInviteCode(),
+    permissions: invitePermissions.length===ROLE_SECTIONS[inviteRole].length ? null : invitePermissions,
+  });
+  document.getElementById('staffEmail').value = '';
+  refreshStaffLists();
+  renderDashSection('staff');
+  toast(`Invitation créée pour ${email} — code ${staffState[staffState.length-1].code} (démo, aucun e-mail réel envoyé).`);
+}
+function resendInvite(i){ toast(`Invitation renvoyée à ${staffState[i].email} (démo).`); }
+function cancelInvite(i){
+  if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
+  staffState.splice(i,1);
+  refreshStaffLists();
+}
+function deactivateStaff(i){
+  if(!confirm(`Désactiver l'accès de ${staffState[i].name} à ce restaurant ?`)) return;
+  staffState[i].status = 'En attente';
+  staffState[i].code = genInviteCode();
+  refreshStaffLists();
+  toast(`${staffState[i].name} n'a plus accès à ${RESTO_NAME}. Son compte TerangaResto reste actif.`);
+}
+
+function openStaffEdit(i){
+  editingStaffIndex = i;
+  const s = staffState[i];
+  const perms = s.permissions || ROLE_SECTIONS[s.role] || [];
+  document.getElementById('staffEditModal').innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeStaffEdit()"></div>
+    <div class="card" style="position:relative;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;">
+      <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+        <h2 class="font-display" style="font-size:16px;">${s.name}</h2>
+        <button onclick="closeStaffEdit()">${ic('x',17)}</button>
+      </div>
+      <div style="padding:16px 20px;">
+        <label class="field-label">Rôle</label>
+        <select class="field-input" id="editStaffRole" style="margin-bottom:14px;" onchange="staffState[${i}].role=this.value;staffState[${i}].permissions=null;openStaffEdit(${i});">
+          ${STAFF_ROLES.map(r=>`<option ${s.role===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+        <p style="font-size:12px;font-weight:600;margin-bottom:8px;">Accès autorisés</p>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:7px;">
+          ${NAV_ITEMS.map(([key,,label])=>`<label class="flex items-center gap-2" style="font-size:12px;cursor:pointer;">
+            <input type="checkbox" ${perms.includes(key)?'checked':''} onchange="editStaffPermission(${i},'${key}',this.checked)"> ${label}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div class="flex gap-3" style="padding:16px 20px;border-top:1px solid var(--cream-line);">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeStaffEdit()">Fermer</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="saveStaffEdit(${i})">${ic('save',15)} Enregistrer</button>
+      </div>
+    </div>
+  </div>`;
+  hydrateIcons();
+}
+function editStaffPermission(i,key,checked){
+  const s = staffState[i];
+  let perms = s.permissions || ROLE_SECTIONS[s.role].slice();
+  perms = checked ? [...new Set([...perms,key])] : perms.filter(k=>k!==key);
+  s.permissions = perms;
+}
+function saveStaffEdit(i){
+  closeStaffEdit();
+  refreshStaffLists();
+  toast(`Permissions de ${staffState[i].name} mises à jour.`);
+}
+function closeStaffEdit(){ editingStaffIndex=null; document.getElementById('staffEditModal').innerHTML=''; }
 
 /* ---------------- BIBLIOTHÈQUE (médias : logo, couverture, photos produits) ---------------- */
 let libraryTab = 'all';
@@ -3016,6 +3322,10 @@ function settingsBodyHtml(){
         </div>
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
+    </div>
+    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:18px;padding-top:14px;">
+      <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
+      <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();"><div class="dot"></div></div>
     </div>`;
 
   if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
@@ -3045,27 +3355,38 @@ function settingsBodyHtml(){
   if(settingsTab==='Réseaux & carte'){
     const nets = [
       ['whatsapp','WhatsApp','Numéro WhatsApp','77 XX XX XX XX','tel'],
-      ['instagram','Instagram',"Nom d'utilisateur",'chezfatou.sn','text'],
-      ['tiktok','TikTok',"Nom d'utilisateur",'@chezfatou','text'],
-      ['facebook','Facebook','Lien de la page','facebook.com/chezfatou.dakar','text'],
+      ['instagram','Instagram','Lien du profil','https://instagram.com/chezfatou','text'],
+      ['tiktok','TikTok','Lien du profil','https://tiktok.com/@chezfatou','text'],
+      ['facebook','Facebook','Lien de la page','https://facebook.com/chezfatou.dakar','text'],
     ];
     const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
     return `
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">Ajoutez les réseaux sociaux de votre restaurant. Les réseaux activés seront automatiquement affichés sur votre site public.</p>
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Réseaux sociaux</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">WhatsApp : indiquez simplement votre numéro, le lien est généré automatiquement. Instagram, TikTok et Facebook : collez directement le lien complet de votre profil.</p>
     <div class="flex-col gap-3" id="socialCards" style="margin-bottom:18px;">
       ${nets.map(([key,label,fieldLabel,placeholder])=>socialCardHtml(key,label,fieldLabel,placeholder)).join('')}
     </div>
-    <div class="card" style="padding:14px 16px;margin-bottom:18px;">
+    <div class="card" style="padding:14px 16px;margin-bottom:24px;">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Aperçu sur votre site</p>
       ${activeSocials.length===0
         ? `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun réseau affiché pour le moment.</p>`
         : `<div class="flex items-center gap-2">${activeSocials.map(k=>socialLogo(k,30)).join('')}<span style="font-size:12px;color:var(--ink-soft);margin-left:4px;">${activeSocials.map(k=>({whatsapp:'WhatsApp',instagram:'Instagram',tiktok:'TikTok',facebook:'Facebook'}[k])).join(' · ')}</span></div>`}
     </div>
-    <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;">
-      <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('mapPin',15)}Afficher la localisation sur le site public</span>
-      <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');"><div class="dot"></div></div>
-    </div>
-    ${!RESTAURANT.address.trim() && RESTAURANT.showMap ? `<p style="font-size:11.5px;color:var(--amber-ink);margin-top:8px;">Renseignez une adresse dans l'onglet Général pour que la carte s'affiche.</p>`:''}`;
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Localisation</p>
+    <div class="card" style="padding:14px 16px;">
+      <div class="flex items-center gap-3" style="margin-bottom:12px;">
+        ${icBadge('mapPin',{size:32,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}
+        <span style="flex:1;font-size:13.5px;font-weight:600;">Google Maps</span>
+      </div>
+      <label class="field-label" style="font-size:11px;">Lien Google Maps</label>
+      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${RESTAURANT.mapsLink}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;">
+      <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <span style="font-size:13.5px;font-weight:500;">Afficher la localisation sur le site public</span>
+        <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');"><div class="dot"></div></div>
+      </div>
+      ${!RESTAURANT.mapsLink.trim() && RESTAURANT.showMap ? `<p style="font-size:11.5px;color:var(--amber-ink);margin-top:8px;">Collez un lien Google Maps ci-dessus pour que la localisation s'affiche.</p>`:''}
+    </div>`;
   }
 
   if(settingsTab==='Thème'){
