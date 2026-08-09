@@ -628,7 +628,7 @@ function setLoginTab(tab){
       <label class="field-label">Code d'invitation</label>
       <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:16px;text-transform:uppercase;">
       <button class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — essayez : khady@chezfatou.sn / code affiché dans Personnel → Invitations en attente.</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — pour tester : connectez-vous, invitez quelqu'un depuis Personnel, puis revenez ici avec l'e-mail et le code générés.</p>`;
   }
   hydrateIcons(body);
 }
@@ -1061,32 +1061,16 @@ function timeAgo(date){
   return `il y a ${days} j`;
 }
 
-const DEMO_ORDERS = [
-  {num:'1029',client:'Aïssatou Ndiaye',phone:'+221 77 456 12 09',type:'Livraison',items:[['Thiéboudienne',2],['Bissap',2]],total:8400,pay:'wave',payStatus:'paid',status:'new',createdAt:minsAgo(4)},
-  {num:'1028',client:'Moussa Fall',phone:'+221 76 234 88 10',type:'Sur place · Table 6',items:[['Yassa Poulet',1],['Café Touba',1]],total:3500,pay:'cash',payStatus:'pending',status:'preparing',createdAt:minsAgo(12)},
-  {num:'1027',client:'Fatoumata Sarr',phone:'+221 78 990 44 21',type:'À emporter',items:[['Dibi',1],['Bissap',1]],total:4700,pay:'orange_money',payStatus:'paid',status:'ready',createdAt:minsAgo(22)},
-  {num:'1026',client:'Cheikh Diouf',phone:'+221 70 112 33 45',type:'Livraison',items:[['Mafé',2],['Thiakry',2]],total:8400,pay:'on_delivery',payStatus:'pending',status:'delivering',createdAt:minsAgo(40)},
-  {num:'1025',client:'Bineta Sy',phone:'+221 77 665 21 09',type:'À emporter',items:[['Poisson braisé',1]],total:4500,pay:'wave',payStatus:'paid',status:'completed',createdAt:hrsAgo(3)},
-  {num:'1024',client:'Ibrahima Ba',phone:'+221 76 887 65 43',type:'Sur place · Table 2',items:[['Thiébou Yapp',1],['Jus de bouye',1]],total:4100,pay:'cash',payStatus:'paid',status:'completed',createdAt:daysAgo(1,11)},
-  {num:'1023',client:'Ndèye Coumba',phone:'+221 78 554 32 10',type:'Livraison',items:[['Yassa Poulet',3]],total:9000,pay:'orange_money',payStatus:'failed',status:'cancelled',createdAt:daysAgo(2,18)},
-  {num:'1022',client:'Modou Diagne',phone:'+221 77 220 41 08',type:'À emporter',items:[['Thiéboudienne',1],['Bissap',1]],total:4200,pay:'wave',payStatus:'paid',status:'completed',createdAt:daysAgo(4,12)},
-  {num:'1021',client:'Aminata Fall',phone:'+221 76 330 91 22',type:'Sur place · Table 4',items:[['Mafé',1],['Café Touba',2]],total:4200,pay:'cash',payStatus:'paid',status:'completed',createdAt:daysAgo(6,19)},
-  {num:'1020',client:'Aïssatou Ndiaye',phone:'+221 77 456 12 09',type:'Livraison',items:[['Dibi',2]],total:8000,pay:'wave',payStatus:'paid',status:'completed',createdAt:daysAgo(9,13)},
-  {num:'1019',client:'Ousmane Kane',phone:'+221 70 554 12 90',type:'À emporter',items:[['Yassa Poulet',2],['Thiakry',1]],total:7000,pay:'orange_money',payStatus:'paid',status:'completed',createdAt:daysAgo(15,20)},
-  {num:'1018',client:'Fatoumata Sarr',phone:'+221 78 990 44 21',type:'Livraison',items:[['Poisson braisé',1],['Jus de bouye',2]],total:6100,pay:'wave',payStatus:'paid',status:'completed',createdAt:daysAgo(22,12)},
-];
+/* Aucune donnée fictive de départ : commandes, personnel et avis
+   n'existent que lorsqu'une vraie action a lieu dans cette session
+   (commande passée sur le site public, invitation envoyée depuis
+   Personnel). Un restaurant qui vient d'être créé démarre à zéro,
+   exactement comme dans la vraie application. */
+const DEMO_ORDERS = [];
 
-const DEMO_STAFF = [
-  {name:'Aminata Ndour', email:'aminata@chezfatou.sn', role:'Administrateur', status:'Actif', code:'TR-8F42K9', permissions:null},
-  {name:'Ousmane Diallo', email:'ousmane@chezfatou.sn', role:'Gestionnaire', status:'Actif', code:'TR-2R9LX3', permissions:null},
-  {name:'Khady Sow', email:'khady@chezfatou.sn', role:'Caissier', status:'En attente', code:'TR-7Q1WZ8', permissions:null},
-];
+const DEMO_STAFF = [];
 
-const DEMO_REVIEWS = [
-  {rating:5,comment:"Le meilleur Thiéboudienne de Dakar, service rapide."},
-  {rating:5,comment:"Commande livrée chaude et à l'heure. Je recommande."},
-  {rating:4,comment:"Très bon, juste un peu d'attente un vendredi soir."},
-];
+const DEMO_REVIEWS = [];
 
 const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',card:'Carte bancaire',cash:'Espèces',on_delivery:'Paiement à la livraison'};
 const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
@@ -1764,7 +1748,9 @@ function renderProductSections(){
   document.getElementById('sfProductSections').innerHTML = html || `
     <div class="empty-state">${ic('utensils',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit disponible dans cette catégorie pour le moment.</p></div>`;
 
-  document.getElementById('sfReviews').innerHTML = DEMO_REVIEWS.map(r=>`
+  document.getElementById('sfReviews').innerHTML = DEMO_REVIEWS.length===0
+    ? `<div class="empty-state" style="grid-column:1/-1;">${ic('star',22,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après des commandes terminées.</p></div>`
+    : DEMO_REVIEWS.map(r=>`
     <div class="card" style="padding:16px;">
       <div style="display:flex;gap:2px;margin-bottom:6px;">${Array.from({length:5}).map((_,i)=>ic('star',13,{fill: i<r.rating?'var(--amber)':'none', stroke: i<r.rating?'var(--amber)':'var(--cream-line)'})).join('')}</div>
       <p style="font-size:13px;color:var(--ink-soft);">${r.comment}</p>
@@ -2204,7 +2190,7 @@ function dashOverview(){
     </div>
     <div class="card" style="padding:18px;">
       <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Produits populaires</h2>
-      ${popular.map(([name,qty],i)=>`<div class="flex items-center gap-3" style="padding:7px 0;">
+      ${popular.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:20px 0;">Aucun produit vendu pendant cette période.</p>` : popular.map(([name,qty],i)=>`<div class="flex items-center gap-3" style="padding:7px 0;">
         <span class="font-display" style="color:rgba(245,178,78,.75);width:18px;">${i+1}</span>
         <span style="flex:1;font-size:13px;">${name}</span>
         <span class="font-tabular pill pill-neutral" style="font-size:11px;">${qty} vendus</span>
@@ -2218,6 +2204,7 @@ function dashOrders(){
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
+  ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
   <div class="card overflow-x-auto">
     <table class="data-table">
       <thead><tr><th>Commande</th><th>Client</th><th>Type</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead>
@@ -2232,7 +2219,7 @@ function dashOrders(){
         </tr>`).join('')}
       </tbody>
     </table>
-  </div>
+  </div>`}
   <div id="orderDetailOverlay" class="hidden" style="position:fixed;inset:0;z-index:100;">
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeOrderDetail()"></div>
     <div id="orderDetailPanel" style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--surface);overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.15);"></div>
