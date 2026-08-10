@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TerangaResto — Aperçu</title>
+<link rel="icon" type="image/png" id="faviconLink" href="">
+<link rel="apple-touch-icon" id="appleTouchIconLink" href="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,6 +17,7 @@
   --forest:#1f6b45; --forest-soft:#e7f2ec;
   --terracotta:#c1440e; --terracotta-soft:#fbe7dd;
   --white:#ffffff; --surface:#ffffff;
+  --brand-secondary:#1f6b45; --brand-secondary-deep:#183a2c;
   --font-display:'Fraunces',ui-serif,Georgia,serif;
   --font-body:'Manrope',ui-sans-serif,system-ui,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,monospace;
@@ -70,6 +73,15 @@ img{max-width:100%; display:block;}
 .card{background:var(--surface); border:1px solid var(--cream-line); border-radius:20px;}
 .stat-card{background:var(--surface); border:1px solid var(--cream-line); border-radius:20px; padding:18px;}
 .pill{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; white-space:nowrap;}
+
+/* Onglets de catégories du site public (base manquante, restaurée) */
+.cat-tab{ flex-shrink:0; font-size:13px; font-weight:600; padding:8px 16px; border-radius:999px; border:1.5px solid var(--cream-line); color:var(--ink-soft); background:var(--surface); }
+.cat-tab.active{ background:var(--amber); border-color:var(--amber); color:#fff; }
+
+/* Boutons secondaires du site public — utilisent la couleur secondaire
+   choisie par le restaurateur, distincte de la couleur principale. */
+#view-storefront .btn-outline{ border-color:var(--brand-secondary); color:var(--brand-secondary-deep); }
+#view-storefront .btn-outline:hover{ background:rgba(0,0,0,.035); }
 .pill-amber{background:rgba(232,135,30,.14); color:var(--amber-deep);}
 .pill-forest{background:var(--forest-soft); color:var(--forest);}
 .pill-terracotta{background:var(--terracotta-soft); color:var(--terracotta);}
@@ -106,8 +118,7 @@ table.data-table tbody tr{border-top:1px solid var(--cream-line);}
 table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;}
 
 /* Top demo banner */
-.demo-banner{background:var(--ink); color:var(--cream); font-size:12.5px; text-align:center; padding:8px 16px; position:relative; z-index:60;}
-.demo-banner b{color:var(--gold);}
+
 
 /* Global nav */
 .gnav{position:sticky; top:0; z-index:50; background:rgba(251,243,228,.9); backdrop-filter:blur(10px); border-bottom:1px solid var(--cream-line);}
@@ -137,8 +148,6 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
 </style>
 </head>
 <body>
-
-<div class="demo-banner">Aperçu de démonstration — <b>données fictives</b>, aucune connexion à une vraie base de données ou à de vrais paiements. Le projet complet et déployable est disponible en téléchargement.</div>
 
 <header class="gnav">
   <div class="gnav-inner">
@@ -232,7 +241,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
     <div style="background:var(--ink);color:var(--cream);border-radius:28px;padding:52px 56px;display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;">
       <div style="max-width:420px;">
         <h2 class="font-display" style="font-size:27px;margin-bottom:12px;">Des tarifs simples, pensés pour le Sénégal</h2>
-        <p style="color:rgba(251,243,228,.7);">À partir de 3 000 FCFA/mois. 14 jours d'essai gratuit, sans engagement.</p>
+        <p style="color:rgba(251,243,228,.7);">Gratuit pour commencer. À partir de 3 000 FCFA/mois pour aller plus loin, sans engagement.</p>
       </div>
       <button class="btn btn-secondary btn-lg" onclick="setView('pricing')">Voir les tarifs <span data-icon="arrowRight" data-size="16"></span></button>
     </div>
@@ -289,7 +298,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
       <span id="periodLabelY" style="font-size:14px;font-weight:600;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
     </div>
 
-    <div class="grid" id="pricingCards" style="grid-template-columns:1fr 1fr;gap:24px;max-width:680px;margin:0 auto;"></div>
+    <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
     <p class="text-center" style="font-size:13px;color:var(--ink-faint);margin-top:36px;">Aucune carte bancaire requise pour l'essai. Annulez à tout moment.</p>
   </div>
 </section>
@@ -324,7 +333,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
       <div class="flex items-end gap-4" style="margin-top:-56px;padding-bottom:18px;">
         <div id="sfLogo" style="width:96px;height:96px;border-radius:20px;background:#fff;border:4px solid #fff;box-shadow:0 8px 24px rgba(43,24,16,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"></div>
         <div style="padding-bottom:4px;">
-          <h1 class="font-display resto-name" style="font-size:28px;">Chez Fatou</h1>
+          <h1 class="font-display resto-name" style="font-size:28px;">Votre restaurant</h1>
           <div class="flex items-center gap-2" style="margin-top:6px;flex-wrap:wrap;">
             <span class="pill pill-forest" id="sfOpenPill">Ouvert</span>
             <span class="pill pill-neutral" style="display:flex;align-items:center;gap:4px;"><span data-icon="star" data-size="12" data-color="var(--amber)"></span>4.8 (32)</span>
@@ -363,6 +372,14 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
     <div style="border-top:1px solid var(--cream-line);padding:14px;text-align:center;font-size:12px;color:var(--ink-faint);">Propulsé par TerangaResto</div>
   </footer>
 
+  <!-- Retour au tableau de bord — visible uniquement pour le restaurateur
+       propriétaire de CE restaurant (session en cours), jamais pour un
+       client normal consultant le site public. -->
+  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" style="position:fixed;top:78px;right:16px;z-index:35;background:var(--ink);color:var(--cream);border-radius:999px;padding:9px 14px;display:flex;align-items:center;gap:7px;box-shadow:0 6px 18px rgba(43,24,16,.28);font-weight:600;font-size:12.5px;">
+    <span data-icon="arrowLeft" data-size="14"></span>
+    <span>Tableau de bord</span>
+  </button>
+
   <!-- Floating cart button -->
   <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:40;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
     <span style="position:relative;display:flex;">
@@ -398,7 +415,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
     <div class="wrap-sm flex items-center gap-3" style="padding:16px 24px;">
       <button onclick="closeCheckout()" style="font-size:18px;display:flex;" data-icon="arrowLeft" data-size="18"></button>
       <img class="logo-asset" src="" style="width:22px;height:22px;object-fit:contain;">
-      <span style="font-size:14px;font-weight:600;">Commande — <span class="resto-name">Chez Fatou</span></span>
+      <span style="font-size:14px;font-weight:600;">Commande — <span class="resto-name">Votre restaurant</span></span>
     </div>
   </div>
   <div class="wrap-sm" style="padding:24px;max-width:520px;" id="checkoutBody"></div>
@@ -423,7 +440,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
       <div class="flex items-center gap-2.5" style="padding:18px 20px;border-bottom:1px solid var(--cream-line);">
         <span id="sbLogoBadge" style="width:34px;height:34px;border-radius:10px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(232,135,30,.14);"></span>
         <div style="min-width:0;">
-          <p style="font-size:13.5px;font-weight:600;line-height:1.3;" class="resto-name">Chez Fatou</p>
+          <p style="font-size:13.5px;font-weight:600;line-height:1.3;" class="resto-name">Votre restaurant</p>
           <a href="#" onclick="setView('storefront');return false;" style="font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:3px;">Voir mon site <span data-icon="externalLink" data-size="10"></span></a>
         </div>
       </div>
@@ -436,7 +453,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
         <div style="min-width:0;">
           <p style="font-size:11px;color:var(--ink-faint);">Espace privé restaurateur</p>
           <div class="flex items-center gap-2" style="margin-top:1px;">
-            <p style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" class="resto-name">Chez Fatou</p>
+            <p style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" class="resto-name">Votre restaurant</p>
             <span id="planBadgeTop" style="flex-shrink:0;"></span>
           </div>
         </div>
@@ -489,7 +506,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:14px 18px; border-bottom:1px solid var(--cream-line); background:var(--surface);
 }
-.icon-btn{ position:relative; width:36px; height:36px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0; }
+.icon-btn{ position:relative; width:40px; height:40px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0; }
 .icon-btn:hover{ background:rgba(43,24,16,.05); }
 .notif-dot{
   position:absolute; top:3px; right:3px; width:14px; height:14px; background:var(--terracotta); color:#fff;
@@ -606,7 +623,7 @@ function setLoginTab(tab){
       <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="margin-bottom:8px;">
       <a href="#" onclick="toast('Démo — lien de réinitialisation non envoyé dans cet aperçu.');return false;" style="font-size:11.5px;color:var(--amber-ink);">Mot de passe oublié ?</a>
       <button class="btn btn-secondary btn-lg w-full" onclick="submitLogin()" style="margin-top:14px;">Se connecter</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — vous amène directement au tableau de bord de <span class="resto-name">Chez Fatou</span>.</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — vous amène au tableau de bord du restaurant créé pendant cette session, si un restaurant a déjà été créé.</p>`;
   } else if(tab==='signup'){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Créez votre compte pour ensuite créer votre restaurant.</p>
@@ -638,6 +655,15 @@ function submitLogin(){
   if(!email){ toast('Entrez votre e-mail.'); return; }
   closeLogin();
   simulatedRole = null;
+  if(!RESTAURANT.created){
+    // Honnête : pas de fausse entreprise pré-remplie. Si aucun restaurant
+    // n'a été créé pendant cette session, il n'y a rien à ouvrir — on
+    // redirige vers la création, comme le ferait un vrai compte sans
+    // restaurant encore configuré.
+    toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
+    startOnboarding();
+    return;
+  }
   setView('dashboard');
   setDashSection('overview');
   toast('Connecté — bienvenue sur votre tableau de bord.');
@@ -675,13 +701,24 @@ function submitInviteAccept(){
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
   const match = staffState.find(s => s.email.toLowerCase()===email && s.code.toUpperCase()===code);
   if(!match){
-    const emailMatch = staffState.find(s => s.email.toLowerCase()===email);
-    toast(emailMatch ? "Code d'invitation incorrect." : "Cette invitation est destinée à une autre adresse e-mail, ou n'existe pas.");
+    toast("E-mail ou code d'invitation incorrect.");
     return;
   }
+  if(match.status === 'Actif'){
+    toast('Cette invitation a déjà été utilisée.');
+    return;
+  }
+  if(match.expiresAt && Date.now() > match.expiresAt){
+    toast('Cette invitation a expiré.');
+    return;
+  }
+  // Acceptation réelle : le statut passe à Actif (ce code ne pourra plus
+  // jamais être réutilisé), et le rôle + les permissions EXACTES choisies
+  // par l'administrateur pour CETTE invitation sont appliqués — jamais les
+  // permissions par défaut d'un autre rôle.
   match.status = 'Actif';
   closeLogin();
-  setSimulatedRole(match.role);
+  setSimulatedRole(match.role, match.permissions);
   toast(`Invitation acceptée — bienvenue ${match.name}, accès ${match.role}.`);
 }
 </script>
@@ -893,17 +930,21 @@ const ROLE_SECTIONS = {
   'Cuisine': ['orders'],
 };
 let simulatedRole = null; // null = Administrateur (propriétaire), sinon un des STAFF_ROLES
+let simulatedPermissions = null; // liste de sections spécifique à LA personne (si personnalisée à l'invitation), sinon null = utilise les sections par défaut du rôle
 
 function canSeeSection(key){
   if(!simulatedRole) return true;
+  if(simulatedPermissions) return simulatedPermissions.includes(key);
   return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
 }
 function firstAllowedSection(){
   if(!simulatedRole) return 'overview';
-  return (ROLE_SECTIONS[simulatedRole]||['orders'])[0];
+  const list = simulatedPermissions || ROLE_SECTIONS[simulatedRole] || ['orders'];
+  return list[0];
 }
-function setSimulatedRole(role){
+function setSimulatedRole(role, permissions){
   simulatedRole = role || null;
+  simulatedPermissions = role ? (permissions || null) : null;
   toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
   setView('dashboard');
   setDashSection(firstAllowedSection());
@@ -966,22 +1007,12 @@ function periodPickerHtml(){
   </div>`;
 }
 
-const PRODUCTS = [
-  {id:'p1',name:'Thiéboudienne',desc:'Riz au poisson mijoté aux légumes, recette traditionnelle sénégalaise.',price:3500,cat:'plats',prep:25,active:true,available:true,variants:[]},
-  {id:'p2',name:'Yassa Poulet',desc:'Poulet mariné au citron et oignons confits, servi avec riz blanc.',price:3000,cat:'plats',prep:20,active:true,available:true,variants:[{name:'Portion double',delta:1500}]},
-  {id:'p3',name:'Mafé',desc:"Ragoût de viande à la pâte d'arachide, riz blanc.",price:3200,cat:'plats',prep:25,active:true,available:true,variants:[]},
-  {id:'p4',name:'Thiébou Yapp',desc:'Riz à la viande façon sénégalaise.',price:3300,cat:'plats',prep:25,active:true,available:true,variants:[]},
-  {id:'p5',name:'Dibi',desc:'Viande grillée à la sénégalaise, oignons et moutarde.',price:4000,cat:'grillades',prep:20,active:true,available:true,variants:[{name:'Épicé',delta:0},{name:'Format XL',delta:2000}]},
-  {id:'p6',name:'Poisson braisé',desc:'Poisson entier braisé, attiéké et sauce piquante.',price:4500,cat:'grillades',prep:25,active:true,available:true,variants:[]},
-  {id:'p7',name:'Thiakry',desc:'Dessert au mil, yaourt et vanille.',price:1000,cat:'desserts',prep:5,active:true,available:true,variants:[]},
-  {id:'p8',name:'Beignets sucrés',desc:'Beignets moelleux, sucre vanillé.',price:800,cat:'desserts',prep:10,active:true,available:true,variants:[]},
-  {id:'p9',name:'Bissap',desc:"Jus d'hibiscus glacé, fait maison.",price:700,cat:'boissons',prep:2,active:true,available:true,variants:[{name:'Grand format',delta:300}]},
-  {id:'p10',name:'Café Touba',desc:'Café épicé à la sénégalaise.',price:500,cat:'boissons',prep:3,active:true,available:true,variants:[]},
-  {id:'p11',name:'Jus de bouye',desc:'Jus de fruit de baobab.',price:800,cat:'boissons',prep:2,active:true,available:true,variants:[]},
-];
-// Stock de démonstration (section Inventaire) — chaque commande validée
-// déduit réellement la quantité vendue de ce stock (voir submitOrder()).
-PRODUCTS.forEach((p,i)=>{ p.stock = [18,12,25,9,14,20,30,22,40,35,28][i] ?? 20; p.threshold = 8; });
+/* Catalogue vide au départ — un restaurant qui vient d'être créé n'a
+   réellement aucun produit tant que le restaurateur n'en ajoute pas,
+   que ce soit manuellement ou depuis la Bibliothèque TerangaResto
+   (LIBRARY_ITEMS, plus bas, reste un catalogue de référence à part :
+   ce n'est jamais la liste de produits du restaurant lui-même). */
+const PRODUCTS = [];
 
 /* Bibliothèque TerangaResto — importée depuis l'export produits fourni.
    Ce sont des données de référence en LECTURE SEULE : ajouter un produit
@@ -1041,14 +1072,6 @@ const CAT_LABELS = {plats:'Plats sénégalais',grillades:'Grillades',desserts:'D
    immédiatement apparaître dans le tableau de bord — commandes, chiffre
    d'affaires, clients, ventes par produit, tout provient de cette seule
    source de données. */
-const NOW_TS = Date.now();
-function minsAgo(n){ return new Date(NOW_TS - n*60000); }
-function hrsAgo(n){ return new Date(NOW_TS - n*3600000); }
-function daysAgo(n, hour){
-  const d = new Date(NOW_TS - n*86400000);
-  d.setHours(hour!=null?hour:12, Math.floor(Math.random()*60), 0, 0);
-  return d;
-}
 function timeAgo(date){
   const diffMs = Date.now() - date.getTime();
   const mins = Math.floor(diffMs/60000);
@@ -1072,7 +1095,7 @@ const DEMO_STAFF = [];
 
 const DEMO_REVIEWS = [];
 
-const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',card:'Carte bancaire',cash:'Espèces',on_delivery:'Paiement à la livraison'};
+const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison'};
 const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
 const ORDER_STATUS_TONE = {new:'amber',preparing:'amber',ready:'forest',delivering:'forest',completed:'ink',cancelled:'terracotta'};
 const PAY_STATUS_LABELS = {paid:'Payé',pending:'En attente',failed:'Échoué'};
@@ -1095,17 +1118,24 @@ function productThumb(p,size){
    public (renderStorefrontHero) se ré-affiche à partir de cet objet — c'est
    ce qui rend la synchronisation tableau de bord → site public réelle. */
 const RESTAURANT = {
-  name:'Chez Fatou',
-  slug:'chez-fatou',
-  type:'Sénégalais',
-  logoDataUrl:LOGO_SRC, coverDataUrl:null,
-  primary:'#E8871E', secondary:'#2B1810', themeIdx:0,
-  address:'Rue 12, Point E', city:'Dakar', phone:'+221 77 123 45 67',
+  created:false, // devient true uniquement après une vraie création via l'onboarding
+  name:'',
+  slug:'',
+  type:'',
+  logoDataUrl:null, coverDataUrl:null,
+  primary:'#E8871E', secondary:'#1F6B45', textColor:'#2B1810',
+  address:'', city:'', phone:'',
   hours: DAY_LABELS_FULL.map((d,i)=>({open:true, from: i>=5?'12:00':'11:00', to: i>=5?'23:00':'22:00'})),
-  delivery:{enabled:true, fee:1000, min:2000},
+  delivery:{
+    enabled:true, fee:1000, min:2000,
+    modes:{
+      own:{enabled:true, allowCashOnDelivery:true},
+      express:{enabled:false, fee:1500},
+    },
+  },
   social:{
-    whatsapp:{enabled:true, value:'771234567'},
-    instagram:{enabled:true, value:'chezfatou.sn'},
+    whatsapp:{enabled:false, value:''},
+    instagram:{enabled:false, value:''},
     tiktok:{enabled:false, value:''},
     facebook:{enabled:false, value:''},
   },
@@ -1113,6 +1143,43 @@ const RESTAURANT = {
   mapsLink:'',
   notificationsEnabled:true,
 };
+
+/* ---------------- MODES DE LIVRAISON — le paiement à la livraison n'est
+   compatible qu'avec une remise physique réellement assurée par le
+   restaurant. Le mode Express (coursier tiers) ne permet structurellement
+   jamais l'encaissement à la remise ; seule la livraison assurée par le
+   restaurant lui-même peut l'autoriser, et seulement si le restaurateur
+   l'active explicitement. ---------------- */
+function enabledDeliveryModes(){
+  if(!RESTAURANT.delivery.enabled) return [];
+  const m = RESTAURANT.delivery.modes;
+  return ['own','express'].filter(k => m[k] && m[k].enabled);
+}
+const DELIVERY_MODE_LABELS = {own:'Livraison du restaurant', express:'Livraison Express'};
+function deliveryFeeFor(modeKey){
+  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee);
+  return Number(RESTAURANT.delivery.fee);
+}
+function deliveryModeAllowsCashOnDelivery(modeKey){
+  if(modeKey==='express') return false; // structurel : un coursier tiers n'encaisse pas pour le restaurant
+  return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
+}
+/* Les moyens de paiement réellement proposés au client = moyens activés
+   par le restaurateur, filtrés par ce que le mode de commande / de
+   livraison en cours permet réellement — jamais une liste statique.
+   DISCONTINUED_PAYMENT_METHODS est une exclusion explicite, en plus de
+   ne plus jamais être écrit nulle part : même si cette clé apparaissait
+   un jour dans state.toggles par erreur, elle ne pourrait jamais être
+   proposée au client. */
+const DISCONTINUED_PAYMENT_METHODS = ['card'];
+function availablePaymentMethods(){
+  const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
+  return enabled.filter(m=>{
+    if(m !== 'on_delivery') return true;
+    if(state.checkout.orderType !== 'delivery') return false; // "à la livraison" n'a de sens que pour une livraison
+    return deliveryModeAllowsCashOnDelivery(state.checkout.deliveryMode);
+  });
+}
 
 function isOpenNow(){
   const now = new Date();
@@ -1135,11 +1202,28 @@ function whatsappLink(){
 /* Applique les couleurs de thème choisies aux variables CSS globales —
    c'est ce qui fait que changer de thème change RÉELLEMENT le site public,
    pas seulement une case colorée dans les paramètres. */
-function applyThemeColors(primary, secondary){
+/* Couleurs du site public — choisies librement par le restaurateur
+   (plus de thèmes prédéfinis). Appliquées en SCOPANT les variables CSS
+   sur #view-storefront uniquement (jamais sur tout le document) : le
+   tableau de bord, l'assistant de création et le site TerangaResto
+   gardent leur propre identité, seule la boutique du restaurant change
+   de couleurs. Le panier, le checkout et la confirmation sont tous des
+   descendants DOM de #view-storefront, donc hérités automatiquement. */
+function applyThemeColors(primary, secondary, textColor){
   RESTAURANT.primary = primary;
   RESTAURANT.secondary = secondary;
-  document.documentElement.style.setProperty('--amber', primary);
-  document.documentElement.style.setProperty('--amber-deep', shadeColor(primary,-18));
+  if(textColor) RESTAURANT.textColor = textColor;
+  const sf = document.getElementById('view-storefront');
+  if(sf){
+    sf.style.setProperty('--amber', primary);
+    sf.style.setProperty('--amber-deep', shadeColor(primary,-18));
+    sf.style.setProperty('--brand-secondary', secondary);
+    sf.style.setProperty('--brand-secondary-deep', shadeColor(secondary,-15));
+    const tc = RESTAURANT.textColor || '#2B1810';
+    sf.style.setProperty('--ink', tc);
+    sf.style.setProperty('--ink-soft', shadeColor(tc,55));
+    sf.style.setProperty('--ink-faint', shadeColor(tc,78));
+  }
   if(typeof renderStorefrontHero==='function') renderStorefrontHero();
   if(typeof updateFloatingCartButton==='function') updateFloatingCartButton();
 }
@@ -1157,12 +1241,12 @@ function paymentMark(method,size){
   size = size||26;
   if(method==='wave') return `<img src="${WAVE_SRC}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:8px;">`;
   if(method==='orange_money') return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:#000;border-radius:8px;padding:2px;"><img src="${OM_SRC}" style="width:100%;height:100%;object-fit:contain;"></span>`;
-  const map = {card:'card',cash:'banknote',on_delivery:'bike'};
+  const map = {cash:'banknote',on_delivery:'bike'};
   return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:rgba(43,24,16,.06);border-radius:8px;color:var(--ink-soft);">${ic(map[method]||'card', Math.round(size*0.55))}</span>`;
 }
 
 /* ---------------- STATE ---------------- */
-let RESTO_NAME = 'Chez Fatou';
+let RESTO_NAME = 'Votre restaurant';
 
 const state = {
   view:'landing',
@@ -1171,14 +1255,14 @@ const state = {
   yearly:false,
   dashSection:'overview',
   checkoutStep:0,
-  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null},
+  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null},
   lastOrder:null,
-  toggles:{wave:false,orange_money:false,card:false,cash:true,on_delivery:true},
+  toggles:{wave:false,orange_money:false,cash:true,on_delivery:true},
   plan:'starter', // 'starter' | 'pro' — débloqué uniquement après confirmation de paiement (même simulée en démo)
 };
 
-const PRO_ONLY_METHODS = ['wave','orange_money','card'];
-const PRO_ONLY_LABEL = {wave:'Paiement Wave',orange_money:'Paiement Orange Money',card:'Paiement par carte'};
+const PRO_ONLY_METHODS = ['wave','orange_money'];
+const PRO_ONLY_LABEL = {wave:'Paiement Wave',orange_money:'Paiement Orange Money'};
 
 /* Bandeau/carte affiché à la place d'une fonctionnalité réservée au plan Pro. */
 function lockedNotice(label, compact){
@@ -1190,7 +1274,7 @@ function lockedNotice(label, compact){
 function goUpgrade(){ setView('dashboard'); setDashSection('abonnement'); }
 
 function applyRestaurantName(name){
-  RESTO_NAME = name || 'Chez Fatou';
+  RESTO_NAME = name || 'Votre restaurant';
   document.querySelectorAll('.resto-name').forEach(el => el.textContent = RESTO_NAME);
   document.title = RESTO_NAME + ' — TerangaResto';
 }
@@ -1251,7 +1335,7 @@ const FEATURES = [
   ['utensils','Menu numérique',"Un catalogue de produits organisé par catégories, avec photos, prix et variantes."],
   ['qrcode','QR Code',"Chaque restaurant reçoit son propre QR Code, prêt à imprimer et à poser sur les tables."],
   ['bag','Commandes',"Sur place, à emporter ou en livraison — recevez et suivez chaque commande en temps réel."],
-  ['card','Paiements',"Wave, Orange Money, carte, espèces ou paiement à la livraison — vous choisissez."],
+  ['card','Paiements',"Wave, Orange Money, espèces ou paiement à la livraison — vous choisissez."],
   ['dashboard','Gestion complète',"Personnel, permissions, bibliothèque de médias, paramètres — tout depuis un seul tableau de bord."],
 ];
 const STEPS = [
@@ -1310,10 +1394,12 @@ document.getElementById('stepsGrid').innerHTML = STEPS.map(([title,text],i)=>`
 
 /* ---------------- PRICING ---------------- */
 const PLANS = [
-  {code:'starter',name:'Starter',tagline:'Pour les restaurants qui commencent.',monthly:3000,yearly:30240,
-   features:['1 restaurant','Catalogue produits illimité','QR Code personnalisé','Commandes illimitées','Paiement à la livraison & espèces']},
-  {code:'pro',name:'Pro',tagline:'Pour les restaurants qui veulent toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
-   features:['Tout Starter','Thème Pro complet','Wave & Orange Money','Personnel & permissions','Analyses avancées','Livraison configurable']},
+  {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,
+   features:['Création de votre restaurant','Site restaurant en ligne','Menu numérique','QR Code restaurant','Présentation de vos produits','Gestion de base du restaurant']},
+  {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:3000,yearly:30240,
+   features:['1 restaurant','Catalogue produits illimité','QR Code personnalisé','Commandes en ligne illimitées','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
+  {code:'pro',name:'Pro',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
+   features:['Catalogue et commandes sans limite','QR Code personnalisé','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
 ];
 
 function togglePeriod(){
@@ -1328,18 +1414,24 @@ function togglePeriod(){
 function renderPricing(){
   document.getElementById('pricingCards').innerHTML = PLANS.map(p=>{
     const isPro = p.code==='pro';
+    const isFree = p.code==='free';
     const monthlyEq = state.yearly ? Math.round(p.yearly/12) : p.monthly;
+    const ctaLabel = isFree ? 'Commencer gratuitement' : isPro ? 'Choisir Pro' : 'Choisir Starter';
     return `
-    <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
+    <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
       ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
       <h3 class="font-display" style="font-size:22px;margin-bottom:4px;">${p.name}</h3>
-      <p style="font-size:13px;margin-bottom:22px;color:${isPro?'rgba(251,243,228,.7)':'var(--ink-soft)'};">${p.tagline}</p>
+      <p style="font-size:13px;margin-bottom:22px;color:${isPro?'rgba(251,243,228,.7)':'var(--ink-soft)'};min-height:36px;">${p.tagline}</p>
+      ${isFree ? `
+      <div class="font-tabular font-display" style="font-size:32px;">0 FCFA</div>
+      <p style="font-size:11.5px;margin:6px 0 20px;color:var(--ink-faint);">Pour toujours</p>` : `
       <div class="font-tabular font-display" style="font-size:32px;">${fmt(monthlyEq)}<span style="font-size:13px;font-weight:400;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};"> / mois</span></div>
-      <p style="font-size:11.5px;margin:6px 0 20px;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};">${state.yearly?('Facturé '+fmt(p.yearly)+' / an'):'&nbsp;'}</p>
-      <div class="flex-col gap-2" style="margin-bottom:26px;">
-        ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
+      <p style="font-size:11.5px;margin:6px 0 20px;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};">${state.yearly?('Facturé '+fmt(p.yearly)+' / an'):'&nbsp;'}</p>`}
+      <div class="flex-col gap-2" style="margin-bottom:26px;flex:1;">
+        ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;flex-shrink:0;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
       </div>
-      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')">Essayer 14 jours gratuits</button>
+      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code==='free'?'starter':p.code}')" style="margin-top:auto;">${ctaLabel}</button>
+      ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Essai gratuit de 14 jours inclus</p>`:''}
     </div>`;
   }).join('');
 }
@@ -1357,7 +1449,7 @@ const OB_STEPS = ['Compte','Restaurant','Thème','Configuration','Abonnement','P
    nom → identifiant URL propre (accents supprimés, espaces gérés,
    caractères problématiques retirés) → vérification de disponibilité →
    variante -2, -3... si le sous-domaine existe déjà. */
-const TAKEN_SLUGS_DEMO = ['chez-fatou','le-petit-dakar','restaurant-teranga','dibiterie-du-coin'];
+const TAKEN_SLUGS_DEMO = ['le-petit-dakar','restaurant-teranga','dibiterie-du-coin','saveurs-locales'];
 
 function slugify(name){
   return (name||'')
@@ -1386,7 +1478,7 @@ const obState = {
   step:0,
   accountName:'', accountEmail:'', accountPassword:'',
   restoName:'', restoType:'Sénégalais', city:'Dakar', phone:'', slug:null,
-  colorIdx:0, logoPhoto:null, coverPhoto:null,
+  obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null,
   address:'', deliveryEnabled:true,
   paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
   plan:'starter', billing:'monthly', paymentMethod:'wave',
@@ -1397,7 +1489,7 @@ function startOnboarding(presetPlan){
   Object.assign(obState, {
     step:0, accountName:'', accountEmail:'', accountPassword:'',
     restoName:'', restoType:'Sénégalais', city:'Dakar', phone:'', slug:null,
-    colorIdx:0, logoPhoto:null, coverPhoto:null, address:'', deliveryEnabled:true,
+    obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, address:'', deliveryEnabled:true,
     paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
     plan: presetPlan || 'starter', billing:'monthly', paymentMethod:'wave', paying:false,
   });
@@ -1428,6 +1520,7 @@ function obPay(){
 }
 
 function finishOnboarding(){
+  RESTAURANT.created = true;
   state.plan = obState.plan;
   Object.assign(state.toggles, obState.paymentToggles);
   RESTAURANT.type = obState.restoType;
@@ -1438,9 +1531,7 @@ function finishOnboarding(){
   RESTAURANT.coverDataUrl = obState.coverPhoto;
   RESTAURANT.delivery.enabled = obState.deliveryEnabled;
   RESTAURANT.slug = obState.slug || generateUniqueSlug(obState.restoName).slug;
-  const themeColors = [['#E8871E','#2B1810'],['#1F6B45','#183A2C'],['#C1440E','#2B1810'],['#B85C0F','#1F2937']][obState.colorIdx];
-  RESTAURANT.themeIdx = obState.colorIdx;
-  applyThemeColors(themeColors[0], themeColors[1]);
+  applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
   setView('dashboard');
   setDashSection('overview');
@@ -1451,10 +1542,10 @@ function renderOnboarding(){
   document.getElementById('obProgress').innerHTML = OB_STEPS.map((label,i)=>`
     <div class="flex-col items-center" style="flex:1;">
       <div class="flex items-center w-full">
-        <span style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+        <span onclick="${i<obState.step?`obGoStep(${i})`:''}" style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${i<obState.step?'cursor:pointer;':''}
           background:${i<obState.step?'var(--forest)':i===obState.step?'var(--amber-deep)':'#fff'};
           color:${i<=obState.step?'#fff':'var(--ink-faint)'};
-          border:1px solid ${i<=obState.step?'transparent':'var(--cream-line)'};">${i<obState.step?ic('check',13,{stroke:'#fff'}):i+1}</span>
+          border:1px solid ${i<=obState.step?'transparent':'var(--cream-line)'};" title="${i<obState.step?'Revenir à cette étape':''}">${i<obState.step?ic('check',13,{stroke:'#fff'}):i+1}</span>
         ${i<OB_STEPS.length-1?`<span style="height:1px;flex:1;background:${i<obState.step?'var(--forest)':'var(--cream-line)'};"></span>`:''}
       </div>
     </div>`).join('') + `<style>#obProgress > div:last-child span[style*="flex:1"]{display:none;}</style>`;
@@ -1462,6 +1553,46 @@ function renderOnboarding(){
   document.getElementById('obCard').innerHTML = obStepHtml();
   hydrateIcons(document.getElementById('obCard'));
   if(obState.step===1) updateSlugPreview();
+  if(obState.step===2) renderObPreview();
+
+}
+
+function obColorRow(label, key, value, hint){
+  return `<div class="flex items-center gap-3" style="margin-bottom:12px;">
+    <input type="color" id="obPicker_${key}" value="${value}" oninput="obField('${key}',this.value);document.getElementById('obHex_${key}').value=this.value.toUpperCase();renderObPreview();" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
+    <div style="flex:1;">
+      <label class="field-label" style="margin-bottom:3px;">${label}</label>
+      <input class="field-input font-tabular" id="obHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="obSyncHexInput('${key}',this.value)">
+    </div>
+    <span style="font-size:10.5px;color:var(--ink-faint);max-width:88px;text-align:right;flex-shrink:0;">${hint}</span>
+  </div>`;
+}
+function obSyncHexInput(key, val){
+  val = val.trim();
+  if(val && !val.startsWith('#')) val = '#'+val;
+  if(/^#[0-9a-fA-F]{6}$/.test(val)){
+    obField(key, val);
+    const picker = document.getElementById('obPicker_'+key);
+    if(picker) picker.value = val;
+    renderObPreview();
+  }
+}
+function renderObPreview(){
+  const el = document.getElementById('obColorPreview');
+  if(!el) return;
+  const p = obState.obPrimary, s = obState.obSecondary, t = obState.obTextColor;
+  el.innerHTML = `
+    <p style="font-family:var(--font-display);font-size:17px;font-weight:600;color:${t};margin-bottom:6px;">${obState.restoName || 'Votre restaurant'}</p>
+    <p style="font-size:12.5px;color:${shadeColor(t,55)};margin-bottom:16px;">Voici un aperçu de vos couleurs sur votre site.</p>
+    <div class="flex gap-2" style="margin-bottom:16px;flex-wrap:wrap;">
+      <span style="background:${p};color:#fff;border-radius:12px;padding:9px 16px;font-size:12.5px;font-weight:600;">Bouton principal</span>
+      <span style="border:2px solid ${s};color:${shadeColor(s,-15)};border-radius:12px;padding:7px 16px;font-size:12.5px;font-weight:600;">Bouton secondaire</span>
+    </div>
+    <div style="background:var(--cream);border-radius:12px;padding:14px;">
+      <p style="font-size:12.5px;font-weight:600;color:${t};margin-bottom:3px;">Thiéboudienne</p>
+      <p style="font-size:11.5px;color:${shadeColor(t,55)};">Riz au poisson mijoté, recette traditionnelle.</p>
+      <p class="font-tabular" style="font-size:12.5px;font-weight:700;color:${p};margin-top:8px;">3 500 FCFA</p>
+    </div>`;
 }
 
 function updateSlugPreview(){
@@ -1506,7 +1637,7 @@ function obStepHtml(){
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre restaurant</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Ces informations seront visibles sur votre page publique.</p>
     <label class="field-label">Nom du restaurant</label>
-    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="Chez Fatou" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
+    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="Nom de votre restaurant" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
     <div id="obSlugPreview" style="margin-bottom:14px;"></div>
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" style="margin-bottom:12px;" onchange="obField('restoType',this.value)">
@@ -1519,15 +1650,17 @@ function obStepHtml(){
     ${obNav(true)}`;
 
   if(step===2){
-    const colors = [['#E8871E','#2B1810','Ambre & Expresso'],['#1F6B45','#183A2C','Forêt'],['#C1440E','#2B1810','Terracotta'],['#B85C0F','#1F2937','Ardoise']];
     return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre thème</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Vous pourrez modifier ces couleurs à tout moment depuis Paramètres.</p>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-      ${colors.map(([c1,c2,label],i)=>`<button onclick="obField('colorIdx',${i});renderOnboarding();" style="border:2px solid ${o.colorIdx===i?'var(--amber-deep)':'var(--cream-line)'};border-radius:14px;padding:12px;text-align:left;">
-        <div class="flex gap-1.5" style="margin-bottom:8px;"><span style="width:20px;height:20px;border-radius:999px;background:${c1};"></span><span style="width:20px;height:20px;border-radius:999px;background:${c2};"></span></div>
-        <p style="font-size:12.5px;font-weight:500;">${label}</p></button>`).join('')}
-    </div>
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez les couleurs de votre site</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Personnalisez les couleurs de votre site. Vous pourrez les modifier à tout moment depuis Paramètres.</p>
+
+    ${obColorRow('Couleur principale', 'obPrimary', o.obPrimary, "Boutons principaux et accents.")}
+    ${obColorRow('Couleur secondaire', 'obSecondary', o.obSecondary, "Boutons secondaires et badges.")}
+    ${obColorRow('Couleur du texte', 'obTextColor', o.obTextColor, "Texte principal du site public.")}
+
+    <p class="field-label" style="margin-top:4px;">Aperçu</p>
+    <div id="obColorPreview" style="border:1px solid var(--cream-line);border-radius:16px;padding:18px;margin-bottom:18px;"></div>
+
     <p class="field-label">Logo et couverture (facultatif)</p>
     <div class="flex gap-3">
       <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}</button>
@@ -1585,7 +1718,7 @@ function obStepHtml(){
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Abonnement <b>${o.plan==='pro'?'Pro':'Starter'}</b> — ${fmt(price)}/mois</p>
     <div class="flex-col gap-2" style="margin-bottom:18px;">
-      ${['wave','orange_money','card'].map(m=>`<button onclick="obField('paymentMethod','${m}');renderOnboarding();" class="flex items-center gap-3" style="border:2px solid ${o.paymentMethod===m?'var(--amber-deep)':'var(--cream-line)'};${o.paymentMethod===m?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:12px 16px;width:100%;">
+      ${['wave','orange_money'].map(m=>`<button onclick="obField('paymentMethod','${m}');renderOnboarding();" class="flex items-center gap-3" style="border:2px solid ${o.paymentMethod===m?'var(--amber-deep)':'var(--cream-line)'};${o.paymentMethod===m?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:12px 16px;width:100%;">
         ${paymentMark(m,32)}<span style="font-size:13.5px;font-weight:500;">${PAYMENT_LABELS[m]}</span>
         ${o.paymentMethod===m?'<span style="margin-left:auto;width:16px;height:16px;border-radius:999px;background:var(--amber-deep);"></span>':''}
       </button>`).join('')}
@@ -1634,6 +1767,12 @@ function obNavBackOnly(){ return `<button class="btn btn-outline w-full" onclick
 <script>
 /* ---------------- HERO / FOOTER — rendus depuis RESTAURANT (synchronisation réelle) ---------------- */
 function renderStorefrontHero(){
+  // Bouton "Tableau de bord" — uniquement si un restaurant a réellement
+  // été créé/possédé dans cette session (le vrai propriétaire), jamais
+  // pour un visiteur qui tombe sur ce lien sans avoir de session active.
+  const ownerBtn = document.getElementById('ownerBackBtn');
+  if(ownerBtn) ownerBtn.classList.toggle('hidden', !RESTAURANT.created);
+
   const openPill = document.getElementById('sfOpenPill');
   const open = isOpenNow();
   openPill.textContent = open ? 'Ouvert' : 'Fermé';
@@ -1869,7 +2008,7 @@ function renderCart(){
     </div>`).join('');
 
   const sub = cartSubtotal();
-  const deliveryFee = state.checkout.orderType==='delivery' ? Number(RESTAURANT.delivery.fee) : 0;
+  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
   footerEl.innerHTML = `
     <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);margin-bottom:6px;"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
     <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-bottom:14px;"><span>Total</span><span class="font-tabular">${fmt(sub+deliveryFee)}</span></div>
@@ -1887,7 +2026,17 @@ function openCheckout(){
 }
 function closeCheckout(){ document.getElementById('checkoutOverlay').classList.add('hidden'); }
 
-function ckField(key,val){ state.checkout[key]=val; }
+function ckField(key,val){
+  state.checkout[key]=val;
+  // Si le mode de commande ou le mode de livraison change, un moyen de
+  // paiement déjà choisi peut devenir incompatible (ex: passage de
+  // "Livraison du restaurant" à "Express") — on l'efface pour forcer un
+  // nouveau choix parmi les options réellement valides, plutôt que de
+  // laisser passer une sélection devenue impossible.
+  if((key==='orderType' || key==='deliveryMode') && state.checkout.payment){
+    if(!availablePaymentMethods().includes(state.checkout.payment)) state.checkout.payment = null;
+  }
+}
 function ckTableInput(val){
   const digitsOnly = val.replace(/\D/g,'');
   state.checkout.table = digitsOnly;
@@ -1910,7 +2059,7 @@ function renderCheckout(){
   const c = state.checkout;
   const step = state.checkoutStep;
   const sub = cartSubtotal();
-  const fee = c.orderType==='delivery' ? Number(RESTAURANT.delivery.fee) : 0;
+  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
 
   const progress = `<div class="flex gap-2" style="margin-bottom:24px;">${[0,1,2].map(i=>`<div style="height:4px;flex:1;border-radius:999px;background:${i<=step?'var(--amber-deep)':'var(--cream-line)'};"></div>`).join('')}</div>`;
 
@@ -1924,7 +2073,9 @@ function renderCheckout(){
       <label class="field-label">Téléphone</label><input class="field-input" placeholder="+221 77 000 00 00" value="${c.phone}" oninput="ckField('phone',this.value)">`;
   } else if(step===1){
     const opts = [['dine_in','utensils','Sur place'],['takeaway','package','À emporter']];
-    if(RESTAURANT.delivery.enabled) opts.push(['delivery','bike','Livraison']);
+    if(RESTAURANT.delivery.enabled && enabledDeliveryModes().length>0) opts.push(['delivery','bike','Livraison']);
+    const modes = enabledDeliveryModes();
+    if(c.orderType==='delivery' && !c.deliveryMode && modes.length>0) c.deliveryMode = modes[0];
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Mode de commande</h1>
       <div class="grid" style="grid-template-columns:repeat(${opts.length},1fr);gap:8px;margin-bottom:16px;">
         ${opts.map(([key,icon,label])=>`<button onclick="ckField('orderType','${key}');renderCheckout();" style="border:2px solid ${c.orderType===key?'var(--amber-deep)':'var(--cream-line)'};${c.orderType===key?'background:rgba(232,135,30,.06);':''}border-radius:16px;padding:16px 8px;text-align:center;">
@@ -1933,12 +2084,20 @@ function renderCheckout(){
       ${c.orderType==='dine_in'?`<label class="field-label">Numéro de table</label>
         <input class="field-input" inputmode="numeric" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this.value)" style="${c.tableError?'border-color:var(--terracotta);':''}">
         ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${c.tableError}</p>`:''}`:''}
-      ${c.orderType==='delivery'?`<label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${c.address}</textarea>
-        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${fmt(RESTAURANT.delivery.fee)}</p>`:''}`:''}`;
+      ${c.orderType==='delivery'?`
+        ${modes.length>1?`<label class="field-label">Type de livraison</label>
+        <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
+          ${modes.map(mk=>`<button onclick="ckField('deliveryMode','${mk}');renderCheckout();" style="border:2px solid ${c.deliveryMode===mk?'var(--amber-deep)':'var(--cream-line)'};${c.deliveryMode===mk?'background:rgba(232,135,30,.06);':''}border-radius:14px;padding:10px 8px;text-align:center;">
+            <div style="font-size:12px;font-weight:600;">${DELIVERY_MODE_LABELS[mk]}</div>
+            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${fmt(deliveryFeeFor(mk))}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
+          </button>`).join('')}
+        </div>`:''}
+        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${c.address}</textarea>
+        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${fmt(deliveryFeeFor(c.deliveryMode))}</p>`:''}`:''}`;
   } else if(step===2){
-    const methods = Object.keys(state.toggles).filter(m=>state.toggles[m]);
+    const methods = availablePaymentMethods();
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Paiement</h1>
-      ${methods.length===0?`<p style="font-size:13px;color:var(--terracotta);">Aucun moyen de paiement n'est activé pour ce restaurant.</p>`:`
+      ${methods.length===0?`<p style="font-size:13px;color:var(--terracotta);">Aucun moyen de paiement disponible pour ce type de commande.</p>`:`
       <div class="flex-col gap-2.5">
         ${methods.map(m=>`<button onclick="ckField('payment','${m}');renderCheckout();" class="flex items-center gap-3" style="border:2px solid ${c.payment===m?'var(--amber-deep)':'var(--cream-line)'};${c.payment===m?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:12px 16px;width:100%;">
           ${paymentMark(m,32)}<span style="font-size:13.5px;font-weight:500;">${PAYMENT_LABELS[m]}</span>
@@ -1971,8 +2130,8 @@ function submitOrder(){
   const num = String(maxNum + 1);
   const c = state.checkout;
   const subtotal = cartSubtotal();
-  const fee = c.orderType==='delivery' ? Number(RESTAURANT.delivery.fee) : 0;
-  const typeLabel = c.orderType==='dine_in' ? `Sur place · Table ${c.table}` : c.orderType==='delivery' ? 'Livraison' : 'À emporter';
+  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
+  const typeLabel = c.orderType==='dine_in' ? `Sur place · Table ${c.table}` : c.orderType==='delivery' ? `Livraison — ${DELIVERY_MODE_LABELS[c.deliveryMode]||''}` : 'À emporter';
 
   // Commande RÉELLE — poussée dans la même source de données que le
   // tableau de bord (DEMO_ORDERS). C'est ce qui fait que la commande
@@ -2058,7 +2217,6 @@ const NAV_ITEMS = [
   ['customers','users','Clients'],
   ['qrcode','qrcode','QR Code'],
   ['staff','userGroup','Personnel'],
-  ['library','library','Bibliothèque'],
   ['settings','settings','Paramètres'],
 ];
 const MOBILE_PRIMARY = ['overview','orders','products','analytics'];
@@ -2142,6 +2300,7 @@ function renderDashSection(key){
   el.innerHTML = (renderers[key]||dashOverview)();
   if(key==='qrcode') drawQr();
   if(key==='analytics') drawRevenueChart();
+  if(key==='settings' && settingsTab==='Thème') renderSettingsColorPreview();
   hydrateIcons();
 }
 
@@ -2200,30 +2359,51 @@ function dashOverview(){
 }
 
 /* ---------------- ORDERS ---------------- */
+let orderSearch = '';
+let orderStatusFilter = 'all';
+const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing','En préparation'],['ready','Prêtes'],['delivering','En livraison'],['completed','Terminées'],['cancelled','Annulées']];
+
 function dashOrders(){
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
   ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
+  <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
+  <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
+    ${ORDER_STATUS_FILTERS.map(([key,label])=>`<button class="pill ${orderStatusFilter===key?'pill-ink':'pill-neutral'}" style="cursor:pointer;flex-shrink:0;" onclick="orderStatusFilter='${key}';renderDashSection('orders');">${label}</button>`).join('')}
+  </div>
   <div class="card overflow-x-auto">
     <table class="data-table">
       <thead><tr><th>Commande</th><th>Client</th><th>Type</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead>
-      <tbody>
-        ${DEMO_ORDERS.map((o,i)=>`<tr onclick="openOrderDetail(${i})">
-          <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
-          <td style="color:var(--ink-soft);">${o.client}</td>
-          <td style="color:var(--ink-soft);">${o.type}</td>
-          <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
-          <td class="font-tabular">${fmt(o.total)}</td>
-          <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
-        </tr>`).join('')}
-      </tbody>
+      <tbody id="ordersTableBody">${ordersRowsHtml()}</tbody>
     </table>
   </div>`}
   <div id="orderDetailOverlay" class="hidden" style="position:fixed;inset:0;z-index:100;">
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeOrderDetail()"></div>
     <div id="orderDetailPanel" style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--surface);overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.15);"></div>
   </div>`;
+}
+function filteredOrders(){
+  const q = orderSearch.trim().toLowerCase();
+  return DEMO_ORDERS.filter(o =>
+    (orderStatusFilter==='all' || o.status===orderStatusFilter) &&
+    (!q || o.client.toLowerCase().includes(q) || o.num.includes(q) || o.phone.includes(q))
+  );
+}
+function ordersRowsHtml(){
+  const list = filteredOrders();
+  if(list.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">Aucune commande ne correspond à ces critères.</td></tr>`;
+  return list.map((o)=>{
+    const i = DEMO_ORDERS.indexOf(o);
+    return `<tr onclick="openOrderDetail(${i})">
+      <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
+      <td style="color:var(--ink-soft);">${o.client}</td>
+      <td style="color:var(--ink-soft);">${o.type}</td>
+      <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
+      <td class="font-tabular">${fmt(o.total)}</td>
+      <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
+    </tr>`;
+  }).join('');
 }
 function openOrderDetail(i){
   const o = DEMO_ORDERS[i];
@@ -2413,8 +2593,20 @@ function dashProducts(){
 function productsListHtml(){
   const q = productSearch.trim().toLowerCase();
   const list = PRODUCTS.filter(p=>!q || p.name.toLowerCase().includes(q));
+
+  if(PRODUCTS.length===0){
+    return `<div class="empty-state">
+      ${ic('utensils',28,{stroke:'var(--amber-deep)'})}
+      <p style="margin-top:10px;font-size:14px;font-weight:600;">Aucun produit pour le moment</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis la bibliothèque TerangaResto ou créez-en un vous-même.</p>
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('library',14)} Ajouter depuis la bibliothèque</button>
+        <button class="btn btn-outline btn-sm" onclick="openProductForm()">${ic('plus',14)} Créer un produit</button>
+      </div>
+    </div>`;
+  }
   if(list.length===0){
-    return `<div class="empty-state">${ic('utensils',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à votre recherche.</p></div>`;
+    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${productSearch} ».</p></div>`;
   }
   return `<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch;">
     ${list.map(p=>`
@@ -2765,7 +2957,7 @@ const PAYMENT_DETAILS_FIELDS = {
   orange_money: {number:'', account:''},
 };
 function dashPayments(){
-  const methods = ['cash','on_delivery','wave','orange_money','card'];
+  const methods = ['cash','on_delivery','wave','orange_money'];
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Paiements</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Choisissez les moyens de paiement que vos clients peuvent utiliser.</p>
@@ -2790,18 +2982,19 @@ function paymentsListHtml(methods){
       ${locked?`<div style="margin-top:10px;">${lockedNotice(PRO_ONLY_LABEL[m], true)}</div>`:''}
       ${hasDetails?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
         <div><label class="field-label" style="font-size:11px;">Numéro ${PAYMENT_LABELS[m]}</label><input class="field-input" placeholder="77 XXX XX XX" value="${PAYMENT_DETAILS_FIELDS[m].number}" oninput="PAYMENT_DETAILS_FIELDS['${m}'].number=this.value"></div>
-        <div><label class="field-label" style="font-size:11px;">Nom du compte</label><input class="field-input" placeholder="Chez Fatou" value="${PAYMENT_DETAILS_FIELDS[m].account}" oninput="PAYMENT_DETAILS_FIELDS['${m}'].account=this.value"></div>
+        <div><label class="field-label" style="font-size:11px;">Nom du compte</label><input class="field-input" placeholder="Nom de votre restaurant" value="${PAYMENT_DETAILS_FIELDS[m].account}" oninput="PAYMENT_DETAILS_FIELDS['${m}'].account=this.value"></div>
       </div>`:''}
     </div>`;
   }).join('');
 }
 function togglePayment(m){
+  if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
   if(PRO_ONLY_METHODS.includes(m) && state.plan!=='pro'){
     toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Pro.", true);
     return;
   }
   state.toggles[m] = !state.toggles[m];
-  document.getElementById('paymentsList').innerHTML = paymentsListHtml(['cash','on_delivery','wave','orange_money','card']);
+  document.getElementById('paymentsList').innerHTML = paymentsListHtml(['cash','on_delivery','wave','orange_money']);
   hydrateIcons();
 }
 
@@ -3022,17 +3215,29 @@ function inviteStaff(){
     toast('Cette adresse a déjà été invitée à ce restaurant.');
     return;
   }
+  // Une invitation est "personnalisée" si l'ensemble des accès choisis
+  // diffère RÉELLEMENT de la liste par défaut du rôle (comparaison du
+  // contenu, pas seulement de la longueur — deux listes de même taille
+  // peuvent contenir des sections différentes).
+  const defaults = ROLE_SECTIONS[inviteRole] || [];
+  const isCustomized = invitePermissions.length !== defaults.length
+    || invitePermissions.slice().sort().join(',') !== defaults.slice().sort().join(',');
   staffState.push({
     name: email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
     email, role: inviteRole, status:'En attente', code: genInviteCode(),
-    permissions: invitePermissions.length===ROLE_SECTIONS[inviteRole].length ? null : invitePermissions,
+    permissions: isCustomized ? invitePermissions.slice() : null,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 7*24*60*60*1000, // 7 jours, comme une vraie invitation par e-mail
   });
   document.getElementById('staffEmail').value = '';
   refreshStaffLists();
   renderDashSection('staff');
   toast(`Invitation créée pour ${email} — code ${staffState[staffState.length-1].code} (démo, aucun e-mail réel envoyé).`);
 }
-function resendInvite(i){ toast(`Invitation renvoyée à ${staffState[i].email} (démo).`); }
+function resendInvite(i){
+  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
+  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours (démo).`);
+}
 function cancelInvite(i){
   if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
   staffState.splice(i,1);
@@ -3042,6 +3247,7 @@ function deactivateStaff(i){
   if(!confirm(`Désactiver l'accès de ${staffState[i].name} à ce restaurant ?`)) return;
   staffState[i].status = 'En attente';
   staffState[i].code = genInviteCode();
+  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
   refreshStaffLists();
   toast(`${staffState[i].name} n'a plus accès à ${RESTO_NAME}. Son compte TerangaResto reste actif.`);
 }
@@ -3332,19 +3538,48 @@ function settingsBodyHtml(){
       <span style="font-size:13.5px;font-weight:500;">Livraison activée</span>
       <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');"><div class="dot"></div></div>
     </div>
-    ${RESTAURANT.delivery.enabled?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    ${RESTAURANT.delivery.enabled?`
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
       <div><label class="field-label">Frais de livraison (FCFA)</label><input class="field-input" id="setDeliveryFee" type="number" value="${RESTAURANT.delivery.fee}"></div>
       <div><label class="field-label">Commande minimum (FCFA)</label><input class="field-input" id="setDeliveryMin" type="number" value="${RESTAURANT.delivery.min}"></div>
     </div>
+    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Modes de livraison</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;max-width:480px;">Le paiement à la livraison n'a de sens que lorsqu'une vraie remise physique est assurée. Activez-le uniquement pour un mode qui le permet réellement.</p>
+
+    <div class="card" style="padding:14px 16px;margin-bottom:12px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.own.enabled?'12px':'0'};">
+        <div><p style="font-size:13.5px;font-weight:600;">Livraison du restaurant</p><p style="font-size:11.5px;color:var(--ink-faint);">Remise en main propre par votre propre livreur.</p></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;renderDashSection('settings');"><div class="dot"></div></div>
+      </div>
+      ${RESTAURANT.delivery.modes.own.enabled?`
+      <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <span style="font-size:12.5px;">${ic('card',13)} Autoriser le paiement à la livraison</span>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;renderDashSection('settings');"><div class="dot"></div></div>
+      </div>`:''}
+    </div>
+
+    <div class="card" style="padding:14px 16px;margin-bottom:14px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.express.enabled?'12px':'0'};">
+        <div><p style="font-size:13.5px;font-weight:600;">Livraison Express</p><p style="font-size:11.5px;color:var(--ink-faint);">Coursier tiers — ne peut pas encaisser pour votre compte.</p></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;renderDashSection('settings');"><div class="dot"></div></div>
+      </div>
+      ${RESTAURANT.delivery.modes.express.enabled?`
+      <div style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <label class="field-label">Frais Express (FCFA)</label>
+        <input class="field-input" id="setExpressFee" type="number" value="${RESTAURANT.delivery.modes.express.fee}">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;display:flex;align-items:center;gap:5px;">${ic('info',12)}Le paiement à la livraison n'est jamais proposé pour ce mode.</p>
+      </div>`:''}
+    </div>
+    ${enabledDeliveryModes().length===0?`<p style="font-size:12px;color:var(--terracotta);margin-bottom:14px;">Aucun mode de livraison actif — la livraison n'apparaîtra pas au checkout tant qu'un mode n'est pas activé.</p>`:''}
     ${state.plan!=='pro' ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
     :`<p style="font-size:12.5px;color:var(--ink-faint);">La livraison n'apparaîtra plus dans le parcours de commande de vos clients.</p>`}`;
 
   if(settingsTab==='Réseaux & carte'){
     const nets = [
       ['whatsapp','WhatsApp','Numéro WhatsApp','77 XX XX XX XX','tel'],
-      ['instagram','Instagram','Lien du profil','https://instagram.com/chezfatou','text'],
-      ['tiktok','TikTok','Lien du profil','https://tiktok.com/@chezfatou','text'],
-      ['facebook','Facebook','Lien de la page','https://facebook.com/chezfatou.dakar','text'],
+      ['instagram','Instagram','Lien du profil','https://instagram.com/votre-page','text'],
+      ['tiktok','TikTok','Lien du profil','https://tiktok.com/@votre-page','text'],
+      ['facebook','Facebook','Lien de la page','https://facebook.com/votre-page','text'],
     ];
     const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
     return `
@@ -3377,27 +3612,60 @@ function settingsBodyHtml(){
   }
 
   if(settingsTab==='Thème'){
-    const themes = [
-      {p:'#E8871E',s:'#2B1810',name:'Ambre & Expresso'},
-      {p:'#1F6B45',s:'#183A2C',name:'Forêt'},
-      {p:'#C1440E',s:'#2B1810',name:'Terracotta'},
-      {p:'#B85C0F',s:'#1F2937',name:'Ardoise'},
-    ];
-    return `<div class="grid" style="grid-template-columns:repeat(2,1fr);gap:12px;">
-      ${themes.map((t,i)=>`<button onclick="applyThemeColors('${t.p}','${t.s}');RESTAURANT.themeIdx=${i};renderDashSection('settings');toast('Thème appliqué au site public')" style="border:2px solid ${RESTAURANT.themeIdx===i?'var(--amber-deep)':'var(--cream-line)'};border-radius:16px;overflow:hidden;text-align:left;">
-        <div style="height:64px;background:${t.s};position:relative;">
-          <div style="position:absolute;bottom:8px;left:10px;width:22px;height:22px;border-radius:6px;background:${t.p};"></div>
-          <div style="position:absolute;bottom:8px;left:38px;right:10px;height:6px;border-radius:3px;background:rgba(255,255,255,.35);"></div>
-        </div>
-        <div style="padding:10px 12px;display:flex;align-items:center;justify-content:space-between;">
-          <span style="font-size:12.5px;font-weight:600;">${t.name}</span>
-          ${RESTAURANT.themeIdx===i?ic('checkCircle',15,{stroke:'var(--forest)'}):''}
-        </div>
-      </button>`).join('')}
-    </div>
-    <p style="font-size:11.5px;color:var(--ink-faint);margin-top:12px;">Le thème choisi met à jour les couleurs du site public immédiatement — essayez, puis ouvrez « Voir le site » pour vérifier.</p>`;
+    return `
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">Choisissez directement les couleurs de votre site public. Chaque changement s'applique immédiatement.</p>
+    ${settingsColorRow('Couleur principale', 'primary', RESTAURANT.primary, "Boutons principaux et accents.")}
+    ${settingsColorRow('Couleur secondaire', 'secondary', RESTAURANT.secondary, "Boutons secondaires et badges.")}
+    ${settingsColorRow('Couleur du texte', 'textColor', RESTAURANT.textColor, "Texte principal du site public.")}
+    <p class="field-label" style="margin-top:6px;">Aperçu</p>
+    <div id="settingsColorPreview" style="border:1px solid var(--cream-line);border-radius:16px;padding:18px;margin-bottom:14px;"></div>
+    <button class="btn btn-outline btn-sm" onclick="setView('storefront')">${ic('externalLink',13)} Voir mon site</button>`;
   }
   return '';
+}
+
+function settingsColorRow(label, key, value, hint){
+  return `<div class="flex items-center gap-3" style="margin-bottom:12px;max-width:480px;">
+    <input type="color" id="setPicker_${key}" value="${value}" oninput="settingsApplyColor('${key}',this.value)" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
+    <div style="flex:1;">
+      <label class="field-label" style="margin-bottom:3px;">${label}</label>
+      <input class="field-input font-tabular" id="setHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="settingsSyncHexInput('${key}',this.value)">
+    </div>
+    <span style="font-size:10.5px;color:var(--ink-faint);max-width:100px;text-align:right;flex-shrink:0;">${hint}</span>
+  </div>`;
+}
+function settingsApplyColor(key, val){
+  const doc = { primary: () => applyThemeColors(val, RESTAURANT.secondary, RESTAURANT.textColor),
+                secondary: () => applyThemeColors(RESTAURANT.primary, val, RESTAURANT.textColor),
+                textColor: () => applyThemeColors(RESTAURANT.primary, RESTAURANT.secondary, val) };
+  doc[key]();
+  const hexEl = document.getElementById('setHex_'+key); if(hexEl) hexEl.value = val.toUpperCase();
+  renderSettingsColorPreview();
+}
+function settingsSyncHexInput(key, val){
+  val = val.trim();
+  if(val && !val.startsWith('#')) val = '#'+val;
+  if(/^#[0-9a-fA-F]{6}$/.test(val)){
+    settingsApplyColor(key, val);
+    const picker = document.getElementById('setPicker_'+key); if(picker) picker.value = val;
+  }
+}
+function renderSettingsColorPreview(){
+  const el = document.getElementById('settingsColorPreview');
+  if(!el) return;
+  const p = RESTAURANT.primary, s = RESTAURANT.secondary, t = RESTAURANT.textColor;
+  el.innerHTML = `
+    <p style="font-family:var(--font-display);font-size:17px;font-weight:600;color:${t};margin-bottom:6px;" class="resto-name">${RESTO_NAME}</p>
+    <p style="font-size:12.5px;color:${shadeColor(t,55)};margin-bottom:16px;">Voici un aperçu de vos couleurs sur votre site.</p>
+    <div class="flex gap-2" style="margin-bottom:16px;flex-wrap:wrap;">
+      <span style="background:${p};color:#fff;border-radius:12px;padding:9px 16px;font-size:12.5px;font-weight:600;">Bouton principal</span>
+      <span style="border:2px solid ${s};color:${shadeColor(s,-15)};border-radius:12px;padding:7px 16px;font-size:12.5px;font-weight:600;">Bouton secondaire</span>
+    </div>
+    <div style="background:var(--cream);border-radius:12px;padding:14px;">
+      <p style="font-size:12.5px;font-weight:600;color:${t};margin-bottom:3px;">Thiéboudienne</p>
+      <p style="font-size:11.5px;color:${shadeColor(t,55)};">Riz au poisson mijoté, recette traditionnelle.</p>
+      <p class="font-tabular" style="font-size:12.5px;font-weight:700;color:${p};margin-top:8px;">3 500 FCFA</p>
+    </div>`;
 }
 
 function saveSettings(){
@@ -3409,6 +3677,7 @@ function saveSettings(){
   const addrEl = document.getElementById('setAddress'); if(addrEl) RESTAURANT.address = addrEl.value;
   const feeEl = document.getElementById('setDeliveryFee'); if(feeEl) RESTAURANT.delivery.fee = Number(feeEl.value)||0;
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
+  const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
   toast('Modifications enregistrées — visibles sur votre site public.');
 }
@@ -3562,6 +3831,18 @@ renderProductSections();
 updateFloatingCartButton();
 checkMobile();
 document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
+
+/* Favicon — le vrai logo TerangaResto, jamais déformé (même source que
+   partout ailleurs dans l'app, pas une copie séparée). Réglé en JS pour
+   éviter de dupliquer le base64 dans le <head>. Fonctionne en local
+   comme après déploiement, puisqu'il s'agit d'une data URI autonome,
+   sans dépendance à un chemin de fichier externe. */
+(function setFavicon(){
+  const fav = document.getElementById('faviconLink');
+  const touch = document.getElementById('appleTouchIconLink');
+  if(fav) fav.href = LOGO_SRC;
+  if(touch) touch.href = LOGO_SRC;
+})();
 hydrateIcons();
 </script>
 
