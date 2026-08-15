@@ -192,7 +192,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
   <!-- HERO -->
   <div class="wrap" style="padding-top:64px;padding-bottom:88px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
     <div>
-      <span class="pill pill-forest" style="margin-bottom:22px;">Essai gratuit 14 jours · Sans carte bancaire</span>
+      <span class="pill pill-forest" style="margin-bottom:22px;">Essai Gratuit 10 jours · Starter et Premium sans engagement</span>
       <h1 class="font-display" style="font-size:44px;line-height:1.08;color:var(--ink);margin-bottom:22px;">
         Votre restaurant. Votre menu.<br><em style="font-style:italic;color:var(--amber-deep);">Vos commandes.</em>
       </h1>
@@ -287,7 +287,7 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
     <div class="text-center" style="max-width:520px;margin:0 auto 48px;">
       <p class="pill pill-amber" style="margin-bottom:14px;">Tarifs</p>
       <h1 class="font-display" style="font-size:34px;margin-bottom:12px;">Un tarif simple, adapté à votre restaurant</h1>
-      <p style="color:var(--ink-soft);">Commencez avec 14 jours d'essai gratuit. Passez au plan Pro quand vous êtes prêt.</p>
+      <p style="color:var(--ink-soft);">Gratuit pendant 10 jours pour essayer. Starter et Premium se paient immédiatement par PayTech, sans période d'essai.</p>
     </div>
 
     <div class="flex items-center justify-center gap-3" style="margin-bottom:44px;">
@@ -996,6 +996,23 @@ async function restoreSession(){
       viewerIsStaff = true;
       setView('dashboard');
       setDashSection('overview');
+      // Retour depuis PayTech (success_url/cancel_url de paytech-checkout) —
+      // informe la personne de ce qui vient de se passer. Le forfait n'est
+      // considéré actif que si subscription_status l'est VRAIMENT (rechargé
+      // ci-dessus depuis Supabase) — jamais supposé actif simplement parce
+      // que le paramètre "paytech=success" est présent dans l'URL, qui
+      // pourrait tout aussi bien venir d'une confirmation encore en cours
+      // de traitement par le webhook.
+      const paytechParam = new URLSearchParams(location.search).get('paytech');
+      if(paytechParam === 'success'){
+        setDashSection('abonnement');
+        toast(isPaidPlanActive()
+          ? ic('checkCircle',14)+' Paiement confirmé — votre forfait est actif.'
+          : ic('clock',14)+' Paiement reçu par PayTech — confirmation en cours, actualisez dans quelques instants si votre forfait n\'apparaît pas encore actif.', true);
+      } else if(paytechParam === 'cancel'){
+        setDashSection('abonnement');
+        toast("Paiement annulé — votre restaurant reste enregistré, vous pouvez réessayer à tout moment depuis Abonnement.");
+      }
       return;
     }
 
@@ -1661,6 +1678,13 @@ function isAccessBlocked(){
 function isPremiumActive(){
   return state.plan==='pro' && computeEffectiveSubscriptionStatus()==='active';
 }
+/* Même principe pour Starter : choisir Starter ne débloque rien tant
+   que le paiement PayTech n'est pas confirmé. Premium inclut tout ce
+   que Starter débloque, donc "actif sur un forfait payant" couvre les
+   deux plans dès que l'un des deux est réellement payé. */
+function isPaidPlanActive(){
+  return (state.plan==='starter' || state.plan==='pro') && computeEffectiveSubscriptionStatus()==='active';
+}
 function trialDaysRemaining(){
   if(!RESTAURANT.trialEndsAt) return FREE_TRIAL_DAYS;
   return Math.max(0, Math.ceil((RESTAURANT.trialEndsAt - Date.now()) / 86400000));
@@ -1670,13 +1694,13 @@ function periodDaysRemaining(){
   return Math.max(0, Math.ceil((RESTAURANT.currentPeriodEnd - Date.now()) / 86400000));
 }
 function canAddCategory(){
-  return !(state.plan==='free' && Object.keys(catsState).length >= FREE_MAX_CATEGORIES);
+  return !(!isPaidPlanActive() && Object.keys(catsState).length >= FREE_MAX_CATEGORIES);
 }
 function canAddProduct(){
-  return !(state.plan==='free' && PRODUCTS.length >= FREE_MAX_PRODUCTS);
+  return !(!isPaidPlanActive() && PRODUCTS.length >= FREE_MAX_PRODUCTS);
 }
 function showUpgradeBlock(reason){
-  toast(ic('lock',14)+` ${reason} Passez à Starter ou Pro pour continuer.`, true);
+  toast(ic('lock',14)+` ${reason} Passez à Starter ou Premium pour continuer.`, true);
 }
 
 function enabledDeliveryModes(){
@@ -1793,11 +1817,11 @@ const state = {
 const PRO_ONLY_METHODS = ['wave','orange_money'];
 const PRO_ONLY_LABEL = {wave:'Paiement Wave',orange_money:'Paiement Orange Money'};
 
-/* Bandeau/carte affiché à la place d'une fonctionnalité réservée au plan Pro. */
+/* Bandeau/carte affiché à la place d'une fonctionnalité réservée au plan Premium. */
 function lockedNotice(label, compact){
   return `<div style="background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);border-radius:${compact?'12px':'16px'};padding:${compact?'10px 14px':'16px 18px'};display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <span style="display:flex;align-items:center;gap:8px;font-size:${compact?'12.5px':'13.5px'};color:var(--amber-ink);flex:1;min-width:180px;">${ic('lock',15)}<span><b>${label}</b> — Passez au forfait Pro pour débloquer cette fonctionnalité.</span></span>
-    <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer à Pro</button>
+    <span style="display:flex;align-items:center;gap:8px;font-size:${compact?'12.5px':'13.5px'};color:var(--amber-ink);flex:1;min-width:180px;">${ic('lock',15)}<span><b>${label}</b> — Passez au forfait Premium pour débloquer cette fonctionnalité.</span></span>
+    <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer à Premium</button>
   </div>`;
 }
 function goUpgrade(){ setView('dashboard'); setDashSection('abonnement'); }
@@ -1826,9 +1850,10 @@ function renderPlanBadgeAndBanner(){
   const status = computeEffectiveSubscriptionStatus();
   const daysLeft = trialDaysRemaining();
   const periodLeft = periodDaysRemaining();
-  const planLabel = state.plan==='pro' ? 'Pro' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  const planLabel = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
   if(badge) badge.innerHTML =
-    status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
+    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — en attente de paiement</span>`
+    : status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
     : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}</span>`
     : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j</span>`
     : `<span class="pill pill-terracotta">Expiré</span>`;
@@ -1836,19 +1861,32 @@ function renderPlanBadgeAndBanner(){
   const banner = document.getElementById('planBanner');
   if(!banner) return;
 
-  if(status==='trialing'){
-    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Pro</a></div>`;
+  if(status==='pending_payment'){
+    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Forfait ${planLabel} choisi mais pas encore payé — aucune fonctionnalité payante n'est débloquée. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Terminer le paiement PayTech</a></div>`;
+  } else if(status==='trialing'){
+    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Premium</a></div>`;
   } else if(status==='expired'){
     banner.innerHTML = `<div style="background:var(--terracotta-soft);color:var(--terracotta);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('alertTriangle',15)}Accès restreint — votre ${RESTAURANT.trialEndsAt && !RESTAURANT.currentPeriodEnd ? "essai gratuit" : "abonnement"} est terminé. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Renouveler mon abonnement</a></div>`;
   } else if(status==='cancelled'){
     banner.innerHTML = `<div style="background:rgba(43,24,16,.06);color:var(--ink-soft);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('info',15)}Abonnement annulé — accès encore valide ${periodLeft} jour${periodLeft>1?'s':''}. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Réactiver</a></div>`;
   } else {
-    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel} (${RESTAURANT.billingCycle==='annual'?'annuel':'mensuel'}). Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''} — aucun renouvellement automatique tant qu'aucun fournisseur de paiement n'est connecté.</div>`;
+    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel}, confirmé par PayTech. Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''}.</div>`;
   }
 }
 
 /* ---------------- VIEW SWITCHING ---------------- */
 function setView(view){
+  // Garde d'accès au tableau de bord : ne jamais rendre le vrai
+  // contenu du dashboard pour quelqu'un qui n'est pas authentifié comme
+  // propriétaire/personnel du restaurant actuellement chargé — sinon un
+  // visiteur qui a consulté un site public puis clique sur "Connexion
+  // restaurateur" sans se connecter verrait la coquille du tableau de
+  // bord (sections, nom du restaurant, thème) avant même de s'être
+  // authentifié. On l'oriente vers la connexion à la place.
+  if(view==='dashboard' && !viewerIsStaff){
+    openLogin('login');
+    return;
+  }
   state.view = view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
@@ -1923,7 +1961,7 @@ const FAQ_ITEMS = [
   ['Puis-je modifier mon menu ?', "Oui, à tout moment. Ajoutez, modifiez, désactivez ou supprimez vos produits et catégories depuis la section Produits."],
   ['Puis-je changer mon thème ?', "Oui. Depuis Paramètres → Thème, votre choix s'applique immédiatement à votre site public."],
   ['Puis-je utiliser TerangaResto depuis mon téléphone ?', "Oui, le tableau de bord est pensé mobile en priorité : vous pouvez gérer commandes, produits et paramètres entièrement depuis votre smartphone."],
-  ['Quelle est la différence entre Starter et Pro ?', "Starter couvre l'essentiel (catalogue, QR Code, commandes). Pro débloque en plus Wave et Orange Money, la gestion du personnel et les analyses avancées."],
+  ['Quelle est la différence entre Starter et Premium ?', "Starter couvre l'essentiel (catalogue, QR Code, commandes). Premium débloque en plus Wave et Orange Money, la gestion du personnel et les analyses avancées."],
 ];
 
 let faqOpenIndex = null;
@@ -1962,8 +2000,10 @@ document.getElementById('stepsGrid').innerHTML = STEPS.map(([title,text],i)=>`
 const PLANS = [
   {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,duration:'10 jours',
    features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
+  {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:3000,yearly:30240,
+   features:['1 restaurant','Catalogue et commandes sans limite','QR Code personnalisé','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
   {code:'pro',name:'Premium',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
-   features:['Catalogue et commandes sans limite','QR Code personnalisé','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
+   features:['Tout Starter','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
 ];
 
 function togglePeriod(){
@@ -1980,7 +2020,7 @@ function renderPricing(){
     const isPro = p.code==='pro';
     const isFree = p.code==='free';
     const monthlyEq = state.yearly ? Math.round(p.yearly/12) : p.monthly;
-    const ctaLabel = isFree ? 'Commencer gratuitement' : 'Choisir Premium';
+    const ctaLabel = isFree ? 'Commencer gratuitement' : `Choisir ${p.name} — ${fmt(p.monthly)}`;
     return `
     <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
       ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
@@ -1995,7 +2035,7 @@ function renderPricing(){
         ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;flex-shrink:0;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
       </div>
       <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')" style="margin-top:auto;">${ctaLabel}</button>
-      ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Essai gratuit de 14 jours inclus</p>`:''}
+      ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Paiement immédiat par PayTech — aucun essai gratuit sur ce forfait</p>`:''}
     </div>`;
   }).join('');
 }
@@ -2105,7 +2145,7 @@ async function obNext(){
     currentUser = data.user;
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
-  if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit ou Premium) pour continuer.'); return; }
+  if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
   renderOnboarding();
@@ -2115,7 +2155,12 @@ function obPrev(){
   renderOnboarding();
 }
 
-async function finishOnboarding(){
+/* Logique de création partagée entre le chemin Gratuit (finishOnboarding,
+   pas de paiement) et les chemins Starter/Premium (createRestaurantAndPay,
+   paiement immédiat) — évite de dupliquer la validation de session, la
+   résolution de slug et l'appel RPC. Renvoie la ligne restaurant créée,
+   ou null si quelque chose a échoué (déjà annoncé via toast). */
+async function createRestaurantFromOnboarding(){
   // Source de vérité pour owner_id : jamais la variable JS `currentUser`
   // (qui peut être en retard d'une frappe sur la vraie session — c'est
   // exactement ce qui provoquait "new row violates row-level security
@@ -2131,7 +2176,7 @@ async function finishOnboarding(){
     currentUser = null;
     closeLogin(); setLoginTab('login'); setView('landing');
     document.getElementById('loginOverlay')?.classList.remove('hidden');
-    return;
+    return null;
   }
   currentUser = user; // resynchronise la variable globale sur la vraie session
 
@@ -2140,14 +2185,11 @@ async function finishOnboarding(){
   // "Abonnement", on l'y renvoie plutôt que de laisser passer une
   // valeur par défaut silencieuse.
   if(!obState.plan){
-    toast('Choisissez un forfait (Gratuit ou Premium) avant de continuer.');
+    toast('Choisissez un forfait (Gratuit, Starter ou Premium) avant de continuer.');
     obState.step = 4;
     renderOnboarding();
-    return;
+    return null;
   }
-
-  const btn = document.getElementById('obFinishBtn');
-  if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
 
   RESTAURANT.created = true;
   RESTAURANT.createdAt = Date.now();
@@ -2169,16 +2211,24 @@ async function finishOnboarding(){
   applyRestaurantName(obState.restoName);
 
   // Machine à états de l'abonnement — réelle, pas décorative :
-  // 'plan' enregistre le CHOIX du client (Gratuit ou Premium) ; mais
-  // Premium ne devient réellement actif ('subscription_status'=
-  // 'active') qu'après confirmation réelle du paiement PayTech, jamais
-  // au moment de la simple sélection. En attendant ce paiement, l'accès
-  // reste celui du forfait Gratuit (même essai, mêmes dates réelles) —
-  // voir isPremiumActive() qui exige plan==='pro' ET status==='active'.
-  RESTAURANT.billingCycle = obState.billing || 'monthly';
-  RESTAURANT.subscriptionStatus = 'trialing';
-  RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
-  RESTAURANT.currentPeriodEnd = null;
+  // 'plan' enregistre le CHOIX du client (Gratuit / Starter / Premium) ;
+  // mais un forfait payant ne devient réellement actif
+  // (subscription_status='active') qu'après confirmation RÉELLE du
+  // paiement PayTech (voir paytech-webhook) — jamais au moment de la
+  // simple sélection. En attendant cette confirmation, le statut est
+  // 'pending_payment', et isPremiumActive()/isPaidPlanActive() restent
+  // faux tant qu'il n'est pas passé à 'active'. Aucun essai gratuit
+  // n'est accordé sur Starter/Premium, conformément à la consigne.
+  RESTAURANT.billingCycle = 'monthly';
+  if(obState.plan === 'free'){
+    RESTAURANT.subscriptionStatus = 'trialing';
+    RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
+    RESTAURANT.currentPeriodEnd = null;
+  } else {
+    RESTAURANT.subscriptionStatus = 'pending_payment';
+    RESTAURANT.trialEndsAt = null;
+    RESTAURANT.currentPeriodEnd = null;
+  }
 
   // Création réelle du restaurant via une fonction RPC côté serveur
   // (voir create_my_restaurant dans supabase_schema.sql). Le client
@@ -2211,15 +2261,13 @@ async function finishOnboarding(){
   // d'un élément, selon la version.
   const restaurantRow = Array.isArray(data) ? data[0] : data;
 
-  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
-
   if(error || !restaurantRow){
     // On ne prétend JAMAIS que la création a réussi si Supabase l'a
     // refusée — pas de redirection vers le tableau de bord, pas de
     // toast de succès qui écraserait visuellement ce message d'erreur.
     RESTAURANT.created = false;
     toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + (error ? error.message : 'réponse vide.'));
-    return;
+    return null;
   }
 
   RESTAURANT.id = restaurantRow.id;
@@ -2235,9 +2283,59 @@ async function finishOnboarding(){
     if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
   }
 
+  return restaurantRow;
+}
+
+async function finishOnboarding(){
+  const btn = document.getElementById('obFinishBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
+  const row = await createRestaurantFromOnboarding();
+  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
+  if(!row) return;
+
   setView('dashboard');
   setDashSection('overview');
   toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
+}
+
+/* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
+   subscription_status='pending_payment' — jamais actif tout de suite),
+   puis lance IMMÉDIATEMENT PayTech pour ce restaurant. L'accès aux
+   fonctionnalités payantes reste bloqué (isPremiumActive/isPaidPlanActive)
+   tant que paytech-webhook n'a pas confirmé le paiement et fait passer
+   subscription_status à 'active' — jamais avant, jamais parce que ce
+   bouton a simplement été cliqué. Réutilise l'infrastructure PayTech
+   déjà déployée (fonction Edge "paytech-checkout"), sans la modifier. */
+async function createRestaurantAndPay(){
+  const planName = obState.plan==='pro' ? 'Premium' : 'Starter';
+  const price = obState.plan==='pro' ? 7000 : 3000;
+  const btn = document.getElementById('obPayBtn');
+  if(btn){ btn.disabled = true; btn.innerHTML = 'Création de votre restaurant…'; }
+
+  const row = await createRestaurantFromOnboarding();
+  if(!row){
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    return;
+  }
+
+  if(btn) btn.innerHTML = 'Redirection vers PayTech…';
+  // NOTE IMPORTANTE : la fonction Edge paytech-checkout déployée facture
+  // actuellement toujours le tarif Premium (7000 FCFA/mois), quel que
+  // soit le forfait choisi ici — elle ne reçoit pas encore de paramètre
+  // "plan" pour différencier Starter. Consigne respectée à la lettre
+  // (aucune modification de paytech-checkout dans cette passe) ; voir le
+  // résumé final pour le détail de cette limite connue.
+  const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
+    body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
+  });
+  if(error || !data || !data.redirect_url){
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé en brouillon, forfait en attente de paiement — vous pouvez réessayer depuis Abonnement dans votre tableau de bord.");
+    viewerIsStaff = true;
+    setView('dashboard');
+    setDashSection('abonnement');
+    return;
+  }
+  window.location.href = data.redirect_url;
 }
 
 function renderOnboarding(){
@@ -2393,12 +2491,13 @@ function obStepHtml(){
   if(step===4){
     const plans = [
       {code:'free',name:'Gratuit',price:0,duration:'10 jours',features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
-      {code:'pro',name:'Premium',price:7000,features:['Catalogue et commandes illimités','QR Code personnalisé','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
+      {code:'starter',name:'Starter',price:3000,features:['Catalogue et commandes illimités','QR Code personnalisé','Paiement à la livraison & espèces','Gestion essentielle du restaurant']},
+      {code:'pro',name:'Premium',price:7000,features:['Tout Starter','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
     ];
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours ; Premium se paie via PayTech depuis votre tableau de bord une fois votre compte créé.</p>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours. Starter et Premium se paient immédiatement par PayTech, à l'étape suivante — aucun essai gratuit sur ces forfaits.</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;">
       ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
         <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
         <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
@@ -2411,14 +2510,16 @@ function obStepHtml(){
   }
 
   if(step===5){
+    const planName = o.plan==='pro' ? 'Premium' : 'Starter';
+    const price = o.plan==='pro' ? 7000 : 3000;
     return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Forfait Premium</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>Premium</b> — ${fmt(7000)}/mois</p>
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement — Forfait ${planName}</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — ${fmt(price)}/mois</p>
     <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
-      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Le paiement se fait depuis votre tableau de bord.</b></p>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Votre restaurant va être créé maintenant, avec l'accès du forfait Gratuit en attendant. Une fois dans votre tableau de bord, ouvrez Abonnement → Payer avec PayTech pour activer réellement Premium. Les fonctionnalités Premium ne s'activent qu'après confirmation réelle du paiement par PayTech — jamais automatiquement.</p>
+      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
     </div>
-    <button class="btn btn-secondary btn-lg w-full" onclick="obNext()">Créer mon restaurant</button>
+    <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
     <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
   }
 
@@ -2457,11 +2558,15 @@ function obNavBackOnly(){ return `<button class="btn btn-outline w-full" onclick
 <script>
 /* ---------------- HERO / FOOTER — rendus depuis RESTAURANT (synchronisation réelle) ---------------- */
 function renderStorefrontHero(){
-  // Bouton "Tableau de bord" — uniquement si un restaurant a réellement
-  // été créé/possédé dans cette session (le vrai propriétaire), jamais
-  // pour un visiteur qui tombe sur ce lien sans avoir de session active.
+  // Bouton "Tableau de bord" — UNIQUEMENT si le visiteur actuel est
+  // réellement le propriétaire/personnel de CE restaurant (viewerIsStaff),
+  // jamais simplement parce qu'un restaurant est chargé en mémoire — un
+  // visiteur anonyme arrivant via le lien public/QR Code d'un restaurant
+  // PUBLIÉ ne doit JAMAIS voir ce bouton, même si RESTAURANT.created
+  // est vrai (ce qui est le cas pour n'importe quel restaurant chargé,
+  // y compris pour un visiteur public — voir loadRestaurantIntoState).
   const ownerBtn = document.getElementById('ownerBackBtn');
-  if(ownerBtn) ownerBtn.classList.toggle('hidden', !RESTAURANT.created);
+  if(ownerBtn) ownerBtn.classList.toggle('hidden', !viewerIsStaff);
 
   const openPill = document.getElementById('sfOpenPill');
   const open = isOpenNow();
@@ -3002,11 +3107,6 @@ async function logoutDashboard(){
 
 function renderDashSection(key){
   const el = document.getElementById('dashContent');
-  // Accès qui se termine réellement à la fin de l'essai Gratuit : seule
-  // la page Abonnement reste accessible pour permettre de passer à un
-  // forfait payant — aucune autre section ne s'affiche tant que le
-  // restaurateur n'a pas choisi Starter ou Pro. Les données restent
-  // toutes intactes en mémoire, rien n'est supprimé.
   // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
   // abonnement expiré : seule la page Abonnement reste accessible pour
   // permettre de renouveler — aucune autre section ne s'affiche tant
@@ -3240,7 +3340,7 @@ function dashAnalytics(){
   ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
   <div class="card" style="padding:18px;">
     <h2 class="font-display" style="font-size:16px;margin-bottom:10px;">Analyses avancées</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Pro.</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Premium.</p>
   </div>`}`;
 }
 function drawRevenueChart(){
@@ -3284,11 +3384,11 @@ function drawRevenueChart(){
 let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
 let expandedCat = 'plats';
 function dashCategories(){
-  const atLimit = state.plan==='free' && !canAddCategory();
+  const atLimit = !canAddCategory();
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Catégories</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix — ${Object.keys(catsState).length} catégorie${Object.keys(catsState).length>1?'s':''}${state.plan==='free'?` / ${FREE_MAX_CATEGORIES} (forfait Gratuit)`:''}. La gestion des produits se fait dans la section Produits.</p>
-  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;max-width:640px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_CATEGORIES} catalogues atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Pro</a> pour continuer.</p></div>`:''}
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix — ${Object.keys(catsState).length} catégorie${Object.keys(catsState).length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_CATEGORIES} (forfait Gratuit)`:''}. La gestion des produits se fait dans la section Produits.</p>
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;max-width:640px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_CATEGORIES} catalogues atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Premium</a> pour continuer.</p></div>`:''}
   <div class="flex gap-2" style="margin-bottom:18px;max-width:560px;">
     <input class="field-input" id="newCatInput" placeholder="Nouvelle catégorie (ex : Menus)" ${atLimit?'disabled':''}>
     <button class="btn btn-secondary" onclick="addCategory()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} Ajouter</button>
@@ -3323,16 +3423,16 @@ let productForm = null; // {id?, name, desc, price, cat, prep, active, available
 let libraryOpen = false;
 
 function dashProducts(){
-  const atLimit = state.plan==='free' && !canAddProduct();
+  const atLimit = !canAddProduct();
   return `
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${state.plan==='free'?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
       <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('library',15)} Bibliothèque TerangaResto</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
     </div>
   </div>
-  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_PRODUCTS} produits atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Pro</a> pour ajouter plus de produits.</p></div>`:''}
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_PRODUCTS} produits atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Premium</a> pour ajouter plus de produits.</p></div>`:''}
   <div style="position:relative;max-width:320px;margin-bottom:16px;">
     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',15)}</span>
     <input class="field-input" style="padding-left:36px;" placeholder="Rechercher un produit..." value="${productSearch}" oninput="productSearch=this.value;document.getElementById('productsList').innerHTML=productsListHtml();hydrateIcons();">
@@ -3781,7 +3881,7 @@ function paymentsListHtml(methods){
       <div class="flex items-center gap-3">
         ${paymentMark(m,36)}
         <div style="flex:1;">
-          <p style="font-size:13.5px;font-weight:600;">${PAYMENT_LABELS[m]} ${locked?`<span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Plan Pro</span>`:''}</p>
+          <p style="font-size:13.5px;font-weight:600;">${PAYMENT_LABELS[m]} ${locked?`<span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Premium</span>`:''}</p>
         </div>
         <div class="toggle ${on && !locked?'on':''}" style="${locked?'cursor:not-allowed;':''}" onclick="togglePayment('${m}')"><div class="dot"></div></div>
       </div>
@@ -3796,7 +3896,7 @@ function paymentsListHtml(methods){
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
   if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()){
-    toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Pro.", true);
+    toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Premium.", true);
     return;
   }
   state.toggles[m] = !state.toggles[m];
@@ -3900,9 +4000,9 @@ function dashStaff(){
     <div class="card" style="padding:28px;max-width:560px;display:flex;align-items:flex-start;gap:14px;">
       ${icBadge('lock',{size:42,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}
       <div>
-        <p style="font-size:14px;font-weight:600;margin-bottom:4px;">La gestion du personnel fait partie du plan Pro</p>
-        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Passez au plan Pro pour inviter des administrateurs, caissiers, cuisine ou gestionnaires.</p>
-        <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer au plan Pro</button>
+        <p style="font-size:14px;font-weight:600;margin-bottom:4px;">La gestion du personnel fait partie du plan Premium</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Passez au plan Premium pour inviter des administrateurs, caissiers, cuisine ou gestionnaires.</p>
+        <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer au plan Premium</button>
       </div>
     </div>`;
   }
@@ -4509,39 +4609,41 @@ function pickCover(){
 }
 
 /* ---------------- ABONNEMENT — machine à états réelle ---------------- */
+const STARTER_PRICE = 3000;
 const PREMIUM_PRICE = 7000;
 let abonSelectedPlan = null;
 let abonSelectedCycle = null;
 
 const SUBSCRIPTION_STATUS_LABELS = {
-  trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré",
+  trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré", pending_payment:"En attente de paiement",
 };
 const SUBSCRIPTION_STATUS_TONE = {
-  trialing:'pill-amber', active:'pill-forest', cancelled:'pill-neutral', expired:'pill-terracotta',
+  trialing:'pill-amber', active:'pill-forest', cancelled:'pill-neutral', expired:'pill-terracotta', pending_payment:'pill-amber',
 };
 
 function dashAbonnement(){
-  if(abonSelectedPlan===null) abonSelectedPlan = state.plan==='pro' ? 'pro' : 'free';
-  if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle || 'monthly';
+  if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
+  if(abonSelectedCycle===null) abonSelectedCycle = 'monthly';
   const status = computeEffectiveSubscriptionStatus();
-  const premiumActive = isPremiumActive();
-  const planLabel = state.plan==='pro' ? (premiumActive ? 'Premium' : 'Premium (en attente de paiement)') : 'Gratuit';
+  const paidActive = isPaidPlanActive();
+  const planName = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  const planLabel = (state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} (en attente de paiement)` : planName;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
     <div class="flex justify-between items-center">
       <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
-      <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]}">${SUBSCRIPTION_STATUS_LABELS[status]}</span>
+      <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]||'pill-neutral'}">${SUBSCRIPTION_STATUS_LABELS[status]||status}</span>
     </div>
     <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
-      ${state.plan==='pro' && !premiumActive ? `Premium sélectionné mais pas encore payé — l'accès reste celui du forfait Gratuit. Terminez le paiement PayTech ci-dessous pour l'activer réellement.`
+      ${(state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} sélectionné mais pas encore payé — aucune fonctionnalité payante n'est débloquée. Terminez le paiement PayTech ci-dessous pour l'activer réellement.`
         : status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
-        : status==='active' ? `Facturation ${RESTAURANT.billingCycle==='annual'?'annuelle':'mensuelle'} — accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, confirmé par PayTech.`
+        : status==='active' ? `Accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, confirmé par PayTech.`
         : status==='cancelled' ? `Annulé — accès encore valide ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, puis passera automatiquement en Expiré.`
         : `Votre accès complet est suspendu. Choisissez un forfait ci-dessous pour le rétablir.`}
     </p>
-    ${premiumActive ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
+    ${paidActive ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
     ${status==='cancelled' ? `<button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="reactivateSubscription()">Réactiver</button>` : ''}
   </div>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;" id="abonCard">${abonCardHtml()}</div>
@@ -4549,27 +4651,25 @@ function dashAbonnement(){
 }
 
 function abonCardHtml(){
+  const price = abonSelectedPlan==='pro' ? PREMIUM_PRICE : STARTER_PRICE;
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
-  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
     <button onclick="abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Gratuit</p><p style="font-size:11.5px;color:var(--ink-faint);">0 FCFA</p></button>
+    <button onclick="abonSelectedPlan='starter';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='starter'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='starter'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Starter</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(STARTER_PRICE)}/mois</p></button>
     <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
-  ${abonSelectedPlan==='pro' ? `
-  <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Facturation</p>
-  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-    ${[['monthly','Mensuelle'],['annual','Annuelle']].map(([code,label])=>`<button onclick="abonSelectedCycle='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedCycle===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedCycle===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;text-align:left;">
-      <p style="font-size:13px;font-weight:600;">${label}</p><p style="font-size:11px;color:var(--ink-faint);">${code==='annual'?'2 mois offerts':fmt(PREMIUM_PRICE)+'/mois'}</p></button>`).join('')}
-  </div>
+  ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
-    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement sécurisé via PayTech.</b></p>
-    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler votre abonnement. Premium ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement.</p>
+    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
   </div>
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(abonSelectedCycle==='annual' ? Math.round(PREMIUM_PRICE*12*0.83) : PREMIUM_PRICE)}${abonSelectedCycle==='annual'?'/an':'/mois'}</p></div>
-    <button id="paytechBtn" class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer avec PayTech</button>
+    <div><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)}/mois</p></div>
+    <button id="paytechBtn" class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
     <p style="font-size:12px;color:var(--ink-soft);">Aucun paiement requis pour le forfait Gratuit.</p>
@@ -4597,37 +4697,38 @@ async function abonApplyPlan(){
     toast('Forfait Gratuit appliqué.');
     return;
   }
-  // Premium n'est JAMAIS activé ici directement — uniquement après
-  // confirmation réelle du paiement par PayTech (voir startPayTechCheckout
-  // et la fonction Edge paytech-webhook, qui seule met subscription_status
-  // à 'active').
-  await startPayTechCheckout();
+  // Starter/Premium ne sont JAMAIS activés ici directement — uniquement
+  // après confirmation réelle du paiement par PayTech (voir
+  // startPayTechCheckout et la fonction Edge paytech-webhook, qui seule
+  // met subscription_status à 'active').
+  await startPayTechCheckout(abonSelectedPlan);
 }
 
 /* ---------------- PAYTECH — abonnement du restaurateur à TerangaResto ----------------
-   Ne concerne QUE l'abonnement Premium du restaurateur. Ne concerne
-   JAMAIS le paiement des commandes de ses propres clients (Wave/Orange
-   Money/espèces — un système entièrement séparé, table `orders`, jamais
-   mélangé avec `payments` ci-dessous). */
+   Concerne l'abonnement (Starter ou Premium) du restaurateur envers
+   TerangaResto. Ne concerne JAMAIS le paiement des commandes de ses
+   propres clients (Wave/Orange Money/espèces — un système entièrement
+   séparé, table `orders`, jamais mélangé avec `payments` ci-dessous). */
 let paymentsHistory = [];
-async function startPayTechCheckout(){
+async function startPayTechCheckout(plan){
   const btn = document.getElementById('paytechBtn');
+  const price = plan==='pro' ? PREMIUM_PRICE : STARTER_PRICE;
   if(btn){ btn.disabled = true; btn.textContent = 'Redirection vers PayTech…'; }
   const { data: { session } } = await supabaseClient.auth.getSession();
   if(!session){
     toast('Session expirée — reconnectez-vous puis réessayez.');
-    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer avec PayTech`; }
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
     return;
   }
   // Appelle la Supabase Edge Function paytech-checkout — jamais PayTech
   // directement depuis le navigateur, et aucune clé PayTech ici (voir
   // supabase/functions/paytech-checkout/index.ts).
   const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-    body: { restaurant_id: RESTAURANT.id, billing_cycle: abonSelectedCycle || 'monthly' },
+    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
-    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer avec PayTech`; hydrateIcons(); }
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
     return;
   }
   window.location.href = data.redirect_url;
