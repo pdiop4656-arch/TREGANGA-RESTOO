@@ -936,12 +936,20 @@ async function loadRestaurantBySlug(slug){
 }
 
 /* Retrouve le restaurant dont l'utilisateur connecté est propriétaire,
-   sinon celui où il est membre actif du personnel. */
+   sinon celui où il est membre actif du personnel. Revalide toujours
+   la session EN DIRECT via getUser() plutôt que de faire confiance à
+   la variable globale `currentUser`, pour la même raison que dans
+   finishOnboarding() : après une connexion, un id local en retard sur
+   la vraie session ferait manquer le restaurant existant et relancerait
+   l'onboarding à tort. */
 async function findMyRestaurantId(){
-  if(!currentUser) return null;
-  const {data:owned} = await supabaseClient.from('restaurants').select('id').eq('owner_id', currentUser.id).limit(1).maybeSingle();
+  const { data: userData } = await supabaseClient.auth.getUser();
+  const user = userData ? userData.user : null;
+  if(!user) return null;
+  currentUser = user;
+  const {data:owned} = await supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle();
   if(owned) return owned.id;
-  const {data:staffRow} = await supabaseClient.from('staff').select('restaurant_id').eq('user_id', currentUser.id).eq('status','Actif').limit(1).maybeSingle();
+  const {data:staffRow} = await supabaseClient.from('staff').select('restaurant_id').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle();
   return staffRow ? staffRow.restaurant_id : null;
 }
 
@@ -957,15 +965,17 @@ async function restoreSession(){
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
 
-    if(currentUser){
-      const rid = await findMyRestaurantId();
-      if(rid){
-        await loadRestaurantIntoState(rid);
-        viewerIsStaff = true;
-        setView('dashboard');
-        setDashSection('overview');
-        return;
-      }
+    // findMyRestaurantId() revalide lui-même la session en direct
+    // (auth.getUser()) — on ne conditionne donc plus cet appel à l'état
+    // de la variable locale `currentUser`, qui pourrait être en retard
+    // d'une frappe sur la vraie session.
+    const rid = await findMyRestaurantId();
+    if(rid){
+      await loadRestaurantIntoState(rid);
+      viewerIsStaff = true;
+      setView('dashboard');
+      setDashSection('overview');
+      return;
     }
 
     const restoSlug = new URLSearchParams(location.search).get('resto');
@@ -2073,16 +2083,24 @@ function obPrev(){
 }
 
 async function finishOnboarding(){
-  if(!currentUser){
-    // Ne devrait normalement jamais arriver (l'étape 0 exige une vraie
-    // session avant de laisser avancer l'assistant) — mais si c'est le
-    // cas, on le dit clairement au lieu de prétendre silencieusement
-    // que le restaurant a été créé alors que rien n'a été enregistré.
-    toast("Session expirée — reconnectez-vous puis reprenez la création de votre restaurant.");
+  // Source de vérité pour owner_id : jamais la variable JS `currentUser`
+  // (qui peut être en retard d'une frappe sur la vraie session — c'est
+  // exactement ce qui provoquait "new row violates row-level security
+  // policy for table restaurants", car owner_id envoyé ne correspondait
+  // plus forcément à auth.uid() calculé côté serveur au moment de la
+  // requête). On revalide la session EN DIRECT auprès de Supabase juste
+  // avant l'INSERT, et on utilise exclusivement user.id — jamais un id
+  // de démonstration, jamais une valeur locale mise en cache.
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  const user = userData ? userData.user : null;
+  if(userError || !user){
+    toast("Session invalide ou expirée — reconnectez-vous puis reprenez la création de votre restaurant.");
+    currentUser = null;
     closeLogin(); setLoginTab('login'); setView('landing');
     document.getElementById('loginOverlay')?.classList.remove('hidden');
     return;
   }
+  currentUser = user; // resynchronise la variable globale sur la vraie session
 
   const btn = document.getElementById('obFinishBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
@@ -2124,15 +2142,18 @@ async function finishOnboarding(){
     RESTAURANT.lastRenewedAt = Date.now();
   }
 
-  // Création réelle du restaurant dans Supabase, rattaché au compte
-  // qui vient d'être créé/connecté à l'étape 0. Une nouvelle tentative
-  // avec un slug légèrement différent est faite UNIQUEMENT si Supabase
+  // Création réelle du restaurant dans Supabase, rattaché à user.id —
+  // exactement ce que la policy RLS "restaurants_owner_insert" attend
+  // (with check (owner_id = auth.uid())). Une nouvelle tentative avec
+  // un slug légèrement différent est faite UNIQUEMENT si Supabase
   // rejette pour collision de slug (code 23505) — jamais pour un autre
-  // type d'erreur, qui doit rester visible tel quel.
+  // type d'erreur, qui doit rester visible tel quel (y compris une
+  // éventuelle violation RLS, qui indiquerait alors un vrai problème
+  // de policy plutôt qu'un souci d'id local).
   let data, error;
   for(let attempt=0; attempt<3; attempt++){
     ({data, error} = await supabaseClient.from('restaurants').insert({
-      owner_id: currentUser.id, created:true, name:RESTAURANT.name, slug:RESTAURANT.slug,
+      owner_id: user.id, created:true, name:RESTAURANT.name, slug:RESTAURANT.slug,
       type:RESTAURANT.type, logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
       primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
       address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
@@ -2146,7 +2167,7 @@ async function finishOnboarding(){
     }).select().single());
     if(!error) break;
     if(error.code === '23505'){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
-    break; // toute autre erreur : on arrête et on l'affiche, pas de nouvelle tentative aveugle
+    break; // toute autre erreur (y compris RLS) : on arrête et on l'affiche, pas de nouvelle tentative aveugle
   }
 
   if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
