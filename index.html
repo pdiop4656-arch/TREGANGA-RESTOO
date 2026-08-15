@@ -337,52 +337,103 @@ body.storefront-active .gnav{ display:none; }
 </section>
 
 <!-- ============ STOREFRONT VIEW ============ -->
-<section class="view" id="view-storefront">
+<section class="view tg-classic" id="view-storefront">
 
-  <div id="sfHero" style="position:relative;">
-    <div id="sfCover" style="height:220px;background:linear-gradient(135deg,#2b1810,#4a2c1a);position:relative;overflow:hidden;">
-      <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 20%, rgba(232,135,30,.35), transparent 60%);"></div>
+  <!-- En-tête du thème (scopé .tg-classic — voir feuille de style dédiée) -->
+  <header class="header" id="tgHeader">
+    <div class="container header-container">
+      <button class="hamburger" id="tgHamburgerBtn" onclick="openTgMobileMenu()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+      <a href="#tgAccueil" class="logo" id="tgLogo"></a>
+      <nav>
+        <ul class="nav-desktop">
+          <li><a href="#tgAccueil" class="nav-link active">Accueil</a></li>
+          <li><a href="#tgMenu" class="nav-link">Menu</a></li>
+          <li><a href="#tgHoraires" class="nav-link">Horaires & Carte</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-icon-btn" onclick="openCart()" aria-label="Panier">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span class="cart-badge" id="tgCartBadge">0</span>
+        </button>
+      </div>
     </div>
-    <div class="wrap" style="position:relative;">
-      <div class="flex items-end gap-4" style="margin-top:-56px;padding-bottom:18px;">
-        <div id="sfLogo" style="width:96px;height:96px;border-radius:20px;background:#fff;border:4px solid #fff;box-shadow:0 8px 24px rgba(43,24,16,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"></div>
-        <div style="padding-bottom:4px;">
-          <h1 class="font-display resto-name" style="font-size:28px;">Votre restaurant</h1>
-          <div class="flex items-center gap-2" style="margin-top:6px;flex-wrap:wrap;">
-            <span class="pill pill-forest" id="sfOpenPill">Ouvert</span>
-            <span class="pill pill-neutral" style="display:flex;align-items:center;gap:4px;"><span data-icon="star" data-size="12" data-color="var(--amber)"></span>4.8 (32)</span>
-            <span id="sfCityLabel" style="font-size:12px;color:var(--ink-faint);">Dakar, Sénégal</span>
-          </div>
+  </header>
+
+  <aside class="mobile-menu" id="tgMobileMenu">
+    <div class="mobile-menu-header">
+      <div class="logo" id="tgMobileLogo"></div>
+      <button id="tgCloseMobileMenu" onclick="closeTgMobileMenu()" style="font-size:1.35rem;padding:0.5rem;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <ul class="mobile-nav-links">
+      <li><a href="#tgAccueil" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-house" style="margin-right:0.5rem;color:var(--primary);"></i> Accueil</a></li>
+      <li><a href="#tgMenu" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-utensils" style="margin-right:0.5rem;color:var(--primary);"></i> Notre Menu</a></li>
+      <li><a href="#tgHoraires" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-clock" style="margin-right:0.5rem;color:var(--primary);"></i> Horaires & Accès</a></li>
+    </ul>
+  </aside>
+  <div class="overlay" id="tgOverlay" onclick="closeTgMobileMenu()"></div>
+
+  <!-- HERO — une seule image par défaut (voir résumé : le gestionnaire
+       de plusieurs slides n'est pas encore construit) -->
+  <section class="hero" id="tgAccueil">
+    <div class="slide active" id="tgHeroSlide">
+      <div class="slide-bg" id="tgHeroBg"></div>
+      <div class="container" style="height:100%;display:flex;align-items:center;">
+        <div class="hero-content">
+          <h1 id="tgHeroTitle"></h1>
+          <p id="tgHeroSubtitle"></p>
+          <a href="#tgMenu" class="btn btn-primary"><i class="fa-solid fa-utensils"></i> Découvrir le menu</a>
         </div>
       </div>
-      <p style="font-size:14px;color:var(--ink-soft);max-width:520px;padding-bottom:22px;">Cuisine sénégalaise traditionnelle, préparée avec des produits frais chaque jour. Thiéboudienne, Yassa, Mafé et grillades.</p>
     </div>
-  </div>
+  </section>
 
-  <div class="sticky" style="top:65px;z-index:30;background:rgba(251,243,228,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--cream-line);">
-    <div class="wrap overflow-x-auto" style="padding:12px 24px;display:flex;gap:8px;" id="sfCatTabs"></div>
-  </div>
-
-  <div class="wrap" style="padding:32px 24px 60px;" id="sfProductSections"></div>
-
-  <!-- REVIEWS -->
-  <div style="background:var(--cream-deep);border-top:1px solid var(--cream-line);">
-    <div class="wrap" style="padding:44px 24px;">
-      <h2 class="font-display" style="font-size:22px;margin-bottom:20px;">Avis clients</h2>
-      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;" id="sfReviews"></div>
+  <!-- CATALOGUES visibles sur l'accueil (choisis par le restaurateur) -->
+  <section class="categories-section" id="tgCategoriesSection">
+    <div class="container">
+      <div class="categories-wrapper" id="tgCategories"></div>
     </div>
-  </div>
+  </section>
+
+  <!-- MENU / PRODUITS -->
+  <section class="menu-section" id="tgMenu">
+    <div class="container">
+      <div class="section-title"><span>Notre carte</span><h2 class="resto-name" id="tgMenuTitle">Le menu</h2></div>
+      <div class="products-grid" id="sfProductSections"></div>
+    </div>
+  </section>
+
+  <!-- MEILLEURES VENTES — calculées à partir des vraies commandes,
+       masqué s'il n'y a pas encore assez de données réelles -->
+  <section class="menu-section" style="background:#FFF;" id="tgBestSellersSection">
+    <div class="container">
+      <div class="section-title"><span>Incontournables</span><h2>Meilleures ventes</h2></div>
+      <div class="products-grid" id="tgBestSellers"></div>
+    </div>
+  </section>
+
+  <!-- HORAIRES & LOCALISATION -->
+  <section class="info-section" id="tgHoraires">
+    <div class="container">
+      <div class="info-grid">
+        <div class="hours-card">
+          <div class="section-title" style="text-align:left;margin-bottom:1.25rem;"><span>Planifiez votre visite</span><h3>Nos horaires</h3></div>
+          <div id="tgOpenStatus"></div>
+          <ul class="hours-list" id="tgHoursList"></ul>
+        </div>
+        <div class="location-card">
+          <div class="section-title" style="text-align:left;margin-bottom:1.25rem;"><span>Rendez-nous visite</span><h3>Où nous trouver ?</h3></div>
+          <div id="sfFooterInfo"></div>
+          <div id="sfMapContainer" style="margin-top:14px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- FOOTER -->
-  <footer style="border-top:1px solid var(--cream-line);">
-    <div class="wrap" style="padding:40px 24px;display:grid;grid-template-columns:1fr 1fr;gap:32px;">
-      <div class="flex-col gap-3">
-        <h3 class="font-display" style="font-size:18px;">Contact & horaires</h3>
-        <div id="sfFooterInfo"></div>
-        <div class="flex gap-3" id="sfSocialIcons" style="margin-top:6px;"></div>
-      </div>
-      <div id="sfMapContainer"></div>
-    </div>
+  <footer class="tg-footer" style="border-top:1px solid rgba(0,0,0,.06);padding:32px 0;text-align:center;">
+    <div class="flex gap-3" id="sfSocialIcons" style="justify-content:center;margin-bottom:12px;"></div>
+    <p class="resto-name" style="font-family:'Playfair Display',serif;font-size:15px;"></p>
   </footer>
 
   <!-- Retour au tableau de bord — visible uniquement pour le restaurateur
@@ -391,12 +442,12 @@ body.storefront-active .gnav{ display:none; }
        discrète (pas une bannière) : le header plateforme est masqué sur
        le site public, donc positionnée en haut, mais sans texte ni
        largeur excessive — ne gêne jamais le contenu du restaurant. -->
-  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:35;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
+  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:1200;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
     <span data-icon="arrowLeft" data-size="16"></span>
   </button>
 
   <!-- Floating cart button -->
-  <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:40;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
+  <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1200;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
     <span style="position:relative;display:flex;">
       <span data-icon="bag" data-size="18"></span>
       <span id="cartCountBadge" style="position:absolute;top:-8px;right:-10px;background:#fff;color:var(--amber-deep);font-size:10px;font-weight:800;border-radius:999px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">0</span>
@@ -609,6 +660,976 @@ body.storefront-active .gnav{ display:none; }
 }
 </style>
 
+<!-- ============================================================
+     THÈME PUBLIC PAR DÉFAUT — "Classic" (fourni par le restaurateur,
+     intégré comme thème principal de TerangaResto). Entièrement
+     scopé sous .tg-classic pour ne jamais entrer en collision avec
+     le CSS du tableau de bord/de la plateforme (voir .btn/.dot/.toast
+     qui existaient déjà ailleurs sous ces mêmes noms). Les couleurs
+     ci-dessous (--primary, --secondary...) sont les valeurs PAR
+     DÉFAUT du thème — applyClassicThemeColors() les réécrit en
+     variables inline à partir des vraies couleurs choisies par
+     CHAQUE restaurateur (RESTAURANT.primary/secondary/textColor),
+     donc deux restaurants utilisant ce même thème peuvent avoir des
+     couleurs complètement différentes. -->
+<style id="tg-classic-theme-css">
+.tg-classic {
+            --primary: #E63946;
+            --primary-hover: #C5221F;
+            --primary-soft: rgba(230, 57, 70, 0.08);
+            --secondary: #D4A373;
+            --dark: #1A1A1A;
+            --dark-card: #242424;
+            --light-bg: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text-main: #2D3142;
+            --text-muted: #6C757D;
+            --border: #EAEAEA;
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-full: 9999px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic, .tg-classic * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }.tg-classic, .tg-classic {
+            overflow-x: hidden;
+            width: 100%;
+        }.tg-classic {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }.tg-classic {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-main);
+            line-height: 1.5;
+        }.tg-classic h1, .tg-classic h2, .tg-classic h3, .tg-classic h4, .tg-classic .font-heading {
+            font-family: 'Playfair Display', serif;
+        }.tg-classic a {
+            text-decoration: none;
+            color: inherit;
+        }.tg-classic button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+            background: none;
+            font-family: inherit;
+        }.tg-classic img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }.tg-classic .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+            width: 100%;
+        }.tg-classic .section-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }.tg-classic .section-title span {
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: block;
+            margin-bottom: 0.4rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }.tg-classic .section-title h2 {
+            font-size: 2.25rem;
+            color: var(--dark);
+        }.tg-classic .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.75rem;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            transition: var(--transition);
+            min-height: 48px;
+            touch-action: manipulation;
+        }.tg-classic .btn-primary {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 57, 70, 0.35);
+        }.tg-classic .btn-outline {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }.tg-classic .btn-outline:hover {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }.tg-classic .badge-pop {
+            background-color: #FFF3EA;
+            color: #FF6B00;
+        }.tg-classic .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            transition: var(--transition);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }.tg-classic .header.scrolled {
+            box-shadow: var(--shadow-sm);
+        }.tg-classic .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }.tg-classic .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--dark);
+        }.tg-classic .logo-icon {
+            width: 38px;
+            height: 38px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }.tg-classic .nav-desktop {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            list-style: none;
+        }.tg-classic .nav-link {
+            font-weight: 600;
+            color: var(--text-main);
+            transition: var(--transition);
+            position: relative;
+        }.tg-classic .nav-link:hover, .tg-classic .nav-link.active {
+            color: var(--primary);
+        }.tg-classic .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+            border-radius: 2px;
+        }.tg-classic .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }.tg-classic .cart-icon-btn {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            background-color: var(--light-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: var(--dark);
+            transition: var(--transition);
+        }.tg-classic .cart-icon-btn:hover {
+            background-color: var(--primary-soft);
+            color: var(--primary);
+        }.tg-classic .cart-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background-color: var(--primary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 800;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #FFF;
+        }.tg-classic .hamburger {
+            display: none;
+            font-size: 1.35rem;
+            color: var(--dark);
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+        }.tg-classic .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 85%;
+            max-width: 320px;
+            height: 100vh;
+            background-color: #FFF;
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+            padding: 1.5rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic .mobile-menu.open {
+            transform: translateX(100%);
+        }.tg-classic .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }.tg-classic .mobile-nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }.tg-classic .mobile-nav-links a {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: block;
+            padding: 0.5rem 0;
+        }.tg-classic .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }.tg-classic .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }.tg-classic .hero {
+            position: relative;
+            height: 75vh;
+            min-height: 480px;
+            margin-top: 70px;
+            overflow: hidden;
+        }.tg-classic .hero-slider {
+            height: 100%;
+            position: relative;
+        }.tg-classic .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            display: flex;
+            align-items: center;
+        }.tg-classic .slide.active {
+            opacity: 1;
+        }.tg-classic .slide-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+        }.tg-classic .slide-bg::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.7) 100%);
+        }.tg-classic .hero-content {
+            position: relative;
+            z-index: 10;
+            color: #FFF;
+            max-width: 650px;
+        }.tg-classic .hero-content h1 {
+            font-size: 3.25rem;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }.tg-classic .hero-content p {
+            font-size: 1.15rem;
+            margin-bottom: 1.75rem;
+            opacity: 0.95;
+            line-height: 1.5;
+        }.tg-classic .slider-controls {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }.tg-classic .slider-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(5px);
+            color: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }.tg-classic .slider-btn:hover {
+            background: #FFF;
+            color: var(--dark);
+        }.tg-classic .slider-dots {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            gap: 0.5rem;
+        }.tg-classic .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: var(--transition);
+        }.tg-classic .dot.active {
+            width: 26px;
+            border-radius: 12px;
+            background: var(--primary);
+        }.tg-classic .categories-section {
+            padding: 2rem 0;
+            background: #FFF;
+            border-bottom: 1px solid var(--border);
+        }.tg-classic .categories-wrapper {
+            display: flex;
+            gap: 1.25rem;
+            overflow-x: auto;
+            padding: 0.25rem 0.25rem 1rem 0.25rem;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+        }.tg-classic .categories-wrapper::-webkit-scrollbar {
+            display: none;
+        }.tg-classic .category-item {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            cursor: pointer;
+            transition: var(--transition);
+            scroll-snap-align: start;
+            width: 80px;
+        }.tg-classic .category-img {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            padding: 3px;
+            background: #FFF;
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            flex-shrink: 0;
+        }.tg-classic .category-img img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }.tg-classic .category-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+            white-space: nowrap;
+        }.tg-classic .category-item:hover .category-img, .tg-classic .category-item.active .category-img {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.25);
+        }.tg-classic .category-item.active .category-name {
+            color: var(--primary);
+        }.tg-classic .menu-section {
+            padding: 3.5rem 0;
+        }.tg-classic .search-bar-container {
+            max-width: 480px;
+            margin: 0 auto 2.5rem auto;
+            position: relative;
+        }.tg-classic .search-input {
+            width: 100%;
+            padding: 0.85rem 1.25rem 0.85rem 2.8rem;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            background: #FFF;
+        }.tg-classic .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }.tg-classic .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }.tg-classic .products-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }.tg-classic .product-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }.tg-classic .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }.tg-classic .product-img-wrapper {
+            position: relative;
+            height: 200px;
+            cursor: pointer;
+            overflow: hidden;
+            background: #f0f0f0;
+        }.tg-classic .product-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }.tg-classic .product-card:hover .product-img {
+            transform: scale(1.05);
+        }.tg-classic .product-badge {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            z-index: 5;
+        }.tg-classic .product-content {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }.tg-classic .product-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            color: var(--dark);
+            cursor: pointer;
+            line-height: 1.3;
+        }.tg-classic .product-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex-grow: 1;
+            line-height: 1.4;
+        }.tg-classic .product-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            gap: 0.5rem;
+        }.tg-classic .product-price {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--primary);
+            white-space: nowrap;
+        }.tg-classic .add-cart-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: var(--transition);
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }.tg-classic .add-cart-btn:hover, .tg-classic .add-cart-btn:active {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }.tg-classic .promo-section {
+            padding: 2.5rem 0;
+        }.tg-classic .promo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }.tg-classic .promo-card {
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+            min-height: 230px;
+            display: flex;
+            align-items: center;
+            padding: 2rem;
+            color: white;
+            background-size: cover;
+            background-position: center;
+            box-shadow: var(--shadow-sm);
+        }.tg-classic .promo-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%);
+        }.tg-classic .promo-content {
+            position: relative;
+            z-index: 2;
+            max-width: 80%;
+        }.tg-classic .promo-content h3 {
+            font-size: 1.75rem;
+            margin-bottom: 0.4rem;
+            line-height: 1.2;
+        }.tg-classic .promo-content p {
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }.tg-classic .about-section {
+            padding: 4rem 0;
+            background: #FFF;
+        }.tg-classic .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }.tg-classic .about-img {
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }.tg-classic .about-img img {
+            border-radius: var(--radius-lg);
+            width: 100%;
+        }.tg-classic .about-content h2 {
+            font-size: 2.25rem;
+            margin-bottom: 1.25rem;
+            color: var(--dark);
+        }.tg-classic .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+            margin-top: 2.5rem;
+        }.tg-classic .feature-item {
+            text-align: center;
+            padding: 1.25rem 0.75rem;
+            background: var(--light-bg);
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+        }.tg-classic .feature-icon {
+            font-size: 1.75rem;
+            color: var(--primary);
+            margin-bottom: 0.6rem;
+        }.tg-classic .info-section {
+            padding: 4rem 0;
+        }.tg-classic .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+        }.tg-classic .hours-card, .tg-classic .location-card {
+            background: #FFF;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }.tg-classic .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }.tg-classic .status-badge.open {
+            background-color: #E6F4EA;
+            color: #137333;
+        }.tg-classic .status-badge.closed {
+            background-color: #FCE8E6;
+            color: #C5221F;
+        }.tg-classic .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }.tg-classic .hours-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }.tg-classic .hours-item {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.95rem;
+        }.tg-classic .map-container {
+            height: 200px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-top: 1.25rem;
+            background-color: #e5e3df;
+            position: relative;
+        }.tg-classic .map-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80');
+            background-size: cover;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }.tg-classic .footer {
+            background-color: var(--dark);
+            color: #A0A0A0;
+            padding: 3.5rem 0 2rem 0;
+            margin-top: 2rem;
+        }.tg-classic .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1.5fr;
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
+        }.tg-classic .footer-brand .logo {
+            color: #FFF;
+            margin-bottom: 0.75rem;
+        }.tg-classic .footer-title {
+            color: #FFF;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }.tg-classic .footer-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }.tg-classic .footer-links a:hover {
+            color: var(--primary);
+        }.tg-classic .social-links {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }.tg-classic .social-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-size: 1.1rem;
+        }.tg-classic .social-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }.tg-classic .footer-bottom {
+            padding-top: 1.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            font-size: 0.85rem;
+        }.tg-classic .cart-sidebar {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            max-width: 420px;
+            height: 100vh;
+            height: -webkit-fill-available;
+            background: #FFF;
+            box-shadow: var(--shadow-lg);
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic .cart-sidebar.open {
+            transform: translateX(-100%);
+        }.tg-classic .cart-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }.tg-classic .cart-items-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            -webkit-overflow-scrolling: touch;
+        }.tg-classic .cart-item {
+            display: flex;
+            gap: 0.85rem;
+            align-items: center;
+            padding-bottom: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }.tg-classic .cart-item-img {
+            width: 65px;
+            height: 65px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            flex-shrink: 0;
+        }.tg-classic .cart-item-details {
+            flex-grow: 1;
+        }.tg-classic .cart-item-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+            line-height: 1.2;
+        }.tg-classic .cart-item-price {
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 0.9rem;
+        }.tg-classic .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+        }.tg-classic .qty-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--light-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            touch-action: manipulation;
+        }.tg-classic .cart-footer {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--light-bg);
+            padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+        }.tg-classic .cart-total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }.tg-classic .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }.tg-classic .modal.open {
+            opacity: 1;
+            visibility: visible;
+        }.tg-classic .modal-content {
+            background: #FFF;
+            width: 100%;
+            max-width: 750px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            position: relative;
+            max-height: 90vh;
+        }.tg-classic .modal-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 38px;
+            height: 38px;
+            background: #FFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+            font-size: 1.1rem;
+        }.tg-classic .modal-body {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }.tg-classic .floating-cart-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.25rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.85rem 1.25rem;
+            border-radius: var(--radius-full);
+            box-shadow: 0 8px 24px rgba(230, 57, 70, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 900;
+            font-weight: 800;
+            transition: var(--transition);
+            border: 2px solid #FFF;
+            touch-action: manipulation;
+        }.tg-classic .floating-cart-btn:active {
+            transform: scale(0.95);
+        }.tg-classic .floating-cart-badge {
+            background: #FFF;
+            color: var(--primary);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }.tg-classic .toast {
+            position: fixed;
+            bottom: 5.5rem;
+            left: 50%;
+            transform: translate(-50%, 100px);
+            background: var(--dark);
+            color: #FFF;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-full);
+            box-shadow: var(--shadow-lg);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            opacity: 0;
+            transition: var(--transition);
+            white-space: nowrap;
+            font-size: 0.9rem;
+            width: max-content;
+            max-width: 90vw;
+        }.tg-classic .toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        
+        @media (max-width: 992px) {.tg-classic .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }.tg-classic .about-grid, .tg-classic .info-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .promo-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .footer-grid {
+                grid-template-columns: 1fr 1fr;
+            }.tg-classic .modal-content {
+                grid-template-columns: 1fr;
+                max-height: 85vh;
+                overflow-y: auto;
+            }.tg-classic .modal-img-container {
+                height: 220px;
+            }
+        }
+
+        @media (max-width: 768px) {.tg-classic .nav-desktop {
+                display: none;
+            }.tg-classic .hamburger {
+                display: flex;
+            }.tg-classic .hero {
+                height: 65vh;
+                min-height: 420px;
+            }.tg-classic .hero-content h1 {
+                font-size: 2.25rem;
+            }.tg-classic .hero-content p {
+                font-size: 1rem;
+                margin-bottom: 1.25rem;
+            }.tg-classic .section-title h2 {
+                font-size: 1.75rem;
+            }.tg-classic .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.85rem;
+            }.tg-classic .product-card {
+                border-radius: 12px;
+            }.tg-classic .product-img-wrapper {
+                height: 135px;
+            }.tg-classic .product-content {
+                padding: 0.85rem;
+            }.tg-classic .product-title {
+                font-size: 0.95rem;
+                margin-bottom: 0.25rem;
+            }.tg-classic .product-desc {
+                font-size: 0.78rem;
+                margin-bottom: 0.6rem;
+                -webkit-line-clamp: 2;
+            }.tg-classic .product-price {
+                font-size: 0.95rem;
+            }.tg-classic .add-cart-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 0.85rem;
+            }.tg-classic .product-footer {
+                padding-top: 0.5rem;
+            }.tg-classic .features-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }.tg-classic .cart-sidebar {
+                max-width: 100%;
+            }.tg-classic .modal-body {
+                padding: 1.25rem;
+            }
+        }
+
+        @media (max-width: 390px) {.tg-classic .products-grid {
+                gap: 0.65rem;
+            }.tg-classic .product-content {
+                padding: 0.65rem;
+            }.tg-classic .product-img-wrapper {
+                height: 120px;
+            }.tg-classic .product-title {
+                font-size: 0.88rem;
+            }.tg-classic .product-price {
+                font-size: 0.88rem;
+            }
+        }
+
+</style>
+
 
 </main>
 
@@ -685,6 +1706,8 @@ async function loadRestaurantIntoState(restaurantId){
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.heroTitle = r.hero_title || '';
+  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
   RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
   RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
   RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
@@ -716,7 +1739,8 @@ async function loadRestaurantIntoState(restaurantId){
   // ne doit jamais hériter de celles d'un restaurant précédent chargé
   // plus tôt dans le même onglet.
   catsState = {};
-  (cats||[]).forEach(c => { catsState[c.key] = c.label; });
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
 
   PRODUCTS.length = 0;
   (prods||[]).forEach(p => PRODUCTS.push({
@@ -894,6 +1918,7 @@ async function persistRestaurant(){
     hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
     payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
     notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:RESTAURANT.isPublished,
+    hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
   }).eq('id', RESTAURANT.id);
   if(error) toast('Enregistrement Supabase impossible : ' + error.message);
 }
@@ -1701,14 +2726,16 @@ const DEMO_ORDERS = [];
 
 const DEMO_STAFF = [];
 
-const DEMO_REVIEWS = [];
-
 const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison'};
 const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
 const ORDER_STATUS_TONE = {new:'amber',preparing:'amber',ready:'forest',delivering:'forest',completed:'ink',cancelled:'terracotta'};
 const PAY_STATUS_LABELS = {paid:'Payé',pending:'En attente',failed:'Échoué'};
 const PAY_STATUS_TONE = {paid:'forest',pending:'amber',failed:'terracotta'};
 const CAT_ICON = {plats:'utensils',grillades:'flame',desserts:'cake',boissons:'cup'};
+/* Équivalent FontAwesome (utilisé dans le thème public .tg-classic, qui
+   charge FontAwesome, contrairement au reste du tableau de bord qui
+   utilise le jeu d'icônes SVG maison). */
+const CAT_FA_ICON = {plats:'fa-utensils',grillades:'fa-fire',desserts:'fa-ice-cream',boissons:'fa-mug-hot'};
 const DAY_LABELS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 
 /* Vignette produit — affiche la vraie photo si elle existe, sinon une
@@ -1765,6 +2792,7 @@ const RESTAURANT = {
   mapsLink:'',
   notificationsEnabled:true,
   isPublished:false, // le site public n'est visible aux clients qu'une fois publié (bouton "Publier" dans Paramètres)
+  heroTitle:'', heroSubtitle:'', // vides = texte générique honnête utilisé côté client (voir renderStorefrontHero)
   subscriptionStatus:'trialing', // 'trialing' | 'active' | 'cancelled' | 'expired' — jamais 'active' sans action explicite du restaurateur, jamais via un faux paiement
   billingCycle:'monthly', // 'monthly' | 'annual'
   trialEndsAt:null,
@@ -2781,44 +3809,62 @@ function renderStorefrontHero(){
   const ownerBtn = document.getElementById('ownerBackBtn');
   if(ownerBtn) ownerBtn.classList.toggle('hidden', !viewerIsStaff);
 
-  const openPill = document.getElementById('sfOpenPill');
-  const open = isOpenNow();
-  openPill.textContent = open ? 'Ouvert' : 'Fermé';
-  openPill.className = 'pill ' + (open ? 'pill-forest' : 'pill-terracotta');
+  // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
+  // icône générique. Nom du restaurant à côté, comme le thème d'origine.
+  const logoHtml = (RESTAURANT.logoDataUrl
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
+  document.getElementById('tgLogo').innerHTML = logoHtml;
+  document.getElementById('tgMobileLogo').innerHTML = logoHtml;
+  document.querySelectorAll('#view-storefront .resto-name').forEach(el=>el.textContent = RESTO_NAME);
 
-  document.getElementById('sfCityLabel').textContent = (RESTAURANT.city||'Dakar') + ', Sénégal';
+  // Hero — une seule image par défaut (RESTAURANT.coverDataUrl), titre et
+  // sous-titre personnalisables (RESTAURANT.heroTitle/heroSubtitle),
+  // sinon un texte générique honnête plutôt qu'un faux storytelling.
+  document.getElementById('tgHeroBg').style.backgroundImage = RESTAURANT.coverDataUrl
+    ? `url('${RESTAURANT.coverDataUrl}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
+  document.getElementById('tgHeroTitle').textContent = RESTAURANT.heroTitle || `Bienvenue chez ${RESTO_NAME}`;
+  document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
+  document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
 
-  document.getElementById('sfLogo').innerHTML = RESTAURANT.logoDataUrl
-    ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">`
-    : ic('chefHat',34,{stroke:'var(--amber-deep)'});
-
-  document.getElementById('sfCover').style.background = RESTAURANT.coverDataUrl
-    ? `#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`
-    : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
-
-  // Catégories dynamiques (reflète les catégories créées/renommées dans le tableau de bord)
-  const catTabs = document.getElementById('sfCatTabs');
-  const cats = Object.keys(catsState);
-  catTabs.innerHTML = `<button class="cat-tab ${state.activeCategory==='all'?'active':''}" data-cat="all" onclick="setActiveCategory('all')">Tout</button>` +
-    cats.map(c=>`<button class="cat-tab ${state.activeCategory===c?'active':''}" data-cat="${c}" onclick="setActiveCategory('${c}')">${catsState[c]}</button>`).join('');
-
-  // Contact & horaires
-  const openDays = RESTAURANT.hours.filter(h=>h.open);
-  let hoursHtml = '';
-  if(openDays.length===0){
-    hoursHtml = `<div>Fermé cette semaine</div>`;
+  // Catalogues affichés sur l'accueil — uniquement ceux que le
+  // restaurateur a choisi de rendre visibles (catsHomeVisible), jamais
+  // la totalité automatiquement (voir Catégories dans le tableau de
+  // bord). Chaque carte utilise la photo du premier produit actif de
+  // cette catégorie comme couverture, à défaut d'une couverture dédiée
+  // par catalogue (fonctionnalité non encore construite — voir résumé).
+  const catsSection = document.getElementById('tgCategoriesSection');
+  const homeCats = Object.keys(catsState).filter(c => catsHomeVisible[c] !== false);
+  if(homeCats.length === 0){
+    catsSection.style.display = 'none';
   } else {
-    const allSame = openDays.every(h=>h.from===openDays[0].from && h.to===openDays[0].to) && openDays.length===RESTAURANT.hours.length;
-    if(allSame){
-      hoursHtml = `<div>Tous les jours : ${openDays[0].from} – ${openDays[0].to}</div>`;
-    } else {
-      hoursHtml = RESTAURANT.hours.map((h,i)=>`<div>${DAY_LABELS_FULL[i]} : ${h.open ? h.from+' – '+h.to : 'Fermé'}</div>`).join('');
-    }
+    catsSection.style.display = '';
+    document.getElementById('tgCategories').innerHTML =
+      `<div class="category-item ${state.activeCategory==='all'?'active':''}" onclick="setActiveCategory('all')">
+        <div class="category-img" style="display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid fa-border-all" style="color:var(--primary);font-size:1.3rem;"></i></div>
+        <span class="category-name">Tout</span>
+      </div>` +
+      homeCats.map(c=>{
+        const cover = (PRODUCTS.find(p=>p.cat===c && p.active && p.photo)||{}).photo;
+        return `<div class="category-item ${state.activeCategory===c?'active':''}" onclick="setActiveCategory('${c}')">
+          <div class="category-img">${cover?`<img src="${cover}" alt="${catsState[c]}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
+          <span class="category-name">${catsState[c]}</span>
+        </div>`;
+      }).join('');
   }
+
+  // Horaires — vraies données (Paramètres → Horaires)
+  const openPill = document.getElementById('tgOpenStatus');
+  const open = isOpenNow();
+  openPill.innerHTML = `<span class="pill ${open?'pill-forest':'pill-terracotta'}" style="margin-bottom:1rem;">${open?'Ouvert maintenant':'Fermé actuellement'}</span>`;
+  document.getElementById('tgHoursList').innerHTML = RESTAURANT.hours.map((h,i)=>
+    `<li class="hours-item"><span>${DAY_LABELS_FULL[i]}</span><strong>${h.open ? h.from+' - '+h.to : 'Fermé'}</strong></li>`
+  ).join('');
+
+  // Contact — vraies données (Paramètres)
   document.getElementById('sfFooterInfo').innerHTML = `
-    ${RESTAURANT.address ? `<p style="font-size:14px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">${ic('mapPin',15,{stroke:'var(--ink-faint)'})}${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
-    ${RESTAURANT.phone ? `<p style="font-size:14px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">${ic('phone',15,{stroke:'var(--ink-faint)'})}${RESTAURANT.phone}</p>` : ''}
-    <div style="font-size:13px;color:var(--ink-soft);display:flex;align-items:flex-start;gap:8px;"><span style="margin-top:2px;">${ic('clock',15,{stroke:'var(--ink-faint)'})}</span><div>${hoursHtml}</div></div>`;
+    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
+    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${RESTAURANT.phone}</p>` : ''}`;
 
   // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
   // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
@@ -2835,75 +3881,86 @@ function renderStorefrontHero(){
   };
   const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
   document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
-    `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,36)}</a>`
+    `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
   ).join('');
 
   // Localisation — uniquement si activée ET un vrai lien Google Maps est
-  // renseigné (spec §4/§29/§34) ; jamais de carte ou de lien fictif.
+  // renseigné ; jamais de carte ou de lien fictif.
   const mapEl = document.getElementById('sfMapContainer');
-  if(RESTAURANT.showMap && RESTAURANT.mapsLink.trim()){
-    mapEl.innerHTML = `<div style="border-radius:20px;border:1px solid var(--cream-line);padding:18px;display:flex;flex-direction:column;gap:10px;">
-      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);">Notre localisation</p>
-      ${RESTAURANT.address ? `<p style="font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;">${ic('mapPin',15,{stroke:'var(--ink-faint)'})}${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
-      <a href="${normalizeUrl(RESTAURANT.mapsLink)}" target="_blank" rel="noreferrer" class="btn btn-outline btn-sm" style="align-self:flex-start;">${ic('map',14)} Voir sur Google Maps</a>
-    </div>`;
-  } else {
-    mapEl.innerHTML = '';
-  }
+  mapEl.innerHTML = (RESTAURANT.showMap && RESTAURANT.mapsLink.trim())
+    ? `<a href="${normalizeUrl(RESTAURANT.mapsLink)}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Voir sur Google Maps</a>`
+    : '';
 
-  hydrateIcons(document.getElementById('sfHero'));
-  hydrateIcons(document.querySelector('footer'));
+  // Cadenas de brouillon/expiration — recalculé ici aussi, car ce
+  // header/hero peut se redessiner sans repasser par setView().
+  renderStorefrontGateOverlay();
+  hydrateIcons(document.getElementById('view-storefront'));
+}
+
+/* Menu mobile du thème public — indépendant du menu hamburger de la
+   plateforme (masqué sur le site public, voir body.storefront-active). */
+function openTgMobileMenu(){
+  document.getElementById('tgMobileMenu').classList.add('open');
+  document.getElementById('tgOverlay').classList.add('active');
+}
+function closeTgMobileMenu(){
+  document.getElementById('tgMobileMenu').classList.remove('open');
+  document.getElementById('tgOverlay').classList.remove('active');
 }
 
 /* ---------------- PRODUCTS ---------------- */
 function setActiveCategory(cat){
   state.activeCategory = cat;
-  document.querySelectorAll('.cat-tab').forEach(t=>t.classList.toggle('active', t.dataset.cat===cat));
+  renderStorefrontHero(); // redessine la barre de catégories avec la bonne surbrillance
   renderProductSections();
+  document.getElementById('tgMenu').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function productCardHtml(p){
   return `
-  <button onclick='openProductModal("${p.id}")' class="card" style="text-align:left;overflow:hidden;display:flex;flex-direction:column;${!p.available?'opacity:.6;':''}">
-    <div style="aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
-      ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : ic(CAT_ICON[p.cat]||'utensils', 40, {stroke:'var(--amber-deep)'})}
-      ${p.available ? `<span style="position:absolute;bottom:8px;right:8px;width:30px;height:30px;border-radius:999px;background:var(--amber);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.15);">${ic('plus',16)}</span>`
-        : `<span class="pill pill-terracotta" style="position:absolute;bottom:8px;left:8px;font-size:10px;">Rupture</span>`}
+  <div class="product-card" style="${!p.available?'opacity:.6;':''}">
+    <div class="product-img-wrapper" onclick='openProductModal("${p.id}")'>
+      ${p.photo ? `<img src="${p.photo}" alt="${p.name}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
+      ${!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : ''}
     </div>
-    <div style="padding:11px;">
-      <p style="font-size:13.5px;font-weight:600;">${p.name}</p>
-      <p style="font-size:11.5px;color:var(--ink-faint);margin:2px 0 8px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${p.desc}</p>
-      <div class="flex items-center justify-between">
-        <span class="font-tabular" style="font-size:13.5px;font-weight:700;">${fmt(p.price)}</span>
-        <span style="font-size:10.5px;color:var(--ink-faint);display:flex;align-items:center;gap:3px;">${ic('clock',11)}${p.prep} min</span>
+    <div class="product-content">
+      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${p.name}</h3>
+      <p class="product-desc">${p.desc||''}</p>
+      <div class="product-footer">
+        <span class="product-price">${fmt(p.price)}</span>
+        <button class="add-cart-btn" onclick='openProductModal("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
       </div>
     </div>
-  </button>`;
+  </div>`;
 }
 
 function renderProductSections(){
   const visible = PRODUCTS.filter(p=>p.active);
-  const cats = state.activeCategory==='all' ? Object.keys(catsState) : [state.activeCategory];
-  const html = cats.map(cat=>{
-    const items = visible.filter(p=>p.cat===cat);
-    if(!items.length) return '';
-    return `<section style="margin-bottom:36px;">
-      <h2 class="font-display" style="font-size:19px;margin-bottom:14px;">${catsState[cat]||cat}</h2>
-      <div class="grid prod-grid" style="grid-template-columns:repeat(4,1fr);gap:14px;">${items.map(productCardHtml).join('')}</div>
-    </section>`;
-  }).join('');
-  document.getElementById('sfProductSections').innerHTML = html || `
-    <div class="empty-state">${ic('utensils',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit disponible dans cette catégorie pour le moment.</p></div>`;
+  const items = state.activeCategory==='all' ? visible : visible.filter(p=>p.cat===state.activeCategory);
+  document.getElementById('sfProductSections').innerHTML = items.length ? items.map(productCardHtml).join('') : `
+    <div class="no-results" style="grid-column:1/-1;"><i class="fa-solid fa-utensils" style="font-size:2.5rem;margin-bottom:0.8rem;color:#CCC;"></i><h3>Aucun plat disponible pour le moment.</h3></div>`;
 
-  document.getElementById('sfReviews').innerHTML = DEMO_REVIEWS.length===0
-    ? `<div class="empty-state" style="grid-column:1/-1;">${ic('star',22,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après des commandes terminées.</p></div>`
-    : DEMO_REVIEWS.map(r=>`
-    <div class="card" style="padding:16px;">
-      <div style="display:flex;gap:2px;margin-bottom:6px;">${Array.from({length:5}).map((_,i)=>ic('star',13,{fill: i<r.rating?'var(--amber)':'none', stroke: i<r.rating?'var(--amber)':'var(--cream-line)'})).join('')}</div>
-      <p style="font-size:13px;color:var(--ink-soft);">${r.comment}</p>
-    </div>`).join('');
+  // Meilleures ventes — calculées à partir des VRAIES commandes déjà
+  // passées sur ce restaurant (jamais un badge "populaire" inventé).
+  // Section masquée tant qu'il n'y a pas encore assez de données réelles.
+  const tally = {};
+  DEMO_ORDERS.forEach(o=>(o.items||[]).forEach(it=>{
+    const [name, qty] = orderItemNameQty(it);
+    tally[name] = (tally[name]||0) + qty;
+  }));
+  const topNames = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([name])=>name);
+  const bestSellers = topNames.map(name => visible.find(p=>p.name===name)).filter(Boolean);
+  const bsSection = document.getElementById('tgBestSellersSection');
+  if(bestSellers.length === 0){
+    bsSection.style.display = 'none';
+  } else {
+    bsSection.style.display = '';
+    document.getElementById('tgBestSellers').innerHTML = bestSellers.map(productCardHtml).join('');
+  }
+
   hydrateIcons();
 }
+
 
 /* ---------------- PRODUCT MODAL ---------------- */
 let modalProduct = null, modalVariant = null, modalQty = 1;
@@ -3646,6 +4703,12 @@ function drawRevenueChart(){
 /* ---------------- CATEGORIES (gestion des catégories uniquement — les
    produits sont gérés dans la section Produits dédiée) ---------------- */
 let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
+/* Visibilité de chaque catalogue sur la page d'accueil du site public —
+   { [catKey]: boolean }. Absent d'une clé = considéré visible par
+   défaut (catsHomeVisible[c] !== false), pour que les catégories
+   existantes avant l'ajout de cette fonctionnalité restent visibles
+   sans surprise. Persisté par catégorie (categories.visible_on_home). */
+let catsHomeVisible = {};
 let expandedCat = 'plats';
 function dashCategories(){
   const atLimit = !canAddCategory();
@@ -3669,6 +4732,10 @@ function renderCatList(){
         <span style="color:var(--ink-faint);">${ic(open?'chevronUp':'chevronDown',15)}</span>
       </button>
       ${open?`<div style="background:var(--cream);padding:10px 16px 16px;">
+        <div class="flex items-center justify-between" style="padding:8px 0 12px;border-bottom:1px solid var(--cream-line);margin-bottom:10px;">
+          <div><p style="font-size:12.5px;font-weight:600;">Visible sur la page d'accueil du site public</p><p style="font-size:11px;color:var(--ink-faint);">Désactivez pour garder ce catalogue disponible sans l'afficher en vitrine.</p></div>
+          <div class="toggle ${catsHomeVisible[key]!==false?'on':''}" onclick="toggleCategoryHomeVisibility('${key}')"><div class="dot"></div></div>
+        </div>
         ${items.length===0?`<p style="font-size:12px;color:var(--ink-faint);padding:6px 2px 12px;">Aucun produit dans cette catégorie.</p>`:
         items.map(p=>`<div class="flex items-center gap-3" style="background:var(--surface);border:1px solid var(--cream-line);border-radius:12px;padding:8px 12px;margin-bottom:6px;">
           ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${p.name}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
@@ -3680,6 +4747,16 @@ function renderCatList(){
   }).join('');
 }
 function toggleCat(key){ expandedCat = expandedCat===key ? null : key; document.getElementById('catList').innerHTML = renderCatList(); hydrateIcons(); }
+async function toggleCategoryHomeVisibility(key){
+  catsHomeVisible[key] = catsHomeVisible[key] === false ? true : false;
+  document.getElementById('catList').innerHTML = renderCatList();
+  hydrateIcons();
+  if(!RESTAURANT.id) return;
+  const {error} = await supabaseClient.from('categories')
+    .update({visible_on_home: catsHomeVisible[key]})
+    .eq('restaurant_id', RESTAURANT.id).eq('key', key);
+  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+}
 
 /* ---------------- PRODUITS (gestion centrale du catalogue) ---------------- */
 let productSearch = '';
@@ -4667,6 +5744,14 @@ function settingsBodyHtml(){
       <div><label class="field-label">Ville</label><input class="field-input" id="setCity" value="${RESTAURANT.city}"></div>
     </div>
     <label class="field-label">Adresse</label><input class="field-input" id="setAddress" value="${RESTAURANT.address}" style="margin-bottom:14px;">
+    <div class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--cream);">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Titre d'accueil (Hero)</p>
+      <label class="field-label">Titre principal</label>
+      <input class="field-input" id="setHeroTitle" placeholder="Bienvenue chez ${RESTAURANT.name||'votre restaurant'}" value="${RESTAURANT.heroTitle}" style="margin-bottom:10px;">
+      <label class="field-label">Sous-titre</label>
+      <input class="field-input" id="setHeroSubtitle" placeholder="${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}" value="${RESTAURANT.heroSubtitle}">
+      <p style="font-size:11px;color:var(--ink-faint);margin-top:8px;">Laissez vide pour utiliser un texte généré automatiquement à partir du nom, du type et de la ville.</p>
+    </div>
     <div class="flex gap-3">
       <div class="flex-col items-center" style="flex:1;max-width:120px;">
         <label class="field-label w-full">Logo</label>
@@ -4848,6 +5933,8 @@ async function saveSettings(){
   const phoneEl = document.getElementById('setPhone'); if(phoneEl) RESTAURANT.phone = phoneEl.value;
   const cityEl = document.getElementById('setCity'); if(cityEl) RESTAURANT.city = cityEl.value;
   const addrEl = document.getElementById('setAddress'); if(addrEl) RESTAURANT.address = addrEl.value;
+  const heroTitleEl = document.getElementById('setHeroTitle'); if(heroTitleEl) RESTAURANT.heroTitle = heroTitleEl.value.trim();
+  const heroSubtitleEl = document.getElementById('setHeroSubtitle'); if(heroSubtitleEl) RESTAURANT.heroSubtitle = heroSubtitleEl.value.trim();
   const feeEl = document.getElementById('setDeliveryFee'); if(feeEl) RESTAURANT.delivery.fee = Number(feeEl.value)||0;
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
