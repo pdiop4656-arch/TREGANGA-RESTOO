@@ -641,12 +641,13 @@ let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/perso
 
 async function loadRestaurantIntoState(restaurantId){
   const isLoggedIn = !!currentUser;
-  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes] = await Promise.all([
+  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes, paymentsRes] = await Promise.all([
     supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
     supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
     supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
     isLoggedIn ? supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
     isLoggedIn ? supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId) : Promise.resolve({data:[]}),
+    isLoggedIn ? supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10) : Promise.resolve({data:[]}),
   ]);
   if(!r) return false;
 
@@ -674,11 +675,23 @@ async function loadRestaurantIntoState(restaurantId){
   RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
   RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
   RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
-  // Fait avancer trialing/active → expired si la date est dépassée, et
-  // répercute ce changement dans Supabase — sans cron : c'est calculé à
-  // chaque chargement, ce qui suffit pour un fichier HTML autonome.
-  if(computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')) persistRestaurant();
-  state.plan = r.plan || 'starter';
+  // Fait avancer trialing/active/cancelled → expired si la date est
+  // dépassée, et répercute ce changement dans Supabase — sans cron :
+  // c'est vérifié à chaque chargement, ce qui suffit pour un fichier
+  // HTML autonome. Passe par une fonction RPC dédiée, à sens unique
+  // vers l'expiration (jamais vers l'activation) — voir "VERROU
+  // CRITIQUE" dans supabase_schema.sql ; subscription_status n'est
+  // plus modifiable par une simple mise à jour de paramètres.
+  if(isLoggedIn && computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')){
+    supabaseClient.rpc('sync_my_subscription_expiry').then(({error}) => {
+      if(error) console.error('sync_my_subscription_expiry:', error.message);
+    });
+  }
+  // r.plan ne devrait plus jamais être vide pour un restaurant créé via
+  // create_my_restaurant (qui l'exige) — 'free' n'est ici qu'un filet
+  // de sécurité pour d'éventuelles lignes plus anciennes, jamais un
+  // nouveau choix silencieux à la création.
+  state.plan = r.plan || 'free';
   state.toggles = Object.assign({wave:false,orange_money:false,cash:true,on_delivery:true}, r.payment_toggles || {});
   applyRestaurantName(r.name);
   applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
@@ -710,6 +723,10 @@ async function loadRestaurantIntoState(restaurantId){
     status:s.status, code:s.code, createdAt:new Date(s.invited_at).getTime(),
     expiresAt:s.expires_at ? new Date(s.expires_at).getTime() : null, userId:s.user_id,
   }));
+
+  // Historique des paiements PayTech (abonnement du restaurateur —
+  // jamais mélangé avec les commandes de ses propres clients).
+  paymentsHistory = (paymentsRes && paymentsRes.data) || [];
 
   // Réinitialise les sélections d'écran qui pointaient peut-être vers
   // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
@@ -780,18 +797,22 @@ function playNotificationSound(){
    ne perd jamais sa saisie locale même si le réseau flanche. */
 async function persistRestaurant(){
   if(!RESTAURANT.id) return;
+  // "slug" et les champs d'abonnement (plan mis à part) sont
+  // volontairement absents de cet appel : ils ne sont plus modifiables
+  // par une simple mise à jour de paramètres — voir "VERROU CRITIQUE"
+  // dans supabase_schema.sql. subscription_status en particulier ne
+  // peut être activé que par le webhook PayTech, jamais depuis ce
+  // fichier ; les transitions légitimes côté client passent par des
+  // fonctions RPC dédiées (cancelSubscription, reactivateSubscription,
+  // syncMySubscriptionExpiry).
   const {error} = await supabaseClient.from('restaurants').update({
-    name:RESTAURANT.name, slug:RESTAURANT.slug, type:RESTAURANT.type,
+    name:RESTAURANT.name, type:RESTAURANT.type,
     logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
     primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
     address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
     hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
     payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
     notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:RESTAURANT.isPublished,
-    subscription_status:RESTAURANT.subscriptionStatus, billing_cycle:RESTAURANT.billingCycle,
-    trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
-    current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
-    last_renewed_at: RESTAURANT.lastRenewedAt ? new Date(RESTAURANT.lastRenewedAt).toISOString() : null,
   }).eq('id', RESTAURANT.id);
   if(error) toast('Enregistrement Supabase impossible : ' + error.message);
 }
@@ -1631,6 +1652,15 @@ function computeEffectiveSubscriptionStatus(){
 function isAccessBlocked(){
   return computeEffectiveSubscriptionStatus()==='expired';
 }
+/* Les fonctionnalités réservées à Premium ne se débloquent QUE si le
+   paiement PayTech a été réellement confirmé (subscription_status
+   passé à 'active' par le webhook — jamais par le simple fait d'avoir
+   choisi "Premium" à l'inscription, qui met seulement plan='pro' en
+   attente de paiement). Choisir Premium sans payer garde l'accès du
+   forfait Gratuit jusqu'à confirmation réelle. */
+function isPremiumActive(){
+  return state.plan==='pro' && computeEffectiveSubscriptionStatus()==='active';
+}
 function trialDaysRemaining(){
   if(!RESTAURANT.trialEndsAt) return FREE_TRIAL_DAYS;
   return Math.max(0, Math.ceil((RESTAURANT.trialEndsAt - Date.now()) / 86400000));
@@ -1932,9 +1962,7 @@ document.getElementById('stepsGrid').innerHTML = STEPS.map(([title,text],i)=>`
 const PLANS = [
   {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,duration:'10 jours',
    features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
-  {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:3000,yearly:30240,
-   features:['1 restaurant','Catalogue produits illimité','QR Code personnalisé','Commandes en ligne illimitées','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
-  {code:'pro',name:'Pro',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
+  {code:'pro',name:'Premium',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
    features:['Catalogue et commandes sans limite','QR Code personnalisé','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
 ];
 
@@ -1952,7 +1980,7 @@ function renderPricing(){
     const isPro = p.code==='pro';
     const isFree = p.code==='free';
     const monthlyEq = state.yearly ? Math.round(p.yearly/12) : p.monthly;
-    const ctaLabel = isFree ? 'Commencer gratuitement' : isPro ? 'Choisir Pro' : 'Choisir Starter';
+    const ctaLabel = isFree ? 'Commencer gratuitement' : 'Choisir Premium';
     return `
     <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
       ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
@@ -1966,7 +1994,7 @@ function renderPricing(){
       <div class="flex-col gap-2" style="margin-bottom:26px;flex:1;">
         ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;flex-shrink:0;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
       </div>
-      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code==='free'?'starter':p.code}')" style="margin-top:auto;">${ctaLabel}</button>
+      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')" style="margin-top:auto;">${ctaLabel}</button>
       ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Essai gratuit de 14 jours inclus</p>`:''}
     </div>`;
   }).join('');
@@ -2039,7 +2067,7 @@ const obState = {
   obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null,
   address:'', deliveryEnabled:true,
   paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
-  plan:'starter', billing:'monthly', paymentMethod:'wave',
+  plan:null, billing:'monthly', paymentMethod:'wave', // plan:null — jamais de forfait présélectionné, le client doit cliquer
   paying:false,
 };
 
@@ -2049,7 +2077,11 @@ function startOnboarding(presetPlan){
     restoName:'', restoType:'Sénégalais', city:'Dakar', phone:'', slug:null,
     obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, address:'', deliveryEnabled:true,
     paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
-    plan: presetPlan || 'starter', billing:'monthly', paymentMethod:'wave', paying:false,
+    // presetPlan reste honoré s'il vient d'un clic explicite sur une
+    // carte de tarif précise ("Commencer avec Premium" par exemple) —
+    // c'est encore un choix explicite du client, pas un défaut caché.
+    // Sans ce préréglage explicite, plan reste null.
+    plan: presetPlan || null, billing:'monthly', paymentMethod:'wave', paying:false,
   });
   setView('onboarding');
 }
@@ -2073,6 +2105,7 @@ async function obNext(){
     currentUser = data.user;
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
+  if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
   renderOnboarding();
@@ -2102,6 +2135,17 @@ async function finishOnboarding(){
   }
   currentUser = user; // resynchronise la variable globale sur la vraie session
 
+  // Le forfait n'est jamais choisi automatiquement à la place du
+  // client — s'il n'a explicitement rien sélectionné à l'étape
+  // "Abonnement", on l'y renvoie plutôt que de laisser passer une
+  // valeur par défaut silencieuse.
+  if(!obState.plan){
+    toast('Choisissez un forfait (Gratuit ou Premium) avant de continuer.');
+    obState.step = 4;
+    renderOnboarding();
+    return;
+  }
+
   const btn = document.getElementById('obFinishBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
 
@@ -2125,63 +2169,60 @@ async function finishOnboarding(){
   applyRestaurantName(obState.restoName);
 
   // Machine à états de l'abonnement — réelle, pas décorative :
-  // 'free' => vrai essai avec vraie date de fin ; un forfait payant
-  // choisi ici est appliqué immédiatement ('active') PARCE QUE le
-  // restaurateur l'a explicitement choisi, jamais parce qu'un paiement
-  // a été confirmé (aucun fournisseur n'est connecté — voir l'avertissement
-  // affiché à l'étape précédente de l'onboarding).
+  // 'plan' enregistre le CHOIX du client (Gratuit ou Premium) ; mais
+  // Premium ne devient réellement actif ('subscription_status'=
+  // 'active') qu'après confirmation réelle du paiement PayTech, jamais
+  // au moment de la simple sélection. En attendant ce paiement, l'accès
+  // reste celui du forfait Gratuit (même essai, mêmes dates réelles) —
+  // voir isPremiumActive() qui exige plan==='pro' ET status==='active'.
   RESTAURANT.billingCycle = obState.billing || 'monthly';
-  if(obState.plan === 'free'){
-    RESTAURANT.subscriptionStatus = 'trialing';
-    RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
-    RESTAURANT.currentPeriodEnd = null;
-  } else {
-    RESTAURANT.subscriptionStatus = 'active';
-    RESTAURANT.trialEndsAt = null;
-    RESTAURANT.currentPeriodEnd = Date.now() + SUBSCRIPTION_PERIOD_DAYS[RESTAURANT.billingCycle]*86400000;
-    RESTAURANT.lastRenewedAt = Date.now();
-  }
+  RESTAURANT.subscriptionStatus = 'trialing';
+  RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
+  RESTAURANT.currentPeriodEnd = null;
 
-  // Création réelle du restaurant dans Supabase, rattaché à user.id —
-  // exactement ce que la policy RLS "restaurants_owner_insert" attend
-  // (with check (owner_id = auth.uid())). Une nouvelle tentative avec
-  // un slug légèrement différent est faite UNIQUEMENT si Supabase
-  // rejette pour collision de slug (code 23505) — jamais pour un autre
-  // type d'erreur, qui doit rester visible tel quel (y compris une
-  // éventuelle violation RLS, qui indiquerait alors un vrai problème
-  // de policy plutôt qu'un souci d'id local).
+  // Création réelle du restaurant via une fonction RPC côté serveur
+  // (voir create_my_restaurant dans supabase_schema.sql). Le client
+  // n'envoie JAMAIS owner_id — la fonction calcule elle-même auth.uid()
+  // à partir du token de LA REQUÊTE, ce qui rend structurellement
+  // impossible le décalage "id local ≠ id réellement authentifié" qui
+  // provoquait le rejet RLS "new row violates row-level security
+  // policy for table restaurants". RLS reste pleinement actif ; cette
+  // fonction est appelable avec la clé publishable normale, par un
+  // utilisateur connecté uniquement — aucune clé service_role.
   let data, error;
   for(let attempt=0; attempt<3; attempt++){
-    ({data, error} = await supabaseClient.from('restaurants').insert({
-      owner_id: user.id, created:true, name:RESTAURANT.name, slug:RESTAURANT.slug,
-      type:RESTAURANT.type, logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
-      primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
-      address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
-      hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
-      payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
-      notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:false,
-      subscription_status:RESTAURANT.subscriptionStatus, billing_cycle:RESTAURANT.billingCycle,
-      trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
-      current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
-      last_renewed_at: RESTAURANT.lastRenewedAt ? new Date(RESTAURANT.lastRenewedAt).toISOString() : null,
-    }).select().single());
+    ({data, error} = await supabaseClient.rpc('create_my_restaurant', {
+      p_name:RESTAURANT.name, p_slug:RESTAURANT.slug, p_type:RESTAURANT.type,
+      p_logo_data_url:RESTAURANT.logoDataUrl, p_cover_data_url:RESTAURANT.coverDataUrl,
+      p_primary_color:RESTAURANT.primary, p_secondary_color:RESTAURANT.secondary, p_text_color:RESTAURANT.textColor,
+      p_address:RESTAURANT.address, p_city:RESTAURANT.city, p_phone:RESTAURANT.phone,
+      p_hours:RESTAURANT.hours, p_delivery:RESTAURANT.delivery, p_social:RESTAURANT.social,
+      p_payment_toggles:state.toggles, p_plan:state.plan,
+      p_subscription_status:RESTAURANT.subscriptionStatus, p_billing_cycle:RESTAURANT.billingCycle,
+      p_trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
+      p_current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
+    }));
     if(!error) break;
-    if(error.code === '23505'){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
-    break; // toute autre erreur (y compris RLS) : on arrête et on l'affiche, pas de nouvelle tentative aveugle
+    if(error.code === '23505' && /slug/i.test(error.message||'')){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
+    break; // toute autre erreur (y compris "déjà un restaurant" ou RLS) : on arrête et on l'affiche, pas de nouvelle tentative aveugle
   }
+  // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
+  // on gère aussi le cas où PostgREST le renverrait dans un tableau
+  // d'un élément, selon la version.
+  const restaurantRow = Array.isArray(data) ? data[0] : data;
 
   if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
 
-  if(error){
+  if(error || !restaurantRow){
     // On ne prétend JAMAIS que la création a réussi si Supabase l'a
     // refusée — pas de redirection vers le tableau de bord, pas de
     // toast de succès qui écraserait visuellement ce message d'erreur.
     RESTAURANT.created = false;
-    toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + error.message);
+    toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + (error ? error.message : 'réponse vide.'));
     return;
   }
 
-  RESTAURANT.id = data.id;
+  RESTAURANT.id = restaurantRow.id;
   RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
@@ -2352,13 +2393,12 @@ function obStepHtml(){
   if(step===4){
     const plans = [
       {code:'free',name:'Gratuit',price:0,duration:'10 jours',features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
-      {code:'starter',name:'Starter',price:3000,features:['1 restaurant','Catalogue illimité','QR Code','Paiement à la livraison & espèces']},
-      {code:'pro',name:'Pro',price:7000,features:['Tout Starter','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
+      {code:'pro',name:'Premium',price:7000,features:['Catalogue et commandes illimités','QR Code personnalisé','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
     ];
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">14 jours d'essai gratuit inclus sur Starter et Pro. Gratuit est un essai limité à 10 jours.</p>
-    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;">
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours ; Premium se paie via PayTech depuis votre tableau de bord une fois votre compte créé.</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;">
       ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
         <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
         <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
@@ -2366,27 +2406,27 @@ function obStepHtml(){
         ${p.features.map(f=>`<p style="font-size:10.5px;color:var(--ink-soft);margin-bottom:3px;display:flex;align-items:center;gap:5px;">${ic('check',11,{stroke:'var(--forest)'})}${f}</p>`).join('')}
       </button>`).join('')}
     </div>
+    ${!o.plan ? `<p style="font-size:11px;color:var(--terracotta);margin-top:10px;">Choisissez un forfait pour continuer.</p>` : ''}
     ${obNav(true)}`;
   }
 
   if(step===5){
-    const price = obState.plan==='pro' ? 7000 : 3000;
     return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Abonnement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait <b>${o.plan==='pro'?'Pro':'Starter'}</b> — ${fmt(price)}/mois</p>
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Forfait Premium</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>Premium</b> — ${fmt(7000)}/mois</p>
     <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
-      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Paiement réel à connecter.</b></p>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Aucun fournisseur de paiement (Wave, Orange Money…) n'est encore relié à ce projet Supabase. Votre restaurant sera créé avec le forfait <b>${o.plan==='pro'?'Pro':'Starter'}</b> marqué « en attente de paiement » — aucune somme n'est prélevée. Un vrai encaissement nécessite une intégration serveur (Edge Function + webhook) séparée.</p>
+      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Le paiement se fait depuis votre tableau de bord.</b></p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Votre restaurant va être créé maintenant, avec l'accès du forfait Gratuit en attendant. Une fois dans votre tableau de bord, ouvrez Abonnement → Payer avec PayTech pour activer réellement Premium. Les fonctionnalités Premium ne s'activent qu'après confirmation réelle du paiement par PayTech — jamais automatiquement.</p>
     </div>
-    <button class="btn btn-secondary btn-lg w-full" onclick="obNext()">Continuer sans paiement réel</button>
+    <button class="btn btn-secondary btn-lg w-full" onclick="obNext()">Créer mon restaurant</button>
     <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
   }
 
   if(step===6) return `
     <div class="text-center">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est créé</h2>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Pro':o.plan==='free'?'Gratuit':'Starter'}</b>. ${o.plan!=='free' ? "Aucun paiement réel n'a été prélevé — aucun fournisseur de paiement n'est encore connecté à ce projet (voir Abonnement dans les Paramètres)." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est prêt à être créé</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
         <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${o.slug || slugify(o.restoName)}</span>
@@ -2397,7 +2437,7 @@ function obStepHtml(){
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Publier votre site public</p>
       </div>
-      <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Aller à mon tableau de bord ${ic('arrowRight',16)}</button>
+      <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Créer mon restaurant ${ic('arrowRight',16)}</button>
     </div>`;
 
   return '';
@@ -2920,7 +2960,7 @@ function openMoreSheet(){
   const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k) && canSeeSection(k));
   if(canSeeSection('settings')) rest.push(['abonnement','wallet','Abonnement']);
   document.getElementById('moreSheetGrid').innerHTML = rest.map(([key,icon,label])=>{
-    const locked = (key==='staff' && state.plan!=='pro');
+    const locked = (key==='staff' && !isPremiumActive());
     return `<button class="more-tile ${locked?'locked':''}" onclick="setDashSection('${key}')">
       <span style="position:relative;display:flex;">${ic(icon,22)}${locked?`<span style="position:absolute;top:-4px;right:-6px;">${ic('lock',11)}</span>`:''}</span>
       ${label}
@@ -3197,7 +3237,7 @@ function dashAnalytics(){
     <h2 class="font-display" style="font-size:16px;margin-bottom:14px;">Évolution du chiffre d'affaires (7 derniers jours)</h2>
     <div id="revenueChart"></div>
   </div>
-  ${state.plan!=='pro' ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
+  ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
   <div class="card" style="padding:18px;">
     <h2 class="font-display" style="font-size:16px;margin-bottom:10px;">Analyses avancées</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Pro.</p>
@@ -3626,7 +3666,7 @@ function dashAccounting(){
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;align-items:stretch;">
     <div class="stat-card">${icBadge('wallet',{size:34,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(grossRevenue)}</p><p style="font-size:11px;color:var(--ink-soft);">Chiffre d'affaires brut</p></div>
     <div class="stat-card">${icBadge('receipt',{size:34,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${validOrders.length}</p><p style="font-size:11px;color:var(--ink-soft);">Transactions</p></div>
-    <div class="stat-card">${icBadge('card',{size:34,bg:'rgba(232,135,30,.12)',color:'var(--amber-ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(PLAN_PRICES[state.plan])}</p><p style="font-size:11px;color:var(--ink-soft);">Coût abonnement (${state.plan==='pro'?'Pro':'Starter'}) /mois</p></div>
+    <div class="stat-card">${icBadge('card',{size:34,bg:'rgba(232,135,30,.12)',color:'var(--amber-ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${state.plan==='pro'?fmt(PREMIUM_PRICE):'0 FCFA'}</p><p style="font-size:11px;color:var(--ink-soft);">Coût abonnement (${state.plan==='pro'?'Premium':'Gratuit'}) /mois</p></div>
   </div>
   <div class="card" style="padding:18px;margin-bottom:18px;">
     <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Revenus par moyen de paiement</h2>
@@ -3735,7 +3775,7 @@ function dashPayments(){
 function paymentsListHtml(methods){
   return methods.map(m=>{
     const on = state.toggles[m];
-    const locked = PRO_ONLY_METHODS.includes(m) && state.plan!=='pro';
+    const locked = PRO_ONLY_METHODS.includes(m) && !isPremiumActive();
     const hasDetails = PAYMENT_DETAILS_FIELDS[m] && on && !locked;
     return `<div class="card" style="padding:14px;${locked?'opacity:.85;':''}">
       <div class="flex items-center gap-3">
@@ -3755,7 +3795,7 @@ function paymentsListHtml(methods){
 }
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
-  if(PRO_ONLY_METHODS.includes(m) && state.plan!=='pro'){
+  if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()){
     toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Pro.", true);
     return;
   }
@@ -3853,7 +3893,7 @@ function genInviteCode(){
 }
 
 function dashStaff(){
-  if(state.plan!=='pro'){
+  if(!isPremiumActive()){
     return `
     <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
     <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Invitez des membres de votre équipe et définissez leurs permissions.</p>
@@ -4340,7 +4380,7 @@ function settingsBodyHtml(){
       </div>`:''}
     </div>
     ${enabledDeliveryModes().length===0?`<p style="font-size:12px;color:var(--terracotta);margin-bottom:14px;">Aucun mode de livraison actif — la livraison n'apparaîtra pas au checkout tant qu'un mode n'est pas activé.</p>`:''}
-    ${state.plan!=='pro' ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
+    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
     :`<p style="font-size:12.5px;color:var(--ink-faint);">La livraison n'apparaîtra plus dans le parcours de commande de vos clients.</p>`}`;
 
   if(settingsTab==='Réseaux & carte'){
@@ -4469,7 +4509,7 @@ function pickCover(){
 }
 
 /* ---------------- ABONNEMENT — machine à états réelle ---------------- */
-const PLAN_PRICES = {starter:3000,pro:7000};
+const PREMIUM_PRICE = 7000;
 let abonSelectedPlan = null;
 let abonSelectedCycle = null;
 
@@ -4481,10 +4521,11 @@ const SUBSCRIPTION_STATUS_TONE = {
 };
 
 function dashAbonnement(){
-  if(abonSelectedPlan===null) abonSelectedPlan = state.plan==='free' ? 'starter' : state.plan;
+  if(abonSelectedPlan===null) abonSelectedPlan = state.plan==='pro' ? 'pro' : 'free';
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle || 'monthly';
   const status = computeEffectiveSubscriptionStatus();
-  const planLabel = state.plan==='pro' ? 'Pro' : state.plan==='starter' ? 'Starter' : 'Gratuit (essai)';
+  const premiumActive = isPremiumActive();
+  const planLabel = state.plan==='pro' ? (premiumActive ? 'Premium' : 'Premium (en attente de paiement)') : 'Gratuit';
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
@@ -4494,64 +4535,128 @@ function dashAbonnement(){
       <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]}">${SUBSCRIPTION_STATUS_LABELS[status]}</span>
     </div>
     <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
-      ${status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
-        : status==='active' ? `Facturation ${RESTAURANT.billingCycle==='annual'?'annuelle':'mensuelle'} — accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}. Aucun fournisseur de paiement connecté : ce forfait n'est pas réellement facturé.`
+      ${state.plan==='pro' && !premiumActive ? `Premium sélectionné mais pas encore payé — l'accès reste celui du forfait Gratuit. Terminez le paiement PayTech ci-dessous pour l'activer réellement.`
+        : status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
+        : status==='active' ? `Facturation ${RESTAURANT.billingCycle==='annual'?'annuelle':'mensuelle'} — accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, confirmé par PayTech.`
         : status==='cancelled' ? `Annulé — accès encore valide ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, puis passera automatiquement en Expiré.`
         : `Votre accès complet est suspendu. Choisissez un forfait ci-dessous pour le rétablir.`}
     </p>
-    ${status==='active' ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
+    ${premiumActive ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
     ${status==='cancelled' ? `<button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="reactivateSubscription()">Réactiver</button>` : ''}
   </div>
-  <div class="card" style="padding:18px;max-width:560px;" id="abonCard">${abonCardHtml()}</div>`;
+  <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;" id="abonCard">${abonCardHtml()}</div>
+  <div class="card" style="padding:18px;max-width:560px;" id="paymentsHistoryCard">${paymentsHistoryHtml()}</div>`;
 }
 
 function abonCardHtml(){
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-    ${['starter','pro'].map(code=>`<button onclick="abonSelectedPlan='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
-      <p style="font-size:13px;font-weight:600;text-transform:capitalize;">${code}</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PLAN_PRICES[code])}/mois</p></button>`).join('')}
+    <button onclick="abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Gratuit</p><p style="font-size:11.5px;color:var(--ink-faint);">0 FCFA</p></button>
+    <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
+  ${abonSelectedPlan==='pro' ? `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Facturation</p>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-    ${[['monthly','Mensuelle',1],['annual','Annuelle',12*0.83]].map(([code,label,mult])=>`<button onclick="abonSelectedCycle='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedCycle===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedCycle===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;text-align:left;">
-      <p style="font-size:13px;font-weight:600;">${label}</p><p style="font-size:11px;color:var(--ink-faint);">${code==='annual'?'2 mois offerts':fmt(PLAN_PRICES[abonSelectedPlan])+'/mois'}</p></button>`).join('')}
+    ${[['monthly','Mensuelle'],['annual','Annuelle']].map(([code,label])=>`<button onclick="abonSelectedCycle='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedCycle===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedCycle===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">${label}</p><p style="font-size:11px;color:var(--ink-faint);">${code==='annual'?'2 mois offerts':fmt(PREMIUM_PRICE)+'/mois'}</p></button>`).join('')}
   </div>
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
-    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Paiement réel à connecter.</b></p>
-    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Aucun fournisseur de paiement (Wave, Orange Money…) n'est relié à ce projet. Changer de forfait ici met à jour l'accès aux fonctionnalités immédiatement, avec une vraie date d'expiration enregistrée dans Supabase — mais sans aucun encaissement réel. À réserver aux tests, pas à une mise en production facturée.</p>
+    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement sécurisé via PayTech.</b></p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler votre abonnement. Premium ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement.</p>
   </div>
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div><p style="font-size:11px;color:var(--ink-faint);">Prix indicatif</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(abonSelectedCycle==='annual' ? Math.round(PLAN_PRICES[abonSelectedPlan]*12*0.83) : PLAN_PRICES[abonSelectedPlan])}${abonSelectedCycle==='annual'?'/an':'/mois'}</p></div>
-    <button class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">Passer à ce forfait (sans paiement)</button>
-  </div>`;
+    <div><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(abonSelectedCycle==='annual' ? Math.round(PREMIUM_PRICE*12*0.83) : PREMIUM_PRICE)}${abonSelectedCycle==='annual'?'/an':'/mois'}</p></div>
+    <button id="paytechBtn" class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer avec PayTech</button>
+  </div>` : `
+  <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
+    <p style="font-size:12px;color:var(--ink-soft);">Aucun paiement requis pour le forfait Gratuit.</p>
+    <button class="btn btn-secondary" onclick="abonApplyPlan()" ${state.plan==='free'?'disabled':''}>${state.plan==='free'?'Forfait actuel':'Passer en Gratuit'}</button>
+  </div>`}`;
+}
+
+function paymentsHistoryHtml(){
+  if(!paymentsHistory.length){
+    return `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun paiement PayTech pour le moment.</p>`;
+  }
+  return `<p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Historique des paiements PayTech</p>` +
+    paymentsHistory.map(p=>`<div class="flex items-center justify-between" style="padding:8px 0;border-top:1px solid var(--cream-line);">
+      <div><p style="font-size:13px;">${fmt(p.amount)} — ${p.billing_cycle==='annual'?'Annuel':'Mensuel'}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(new Date(p.created_at))}</p></div>
+      <span class="pill ${p.status==='confirmed'?'pill-forest':p.status==='failed'?'pill-terracotta':'pill-amber'}">${p.status==='confirmed'?'Confirmé':p.status==='failed'?'Échoué':'En attente'}</span>
+    </div>`).join('');
 }
 
 async function abonApplyPlan(){
-  state.plan = abonSelectedPlan;
-  RESTAURANT.billingCycle = abonSelectedCycle;
-  RESTAURANT.subscriptionStatus = 'active';
-  RESTAURANT.currentPeriodEnd = Date.now() + SUBSCRIPTION_PERIOD_DAYS[abonSelectedCycle]*86400000;
-  RESTAURANT.lastRenewedAt = Date.now();
-  renderDashSection('abonnement');
-  renderPlanBadgeAndBanner();
-  await persistRestaurant();
-  toast(ic('checkCircle',14)+` Plan ${abonSelectedPlan==='pro'?'Pro':'Starter'} appliqué — aucun paiement réel effectué.`, true);
+  if(abonSelectedPlan === 'free'){
+    state.plan = 'free';
+    renderDashSection('abonnement');
+    renderPlanBadgeAndBanner();
+    await persistRestaurant();
+    toast('Forfait Gratuit appliqué.');
+    return;
+  }
+  // Premium n'est JAMAIS activé ici directement — uniquement après
+  // confirmation réelle du paiement par PayTech (voir startPayTechCheckout
+  // et la fonction Edge paytech-webhook, qui seule met subscription_status
+  // à 'active').
+  await startPayTechCheckout();
+}
+
+/* ---------------- PAYTECH — abonnement du restaurateur à TerangaResto ----------------
+   Ne concerne QUE l'abonnement Premium du restaurateur. Ne concerne
+   JAMAIS le paiement des commandes de ses propres clients (Wave/Orange
+   Money/espèces — un système entièrement séparé, table `orders`, jamais
+   mélangé avec `payments` ci-dessous). */
+let paymentsHistory = [];
+async function startPayTechCheckout(){
+  const btn = document.getElementById('paytechBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Redirection vers PayTech…'; }
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    toast('Session expirée — reconnectez-vous puis réessayez.');
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer avec PayTech`; }
+    return;
+  }
+  // Appelle la Supabase Edge Function paytech-checkout — jamais PayTech
+  // directement depuis le navigateur, et aucune clé PayTech ici (voir
+  // supabase/functions/paytech-checkout/index.ts).
+  const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
+    body: { restaurant_id: RESTAURANT.id, billing_cycle: abonSelectedCycle || 'monthly' },
+  });
+  if(error || !data || !data.redirect_url){
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer avec PayTech`; hydrateIcons(); }
+    return;
+  }
+  window.location.href = data.redirect_url;
 }
 
 async function cancelSubscription(){
-  if(!confirm("Résilier votre abonnement ? Vous garderez l'accès jusqu'à la fin de la période déjà couverte, puis votre boutique publique deviendra indisponible.")) return;
-  RESTAURANT.subscriptionStatus = 'cancelled';
+  if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre forfait repassera en Gratuit.")) return;
+  // Passe par la RPC dédiée cancel_my_subscription — subscription_status
+  // n'est plus modifiable par une simple mise à jour de paramètres
+  // (voir "VERROU CRITIQUE" dans supabase_schema.sql).
+  const {data, error} = await supabaseClient.rpc('cancel_my_subscription');
+  if(error){ toast("Impossible de résilier : " + error.message); return; }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
   renderPlanBadgeAndBanner();
-  await persistRestaurant();
-  toast('Abonnement résilié — accès conservé jusqu\'à la fin de la période en cours.');
+  toast('Abonnement résilié — accès Premium conservé jusqu\'à la fin de la période déjà payée.');
 }
 async function reactivateSubscription(){
-  RESTAURANT.subscriptionStatus = 'active';
+  // Passe par la RPC dédiée reactivate_my_subscription — ne peut
+  // reprendre qu'un abonnement annulé dont la période payée n'est pas
+  // terminée ; ne peut jamais activer Premium depuis un état
+  // trialing/expired (ça, c'est le rôle exclusif du webhook PayTech).
+  const {data, error} = await supabaseClient.rpc('reactivate_my_subscription');
+  if(error){ toast("Impossible de réactiver : " + error.message); return; }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
   renderPlanBadgeAndBanner();
-  await persistRestaurant();
   toast(ic('checkCircle',14)+' Abonnement réactivé.', true);
 }
 </script>
