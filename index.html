@@ -965,17 +965,11 @@ async function deleteStaffRow(id){
   if(error) toast('Suppression Supabase impossible : ' + error.message);
 }
 
-/* Commandes — la commande est insérée une seule fois (site public,
-   submitOrder) ; seul son statut est ensuite modifié (tableau de bord). */
-async function persistOrderInsert(o){
-  if(!RESTAURANT.id) return;
-  const {data, error} = await supabaseClient.from('orders').insert({
-    restaurant_id: RESTAURANT.id, num:o.num, client:o.client, phone:o.phone, type:o.type,
-    items:o.items, total:o.total, pay:o.pay, pay_status:o.payStatus, status:o.status,
-  }).select().single();
-  if(error){ toast('Commande non enregistrée dans Supabase : ' + error.message); return; }
-  o.id = data.id;
-}
+/* La création de commande passe désormais exclusivement par la RPC
+   create_order() (voir submitOrderInternal), qui recalcule tout côté
+   serveur — plus d'INSERT direct ici. Seul le statut d'une commande
+   déjà créée est encore modifié directement (fonction suivante),
+   jamais son contenu financier. */
 async function persistOrderUpdate(o){
   if(!RESTAURANT.id || !o.id) return;
   const {error} = await supabaseClient.from('orders').update({
@@ -3166,50 +3160,58 @@ async function submitOrder(){
   }
 }
 async function submitOrderInternal(){
-  const maxNum = DEMO_ORDERS.reduce((m,o)=>Math.max(m, Number(o.num)||0), 1029);
-  const num = String(maxNum + 1);
   const c = state.checkout;
-  const subtotal = cartSubtotal();
-  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
-  const typeLabel = c.orderType==='dine_in' ? `Sur place · Table ${c.table}` : c.orderType==='delivery' ? `Livraison — ${DELIVERY_MODE_LABELS[c.deliveryMode]||''}` : 'À emporter';
 
-  // Commande RÉELLE — poussée dans la même source de données que le
-  // tableau de bord (DEMO_ORDERS, sauvegardé dans Supabase). C'est ce
-  // qui fait que la commande apparaît immédiatement dans Vue
-  // d'ensemble, Analyses, Caisse, Comptabilité et Clients, calculés à
-  // partir de ces mêmes commandes. Chaque article conserve le vrai
-  // productId et la variante choisie (pas seulement un nom affiché) —
-  // c'est ce qui permet à la base de données de décrémenter le stock
-  // de façon atomique via un trigger (voir supabase_schema.sql),
-  // sans dépendre d'une écriture depuis ce navigateur.
-  const newOrder = {
-    num,
-    client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
-    phone: c.phone || '—',
-    type: typeLabel,
-    items: state.cart.map(l => ({
-      productId: l.id, name: l.name, variant: l.variant ? l.variant.name : null,
-      price: l.price + (l.variant ? l.variant.delta : 0), qty: l.qty,
+  // Commande RÉELLE — créée via la RPC create_order() (voir
+  // supabase_schema.sql), qui recalcule elle-même le prix de chaque
+  // produit/variante et le frais de livraison à partir des vraies
+  // données en base. Le navigateur n'envoie plus jamais de prix ni de
+  // total : seulement quoi (product_id, nom de variante, quantité) —
+  // jamais combien. Si un prix a changé entre-temps, ou qu'une
+  // variante n'existe plus, c'est le serveur qui tranche, pas le panier
+  // affiché à l'écran.
+  const { data, error } = await supabaseClient.rpc('create_order', {
+    p_restaurant_id: RESTAURANT.id,
+    p_client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
+    p_phone: c.phone || '—',
+    p_order_type: c.orderType,
+    p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
+    p_delivery_mode: c.orderType==='delivery' ? c.deliveryMode : null,
+    p_items: state.cart.map(l => ({
+      product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
     })),
-    total: subtotal + fee,
-    pay: c.payment,
-    payStatus: 'pending', // jamais "paid" tant qu'aucune confirmation serveur réelle n'existe
-    status: 'new',
-    createdAt: new Date(),
+    p_pay: c.payment,
+  });
+
+  if(error){
+    toast("Impossible d'envoyer la commande : " + error.message);
+    return;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(!row){
+    toast("La commande n'a pas pu être confirmée par le serveur.");
+    return;
+  }
+
+  const newOrder = {
+    id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
+    items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
+    status: row.status, createdAt: new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
 
   state.lastOrder = {
-    num, items:[...state.cart], subtotal,
-    fee, payment: c.payment, firstName: c.firstName,
+    num: row.num, items: row.items, total: Number(row.total),
+    payment: c.payment, firstName: c.firstName,
   };
   // Reflet local immédiat du stock vendu, pour que l'interface de CE
   // navigateur affiche tout de suite le produit en rupture s'il vient
-  // d'atteindre 0 — mais la déduction QUI COMPTE (celle qui évite les
-  // doubles déductions si deux clients commandent en même temps) est
-  // faite côté base de données par le trigger déclenché sur l'insertion
-  // de la commande, jamais par une écriture séparée depuis ce navigateur.
+  // d'atteindre 0 — la déduction qui compte réellement (celle qui évite
+  // les doubles déductions si deux clients commandent en même temps)
+  // est faite côté base de données par le trigger déclenché sur
+  // l'insertion de la commande, jamais par une écriture séparée depuis
+  // ce navigateur.
   state.cart.forEach(line => {
     const p = PRODUCTS.find(x => x.id === line.id);
     if(p && typeof p.stock === 'number'){
@@ -3223,13 +3225,10 @@ async function submitOrderInternal(){
   renderConfirmation();
   document.getElementById('confirmationOverlay').classList.remove('hidden');
   renderProductSections();
-
-  await persistOrderInsert(newOrder);
 }
 
 function renderConfirmation(){
   const o = state.lastOrder;
-  const total = o.subtotal + o.fee;
   document.getElementById('confirmationBody').innerHTML = `
     <div class="text-center" style="margin-bottom:28px;">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',40)}</div>
@@ -3241,9 +3240,9 @@ function renderConfirmation(){
         <span class="font-tabular font-display" style="font-size:16px;">#${o.num}</span>
         <span class="pill pill-amber">Nouvelle</span>
       </div>
-      ${o.items.map(l=>`<div class="flex justify-between" style="font-size:13.5px;margin-bottom:6px;"><span style="color:var(--ink-soft);">${l.qty} × ${l.name}</span><span class="font-tabular">${fmt(cartLineTotal(l))}</span></div>`).join('')}
+      ${o.items.map(orderItemLine).join('')}
       <div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;">
-        <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(total)}</span></div>
+        <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
       </div>
       <div class="flex items-center gap-2" style="margin-top:12px;">
         ${paymentMark(o.payment,24)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.payment]}</span><span class="pill pill-amber">En attente</span>
