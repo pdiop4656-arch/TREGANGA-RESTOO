@@ -1119,6 +1119,7 @@ function productThumb(p,size){
    ce qui rend la synchronisation tableau de bord → site public réelle. */
 const RESTAURANT = {
   created:false, // devient true uniquement après une vraie création via l'onboarding
+  createdAt:null, // vraie date de création — sert de base réelle au compteur d'essai gratuit
   name:'',
   slug:'',
   type:'',
@@ -1150,6 +1151,34 @@ const RESTAURANT = {
    jamais l'encaissement à la remise ; seule la livraison assurée par le
    restaurant lui-même peut l'autoriser, et seulement si le restaurateur
    l'active explicitement. ---------------- */
+/* ---------------- ESSAI GRATUIT — limites réelles, pas seulement
+   affichées sur la page Tarifs. Le compteur se calcule à partir de la
+   vraie date de création du restaurant (RESTAURANT.createdAt), jamais
+   d'un nombre fictif. ---------------- */
+const FREE_TRIAL_DAYS = 10;
+const FREE_MAX_CATEGORIES = 5;
+const FREE_MAX_PRODUCTS = 10;
+
+function trialDaysRemaining(){
+  const duration = trialDurationForPlan(state.plan);
+  if(!RESTAURANT.createdAt) return duration;
+  const elapsedMs = Date.now() - RESTAURANT.createdAt;
+  const elapsedDays = Math.floor(elapsedMs / 86400000);
+  return Math.max(0, duration - elapsedDays);
+}
+function isFreeTrialExpired(){
+  return state.plan==='free' && trialDaysRemaining()<=0;
+}
+function canAddCategory(){
+  return !(state.plan==='free' && Object.keys(catsState).length >= FREE_MAX_CATEGORIES);
+}
+function canAddProduct(){
+  return !(state.plan==='free' && PRODUCTS.length >= FREE_MAX_PRODUCTS);
+}
+function showUpgradeBlock(reason){
+  toast(ic('lock',14)+` ${reason} Passez à Starter ou Pro pour continuer.`, true);
+}
+
 function enabledDeliveryModes(){
   if(!RESTAURANT.delivery.enabled) return [];
   const m = RESTAURANT.delivery.modes;
@@ -1289,16 +1318,29 @@ function renderSidebarLogo(){
     : ic('chefHat', 17, {stroke:'var(--amber-deep)'});
 }
 
+function trialDurationForPlan(plan){
+  return plan==='free' ? FREE_TRIAL_DAYS : 14;
+}
 function renderPlanBadgeAndBanner(){
   const badge = document.getElementById('planBadgeTop');
+  const daysLeft = trialDaysRemaining();
   if(badge) badge.innerHTML = state.plan==='pro'
     ? `<span class="pill pill-forest">Plan Pro</span>`
+    : state.plan==='free'
+    ? `<span class="pill pill-amber">Gratuit — ${daysLeft}j</span>`
     : `<span class="pill pill-amber">Plan Starter</span>`;
   const banner = document.getElementById('planBanner');
   if(!banner) return;
+  if(state.plan==='free'){
+    const expired = isFreeTrialExpired();
+    banner.innerHTML = expired
+      ? `<div style="background:var(--terracotta-soft);color:var(--terracotta);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('alertTriangle',15)}Votre essai gratuit de ${FREE_TRIAL_DAYS} jours est terminé. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Choisir un forfait pour continuer</a></div>`
+      : `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Pro</a></div>`;
+    return;
+  }
   banner.innerHTML = state.plan==='pro'
     ? `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;">${ic('checkCircle',15)}Abonnement actif — Plan Pro. Toutes les fonctionnalités sont débloquées.</div>`
-    : `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai gratuit — 11 jours restants, forfait Starter. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Pro</a></div>`;
+    : `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai gratuit — ${daysLeft} jour${daysLeft>1?'s':''} restant${daysLeft>1?'s':''}, forfait Starter. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Pro</a></div>`;
 }
 
 /* ---------------- VIEW SWITCHING ---------------- */
@@ -1394,8 +1436,8 @@ document.getElementById('stepsGrid').innerHTML = STEPS.map(([title,text],i)=>`
 
 /* ---------------- PRICING ---------------- */
 const PLANS = [
-  {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,
-   features:['Création de votre restaurant','Site restaurant en ligne','Menu numérique','QR Code restaurant','Présentation de vos produits','Gestion de base du restaurant']},
+  {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,duration:'10 jours',
+   features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
   {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:3000,yearly:30240,
    features:['1 restaurant','Catalogue produits illimité','QR Code personnalisé','Commandes en ligne illimitées','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
   {code:'pro',name:'Pro',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:7000,yearly:70560,
@@ -1424,7 +1466,7 @@ function renderPricing(){
       <p style="font-size:13px;margin-bottom:22px;color:${isPro?'rgba(251,243,228,.7)':'var(--ink-soft)'};min-height:36px;">${p.tagline}</p>
       ${isFree ? `
       <div class="font-tabular font-display" style="font-size:32px;">0 FCFA</div>
-      <p style="font-size:11.5px;margin:6px 0 20px;color:var(--ink-faint);">Pour toujours</p>` : `
+      <p style="font-size:11.5px;margin:6px 0 20px;color:var(--amber-deep);font-weight:600;">Essai de ${p.duration}</p>` : `
       <div class="font-tabular font-display" style="font-size:32px;">${fmt(monthlyEq)}<span style="font-size:13px;font-weight:400;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};"> / mois</span></div>
       <p style="font-size:11.5px;margin:6px 0 20px;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};">${state.yearly?('Facturé '+fmt(p.yearly)+' / an'):'&nbsp;'}</p>`}
       <div class="flex-col gap-2" style="margin-bottom:26px;flex:1;">
@@ -1503,11 +1545,15 @@ function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
+  if(o.step===4 && o.plan==='free'){ o.step=6; renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   if(o.step===5){ obPay(); return; }
   o.step++;
   renderOnboarding();
 }
-function obPrev(){ obState.step--; renderOnboarding(); }
+function obPrev(){
+  obState.step = (obState.step===6 && obState.plan==='free') ? 4 : obState.step-1;
+  renderOnboarding();
+}
 
 function obPay(){
   obState.paying = true;
@@ -1521,6 +1567,7 @@ function obPay(){
 
 function finishOnboarding(){
   RESTAURANT.created = true;
+  RESTAURANT.createdAt = Date.now();
   state.plan = obState.plan;
   Object.assign(state.toggles, obState.paymentToggles);
   RESTAURANT.type = obState.restoType;
@@ -1690,17 +1737,19 @@ function obStepHtml(){
 
   if(step===4){
     const plans = [
+      {code:'free',name:'Gratuit',price:0,duration:'10 jours',features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
       {code:'starter',name:'Starter',price:3000,features:['1 restaurant','Catalogue illimité','QR Code','Paiement à la livraison & espèces']},
       {code:'pro',name:'Pro',price:7000,features:['Tout Starter','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
     ];
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">14 jours d'essai gratuit inclus, quel que soit le forfait.</p>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;">
-      ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:16px;text-align:left;">
-        <p style="font-size:14px;font-weight:700;">${p.name}</p>
-        <p class="font-tabular" style="font-size:18px;font-weight:700;margin:4px 0 10px;">${fmt(p.price)}<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span></p>
-        ${p.features.map(f=>`<p style="font-size:11px;color:var(--ink-soft);margin-bottom:3px;display:flex;align-items:center;gap:5px;">${ic('check',12,{stroke:'var(--forest)'})}${f}</p>`).join('')}
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">14 jours d'essai gratuit inclus sur Starter et Pro. Gratuit est un essai limité à 10 jours.</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
+        <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
+        <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
+        ${p.duration?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:600;margin-bottom:8px;">${p.duration}</p>`:'<p style="margin-bottom:10px;"></p>'}
+        ${p.features.map(f=>`<p style="font-size:10.5px;color:var(--ink-soft);margin-bottom:3px;display:flex;align-items:center;gap:5px;">${ic('check',11,{stroke:'var(--forest)'})}${f}</p>`).join('')}
       </button>`).join('')}
     </div>
     ${obNav(true)}`;
@@ -2291,6 +2340,21 @@ function logoutDashboard(){
 
 function renderDashSection(key){
   const el = document.getElementById('dashContent');
+  // Accès qui se termine réellement à la fin de l'essai Gratuit : seule
+  // la page Abonnement reste accessible pour permettre de passer à un
+  // forfait payant — aucune autre section ne s'affiche tant que le
+  // restaurateur n'a pas choisi Starter ou Pro. Les données restent
+  // toutes intactes en mémoire, rien n'est supprimé.
+  if(isFreeTrialExpired() && key!=='abonnement'){
+    el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">
+      ${ic('lock',30,{stroke:'var(--terracotta)'})}
+      <h2 class="font-display" style="font-size:18px;margin-top:14px;">Votre essai gratuit est terminé</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:8px;">Vos ${PRODUCTS.length} produits, vos ${Object.keys(catsState).length} catalogues et toutes vos données restent conservés. Choisissez un forfait pour retrouver l'accès à votre tableau de bord.</p>
+      <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="setDashSection('abonnement')">${ic('arrowRight',15)} Choisir un forfait</button>
+    </div>`;
+    hydrateIcons();
+    return;
+  }
   const renderers = {
     overview: dashOverview, orders: dashOrders, products: dashProducts, inventory: dashInventory, pos: dashPos, analytics: dashAnalytics,
     accounting: dashAccounting, categories: dashCategories, variants: dashVariants,
@@ -2536,12 +2600,14 @@ function drawRevenueChart(){
 let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
 let expandedCat = 'plats';
 function dashCategories(){
+  const atLimit = state.plan==='free' && !canAddCategory();
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Catégories</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix. La gestion des produits se fait dans la section Produits.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix — ${Object.keys(catsState).length} catégorie${Object.keys(catsState).length>1?'s':''}${state.plan==='free'?` / ${FREE_MAX_CATEGORIES} (forfait Gratuit)`:''}. La gestion des produits se fait dans la section Produits.</p>
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;max-width:640px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_CATEGORIES} catalogues atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Pro</a> pour continuer.</p></div>`:''}
   <div class="flex gap-2" style="margin-bottom:18px;max-width:560px;">
-    <input class="field-input" id="newCatInput" placeholder="Nouvelle catégorie (ex : Menus)">
-    <button class="btn btn-secondary" onclick="addCategory()">${ic('plus',15)} Ajouter</button>
+    <input class="field-input" id="newCatInput" placeholder="Nouvelle catégorie (ex : Menus)" ${atLimit?'disabled':''}>
+    <button class="btn btn-secondary" onclick="addCategory()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} Ajouter</button>
   </div>
   <div class="card" style="max-width:640px;" id="catList">${renderCatList()}</div>`;
 }
@@ -2573,14 +2639,16 @@ let productForm = null; // {id?, name, desc, price, cat, prep, active, available
 let libraryOpen = false;
 
 function dashProducts(){
+  const atLimit = state.plan==='free' && !canAddProduct();
   return `
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produits.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${state.plan==='free'?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
       <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('library',15)} Bibliothèque TerangaResto</button>
-      <button class="btn btn-secondary btn-sm" onclick="openProductForm()">${ic('plus',15)} Nouveau produit</button>
+      <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
     </div>
   </div>
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_PRODUCTS} produits atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Pro</a> pour ajouter plus de produits.</p></div>`:''}
   <div style="position:relative;max-width:320px;margin-bottom:16px;">
     <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',15)}</span>
     <input class="field-input" style="padding-left:36px;" placeholder="Rechercher un produit..." value="${productSearch}" oninput="productSearch=this.value;document.getElementById('productsList').innerHTML=productsListHtml();hydrateIcons();">
@@ -2659,6 +2727,7 @@ function deleteProduct(id){
 }
 
 function openProductForm(id){
+  if(!id && !canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
   const existing = id ? PRODUCTS.find(p=>p.id===id) : null;
   productForm = existing ? {...existing} : {id:null,name:'',desc:'',price:'',cat:Object.keys(catsState)[0],prep:15,active:true,available:true,variants:[],photo:null};
   renderProductForm();
@@ -2802,6 +2871,7 @@ function toggleLibraryItem(i){
     PRODUCTS.splice(PRODUCTS.indexOf(p),1);
     toast(`${item.name} retiré de votre restaurant.`);
   } else {
+    if(!canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
     PRODUCTS.push({id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5});
     toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
   }
@@ -2813,6 +2883,7 @@ function toggleLibraryItem(i){
 function addCategory(){
   const input = document.getElementById('newCatInput');
   if(!input.value.trim()) return;
+  if(!canAddCategory()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_CATEGORIES} catalogues.`); return; }
   const key = 'cat_'+Date.now();
   catsState[key] = input.value.trim();
   input.value='';
