@@ -657,9 +657,15 @@ async function loadRestaurantIntoState(restaurantId){
   RESTAURANT.logoDataUrl = r.logo_data_url; RESTAURANT.coverDataUrl = r.cover_data_url;
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
-  if(r.hours && r.hours.length) RESTAURANT.hours = r.hours;
-  if(r.delivery && Object.keys(r.delivery).length) RESTAURANT.delivery = r.delivery;
-  if(r.social && Object.keys(r.social).length) RESTAURANT.social = r.social;
+  // Remplacement INCONDITIONNEL (jamais "seulement si non vide") : un
+  // restaurant qui a RÉELLEMENT des horaires/livraison/réseaux vides
+  // ne doit jamais hériter des valeurs encore en mémoire d'un AUTRE
+  // restaurant chargé plus tôt dans le même onglet (changement de
+  // compte sans recharger la page). defaultHours()/defaultDelivery()/
+  // defaultSocial() renvoient toujours un objet neuf, jamais partagé.
+  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
+  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
+  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.isPublished = !!r.is_published;
@@ -673,14 +679,16 @@ async function loadRestaurantIntoState(restaurantId){
   // chaque chargement, ce qui suffit pour un fichier HTML autonome.
   if(computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')) persistRestaurant();
   state.plan = r.plan || 'starter';
-  Object.assign(state.toggles, r.payment_toggles || {});
+  state.toggles = Object.assign({wave:false,orange_money:false,cash:true,on_delivery:true}, r.payment_toggles || {});
   applyRestaurantName(r.name);
   applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
 
-  if(cats && cats.length){
-    catsState = {};
-    cats.forEach(c => { catsState[c.key] = c.label; });
-  }
+  // Remplacement inconditionnel également : un restaurant qui a
+  // réellement zéro catégorie (toutes supprimées, ou pas encore créées)
+  // ne doit jamais hériter de celles d'un restaurant précédent chargé
+  // plus tôt dans le même onglet.
+  catsState = {};
+  (cats||[]).forEach(c => { catsState[c.key] = c.label; });
 
   PRODUCTS.length = 0;
   (prods||[]).forEach(p => PRODUCTS.push({
@@ -702,6 +710,13 @@ async function loadRestaurantIntoState(restaurantId){
     status:s.status, code:s.code, createdAt:new Date(s.invited_at).getTime(),
     expiresAt:s.expires_at ? new Date(s.expires_at).getTime() : null, userId:s.user_id,
   }));
+
+  // Réinitialise les sélections d'écran qui pointaient peut-être vers
+  // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
+  // même onglet (changement de compte sans recharger la page).
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
 
   if(isLoggedIn) subscribeToOrdersRealtime(restaurantId);
   return true;
@@ -1522,7 +1537,31 @@ function productThumb(p,size){
 /* ---------------- RÉGLAGES DU RESTAURANT (source unique de vérité) ----------------
    Tout ce que le restaurateur modifie dans Paramètres se lit ici, et le site
    public (renderStorefrontHero) se ré-affiche à partir de cet objet — c'est
-   ce qui rend la synchronisation tableau de bord → site public réelle. */
+   ce qui rend la synchronisation tableau de bord → site public réelle.
+   Les valeurs par défaut sont des FONCTIONS (jamais un objet/tableau
+   partagé) : chaque appel renvoie une copie neuve, pour qu'un restaurant
+   chargé plus tard dans le même onglet ne puisse jamais muter en place
+   les horaires/livraison/réseaux d'un restaurant chargé précédemment. */
+function defaultHours(){
+  return DAY_LABELS_FULL.map((d,i)=>({open:true, from: i>=5?'12:00':'11:00', to: i>=5?'23:00':'22:00'}));
+}
+function defaultDelivery(){
+  return {
+    enabled:true, fee:1000, min:2000,
+    modes:{
+      own:{enabled:true, allowCashOnDelivery:true},
+      express:{enabled:false, fee:1500},
+    },
+  };
+}
+function defaultSocial(){
+  return {
+    whatsapp:{enabled:false, value:''},
+    instagram:{enabled:false, value:''},
+    tiktok:{enabled:false, value:''},
+    facebook:{enabled:false, value:''},
+  };
+}
 const RESTAURANT = {
   created:false, // devient true uniquement après une vraie création via l'onboarding
   createdAt:null, // vraie date de création — sert de base réelle au compteur d'essai gratuit
@@ -1532,20 +1571,9 @@ const RESTAURANT = {
   logoDataUrl:null, coverDataUrl:null,
   primary:'#E8871E', secondary:'#1F6B45', textColor:'#2B1810',
   address:'', city:'', phone:'',
-  hours: DAY_LABELS_FULL.map((d,i)=>({open:true, from: i>=5?'12:00':'11:00', to: i>=5?'23:00':'22:00'})),
-  delivery:{
-    enabled:true, fee:1000, min:2000,
-    modes:{
-      own:{enabled:true, allowCashOnDelivery:true},
-      express:{enabled:false, fee:1500},
-    },
-  },
-  social:{
-    whatsapp:{enabled:false, value:''},
-    instagram:{enabled:false, value:''},
-    tiktok:{enabled:false, value:''},
-    facebook:{enabled:false, value:''},
-  },
+  hours: defaultHours(),
+  delivery: defaultDelivery(),
+  social: defaultSocial(),
   showMap:true,
   mapsLink:'',
   notificationsEnabled:true,
@@ -1796,13 +1824,33 @@ function setView(view){
 }
 function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElementById(id).scrollIntoView({behavior:'smooth'}); }, 50); }
 
+/* Empile plusieurs toasts au lieu de les superposer exactement au même
+   endroit — sinon un second toast (ex. "Restaurant créé") peut cacher
+   complètement un premier toast d'erreur qui vient de s'afficher une
+   fraction de seconde avant lui, rendant l'erreur invisible alors
+   qu'elle a bien eu lieu. */
+let activeToasts = [];
 function toast(msg, isHtml){
   const t = document.createElement('div');
   t.className='toast';
   if(isHtml){ t.style.display='flex'; t.style.alignItems='center'; t.style.gap='8px'; t.innerHTML=msg; }
   else t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(), 2600);
+  activeToasts.push(t);
+  repositionToasts();
+  setTimeout(()=>{
+    t.remove();
+    activeToasts = activeToasts.filter(x=>x!==t);
+    repositionToasts();
+  }, 3800);
+}
+function repositionToasts(){
+  let offset = 24;
+  // Le plus récent en bas (position habituelle), les précédents empilés au-dessus.
+  for(let i=activeToasts.length-1; i>=0; i--){
+    activeToasts[i].style.bottom = offset+'px';
+    offset += activeToasts[i].offsetHeight + 10;
+  }
 }
 </script>
 
@@ -1952,6 +2000,28 @@ function generateUniqueSlug(name){
   return { base, slug: candidate, wasTaken: candidate !== base };
 }
 
+/* Vérification RÉELLE contre Supabase (pas seulement la petite liste
+   locale ci-dessus, qui ne sert qu'à l'aperçu instantané pendant la
+   saisie) — appelée juste avant la création effective du restaurant,
+   pour ne jamais tenter un slug déjà pris par un AUTRE restaurant,
+   y compris un restaurant encore en brouillon que RLS ne nous montre
+   pas directement (voir is_slug_available dans supabase_schema.sql). */
+async function resolveUniqueSlugForCreation(name){
+  const base = slugify(name) || 'mon-restaurant';
+  let candidate = base;
+  let n = 2;
+  for(let tries=0; tries<50; tries++){
+    try{
+      const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
+      if(error) return candidate; // fonction indisponible (schéma pas encore appliqué) — on tente quand même, l'insert le rattrapera
+      if(available) return candidate;
+    }catch(e){ return candidate; }
+    candidate = `${base}-${n}`;
+    n++;
+  }
+  return `${base}-${Date.now()}`; // filet de sécurité si 50 variantes sont toutes prises
+}
+
 const obState = {
   step:0,
   accountName:'', accountEmail:'', accountPassword:'',
@@ -2003,6 +2073,20 @@ function obPrev(){
 }
 
 async function finishOnboarding(){
+  if(!currentUser){
+    // Ne devrait normalement jamais arriver (l'étape 0 exige une vraie
+    // session avant de laisser avancer l'assistant) — mais si c'est le
+    // cas, on le dit clairement au lieu de prétendre silencieusement
+    // que le restaurant a été créé alors que rien n'a été enregistré.
+    toast("Session expirée — reconnectez-vous puis reprenez la création de votre restaurant.");
+    closeLogin(); setLoginTab('login'); setView('landing');
+    document.getElementById('loginOverlay')?.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('obFinishBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
+
   RESTAURANT.created = true;
   RESTAURANT.createdAt = Date.now();
   state.plan = obState.plan;
@@ -2014,7 +2098,10 @@ async function finishOnboarding(){
   RESTAURANT.logoDataUrl = obState.logoPhoto;
   RESTAURANT.coverDataUrl = obState.coverPhoto;
   RESTAURANT.delivery.enabled = obState.deliveryEnabled;
-  RESTAURANT.slug = obState.slug || generateUniqueSlug(obState.restoName).slug;
+  // Vérifié contre la VRAIE base juste avant l'insertion — jamais
+  // seulement contre la petite liste locale utilisée pour l'aperçu
+  // pendant la saisie (voir resolveUniqueSlugForCreation).
+  RESTAURANT.slug = await resolveUniqueSlugForCreation(obState.restoName);
   RESTAURANT.name = obState.restoName;
   applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
@@ -2038,9 +2125,13 @@ async function finishOnboarding(){
   }
 
   // Création réelle du restaurant dans Supabase, rattaché au compte
-  // qui vient d'être créé/connecté à l'étape 0.
-  if(currentUser){
-    const {data, error} = await supabaseClient.from('restaurants').insert({
+  // qui vient d'être créé/connecté à l'étape 0. Une nouvelle tentative
+  // avec un slug légèrement différent est faite UNIQUEMENT si Supabase
+  // rejette pour collision de slug (code 23505) — jamais pour un autre
+  // type d'erreur, qui doit rester visible tel quel.
+  let data, error;
+  for(let attempt=0; attempt<3; attempt++){
+    ({data, error} = await supabaseClient.from('restaurants').insert({
       owner_id: currentUser.id, created:true, name:RESTAURANT.name, slug:RESTAURANT.slug,
       type:RESTAURANT.type, logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
       primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
@@ -2052,23 +2143,34 @@ async function finishOnboarding(){
       trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
       current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
       last_renewed_at: RESTAURANT.lastRenewedAt ? new Date(RESTAURANT.lastRenewedAt).toISOString() : null,
-    }).select().single();
-    if(error){
-      toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + error.message);
-    } else {
-      RESTAURANT.id = data.id;
-      RESTAURANT.isPublished = false;
-      viewerIsStaff = true;
-      subscribeToOrdersRealtime(RESTAURANT.id);
-      // Catégories par défaut, créées une seule fois avec le restaurant.
-      const catRows = Object.entries(catsState).map(([key,label],i) => ({
-        restaurant_id: RESTAURANT.id, key, label, sort_order:i,
-      }));
-      if(catRows.length){
-        const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
-        if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
-      }
-    }
+    }).select().single());
+    if(!error) break;
+    if(error.code === '23505'){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
+    break; // toute autre erreur : on arrête et on l'affiche, pas de nouvelle tentative aveugle
+  }
+
+  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
+
+  if(error){
+    // On ne prétend JAMAIS que la création a réussi si Supabase l'a
+    // refusée — pas de redirection vers le tableau de bord, pas de
+    // toast de succès qui écraserait visuellement ce message d'erreur.
+    RESTAURANT.created = false;
+    toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + error.message);
+    return;
+  }
+
+  RESTAURANT.id = data.id;
+  RESTAURANT.isPublished = false;
+  viewerIsStaff = true;
+  subscribeToOrdersRealtime(RESTAURANT.id);
+  // Catégories par défaut, créées une seule fois avec le restaurant.
+  const catRows = Object.entries(catsState).map(([key,label],i) => ({
+    restaurant_id: RESTAURANT.id, key, label, sort_order:i,
+  }));
+  if(catRows.length){
+    const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
+    if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
   }
 
   setView('dashboard');
@@ -2274,7 +2376,7 @@ function obStepHtml(){
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Publier votre site public</p>
       </div>
-      <button class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Aller à mon tableau de bord ${ic('arrowRight',16)}</button>
+      <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Aller à mon tableau de bord ${ic('arrowRight',16)}</button>
     </div>`;
 
   return '';
@@ -3516,8 +3618,26 @@ function dashAccounting(){
   </div>`;
 }
 /* ---------------- VARIANTS ---------------- */
-let variantsSelectedProduct = 'p2';
+let variantsSelectedProduct = null;
 function dashVariants(){
+  // Auto-correction : si le produit mémorisé n'existe plus (supprimé,
+  // ou "p2" resté d'un ancien état de démo, ou produit d'un AUTRE
+  // restaurant chargé plus tôt dans le même onglet), on retombe sur le
+  // premier produit réel du restaurant actuellement chargé — jamais un
+  // id qui ne correspond à rien, qui faisait planter tout l'écran.
+  if(!PRODUCTS.some(p=>p.id===variantsSelectedProduct)){
+    variantsSelectedProduct = PRODUCTS.length ? PRODUCTS[0].id : null;
+  }
+  if(!PRODUCTS.length){
+    return `
+    <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
+    <div class="empty-state" style="max-width:460px;text-align:center;padding:30px 20px;">
+      ${ic('sliders',30,{stroke:'var(--ink-faint)'})}
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:12px;">Créez d'abord un produit dans la section Produits — vous pourrez ensuite lui ajouter des variantes ici.</p>
+      <button class="btn btn-secondary" style="margin-top:14px;" onclick="setDashSection('products');openProductForm();">${ic('plus',15)} Créer un produit</button>
+    </div>`;
+  }
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
@@ -3531,6 +3651,7 @@ function dashVariants(){
 }
 function variantsCardHtml(){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Sélectionnez un produit.</p>`;
   return `
   <div class="flex items-center justify-between" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cream-line);">
     <div><p style="font-size:13px;font-weight:600;">Sélection obligatoire</p><p style="font-size:11px;color:var(--ink-faint);">Le client doit choisir une option avant d'ajouter au panier.</p></div>
@@ -3551,12 +3672,14 @@ function variantsCardHtml(){
 function renderVariantsCard(){ document.getElementById('variantsCard').innerHTML = variantsCardHtml(); hydrateIcons(); }
 function toggleVariantsRequired(){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
   p.variantsRequired = !p.variantsRequired;
   renderVariantsCard();
   persistProduct(p);
 }
 function addVariant(){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
   const name = document.getElementById('newVariantName').value.trim();
   const delta = Number(document.getElementById('newVariantDelta').value)||0;
   if(!name) return;
@@ -3567,6 +3690,7 @@ function addVariant(){
 }
 function removeVariant(i){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
   p.variants.splice(i,1);
   renderVariantsCard();
   persistProduct(p);
