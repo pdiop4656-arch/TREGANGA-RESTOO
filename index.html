@@ -597,6 +597,377 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ============================================================
+   SUPABASE — connexion au projet existant
+   Ce fichier est un HTML autonome (pas un projet Next.js), donc
+   `process` n'existe pas dans le navigateur : on utilise directement
+   les valeurs publiques fournies. Si ce fichier est un jour servi par
+   un build Next.js, les variables NEXT_PUBLIC_* prendront le dessus.
+   ============================================================ */
+const SUPABASE_URL =
+  (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_SUPABASE_URL)
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL
+    : "https://nkbvzfdnhsyyjrwwtjfc.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+    ? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    : "sb_publishable_l0CDdHRkWwB4diCv2w4nWQ_ATHWFi37";
+
+// Client global, utilisé par toutes les fonctions du fichier.
+// Clé PUBLISHABLE uniquement — jamais de clé service_role ici.
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+</script>
+
+<script>
+/* ============================================================
+   SUPABASE — état d'authentification + chargement des données
+   ============================================================
+   Principe : on garde EXACTEMENT les mêmes variables globales que la
+   démo d'origine (RESTAURANT, catsState, PRODUCTS, DEMO_ORDERS,
+   staffState, state.plan, state.toggles) — tout le reste du fichier
+   (rendu, formulaires, calculs d'analyses/comptabilité) continue de
+   fonctionner sans modification. Ces fonctions se contentent de les
+   remplir depuis Supabase au lieu de tableaux vides, et de pousser
+   chaque modification vers la base au moment où l'utilisateur agit.
+
+   Hypothèse : ce fichier HTML sert UN SEUL restaurant à la fois (pas
+   de routage multi-tenant par sous-domaine/slug dans l'URL). Le site
+   public affiche donc le restaurant Supabase le plus récemment créé. */
+let currentUser = null; // session Supabase courante, ou null si visiteur anonyme
+let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/personnel du restaurant chargé (autorise la prévisualisation même non publiée)
+
+async function loadRestaurantIntoState(restaurantId){
+  const isLoggedIn = !!currentUser;
+  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes] = await Promise.all([
+    supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
+    supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
+    isLoggedIn ? supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
+    isLoggedIn ? supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId) : Promise.resolve({data:[]}),
+  ]);
+  if(!r) return false;
+
+  RESTAURANT.id = r.id;
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = new Date(r.created_at).getTime();
+  RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
+  RESTAURANT.logoDataUrl = r.logo_data_url; RESTAURANT.coverDataUrl = r.cover_data_url;
+  RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
+  if(r.hours && r.hours.length) RESTAURANT.hours = r.hours;
+  if(r.delivery && Object.keys(r.delivery).length) RESTAURANT.delivery = r.delivery;
+  if(r.social && Object.keys(r.social).length) RESTAURANT.social = r.social;
+  RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
+  RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
+  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
+  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
+  // Fait avancer trialing/active → expired si la date est dépassée, et
+  // répercute ce changement dans Supabase — sans cron : c'est calculé à
+  // chaque chargement, ce qui suffit pour un fichier HTML autonome.
+  if(computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')) persistRestaurant();
+  state.plan = r.plan || 'starter';
+  Object.assign(state.toggles, r.payment_toggles || {});
+  applyRestaurantName(r.name);
+  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
+
+  if(cats && cats.length){
+    catsState = {};
+    cats.forEach(c => { catsState[c.key] = c.label; });
+  }
+
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
+    variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
+  }));
+
+  DEMO_ORDERS.length = 0;
+  ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
+    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status,
+    createdAt:new Date(o.created_at),
+  }));
+
+  staffState.length = 0;
+  ((staffRes && staffRes.data)||[]).forEach(s => staffState.push({
+    id:s.id, name:s.name, email:s.email, role:s.role, permissions:s.permissions,
+    status:s.status, code:s.code, createdAt:new Date(s.invited_at).getTime(),
+    expiresAt:s.expires_at ? new Date(s.expires_at).getTime() : null, userId:s.user_id,
+  }));
+
+  if(isLoggedIn) subscribeToOrdersRealtime(restaurantId);
+  return true;
+}
+
+/* ---------------- REALTIME — nouvelles commandes ----------------
+   Un seul canal actif à la fois (on se désabonne de l'ancien avant
+   d'en ouvrir un nouveau, pour ne jamais accumuler d'abonnements —
+   sinon une même commande déclencherait plusieurs alertes identiques
+   après plusieurs connexions/déconnexions dans la même page). */
+let ordersRealtimeChannel = null;
+function subscribeToOrdersRealtime(restaurantId){
+  if(ordersRealtimeChannel){ supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
+  ordersRealtimeChannel = supabaseClient
+    .channel('orders-restaurant-'+restaurantId)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'orders', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeNewOrder(payload.new);
+    })
+    .subscribe();
+}
+function unsubscribeOrdersRealtime(){
+  if(ordersRealtimeChannel){ supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
+}
+function onRealtimeNewOrder(row){
+  // Déduplication : si cette commande est déjà dans DEMO_ORDERS (par
+  // exemple parce que ce même onglet vient de la créer via submitOrder),
+  // ne déclenche pas une seconde alerte pour la même commande.
+  if(DEMO_ORDERS.some(o => o.id === row.id)) return;
+  const order = {
+    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status,
+    createdAt:new Date(row.created_at),
+  };
+  DEMO_ORDERS.unshift(order);
+  refreshNotifDot();
+  if(RESTAURANT.notificationsEnabled){
+    toast(ic('bell',14)+` Nouvelle commande — #${order.num} (${fmt(order.total)})`, true);
+    playNotificationSound();
+  }
+  // Rafraîchit les vues du tableau de bord actuellement affichées, pour
+  // que la commande apparaisse immédiatement sans que l'utilisateur
+  // ait à changer de section.
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+}
+function playNotificationSound(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; gain.gain.value = 0.08;
+    osc.start(); osc.stop(ctx.currentTime + 0.18);
+  }catch(e){ /* audio non disponible dans ce navigateur — silencieux */ }
+}
+
+/* Sauvegarde l'intégralité de l'objet RESTAURANT (+ plan/moyens de
+   paiement) courant dans Supabase. Appelée après chaque modification
+   commise dans Paramètres (nom, horaires, livraison, réseaux sociaux,
+   notifications, carte...). Échec silencieux avec toast — la personne
+   ne perd jamais sa saisie locale même si le réseau flanche. */
+async function persistRestaurant(){
+  if(!RESTAURANT.id) return;
+  const {error} = await supabaseClient.from('restaurants').update({
+    name:RESTAURANT.name, slug:RESTAURANT.slug, type:RESTAURANT.type,
+    logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
+    primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
+    address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
+    hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
+    payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
+    notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:RESTAURANT.isPublished,
+    subscription_status:RESTAURANT.subscriptionStatus, billing_cycle:RESTAURANT.billingCycle,
+    trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
+    current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
+    last_renewed_at: RESTAURANT.lastRenewedAt ? new Date(RESTAURANT.lastRenewedAt).toISOString() : null,
+  }).eq('id', RESTAURANT.id);
+  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+}
+
+async function togglePublish(){
+  RESTAURANT.isPublished = !RESTAURANT.isPublished;
+  renderDashSection('settings');
+  await persistRestaurant();
+  toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+}
+function copyPublicSiteLink(){
+  const link = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  navigator.clipboard?.writeText(link).then(
+    () => toast('Lien copié.'),
+    () => toast(link)
+  );
+}
+
+/* Enregistre un produit (le rôle central du catalogue : nom, prix,
+   variantes, stock...) — insert si nouveau (id absent ou local), sinon
+   update. Après un insert, l'id local ('p_...') est remplacé par le
+   vrai id Supabase pour que les futures opérations le retrouvent. */
+async function persistProduct(p){
+  if(!RESTAURANT.id) return;
+  const payload = {
+    restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
+    prep:p.prep, active:p.active, available:p.available, photo:p.photo,
+    variants:p.variants||[], variants_required: !!p.variantsRequired, stock:p.stock, threshold:p.threshold,
+  };
+  const isNew = !p.id || String(p.id).startsWith('p_');
+  if(isNew){
+    const {data, error} = await supabaseClient.from('products').insert(payload).select().single();
+    if(error){ toast('Produit non enregistré dans Supabase : ' + error.message); return; }
+    p.id = data.id;
+  } else {
+    const {error} = await supabaseClient.from('products').update(payload).eq('id', p.id);
+    if(error) toast('Produit non mis à jour dans Supabase : ' + error.message);
+  }
+}
+async function deleteProductRow(id){
+  if(!RESTAURANT.id || String(id).startsWith('p_')) return;
+  const {error} = await supabaseClient.from('products').delete().eq('id', id);
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
+}
+
+/* Personnel — reflète chaque action de la section "Personnel" dans la
+   table staff. */
+async function persistStaffInsert(s){
+  if(!RESTAURANT.id) return;
+  const {data, error} = await supabaseClient.from('staff').insert({
+    restaurant_id: RESTAURANT.id, name:s.name, email:s.email, role:s.role,
+    permissions:s.permissions, status:s.status, code:s.code,
+    invited_at:new Date(s.createdAt).toISOString(), expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
+  }).select().single();
+  if(error){ toast('Invitation non enregistrée dans Supabase : ' + error.message); return; }
+  s.id = data.id;
+}
+async function persistStaffUpdate(s){
+  if(!RESTAURANT.id || !s.id) return;
+  const {error} = await supabaseClient.from('staff').update({
+    name:s.name, role:s.role, permissions:s.permissions, status:s.status,
+    code:s.code, expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
+  }).eq('id', s.id);
+  if(error) toast('Personnel non mis à jour dans Supabase : ' + error.message);
+}
+async function deleteStaffRow(id){
+  if(!RESTAURANT.id || !id) return;
+  const {error} = await supabaseClient.from('staff').delete().eq('id', id);
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
+}
+
+/* Commandes — la commande est insérée une seule fois (site public,
+   submitOrder) ; seul son statut est ensuite modifié (tableau de bord). */
+async function persistOrderInsert(o){
+  if(!RESTAURANT.id) return;
+  const {data, error} = await supabaseClient.from('orders').insert({
+    restaurant_id: RESTAURANT.id, num:o.num, client:o.client, phone:o.phone, type:o.type,
+    items:o.items, total:o.total, pay:o.pay, pay_status:o.payStatus, status:o.status,
+  }).select().single();
+  if(error){ toast('Commande non enregistrée dans Supabase : ' + error.message); return; }
+  o.id = data.id;
+}
+async function persistOrderUpdate(o){
+  if(!RESTAURANT.id || !o.id) return;
+  const {error} = await supabaseClient.from('orders').update({
+    status:o.status, pay_status:o.payStatus,
+  }).eq('id', o.id);
+  if(error) toast('Commande non mise à jour dans Supabase : ' + error.message);
+}
+
+/* Charge un restaurant précis par son identifiant public (slug) —
+   c'est le lien que chaque restaurant partage à ses clients :
+   https://votre-site.vercel.app/?resto=SLUG-DU-RESTAURANT
+   (En attendant un vrai sous-domaine slug.terangaresto.com, configurable
+   séparément via une règle de rewrite Vercel — voir le résumé en fin
+   de réponse — ce paramètre d'URL joue le même rôle dans un fichier
+   HTML autonome.) */
+/* Brouillon vs publié : tant que le restaurant n'a pas cliqué sur
+   "Publier" dans Paramètres, sa boutique publique n'est pas visible
+   pour un client — seul le propriétaire/personnel peut la prévisualiser
+   (bouton "Voir mon site" dans le tableau de bord). Idem si l'essai
+   gratuit ou l'abonnement est expiré/annulé : la boutique publique
+   devient indisponible (mais reste visible en prévisualisation pour
+   le propriétaire/personnel, et aucune donnée n'est supprimée). */
+function isStorefrontGated(){
+  if(!RESTAURANT.created || viewerIsStaff) return false;
+  return !RESTAURANT.isPublished || isAccessBlocked();
+}
+function renderStorefrontGateOverlay(){
+  const container = document.getElementById('view-storefront');
+  if(!container) return;
+  let overlay = document.getElementById('storefrontGateOverlay');
+  if(isStorefrontGated()){
+    if(!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'storefrontGateOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+      container.appendChild(overlay);
+    }
+    const expired = RESTAURANT.isPublished && isAccessBlocked();
+    overlay.innerHTML = expired ? `
+      <div style="max-width:360px;">
+        <div style="display:flex;justify-content:center;margin-bottom:14px;">${ic('alertTriangle',34,{stroke:'var(--terracotta)'})}</div>
+        <h1 class="font-display" style="font-size:20px;margin-bottom:8px;">Cette boutique est actuellement indisponible</h1>
+        <p style="font-size:13.5px;color:var(--ink-soft);">${RESTO_NAME} reviendra bientôt. Merci de votre patience.</p>
+      </div>` : `
+      <div style="max-width:360px;">
+        <div style="display:flex;justify-content:center;margin-bottom:14px;">${ic('lock',34,{stroke:'var(--amber-deep)'})}</div>
+        <h1 class="font-display" style="font-size:20px;margin-bottom:8px;">Cette boutique n'est pas encore publiée</h1>
+        <p style="font-size:13.5px;color:var(--ink-soft);">${RESTO_NAME} prépare encore son menu. Revenez bientôt !</p>
+      </div>`;
+    hydrateIcons(overlay);
+  } else if(overlay){
+    overlay.remove();
+  }
+}
+
+async function loadRestaurantBySlug(slug){
+  const {data} = await supabaseClient.from('restaurants').select('id').eq('slug', slug).maybeSingle();
+  if(data){ await loadRestaurantIntoState(data.id); return true; }
+  return false;
+}
+
+/* Retrouve le restaurant dont l'utilisateur connecté est propriétaire,
+   sinon celui où il est membre actif du personnel. */
+async function findMyRestaurantId(){
+  if(!currentUser) return null;
+  const {data:owned} = await supabaseClient.from('restaurants').select('id').eq('owner_id', currentUser.id).limit(1).maybeSingle();
+  if(owned) return owned.id;
+  const {data:staffRow} = await supabaseClient.from('staff').select('restaurant_id').eq('user_id', currentUser.id).eq('status','Actif').limit(1).maybeSingle();
+  return staffRow ? staffRow.restaurant_id : null;
+}
+
+/* Empêche définitivement le bug "affiche le restaurant le plus
+   récemment créé" : SANS lien direct (?resto=slug) ET sans compte
+   connecté possédant un restaurant, la racine du site affiche la page
+   TerangaResto générique (celle déjà codée en dur comme vue par
+   défaut : "landing"), jamais les données d'un restaurant au hasard.
+   Chaque restaurant n'est chargé que par son propre lien ou par la
+   session de son propriétaire/personnel — jamais par défaut. */
+async function restoreSession(){
+  try{
+    const {data:{session}} = await supabaseClient.auth.getSession();
+    currentUser = session ? session.user : null;
+
+    if(currentUser){
+      const rid = await findMyRestaurantId();
+      if(rid){
+        await loadRestaurantIntoState(rid);
+        viewerIsStaff = true;
+        setView('dashboard');
+        setDashSection('overview');
+        return;
+      }
+    }
+
+    const restoSlug = new URLSearchParams(location.search).get('resto');
+    if(restoSlug){
+      const found = await loadRestaurantBySlug(restoSlug);
+      viewerIsStaff = false;
+      if(found){ setView('storefront'); return; }
+      toast("Ce restaurant n'existe pas ou plus.");
+    }
+    // Ni lien direct ni session propriétaire : on reste sur la page
+    // d'accueil TerangaResto par défaut (state.view==='landing').
+  }catch(e){
+    console.error('Supabase — échec du chargement initial', e);
+  }
+}
+</script>
+
 <script>
 function goToAnchor(id){
   setView('landing');
@@ -643,33 +1014,41 @@ function setLoginTab(tab){
       <label class="field-label">Adresse e-mail invitée</label>
       <input class="field-input" id="inviteEmail" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
-      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:16px;text-transform:uppercase;">
+      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
+      <label class="field-label">Choisissez un mot de passe</label>
+      <input class="field-input" id="invitePasswordInput" type="password" placeholder="8 caractères minimum" style="margin-bottom:16px;">
       <button class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Démo — pour tester : connectez-vous, invitez quelqu'un depuis Personnel, puis revenez ici avec l'e-mail et le code générés.</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Ce mot de passe crée votre compte TerangaResto (ou vous y connecte s'il existe déjà).</p>`;
   }
   hydrateIcons(body);
 }
 
-function submitLogin(){
+async function submitLogin(){
   const email = document.getElementById('loginEmail').value.trim();
-  if(!email){ toast('Entrez votre e-mail.'); return; }
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
+  const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
+  if(error){ toast(error.message || 'Connexion impossible.'); return; }
   closeLogin();
+  currentUser = data.user;
   simulatedRole = null;
-  if(!RESTAURANT.created){
-    // Honnête : pas de fausse entreprise pré-remplie. Si aucun restaurant
-    // n'a été créé pendant cette session, il n'y a rien à ouvrir — on
-    // redirige vers la création, comme le ferait un vrai compte sans
-    // restaurant encore configuré.
+  const rid = await findMyRestaurantId();
+  if(!rid){
+    // Pas de fausse entreprise pré-remplie : ce compte n'a encore aucun
+    // restaurant dans Supabase — on l'envoie créer le sien, comme le
+    // ferait une vraie application.
     toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
     startOnboarding();
     return;
   }
+  await loadRestaurantIntoState(rid);
+  viewerIsStaff = true;
   setView('dashboard');
   setDashSection('overview');
   toast('Connecté — bienvenue sur votre tableau de bord.');
 }
 
-function submitSignup(){
+async function submitSignup(){
   const name = document.getElementById('signupName').value.trim();
   const email = document.getElementById('signupEmail').value.trim();
   const pw = document.getElementById('signupPassword').value;
@@ -678,16 +1057,22 @@ function submitSignup(){
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
   if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
-  // Démo — vérifie l'unicité de l'e-mail contre les comptes créés PENDANT
-  // cette session (en mémoire uniquement). La vraie contrainte d'unicité
-  // (persistante, entre tous les utilisateurs) existe dans la vraie
-  // application Supabase, via Auth — pas dans un fichier HTML statique.
-  if(SESSION_ACCOUNTS_DEMO.includes(email.toLowerCase())){
-    toast('Cette adresse e-mail possède déjà un compte. Connectez-vous plutôt.');
-    setLoginTab('login');
+  // L'unicité de l'e-mail est vérifiée par Supabase Auth lui-même
+  // (contrainte réelle, persistante entre tous les utilisateurs) —
+  // plus besoin d'une liste en mémoire côté client.
+  const {data, error} = await supabaseClient.auth.signUp({
+    email, password: pw, options:{data:{name}},
+  });
+  if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
+  if(!data.session){
+    // Le projet Supabase exige une confirmation par e-mail avant que la
+    // session ne soit active — on informe la personne au lieu de la
+    // laisser bloquée sur un formulaire qui semble n'avoir rien fait.
+    closeLogin();
+    toast('Compte créé — vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.');
     return;
   }
-  SESSION_ACCOUNTS_DEMO.push(email.toLowerCase());
+  currentUser = data.user;
   closeLogin();
   startOnboarding();
   obState.accountName = name;
@@ -696,30 +1081,51 @@ function submitSignup(){
   toast('Compte créé — continuons avec votre restaurant.');
 }
 
-function submitInviteAccept(){
+async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-  const match = staffState.find(s => s.email.toLowerCase()===email && s.code.toUpperCase()===code);
-  if(!match){
-    toast("E-mail ou code d'invitation incorrect.");
-    return;
+  const password = document.getElementById('invitePasswordInput').value;
+  if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
+
+  // Vérification e-mail + code via une fonction dédiée (RPC) : la
+  // personne n'a pas encore de compte, donc pas de session permettant
+  // à RLS de l'identifier — voir find_staff_invite dans supabase_schema.sql.
+  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
+  const match = (matchRows && matchRows[0]) || null;
+  if(findErr || !match){ toast("E-mail ou code d'invitation incorrect."); return; }
+  if(match.status === 'Actif'){ toast('Cette invitation a déjà été utilisée.'); return; }
+  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ toast('Cette invitation a expiré.'); return; }
+
+  // Compte du membre du personnel : on tente une inscription, et si
+  // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
+  let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
+  if(signErr){
+    const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
+    if(inErr){ toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
+    signData = inData;
   }
-  if(match.status === 'Actif'){
-    toast('Cette invitation a déjà été utilisée.');
-    return;
-  }
-  if(match.expiresAt && Date.now() > match.expiresAt){
-    toast('Cette invitation a expiré.');
-    return;
-  }
-  // Acceptation réelle : le statut passe à Actif (ce code ne pourra plus
-  // jamais être réutilisé), et le rôle + les permissions EXACTES choisies
-  // par l'administrateur pour CETTE invitation sont appliqués — jamais les
-  // permissions par défaut d'un autre rôle.
-  match.status = 'Actif';
+  currentUser = signData.user;
+
+  // Acceptation réelle (RPC accept_staff_invite) : le statut passe à
+  // Actif (ce code ne pourra plus jamais être réutilisé) et le compte
+  // est lié à cette ligne "staff" — le rôle + les permissions EXACTES
+  // choisies par l'administrateur pour CETTE invitation sont conservés,
+  // jamais les permissions par défaut d'un autre rôle.
+  const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
+  const accepted = (acceptRows && acceptRows[0]) || match;
+  if(acceptErr){ toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
+
   closeLogin();
-  setSimulatedRole(match.role, match.permissions);
-  toast(`Invitation acceptée — bienvenue ${match.name}, accès ${match.role}.`);
+  await loadRestaurantIntoState(accepted.restaurant_id);
+  viewerIsStaff = true;
+  setSimulatedRole(accepted.role, accepted.permissions);
+  setView('dashboard');
+  toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
+}
+
+async function signOutSupabase(){
+  await supabaseClient.auth.signOut();
+  currentUser = null;
 }
 </script>
 
@@ -1143,6 +1549,12 @@ const RESTAURANT = {
   showMap:true,
   mapsLink:'',
   notificationsEnabled:true,
+  isPublished:false, // le site public n'est visible aux clients qu'une fois publié (bouton "Publier" dans Paramètres)
+  subscriptionStatus:'trialing', // 'trialing' | 'active' | 'cancelled' | 'expired' — jamais 'active' sans action explicite du restaurateur, jamais via un faux paiement
+  billingCycle:'monthly', // 'monthly' | 'annual'
+  trialEndsAt:null,
+  currentPeriodEnd:null,
+  lastRenewedAt:null,
 };
 
 /* ---------------- MODES DE LIVRAISON — le paiement à la livraison n'est
@@ -1158,16 +1570,36 @@ const RESTAURANT = {
 const FREE_TRIAL_DAYS = 10;
 const FREE_MAX_CATEGORIES = 5;
 const FREE_MAX_PRODUCTS = 10;
+const SUBSCRIPTION_PERIOD_DAYS = {monthly:30, annual:365};
 
-function trialDaysRemaining(){
-  const duration = trialDurationForPlan(state.plan);
-  if(!RESTAURANT.createdAt) return duration;
-  const elapsedMs = Date.now() - RESTAURANT.createdAt;
-  const elapsedDays = Math.floor(elapsedMs / 86400000);
-  return Math.max(0, duration - elapsedDays);
+/* ---------------- ABONNEMENT — machine à états réelle, persistée dans
+   Supabase (subscription_status / trial_ends_at / current_period_end).
+   Aucun paiement réel n'existe dans ce fichier : "active" signifie
+   uniquement "le restaurateur a choisi ce forfait", jamais "une somme
+   a été prélevée". Les transitions dues au temps qui passe (trial ou
+   période expirée) sont calculées à chaque chargement — pas de cron
+   dans un fichier HTML autonome, donc pas de transition en arrière-plan
+   pendant que personne n'a la page ouverte ; elle se met à jour dès que
+   quelqu'un revient. ---------------- */
+function computeEffectiveSubscriptionStatus(){
+  const now = Date.now();
+  if(RESTAURANT.subscriptionStatus==='trialing' && RESTAURANT.trialEndsAt && now > RESTAURANT.trialEndsAt){
+    RESTAURANT.subscriptionStatus = 'expired';
+  } else if((RESTAURANT.subscriptionStatus==='active' || RESTAURANT.subscriptionStatus==='cancelled') && RESTAURANT.currentPeriodEnd && now > RESTAURANT.currentPeriodEnd){
+    RESTAURANT.subscriptionStatus = 'expired';
+  }
+  return RESTAURANT.subscriptionStatus;
 }
-function isFreeTrialExpired(){
-  return state.plan==='free' && trialDaysRemaining()<=0;
+function isAccessBlocked(){
+  return computeEffectiveSubscriptionStatus()==='expired';
+}
+function trialDaysRemaining(){
+  if(!RESTAURANT.trialEndsAt) return FREE_TRIAL_DAYS;
+  return Math.max(0, Math.ceil((RESTAURANT.trialEndsAt - Date.now()) / 86400000));
+}
+function periodDaysRemaining(){
+  if(!RESTAURANT.currentPeriodEnd) return 0;
+  return Math.max(0, Math.ceil((RESTAURANT.currentPeriodEnd - Date.now()) / 86400000));
 }
 function canAddCategory(){
   return !(state.plan==='free' && Object.keys(catsState).length >= FREE_MAX_CATEGORIES);
@@ -1323,24 +1755,28 @@ function trialDurationForPlan(plan){
 }
 function renderPlanBadgeAndBanner(){
   const badge = document.getElementById('planBadgeTop');
+  const status = computeEffectiveSubscriptionStatus();
   const daysLeft = trialDaysRemaining();
-  if(badge) badge.innerHTML = state.plan==='pro'
-    ? `<span class="pill pill-forest">Plan Pro</span>`
-    : state.plan==='free'
-    ? `<span class="pill pill-amber">Gratuit — ${daysLeft}j</span>`
-    : `<span class="pill pill-amber">Plan Starter</span>`;
+  const periodLeft = periodDaysRemaining();
+  const planLabel = state.plan==='pro' ? 'Pro' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  if(badge) badge.innerHTML =
+    status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
+    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}</span>`
+    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j</span>`
+    : `<span class="pill pill-terracotta">Expiré</span>`;
+
   const banner = document.getElementById('planBanner');
   if(!banner) return;
-  if(state.plan==='free'){
-    const expired = isFreeTrialExpired();
-    banner.innerHTML = expired
-      ? `<div style="background:var(--terracotta-soft);color:var(--terracotta);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('alertTriangle',15)}Votre essai gratuit de ${FREE_TRIAL_DAYS} jours est terminé. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Choisir un forfait pour continuer</a></div>`
-      : `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Pro</a></div>`;
-    return;
+
+  if(status==='trialing'){
+    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Pro</a></div>`;
+  } else if(status==='expired'){
+    banner.innerHTML = `<div style="background:var(--terracotta-soft);color:var(--terracotta);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('alertTriangle',15)}Accès restreint — votre ${RESTAURANT.trialEndsAt && !RESTAURANT.currentPeriodEnd ? "essai gratuit" : "abonnement"} est terminé. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Renouveler mon abonnement</a></div>`;
+  } else if(status==='cancelled'){
+    banner.innerHTML = `<div style="background:rgba(43,24,16,.06);color:var(--ink-soft);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('info',15)}Abonnement annulé — accès encore valide ${periodLeft} jour${periodLeft>1?'s':''}. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Réactiver</a></div>`;
+  } else {
+    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel} (${RESTAURANT.billingCycle==='annual'?'annuel':'mensuel'}). Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''} — aucun renouvellement automatique tant qu'aucun fournisseur de paiement n'est connecté.</div>`;
   }
-  banner.innerHTML = state.plan==='pro'
-    ? `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;">${ic('checkCircle',15)}Abonnement actif — Plan Pro. Toutes les fonctionnalités sont débloquées.</div>`
-    : `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai gratuit — ${daysLeft} jour${daysLeft>1?'s':''} restant${daysLeft>1?'s':''}, forfait Starter. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Pro</a></div>`;
 }
 
 /* ---------------- VIEW SWITCHING ---------------- */
@@ -1354,7 +1790,7 @@ function setView(view){
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
   if(view==='dashboard') { renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); }
   if(view==='pricing') renderPricing();
-  if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); }
+  if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); }
   if(view==='onboarding') renderOnboarding();
   hydrateIcons();
 }
@@ -1541,12 +1977,23 @@ function startOnboarding(presetPlan){
 function obField(key,val){ obState[key]=val; }
 function obGoStep(i){ obState.step=i; renderOnboarding(); }
 
-function obNext(){
+async function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
+  if(o.step===0 && !currentUser){
+    // Compte pas encore créé (arrivée directe sur l'onboarding, sans
+    // passer par le formulaire d'inscription de la modale) — on le crée
+    // maintenant, réellement, dans Supabase Auth.
+    if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    const {data, error} = await supabaseClient.auth.signUp({
+      email:o.accountEmail.trim(), password:o.accountPassword, options:{data:{name:o.accountName.trim()}},
+    });
+    if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
+    if(!data.session){ toast('Compte créé — vérifiez votre e-mail pour confirmer votre adresse, puis reconnectez-vous.'); return; }
+    currentUser = data.user;
+  }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
-  if(o.step===5){ obPay(); return; }
   o.step++;
   renderOnboarding();
 }
@@ -1555,17 +2002,7 @@ function obPrev(){
   renderOnboarding();
 }
 
-function obPay(){
-  obState.paying = true;
-  renderOnboarding();
-  setTimeout(()=>{
-    obState.paying = false;
-    obState.step = 6;
-    renderOnboarding();
-  }, 900);
-}
-
-function finishOnboarding(){
+async function finishOnboarding(){
   RESTAURANT.created = true;
   RESTAURANT.createdAt = Date.now();
   state.plan = obState.plan;
@@ -1578,11 +2015,65 @@ function finishOnboarding(){
   RESTAURANT.coverDataUrl = obState.coverPhoto;
   RESTAURANT.delivery.enabled = obState.deliveryEnabled;
   RESTAURANT.slug = obState.slug || generateUniqueSlug(obState.restoName).slug;
+  RESTAURANT.name = obState.restoName;
   applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
+
+  // Machine à états de l'abonnement — réelle, pas décorative :
+  // 'free' => vrai essai avec vraie date de fin ; un forfait payant
+  // choisi ici est appliqué immédiatement ('active') PARCE QUE le
+  // restaurateur l'a explicitement choisi, jamais parce qu'un paiement
+  // a été confirmé (aucun fournisseur n'est connecté — voir l'avertissement
+  // affiché à l'étape précédente de l'onboarding).
+  RESTAURANT.billingCycle = obState.billing || 'monthly';
+  if(obState.plan === 'free'){
+    RESTAURANT.subscriptionStatus = 'trialing';
+    RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
+    RESTAURANT.currentPeriodEnd = null;
+  } else {
+    RESTAURANT.subscriptionStatus = 'active';
+    RESTAURANT.trialEndsAt = null;
+    RESTAURANT.currentPeriodEnd = Date.now() + SUBSCRIPTION_PERIOD_DAYS[RESTAURANT.billingCycle]*86400000;
+    RESTAURANT.lastRenewedAt = Date.now();
+  }
+
+  // Création réelle du restaurant dans Supabase, rattaché au compte
+  // qui vient d'être créé/connecté à l'étape 0.
+  if(currentUser){
+    const {data, error} = await supabaseClient.from('restaurants').insert({
+      owner_id: currentUser.id, created:true, name:RESTAURANT.name, slug:RESTAURANT.slug,
+      type:RESTAURANT.type, logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
+      primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
+      address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
+      hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
+      payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
+      notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:false,
+      subscription_status:RESTAURANT.subscriptionStatus, billing_cycle:RESTAURANT.billingCycle,
+      trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
+      current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
+      last_renewed_at: RESTAURANT.lastRenewedAt ? new Date(RESTAURANT.lastRenewedAt).toISOString() : null,
+    }).select().single();
+    if(error){
+      toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + error.message);
+    } else {
+      RESTAURANT.id = data.id;
+      RESTAURANT.isPublished = false;
+      viewerIsStaff = true;
+      subscribeToOrdersRealtime(RESTAURANT.id);
+      // Catégories par défaut, créées une seule fois avec le restaurant.
+      const catRows = Object.entries(catsState).map(([key,label],i) => ({
+        restaurant_id: RESTAURANT.id, key, label, sort_order:i,
+      }));
+      if(catRows.length){
+        const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
+        if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
+      }
+    }
+  }
+
   setView('dashboard');
   setDashSection('overview');
-  toast(ic('checkCircle',15)+` Bienvenue sur TerangaResto — ${obState.restoName} est activé`, true);
+  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
 }
 
 function renderOnboarding(){
@@ -1658,10 +2149,10 @@ function updateSlugPreview(){
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
       ${ic('link',13,{stroke:'var(--forest)'})}
-      <span style="color:var(--ink-soft);">Votre site :</span>
-      <span class="font-tabular" style="font-weight:600;">${candidate}.terangaresto.com</span>
+      <span style="color:var(--ink-soft);">Votre lien, une fois publié :</span>
+      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${candidate}</span>
     </div>
-    ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)}.terangaresto.com » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
+    ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
   hydrateIcons(el);
 }
 
@@ -1757,38 +2248,25 @@ function obStepHtml(){
 
   if(step===5){
     const price = obState.plan==='pro' ? 7000 : 3000;
-    if(o.paying){
-      return `<div class="text-center" style="padding:40px 0;">
-        <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('loader',30,{className:'spin'})}</div>
-        <p style="font-size:13.5px;color:var(--ink-soft);">Vérification du paiement…</p>
-      </div>`;
-    }
     return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Abonnement <b>${o.plan==='pro'?'Pro':'Starter'}</b> — ${fmt(price)}/mois</p>
-    <div class="flex-col gap-2" style="margin-bottom:18px;">
-      ${['wave','orange_money'].map(m=>`<button onclick="obField('paymentMethod','${m}');renderOnboarding();" class="flex items-center gap-3" style="border:2px solid ${o.paymentMethod===m?'var(--amber-deep)':'var(--cream-line)'};${o.paymentMethod===m?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:12px 16px;width:100%;">
-        ${paymentMark(m,32)}<span style="font-size:13.5px;font-weight:500;">${PAYMENT_LABELS[m]}</span>
-        ${o.paymentMethod===m?'<span style="margin-left:auto;width:16px;height:16px;border-radius:999px;background:var(--amber-deep);"></span>':''}
-      </button>`).join('')}
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Abonnement</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait <b>${o.plan==='pro'?'Pro':'Starter'}</b> — ${fmt(price)}/mois</p>
+    <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
+      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Paiement réel à connecter.</b></p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Aucun fournisseur de paiement (Wave, Orange Money…) n'est encore relié à ce projet Supabase. Votre restaurant sera créé avec le forfait <b>${o.plan==='pro'?'Pro':'Starter'}</b> marqué « en attente de paiement » — aucune somme n'est prélevée. Un vrai encaissement nécessite une intégration serveur (Edge Function + webhook) séparée.</p>
     </div>
-    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;margin-bottom:18px;">
-      <span style="font-size:13px;color:var(--ink-soft);">Total à payer</span>
-      <span class="font-tabular font-display" style="font-size:20px;">${fmt(price)}</span>
-    </div>
-    <button class="btn btn-secondary btn-lg w-full" onclick="obNext()">Payer avec ${PAYMENT_LABELS[o.paymentMethod]}</button>
-    <p style="font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:10px;">Démo — paiement simulé. Dans l'application réelle, l'abonnement n'est activé qu'après confirmation serveur du fournisseur.</p>
+    <button class="btn btn-secondary btn-lg w-full" onclick="obNext()">Continuer sans paiement réel</button>
     <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
   }
 
   if(step===6) return `
     <div class="text-center">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est activé</h2>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Paiement simulé confirmé — abonnement <b>${o.plan==='pro'?'Pro':'Starter'}</b> actif. Vous allez maintenant accéder à votre espace privé de gestion.</p>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est créé</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Pro':o.plan==='free'?'Gratuit':'Starter'}</b>. ${o.plan!=='free' ? "Aucun paiement réel n'a été prélevé — aucun fournisseur de paiement n'est encore connecté à ce projet (voir Abonnement dans les Paramètres)." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
-        <span class="font-tabular" style="font-size:13.5px;font-weight:600;">${o.slug || slugify(o.restoName)}.terangaresto.com</span>
+        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${o.slug || slugify(o.restoName)}</span>
       </div>
       <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
@@ -1952,7 +2430,7 @@ let modalProduct = null, modalVariant = null, modalQty = 1;
 function openProductModal(id){
   modalProduct = PRODUCTS.find(p=>p.id===id);
   if(!modalProduct.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
-  modalVariant = modalProduct.variants[0] || null;
+  modalVariant = modalProduct.variantsRequired ? null : (modalProduct.variants[0] || null);
   modalQty = 1;
   renderProductModal();
   document.getElementById('productModalOverlay').classList.remove('hidden');
@@ -1973,11 +2451,12 @@ function renderProductModal(){
       <h2 class="font-display" style="font-size:20px;">${p.name}</h2>
       <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${p.desc || 'Aucune description pour le moment.'}</p>
       <p style="font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">${ic('clock',13)}Préparation : ${p.prep} min</p>
-      ${p.variants.length ? `<p style="font-size:13.5px;font-weight:600;margin:16px 0 8px;">Options</p>
+      ${p.variants.length ? `<p style="font-size:13.5px;font-weight:600;margin:16px 0 8px;">Options ${p.variantsRequired?'<span style="color:var(--terracotta);font-weight:500;font-size:11.5px;">· obligatoire</span>':'<span style="color:var(--ink-faint);font-weight:500;font-size:11.5px;">· facultatif</span>'}</p>
         <div class="flex-col gap-2">
           ${p.variants.map((v,i)=>`<button onclick="setModalVariant(${i})" style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:14px;border:2px solid ${modalVariant===v?'var(--amber-deep)':'var(--cream-line)'};${modalVariant===v?'background:rgba(232,135,30,.06);':''}">
             <span style="font-size:13.5px;">${v.name}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
-        </div>` : ''}
+        </div>
+        ${p.variantsRequired && !modalVariant ? `<p style="font-size:11.5px;color:var(--terracotta);margin-top:6px;">Choisissez une option pour continuer.</p>`:''}` : ''}
       <div class="flex items-center justify-between" style="margin-top:18px;">
         <span style="font-size:13.5px;font-weight:600;">Quantité</span>
         <div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:999px;padding:4px 8px;">
@@ -1988,13 +2467,17 @@ function renderProductModal(){
       </div>
     </div>
     <div style="position:sticky;bottom:0;background:#fff;border-top:1px solid var(--cream-line);padding:16px 22px;">
-      <button class="btn btn-secondary btn-lg w-full" onclick="addToCartFromModal()">Ajouter · ${fmt(unit*modalQty)}</button>
+      <button class="btn btn-secondary btn-lg w-full" onclick="addToCartFromModal()" ${p.variantsRequired && !modalVariant ? 'style="opacity:.5;cursor:not-allowed;"' : ''}>Ajouter · ${fmt(unit*modalQty)}</button>
     </div>`;
   hydrateIcons(document.getElementById('productModalBody'));
 }
 
 function addToCartFromModal(){
   const p = modalProduct;
+  if(p.variants.length && p.variantsRequired && !modalVariant){
+    toast('Choisissez une option avant d\'ajouter au panier.');
+    return;
+  }
   const key = p.id + '::' + (modalVariant?modalVariant.name:'');
   const existing = state.cart.find(l=>l.key===key);
   if(existing){ existing.qty += modalQty; }
@@ -2174,7 +2657,7 @@ function renderCheckout(){
   hydrateIcons(document.getElementById('checkoutBody'));
 }
 
-function submitOrder(){
+async function submitOrder(){
   const maxNum = DEMO_ORDERS.reduce((m,o)=>Math.max(m, Number(o.num)||0), 1029);
   const num = String(maxNum + 1);
   const c = state.checkout;
@@ -2183,15 +2666,23 @@ function submitOrder(){
   const typeLabel = c.orderType==='dine_in' ? `Sur place · Table ${c.table}` : c.orderType==='delivery' ? `Livraison — ${DELIVERY_MODE_LABELS[c.deliveryMode]||''}` : 'À emporter';
 
   // Commande RÉELLE — poussée dans la même source de données que le
-  // tableau de bord (DEMO_ORDERS). C'est ce qui fait que la commande
-  // apparaît immédiatement dans Vue d'ensemble, Analyses, Caisse,
-  // Comptabilité et Clients, calculés à partir de ces mêmes commandes.
+  // tableau de bord (DEMO_ORDERS, sauvegardé dans Supabase). C'est ce
+  // qui fait que la commande apparaît immédiatement dans Vue
+  // d'ensemble, Analyses, Caisse, Comptabilité et Clients, calculés à
+  // partir de ces mêmes commandes. Chaque article conserve le vrai
+  // productId et la variante choisie (pas seulement un nom affiché) —
+  // c'est ce qui permet à la base de données de décrémenter le stock
+  // de façon atomique via un trigger (voir supabase_schema.sql),
+  // sans dépendre d'une écriture depuis ce navigateur.
   const newOrder = {
     num,
     client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
     phone: c.phone || '—',
     type: typeLabel,
-    items: state.cart.map(l => [l.name, l.qty]),
+    items: state.cart.map(l => ({
+      productId: l.id, name: l.name, variant: l.variant ? l.variant.name : null,
+      price: l.price + (l.variant ? l.variant.delta : 0), qty: l.qty,
+    })),
     total: subtotal + fee,
     pay: c.payment,
     payStatus: 'pending', // jamais "paid" tant qu'aucune confirmation serveur réelle n'existe
@@ -2205,9 +2696,12 @@ function submitOrder(){
     num, items:[...state.cart], subtotal,
     fee, payment: c.payment, firstName: c.firstName,
   };
-  // Déduit réellement le stock vendu — une commande validée consomme
-  // le produit (spec Inventaire). Si le stock atteint 0, le produit
-  // passe automatiquement en rupture sur le site public.
+  // Reflet local immédiat du stock vendu, pour que l'interface de CE
+  // navigateur affiche tout de suite le produit en rupture s'il vient
+  // d'atteindre 0 — mais la déduction QUI COMPTE (celle qui évite les
+  // doubles déductions si deux clients commandent en même temps) est
+  // faite côté base de données par le trigger déclenché sur l'insertion
+  // de la commande, jamais par une écriture séparée depuis ce navigateur.
   state.cart.forEach(line => {
     const p = PRODUCTS.find(x => x.id === line.id);
     if(p && typeof p.stock === 'number'){
@@ -2221,6 +2715,8 @@ function submitOrder(){
   renderConfirmation();
   document.getElementById('confirmationOverlay').classList.remove('hidden');
   renderProductSections();
+
+  await persistOrderInsert(newOrder);
 }
 
 function renderConfirmation(){
@@ -2332,8 +2828,11 @@ function markNotifsSeen(){
   // seule l'action du restaurateur (Commandes → changer le statut) le fait.
   refreshNotifDot();
 }
-function logoutDashboard(){
+async function logoutDashboard(){
   simulatedRole = null;
+  await signOutSupabase();
+  unsubscribeOrdersRealtime();
+  viewerIsStaff = false;
   setView('landing');
   toast('Déconnecté.');
 }
@@ -2345,10 +2844,15 @@ function renderDashSection(key){
   // forfait payant — aucune autre section ne s'affiche tant que le
   // restaurateur n'a pas choisi Starter ou Pro. Les données restent
   // toutes intactes en mémoire, rien n'est supprimé.
-  if(isFreeTrialExpired() && key!=='abonnement'){
+  // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
+  // abonnement expiré : seule la page Abonnement reste accessible pour
+  // permettre de renouveler — aucune autre section ne s'affiche tant
+  // que le restaurateur n'a pas réactivé son accès. Les données restent
+  // toutes intactes dans Supabase, rien n'est supprimé.
+  if(isAccessBlocked() && key!=='abonnement'){
     el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">
       ${ic('lock',30,{stroke:'var(--terracotta)'})}
-      <h2 class="font-display" style="font-size:18px;margin-top:14px;">Votre essai gratuit est terminé</h2>
+      <h2 class="font-display" style="font-size:18px;margin-top:14px;">${RESTAURANT.trialEndsAt && !RESTAURANT.lastRenewedAt ? "Votre essai gratuit est terminé" : "Votre abonnement est expiré"}</h2>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:8px;">Vos ${PRODUCTS.length} produits, vos ${Object.keys(catsState).length} catalogues et toutes vos données restent conservés. Choisissez un forfait pour retrouver l'accès à votre tableau de bord.</p>
       <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="setDashSection('abonnement')">${ic('arrowRight',15)} Choisir un forfait</button>
     </div>`;
@@ -2362,7 +2866,7 @@ function renderDashSection(key){
     staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
   };
   el.innerHTML = (renderers[key]||dashOverview)();
-  if(key==='qrcode') drawQr();
+  if(key==='qrcode'){}
   if(key==='analytics') drawRevenueChart();
   if(key==='settings' && settingsTab==='Thème') renderSettingsColorPreview();
   hydrateIcons();
@@ -2381,7 +2885,7 @@ function dashOverview(){
   const inactiveProducts = PRODUCTS.filter(p=>!p.active).length;
 
   const tally = {};
-  periodOrders.forEach(o=>o.items.forEach(([name,qty])=>{ tally[name]=(tally[name]||0)+qty; }));
+  periodOrders.forEach(o=>o.items.forEach(it=>{ const [name,qty]=orderItemNameQty(it); tally[name]=(tally[name]||0)+qty; }));
   const popular = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   return `
@@ -2485,7 +2989,7 @@ function openOrderDetail(i){
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('mapPin',14,{stroke:'var(--ink-faint)'})}${o.type}</p>
       </div>
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Produits</p>
-      ${o.items.map(([name,qty])=>`<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${name}</span></div>`).join('')}
+      ${o.items.map(orderItemLine).join('')}
       <div style="border-top:1px solid var(--cream-line);margin-top:10px;padding-top:10px;">
         <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
         <div class="flex items-center gap-2" style="margin-top:8px;">${paymentMark(o.pay,22)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.pay]}</span><span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div>
@@ -2494,6 +2998,23 @@ function openOrderDetail(i){
   document.getElementById('orderDetailOverlay').classList.remove('hidden');
 }
 function closeOrderDetail(){ document.getElementById('orderDetailOverlay').classList.add('hidden'); }
+/* Une ligne de commande peut être soit l'ancien format hérité
+   [nom, quantité] (commandes créées avant l'ajout des variantes/ids
+   réels aux commandes), soit le nouveau format riche
+   {productId, name, variant, price, qty} — gère les deux sans erreur. */
+function orderItemLine(it){
+  const isLegacy = Array.isArray(it);
+  const name = isLegacy ? it[0] : it.name;
+  const qty = isLegacy ? it[1] : it.qty;
+  const variant = isLegacy ? null : it.variant;
+  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${name}${variant?` <span style="color:var(--ink-faint);">(${variant})</span>`:''}</span></div>`;
+}
+/* Même logique que orderItemLine, mais renvoie juste [nom, quantité] —
+   utilisé par les calculs (produits les plus vendus, etc.) qui n'ont
+   pas besoin d'affichage, seulement des valeurs. */
+function orderItemNameQty(it){
+  return Array.isArray(it) ? it : [it.name, it.qty];
+}
 
 /* ---------------- CAISSE (POS) ---------------- */
 function dashPos(){
@@ -2536,7 +3057,7 @@ function dashAnalytics(){
   const cancelledCount = periodOrders.filter(o=>o.status==='cancelled').length;
 
   const tally = {};
-  validOrders.forEach(o=>o.items.forEach(([name,qty])=>{ tally[name]=(tally[name]||0)+qty; }));
+  validOrders.forEach(o=>o.items.forEach(it=>{ const [name,qty]=orderItemNameQty(it); tally[name]=(tally[name]||0)+qty; }));
   const topProductEntry = Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];
 
   return `
@@ -2711,11 +3232,13 @@ function toggleProductActive(id){
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   toast(p.active ? `${p.name} est de nouveau visible sur le site public.` : `${p.name} est masqué du site public.`);
+  persistProduct(p);
 }
 function toggleProductAvailable(id){
   const p = PRODUCTS.find(x=>x.id===id); p.available = !p.available;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
+  persistProduct(p);
 }
 function deleteProduct(id){
   const p = PRODUCTS.find(x=>x.id===id);
@@ -2724,6 +3247,7 @@ function deleteProduct(id){
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   toast('Produit supprimé.');
+  deleteProductRow(id);
 }
 
 function openProductForm(id){
@@ -2788,21 +3312,25 @@ function renderProductForm(){
   </div>`;
   hydrateIcons();
 }
-function saveProductForm(){
+async function saveProductForm(){
   const f = productForm;
   if(!f.name.trim()){ toast('Le nom du produit est requis.'); return; }
   if(!f.price || Number(f.price)<0){ toast('Indiquez un prix valide.'); return; }
   const payload = {name:f.name.trim(), desc:f.desc, price:Number(f.price), cat:f.cat, prep:Number(f.prep)||15, active:f.active, available:f.available, variants:f.variants||[], photo:f.photo||null};
+  let p;
   if(f.id){
-    Object.assign(PRODUCTS.find(p=>p.id===f.id), payload);
+    p = PRODUCTS.find(x=>x.id===f.id);
+    Object.assign(p, payload);
     toast('Produit mis à jour.');
   } else {
-    PRODUCTS.push({id:'p_'+Date.now(), stock:20, threshold:5, ...payload});
+    p = {id:'p_'+Date.now(), stock:20, threshold:5, ...payload};
+    PRODUCTS.push(p);
     toast('Produit ajouté à votre catalogue.');
   }
   closeProductForm();
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
+  await persistProduct(p);
 }
 
 /* ---------------- BIBLIOTHÈQUE TERANGARESTO (données de référence,
@@ -2870,25 +3398,35 @@ function toggleLibraryItem(i){
     const p = PRODUCTS.find(x=>x.name.trim().toLowerCase()===item.name.trim().toLowerCase());
     PRODUCTS.splice(PRODUCTS.indexOf(p),1);
     toast(`${item.name} retiré de votre restaurant.`);
+    deleteProductRow(p.id);
   } else {
     if(!canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
-    PRODUCTS.push({id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5});
+    const p = {id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5};
+    PRODUCTS.push(p);
     toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
+    persistProduct(p);
   }
   renderLibraryList();
   if(state.dashSection==='products'){ document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons(); }
   if(state.dashSection==='library'){ document.getElementById('dashContent').innerHTML = dashLibrary(); hydrateIcons(); }
   if(state.view==='storefront') renderProductSections();
 }
-function addCategory(){
+async function addCategory(){
   const input = document.getElementById('newCatInput');
   if(!input.value.trim()) return;
   if(!canAddCategory()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_CATEGORIES} catalogues.`); return; }
   const key = 'cat_'+Date.now();
-  catsState[key] = input.value.trim();
+  const label = input.value.trim();
+  catsState[key] = label;
   input.value='';
   document.getElementById('catList').innerHTML = renderCatList();
   toast('Catégorie ajoutée');
+  if(RESTAURANT.id){
+    const {error} = await supabaseClient.from('categories').insert({
+      restaurant_id: RESTAURANT.id, key, label, sort_order: Object.keys(catsState).length-1,
+    });
+    if(error) toast('Catégorie non enregistrée dans Supabase : ' + error.message);
+  }
 }
 
 /* ---------------- INVENTAIRE — lié réellement aux produits et aux commandes ---------------- */
@@ -2994,6 +3532,10 @@ function dashVariants(){
 function variantsCardHtml(){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   return `
+  <div class="flex items-center justify-between" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cream-line);">
+    <div><p style="font-size:13px;font-weight:600;">Sélection obligatoire</p><p style="font-size:11px;color:var(--ink-faint);">Le client doit choisir une option avant d'ajouter au panier.</p></div>
+    <div class="toggle ${p.variantsRequired?'on':''}" onclick="toggleVariantsRequired()"><div class="dot"></div></div>
+  </div>
   <div class="flex gap-2" style="margin-bottom:14px;">
     <input class="field-input" id="newVariantName" placeholder="Ex : Grand format">
     <input class="field-input" id="newVariantDelta" placeholder="+ 500" style="width:90px;">
@@ -3006,7 +3548,13 @@ function variantsCardHtml(){
       <button onclick="removeVariant(${i})" style="color:var(--terracotta);">${ic('trash',14)}</button>
     </div>`).join('')}`;
 }
-function renderVariantsCard(){ document.getElementById('variantsCard').innerHTML = variantsCardHtml(); }
+function renderVariantsCard(){ document.getElementById('variantsCard').innerHTML = variantsCardHtml(); hydrateIcons(); }
+function toggleVariantsRequired(){
+  const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  p.variantsRequired = !p.variantsRequired;
+  renderVariantsCard();
+  persistProduct(p);
+}
 function addVariant(){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   const name = document.getElementById('newVariantName').value.trim();
@@ -3015,11 +3563,13 @@ function addVariant(){
   p.variants.push({name,delta});
   renderVariantsCard();
   toast('Variante ajoutée');
+  persistProduct(p);
 }
 function removeVariant(i){
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   p.variants.splice(i,1);
   renderVariantsCard();
+  persistProduct(p);
 }
 
 /* ---------------- PAYMENTS ---------------- */
@@ -3101,57 +3651,38 @@ function customersRowsHtml(query){
 
 /* ---------------- QR CODE ---------------- */
 function dashQrcode(){
-  const url = `${RESTAURANT.slug}.terangaresto.com`;
+  const url = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe automatiquement vers votre site public — prêt à imprimer.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><canvas id="qrCanvas" width="180" height="180"></canvas></div>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="180" height="180" alt="QR Code ${RESTO_NAME}" style="display:block;"></div>
     <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
-    <p class="font-tabular" style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${url}</p>
+    <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
-  </div>
-  <div class="card" style="padding:12px 16px;margin-top:12px;max-width:340px;display:flex;align-items:center;gap:10px;">
-    ${ic('checkCircle',16,{stroke:'var(--forest)'})}
-    <p style="font-size:11.5px;color:var(--ink-soft);">Ce lien reste stable même si vous modifiez le nom de votre restaurant plus tard — vos QR Codes déjà imprimés continueront de fonctionner.</p>
+    ${!RESTAURANT.isPublished ? `<p style="font-size:11px;color:var(--terracotta);margin-top:8px;">Votre site est encore en brouillon — publiez-le dans Paramètres avant de diffuser ce QR Code.</p>` : ''}
   </div>
   <div class="flex gap-2" style="margin-top:16px;flex-wrap:wrap;">
-    <button class="btn btn-secondary" onclick="toast('Téléchargement du QR Code (démo)')">${ic('download',15)} Télécharger</button>
+    <a class="btn btn-secondary" href="${qrImgUrl}" target="_blank" rel="noreferrer">${ic('download',15)} Télécharger</a>
     <button class="btn btn-outline" onclick="window.print()">${ic('printer',15)} Imprimer</button>
     <button class="btn btn-outline" onclick="shareQr()">${ic('share',15)} Partager</button>
-    <button class="btn btn-outline" onclick="toast('Lien copié : '+'${url}')">${ic('copy',15)} Copier le lien</button>
+    <button class="btn btn-outline" onclick="copyPublicSiteLink()">${ic('copy',15)} Copier le lien</button>
     <button class="btn btn-ghost" onclick="setView('storefront')">${ic('externalLink',14)} Voir mon site</button>
   </div>`;
 }
 function shareQr(){
-  const publicUrl = `https://${RESTAURANT.slug}.terangaresto.com`;
+  const publicUrl = `${location.origin}/?resto=${RESTAURANT.slug}`;
   if(navigator.share){
-    navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME+' sur TerangaResto', url:publicUrl}).catch(()=>{});
+    navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
   } else {
-    toast('Partage non disponible dans cet aperçu — lien copié à la place (démo).');
+    copyPublicSiteLink();
   }
 }
-function drawQr(){
-  const c = document.getElementById('qrCanvas');
-  if(!c) return;
-  const ctx = c.getContext('2d');
-  const n = 21, cell = 180/n;
-  ctx.fillStyle='#fff'; ctx.fillRect(0,0,180,180);
-  ctx.fillStyle='#2b1810';
-  let seed = 42;
-  function rand(){ seed = (seed*9301+49297)%233280; return seed/233280; }
-  for(let y=0;y<n;y++) for(let x=0;x<n;x++){
-    const isFinder = (x<7&&y<7)||(x>n-8&&y<7)||(x<7&&y>n-8);
-    if(isFinder) continue;
-    if(rand()>0.58) ctx.fillRect(x*cell,y*cell,cell-1,cell-1);
-  }
-  // finder patterns
-  [[0,0],[n-7,0],[0,n-7]].forEach(([fx,fy])=>{
-    ctx.fillStyle='#2b1810'; ctx.fillRect(fx*cell,fy*cell,7*cell,7*cell);
-    ctx.fillStyle='#fff'; ctx.fillRect((fx+1)*cell,(fy+1)*cell,5*cell,5*cell);
-    ctx.fillStyle='#2b1810'; ctx.fillRect((fx+2)*cell,(fy+2)*cell,3*cell,3*cell);
-  });
-}
+/* drawQr() a été retiré : il dessinait un motif décoratif aléatoire
+   (pas un vrai QR Code scannable). Remplacé par une vraie image QR
+   générée via l'API publique api.qrserver.com dans dashQrcode(),
+   qui encode le vrai lien du site public. */
 </script>
 
 <script>
@@ -3278,7 +3809,7 @@ function refreshStaffLists(){
   hydrateIcons();
 }
 
-function inviteStaff(){
+async function inviteStaff(){
   const email = document.getElementById('staffEmail').value.trim();
   if(!email){ toast('Entrez un e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
@@ -3293,34 +3824,40 @@ function inviteStaff(){
   const defaults = ROLE_SECTIONS[inviteRole] || [];
   const isCustomized = invitePermissions.length !== defaults.length
     || invitePermissions.slice().sort().join(',') !== defaults.slice().sort().join(',');
-  staffState.push({
+  const s = {
     name: email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
     email, role: inviteRole, status:'En attente', code: genInviteCode(),
     permissions: isCustomized ? invitePermissions.slice() : null,
     createdAt: Date.now(),
     expiresAt: Date.now() + 7*24*60*60*1000, // 7 jours, comme une vraie invitation par e-mail
-  });
+  };
+  staffState.push(s);
   document.getElementById('staffEmail').value = '';
   refreshStaffLists();
   renderDashSection('staff');
-  toast(`Invitation créée pour ${email} — code ${staffState[staffState.length-1].code} (démo, aucun e-mail réel envoyé).`);
+  toast(`Invitation créée pour ${email} — code ${s.code} (aucun e-mail réel envoyé, communiquez-le vous-même).`);
+  await persistStaffInsert(s);
 }
-function resendInvite(i){
+async function resendInvite(i){
   staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
-  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours (démo).`);
+  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours.`);
+  await persistStaffUpdate(staffState[i]);
 }
-function cancelInvite(i){
+async function cancelInvite(i){
   if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
+  const id = staffState[i].id;
   staffState.splice(i,1);
   refreshStaffLists();
+  await deleteStaffRow(id);
 }
-function deactivateStaff(i){
+async function deactivateStaff(i){
   if(!confirm(`Désactiver l'accès de ${staffState[i].name} à ce restaurant ?`)) return;
   staffState[i].status = 'En attente';
   staffState[i].code = genInviteCode();
   staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
   refreshStaffLists();
   toast(`${staffState[i].name} n'a plus accès à ${RESTO_NAME}. Son compte TerangaResto reste actif.`);
+  await persistStaffUpdate(staffState[i]);
 }
 
 function openStaffEdit(i){
@@ -3365,6 +3902,7 @@ function saveStaffEdit(i){
   closeStaffEdit();
   refreshStaffLists();
   toast(`Permissions de ${staffState[i].name} mises à jour.`);
+  persistStaffUpdate(staffState[i]);
 }
 function closeStaffEdit(){ editingStaffIndex=null; document.getElementById('staffEditModal').innerHTML=''; }
 
@@ -3506,7 +4044,7 @@ function closeSocialEdit(){
   socialDraft = '';
   refreshSocialCards();
 }
-function saveSocialEdit(key){
+async function saveSocialEdit(key){
   if(!socialDraft.trim()){ toast('Ce champ ne peut pas être vide.'); return; }
   RESTAURANT.social[key].value = socialDraft.trim();
   RESTAURANT.social[key].enabled = true;
@@ -3514,18 +4052,21 @@ function saveSocialEdit(key){
   socialDraft = '';
   refreshSocialCards();
   if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
   toast('Réseau enregistré — visible sur votre site public.');
 }
-function toggleSocialEnabled(key){
+async function toggleSocialEnabled(key){
   RESTAURANT.social[key].enabled = !RESTAURANT.social[key].enabled;
   refreshSocialCards();
   if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
 }
-function removeSocial(key){
+async function removeSocial(key){
   if(!confirm('Retirer ce réseau ? Ses informations seront supprimées (différent de le masquer).')) return;
   RESTAURANT.social[key] = {enabled:false, value:''};
   refreshSocialCards();
   if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
   toast('Réseau retiré.');
 }
 function refreshSocialCards(){
@@ -3547,13 +4088,25 @@ function dashSettings(){
 
 function settingsBodyHtml(){
   if(settingsTab==='Général') return `
-    <div class="card" style="padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;background:var(--cream);">
-      ${ic('link',16,{stroke:'var(--forest)'})}
-      <div style="flex:1;min-width:0;">
-        <p style="font-size:11px;color:var(--ink-faint);">Adresse de votre site public</p>
-        <p class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${RESTAURANT.slug}.terangaresto.com</p>
+    <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.isPublished?'0':'12px'};">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${ic(RESTAURANT.isPublished?'globe':'lock',18,{stroke: RESTAURANT.isPublished?'var(--forest)':'var(--amber-deep)'})}
+          <div>
+            <p style="font-size:13.5px;font-weight:600;">${RESTAURANT.isPublished?'Site publié':'Site en brouillon'}</p>
+            <p style="font-size:11px;color:var(--ink-faint);">${RESTAURANT.isPublished?'Visible par vos clients.':'Invisible pour vos clients tant que non publié.'}</p>
+          </div>
+        </div>
+        <button class="btn ${RESTAURANT.isPublished?'btn-outline':'btn-secondary'} btn-sm" onclick="togglePublish()">${RESTAURANT.isPublished?'Dépublier':'Publier'}</button>
       </div>
-      <span class="pill pill-forest" style="flex-shrink:0;">Généré automatiquement</span>
+      ${RESTAURANT.isPublished?`<div style="border-top:1px solid var(--cream-line);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
+        ${ic('link',16,{stroke:'var(--forest)'})}
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:11px;color:var(--ink-faint);">Lien de votre site public</p>
+          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${RESTAURANT.slug}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
+      </div>`:''}
     </div>
     <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${RESTAURANT.name}" style="margin-bottom:14px;">
     <label class="field-label">Type de restaurant</label>
@@ -3589,17 +4142,17 @@ function settingsBodyHtml(){
     </div>
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:18px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
-      <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();"><div class="dot"></div></div>
+      <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
     </div>`;
 
   if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
     const h = RESTAURANT.hours[i];
     return `<div class="flex items-center gap-3 flex-wrap" style="padding:9px 0;border-top:1px solid var(--cream-line);">
       <span style="width:84px;font-size:13.5px;font-weight:500;">${d}</span>
-      <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;renderDashSection('settings');"><div class="dot"></div></div>
-      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value">
+      <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value;persistRestaurant();">
         <span style="color:var(--ink-faint);font-size:12px;">à</span>
-        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value">`
+        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;persistRestaurant();">`
         : `<span style="font-size:12px;color:var(--ink-faint);">Fermé</span>`}
     </div>`;
   }).join('');
@@ -3607,7 +4160,7 @@ function settingsBodyHtml(){
   if(settingsTab==='Livraison') return `
     <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
       <span style="font-size:13.5px;font-weight:500;">Livraison activée</span>
-      <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');"><div class="dot"></div></div>
+      <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
     </div>
     ${RESTAURANT.delivery.enabled?`
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
@@ -3620,19 +4173,19 @@ function settingsBodyHtml(){
     <div class="card" style="padding:14px 16px;margin-bottom:12px;">
       <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.own.enabled?'12px':'0'};">
         <div><p style="font-size:13.5px;font-weight:600;">Livraison du restaurant</p><p style="font-size:11.5px;color:var(--ink-faint);">Remise en main propre par votre propre livreur.</p></div>
-        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;renderDashSection('settings');"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>
       ${RESTAURANT.delivery.modes.own.enabled?`
       <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
         <span style="font-size:12.5px;">${ic('card',13)} Autoriser le paiement à la livraison</span>
-        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;renderDashSection('settings');"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>`:''}
     </div>
 
     <div class="card" style="padding:14px 16px;margin-bottom:14px;">
       <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.express.enabled?'12px':'0'};">
         <div><p style="font-size:13.5px;font-weight:600;">Livraison Express</p><p style="font-size:11.5px;color:var(--ink-faint);">Coursier tiers — ne peut pas encaisser pour votre compte.</p></div>
-        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;renderDashSection('settings');"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>
       ${RESTAURANT.delivery.modes.express.enabled?`
       <div style="border-top:1px solid var(--cream-line);padding-top:12px;">
@@ -3673,10 +4226,10 @@ function settingsBodyHtml(){
         <span style="flex:1;font-size:13.5px;font-weight:600;">Google Maps</span>
       </div>
       <label class="field-label" style="font-size:11px;">Lien Google Maps</label>
-      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${RESTAURANT.mapsLink}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;">
+      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${RESTAURANT.mapsLink}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;" onchange="persistRestaurant();">
       <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
         <span style="font-size:13.5px;font-weight:500;">Afficher la localisation sur le site public</span>
-        <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>
       ${!RESTAURANT.mapsLink.trim() && RESTAURANT.showMap ? `<p style="font-size:11.5px;color:var(--amber-ink);margin-top:8px;">Collez un lien Google Maps ci-dessus pour que la localisation s'affiche.</p>`:''}
     </div>`;
@@ -3697,10 +4250,10 @@ function settingsBodyHtml(){
 
 function settingsColorRow(label, key, value, hint){
   return `<div class="flex items-center gap-3" style="margin-bottom:12px;max-width:480px;">
-    <input type="color" id="setPicker_${key}" value="${value}" oninput="settingsApplyColor('${key}',this.value)" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
+    <input type="color" id="setPicker_${key}" value="${value}" oninput="settingsApplyColor('${key}',this.value)" onchange="persistRestaurant()" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
     <div style="flex:1;">
       <label class="field-label" style="margin-bottom:3px;">${label}</label>
-      <input class="field-input font-tabular" id="setHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="settingsSyncHexInput('${key}',this.value)">
+      <input class="field-input font-tabular" id="setHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="settingsSyncHexInput('${key}',this.value)" onchange="persistRestaurant()">
     </div>
     <span style="font-size:10.5px;color:var(--ink-faint);max-width:100px;text-align:right;flex-shrink:0;">${hint}</span>
   </div>`;
@@ -3739,9 +4292,9 @@ function renderSettingsColorPreview(){
     </div>`;
 }
 
-function saveSettings(){
+async function saveSettings(){
   const nameEl = document.getElementById('setName');
-  if(nameEl) applyRestaurantName(nameEl.value.trim() || RESTAURANT.name);
+  if(nameEl){ RESTAURANT.name = nameEl.value.trim() || RESTAURANT.name; applyRestaurantName(RESTAURANT.name); }
   const typeEl = document.getElementById('setType'); if(typeEl) RESTAURANT.type = typeEl.value;
   const phoneEl = document.getElementById('setPhone'); if(phoneEl) RESTAURANT.phone = phoneEl.value;
   const cityEl = document.getElementById('setCity'); if(cityEl) RESTAURANT.city = cityEl.value;
@@ -3750,9 +4303,10 @@ function saveSettings(){
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
+  await persistRestaurant();
   toast('Modifications enregistrées — visibles sur votre site public.');
 }
-function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); }
+function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
 function pickLogo(){
   triggerImagePicker((dataUrl)=>{
@@ -3769,61 +4323,94 @@ function pickCover(){
   });
 }
 
-/* ---------------- ABONNEMENT ---------------- */
+/* ---------------- ABONNEMENT — machine à états réelle ---------------- */
 const PLAN_PRICES = {starter:3000,pro:7000};
 let abonSelectedPlan = null;
-let abonSelectedMethod = 'wave';
-let abonPaying = false;
+let abonSelectedCycle = null;
+
+const SUBSCRIPTION_STATUS_LABELS = {
+  trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré",
+};
+const SUBSCRIPTION_STATUS_TONE = {
+  trialing:'pill-amber', active:'pill-forest', cancelled:'pill-neutral', expired:'pill-terracotta',
+};
 
 function dashAbonnement(){
-  if(abonSelectedPlan===null) abonSelectedPlan = state.plan;
+  if(abonSelectedPlan===null) abonSelectedPlan = state.plan==='free' ? 'starter' : state.plan;
+  if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle || 'monthly';
+  const status = computeEffectiveSubscriptionStatus();
+  const planLabel = state.plan==='pro' ? 'Pro' : state.plan==='starter' ? 'Starter' : 'Gratuit (essai)';
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
     <div class="flex justify-between items-center">
-      <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;text-transform:capitalize;">${state.plan}</p></div>
-      <span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">${state.plan==='pro'?'Actif':'Essai'}</span>
+      <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
+      <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]}">${SUBSCRIPTION_STATUS_LABELS[status]}</span>
     </div>
-    <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">${state.plan==='pro'?'Prochain renouvellement : 8 septembre 2026':"Fin de l'essai : 22 août 2026"}</p>
+    <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
+      ${status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
+        : status==='active' ? `Facturation ${RESTAURANT.billingCycle==='annual'?'annuelle':'mensuelle'} — accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}. Aucun fournisseur de paiement connecté : ce forfait n'est pas réellement facturé.`
+        : status==='cancelled' ? `Annulé — accès encore valide ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, puis passera automatiquement en Expiré.`
+        : `Votre accès complet est suspendu. Choisissez un forfait ci-dessous pour le rétablir.`}
+    </p>
+    ${status==='active' ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
+    ${status==='cancelled' ? `<button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="reactivateSubscription()">Réactiver</button>` : ''}
   </div>
   <div class="card" style="padding:18px;max-width:560px;" id="abonCard">${abonCardHtml()}</div>`;
 }
 
 function abonCardHtml(){
-  if(abonPaying){
-    return `<div class="text-center" style="padding:30px 0;">${ic('loader',30,{stroke:'var(--amber-deep)',className:'spin'})}<p style="font-size:13px;color:var(--ink-soft);margin-top:10px;">Vérification du paiement…</p></div>`;
-  }
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
-  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
     ${['starter','pro'].map(code=>`<button onclick="abonSelectedPlan='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;text-transform:capitalize;">${code}</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PLAN_PRICES[code])}/mois</p></button>`).join('')}
   </div>
-  <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Moyen de paiement</p>
+  <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Facturation</p>
   <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-    ${['wave','orange_money'].map(m=>`<button onclick="abonSelectedMethod='${m}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedMethod===m?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedMethod===m?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;display:flex;align-items:center;gap:8px;">${paymentMark(m,24)}<span style="font-size:13px;">${PAYMENT_LABELS[m]}</span></button>`).join('')}
+    ${[['monthly','Mensuelle',1],['annual','Annuelle',12*0.83]].map(([code,label,mult])=>`<button onclick="abonSelectedCycle='${code}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedCycle===code?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedCycle===code?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">${label}</p><p style="font-size:11px;color:var(--ink-faint);">${code==='annual'?'2 mois offerts':fmt(PLAN_PRICES[abonSelectedPlan])+'/mois'}</p></button>`).join('')}
+  </div>
+  <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
+    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('alertTriangle',15)}<b>Paiement réel à connecter.</b></p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Aucun fournisseur de paiement (Wave, Orange Money…) n'est relié à ce projet. Changer de forfait ici met à jour l'accès aux fonctionnalités immédiatement, avec une vraie date d'expiration enregistrée dans Supabase — mais sans aucun encaissement réel. À réserver aux tests, pas à une mise en production facturée.</p>
   </div>
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div><p style="font-size:11px;color:var(--ink-faint);">Total à payer</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(PLAN_PRICES[abonSelectedPlan])}</p></div>
-    <button class="btn btn-secondary btn-lg" onclick="abonPay()" ${abonSelectedPlan===state.plan?'disabled':''}>${abonSelectedPlan===state.plan?'Forfait actuel':'Payer avec '+PAYMENT_LABELS[abonSelectedMethod]}</button>
-  </div>
-  <p style="font-size:10.5px;color:var(--ink-faint);margin-top:10px;">Démo — paiement simulé. Dans l'application réelle, l'abonnement n'est activé qu'après confirmation serveur du fournisseur, jamais automatiquement.</p>`;
+    <div><p style="font-size:11px;color:var(--ink-faint);">Prix indicatif</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(abonSelectedCycle==='annual' ? Math.round(PLAN_PRICES[abonSelectedPlan]*12*0.83) : PLAN_PRICES[abonSelectedPlan])}${abonSelectedCycle==='annual'?'/an':'/mois'}</p></div>
+    <button class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">Passer à ce forfait (sans paiement)</button>
+  </div>`;
 }
 
-function abonPay(){
-  abonPaying = true;
-  document.getElementById('abonCard').innerHTML = abonCardHtml();
-  hydrateIcons();
-  setTimeout(()=>{
-    state.plan = abonSelectedPlan;
-    abonPaying = false;
-    renderDashSection('abonnement');
-    renderPlanBadgeAndBanner();
-    toast(ic('checkCircle',14)+` Paiement simulé (démo) — Plan ${abonSelectedPlan==='pro'?'Pro':'Starter'} activé`, true);
-  }, 900);
+async function abonApplyPlan(){
+  state.plan = abonSelectedPlan;
+  RESTAURANT.billingCycle = abonSelectedCycle;
+  RESTAURANT.subscriptionStatus = 'active';
+  RESTAURANT.currentPeriodEnd = Date.now() + SUBSCRIPTION_PERIOD_DAYS[abonSelectedCycle]*86400000;
+  RESTAURANT.lastRenewedAt = Date.now();
+  renderDashSection('abonnement');
+  renderPlanBadgeAndBanner();
+  await persistRestaurant();
+  toast(ic('checkCircle',14)+` Plan ${abonSelectedPlan==='pro'?'Pro':'Starter'} appliqué — aucun paiement réel effectué.`, true);
+}
+
+async function cancelSubscription(){
+  if(!confirm("Résilier votre abonnement ? Vous garderez l'accès jusqu'à la fin de la période déjà couverte, puis votre boutique publique deviendra indisponible.")) return;
+  RESTAURANT.subscriptionStatus = 'cancelled';
+  renderDashSection('abonnement');
+  renderPlanBadgeAndBanner();
+  await persistRestaurant();
+  toast('Abonnement résilié — accès conservé jusqu\'à la fin de la période en cours.');
+}
+async function reactivateSubscription(){
+  RESTAURANT.subscriptionStatus = 'active';
+  renderDashSection('abonnement');
+  renderPlanBadgeAndBanner();
+  await persistRestaurant();
+  toast(ic('checkCircle',14)+' Abonnement réactivé.', true);
 }
 </script>
+
 
 <style>
 /* ---------------- RESPONSIVE ---------------- */
@@ -3896,13 +4483,6 @@ function checkMobile(){
 }
 window.addEventListener('resize', checkMobile);
 
-renderPricing();
-renderStorefrontHero();
-renderProductSections();
-updateFloatingCartButton();
-checkMobile();
-document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
-
 /* Favicon — le vrai logo TerangaResto, jamais déformé (même source que
    partout ailleurs dans l'app, pas une copie séparée). Réglé en JS pour
    éviter de dupliquer le base64 dans le <head>. Fonctionne en local
@@ -3914,7 +4494,27 @@ document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
   if(fav) fav.href = LOGO_SRC;
   if(touch) touch.href = LOGO_SRC;
 })();
-hydrateIcons();
+document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
+
+/* Charge d'abord la session + les données Supabase (restaurant du
+   visiteur ou du propriétaire connecté), PUIS rend la page — évite
+   d'afficher un état vide qui clignoterait avant que les vraies
+   données n'arrivent. */
+(async function init(){
+  await restoreSession();
+  renderPricing();
+  renderStorefrontHero();
+  renderProductSections();
+  updateFloatingCartButton();
+  checkMobile();
+  hydrateIcons();
+})();
+
+/* Recharge automatiquement les données quand l'état de connexion
+   change ailleurs (autre onglet, expiration de session, etc.). */
+supabaseClient.auth.onAuthStateChange((event) => {
+  if(event === 'SIGNED_OUT'){ currentUser = null; }
+});
 </script>
 
 
