@@ -135,30 +135,33 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
 
 .cta-short{ display:none; }
 
-/* Barre rapide mobile : "Connexion | Carrière" toujours visibles dans
-   l'en-tête compact, sans passer par le menu hamburger (qui reste
-   disponible pour Accueil/Tarifs/FAQ/Comment ça marche). Masquée sur
-   desktop, où "Connexion" est déjà dans .gnav-tabs. */
-.mobile-quicknav{ display:none; align-items:center; gap:7px; flex-shrink:0; }
-.mobile-quicknav button{ font-size:12.5px; font-weight:700; color:var(--ink-soft); padding:4px 2px; white-space:nowrap; }
-.mobile-quicknav-sep{ color:var(--cream-line); font-size:12px; }
+/* Bouton "Connexion" visible directement dans l'en-tête compact mobile,
+   juste à côté de "Créer" — plus besoin de passer par le menu hamburger
+   (qui reste disponible pour Accueil/Tarifs/FAQ/Comment ça marche).
+   Masqué sur desktop, où "Connexion" est déjà dans .gnav-tabs. */
+.mobile-login-btn{ display:none; }
 
 @media (max-width:820px){
   .gnav-tabs{display:none;}
   .gnav-tabs.mobile-open{display:flex; position:fixed; top:56px; left:12px; right:12px; z-index:55; flex-direction:column; box-shadow:0 10px 30px rgba(43,24,16,.15);}
   #mobileMenuBtn{ display:flex !important; }
-  .mobile-quicknav{ display:flex; }
+  .mobile-login-btn{ display:inline-flex; }
 }
 @media (max-width:420px){
   .cta-full{ display:none; }
   .cta-short{ display:inline; }
   .logo-word{ display:none; }
 }
+/* Site public d'un restaurant : totalement indépendant de la
+   plateforme — aucun en-tête TerangaResto visible, ni pour un client
+   ni pour le propriétaire qui prévisualise (il retrouve son tableau de
+   bord via le petit bouton flottant dédié, pas depuis cet en-tête). */
+body.storefront-active .gnav{ display:none; }
 </style>
 </head>
 <body>
 
-<header class="gnav">
+<header class="gnav" id="platformHeader">
   <div class="gnav-inner">
     <a href="#" class="flex items-center gap-2" onclick="setView('landing');return false;">
       <img class="logo-asset" src="" alt="TerangaResto" style="width:34px;height:34px;object-fit:contain;">
@@ -171,12 +174,8 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
       <button class="gnav-tab" onclick="goToAnchor('comment');closeMobileNav();">Comment ça marche</button>
       <button class="gnav-tab" onclick="openLogin();closeMobileNav();">Connexion</button>
     </nav>
-    <div class="mobile-quicknav" id="mobileQuickNav">
-      <button onclick="openLogin('login');closeMobileNav();">Connexion</button>
-      <span class="mobile-quicknav-sep">|</span>
-      <button onclick="openCareers();closeMobileNav();">Carrière</button>
-    </div>
     <div class="flex items-center gap-2" style="flex-shrink:0;">
+      <button class="btn btn-outline btn-sm mobile-login-btn" onclick="openLogin('login');closeMobileNav();">Connexion</button>
       <button class="btn btn-secondary btn-sm" onclick="startOnboarding();closeMobileNav();" id="gnavCta"><span class="cta-full">Créer mon restaurant</span><span class="cta-short">Créer</span></button>
       <button id="mobileMenuBtn" class="hidden" onclick="document.getElementById('gnavTabs').classList.toggle('mobile-open')" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--cream-line);background:#fff;align-items:center;justify-content:center;flex-shrink:0;" data-icon="menu" data-size="17"></button>
     </div>
@@ -383,15 +382,16 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
       </div>
       <div id="sfMapContainer"></div>
     </div>
-    <div style="border-top:1px solid var(--cream-line);padding:14px;text-align:center;font-size:12px;color:var(--ink-faint);">Propulsé par TerangaResto</div>
   </footer>
 
   <!-- Retour au tableau de bord — visible uniquement pour le restaurateur
        propriétaire de CE restaurant (session en cours), jamais pour un
-       client normal consultant le site public. -->
-  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" style="position:fixed;top:78px;right:16px;z-index:35;background:var(--ink);color:var(--cream);border-radius:999px;padding:9px 14px;display:flex;align-items:center;gap:7px;box-shadow:0 6px 18px rgba(43,24,16,.28);font-weight:600;font-size:12.5px;">
-    <span data-icon="arrowLeft" data-size="14"></span>
-    <span>Tableau de bord</span>
+       client normal consultant le site public. Petite icône flottante
+       discrète (pas une bannière) : le header plateforme est masqué sur
+       le site public, donc positionnée en haut, mais sans texte ni
+       largeur excessive — ne gêne jamais le contenu du restaurant. -->
+  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:35;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
+    <span data-icon="arrowLeft" data-size="16"></span>
   </button>
 
   <!-- Floating cart button -->
@@ -1053,9 +1053,6 @@ function goToAnchor(id){
 function closeMobileNav(){ document.getElementById('gnavTabs').classList.remove('mobile-open'); }
 function openLogin(tab){ document.getElementById('loginOverlay').classList.remove('hidden'); setLoginTab(tab||'login'); }
 function closeLogin(){ document.getElementById('loginOverlay').classList.add('hidden'); }
-/* Aucune page carrières n'existe encore dans ce projet — plutôt qu'un
-   lien mort, un message honnête indique que ça arrive bientôt. */
-function openCareers(){ toast("Carrières chez TerangaResto — bientôt disponible."); }
 
 let loginTab = 'login';
 function setLoginTab(tab){
@@ -1855,7 +1852,11 @@ function goUpgrade(){ setView('dashboard'); setDashSection('abonnement'); }
 function applyRestaurantName(name){
   RESTO_NAME = name || 'Votre restaurant';
   document.querySelectorAll('.resto-name').forEach(el => el.textContent = RESTO_NAME);
-  document.title = RESTO_NAME + ' — TerangaResto';
+  // Le site public d'un restaurant est indépendant de la plateforme :
+  // l'onglet du navigateur affiche uniquement son nom, jamais
+  // "— TerangaResto" — cette mention ne reste que pour le tableau de
+  // bord et les pages de la plateforme elle-même.
+  document.title = state.view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
 }
 
 /* Affiche le vrai logo (image réellement sélectionnée par le
@@ -1914,6 +1915,13 @@ function setView(view){
     return;
   }
   state.view = view;
+  // Site public du restaurant totalement indépendant de la plateforme :
+  // le header TerangaResto (logo, Connexion, Créer, navigation) est
+  // masqué dès qu'on est sur le site d'un restaurant — pour un client
+  // comme pour le propriétaire qui prévisualise, qui retrouve son
+  // tableau de bord via le petit bouton flottant dédié, pas ici.
+  document.body.classList.toggle('storefront-active', view==='storefront');
+  document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.gnav-tab').forEach(t=>t.classList.toggle('active', t.dataset.view===view));
