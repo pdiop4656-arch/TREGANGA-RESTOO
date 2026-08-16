@@ -9,6 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Le thème public "Classic" utilise des icônes FontAwesome (fa-solid,
+     fa-regular) dans ses boutons (panier, "+", localisation, menu...) —
+     cette feuille de style n'était jamais chargée, ce qui rendait ces
+     icônes invisibles (élément vide) sans casser la mise en page. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 :root{
   --ink:#2b1810; --ink-soft:#6b4f3f; --ink-faint:#a68a72;
@@ -399,6 +404,10 @@ body.storefront-active .gnav{ display:none; }
   <section class="menu-section" id="tgMenu">
     <div class="container">
       <div class="section-title"><span>Notre carte</span><h2 class="resto-name" id="tgMenuTitle">Le menu</h2></div>
+      <div class="search-bar-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="tgSearchInput" class="search-input" placeholder="Rechercher un plat…" oninput="tgSearchProducts(this.value)">
+      </div>
       <div class="products-grid" id="sfProductSections"></div>
     </div>
   </section>
@@ -442,22 +451,43 @@ body.storefront-active .gnav{ display:none; }
        discrète (pas une bannière) : le header plateforme est masqué sur
        le site public, donc positionnée en haut, mais sans texte ni
        largeur excessive — ne gêne jamais le contenu du restaurant. -->
-  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:1200;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
+  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:1050;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
     <span data-icon="arrowLeft" data-size="16"></span>
   </button>
 
   <!-- Floating cart button -->
-  <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1200;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
+  <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1050;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
     <span style="position:relative;display:flex;">
       <span data-icon="bag" data-size="18"></span>
       <span id="cartCountBadge" style="position:absolute;top:-8px;right:-10px;background:#fff;color:var(--amber-deep);font-size:10px;font-weight:800;border-radius:999px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">0</span>
     </span>
     Voir le panier <span id="cartTotalBadge" class="font-tabular"></span>
   </button>
+
+  <!-- Suivre ma commande — petit bouton flottant compact, jamais un
+       grand bandeau. Visible uniquement si CE navigateur a déjà passé
+       au moins une commande sur CE restaurant (voir getMyOrders()). -->
+  <button id="trackOrderBtn" class="hidden" onclick="openTrackOrderModal()" title="Suivre ma commande" aria-label="Suivre ma commande" style="position:fixed;bottom:22px;left:14px;z-index:1050;width:44px;height:44px;background:var(--ink);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(43,24,16,.28);">
+    <span data-icon="receipt" data-size="18"></span>
+  </button>
 </section>
 
+<!-- Suivi de commande — statut réel toujours redemandé à Supabase,
+     jamais lu depuis localStorage (qui ne sert qu'à savoir QUELLES
+     commandes proposer sur ce navigateur). -->
+<div id="trackOrderOverlay" class="hidden" style="position:fixed;inset:0;z-index:1104;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeTrackOrderModal()"></div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:80vh;overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+      <h2 class="font-display" style="font-size:17px;">Suivre ma commande</h2>
+      <button onclick="closeTrackOrderModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
+    </div>
+    <div style="padding:16px 20px;" id="trackOrderBody"></div>
+  </div>
+</div>
+
 <!-- Cart drawer overlay -->
-<div id="cartDrawerOverlay" class="hidden" style="position:fixed;inset:0;z-index:70;">
+<div id="cartDrawerOverlay" class="hidden" style="position:fixed;inset:0;z-index:1100;">
   <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeCart()"></div>
   <div style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:#fff;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(0,0,0,.15);">
     <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid var(--cream-line);">
@@ -470,13 +500,13 @@ body.storefront-active .gnav{ display:none; }
 </div>
 
 <!-- Product detail modal -->
-<div id="productModalOverlay" class="hidden" style="position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;">
+<div id="productModalOverlay" class="hidden" style="position:fixed;inset:0;z-index:1101;display:flex;align-items:flex-end;justify-content:center;">
   <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeProductModal()"></div>
   <div id="productModalBody" class="card" style="position:relative;width:100%;max-width:440px;border-radius:28px 28px 0 0;max-height:90vh;overflow-y:auto;"></div>
 </div>
 
 <!-- Checkout overlay -->
-<div id="checkoutOverlay" class="hidden" style="position:fixed;inset:0;z-index:90;background:var(--cream);overflow-y:auto;">
+<div id="checkoutOverlay" class="hidden" style="position:fixed;inset:0;z-index:1102;background:var(--cream);overflow-y:auto;">
   <div style="border-bottom:1px solid var(--cream-line);background:#fff;">
     <div class="wrap-sm flex items-center gap-3" style="padding:16px 24px;">
       <button onclick="closeCheckout()" style="font-size:18px;display:flex;" data-icon="arrowLeft" data-size="18"></button>
@@ -488,7 +518,7 @@ body.storefront-active .gnav{ display:none; }
 </div>
 
 <!-- Order confirmation overlay -->
-<div id="confirmationOverlay" class="hidden" style="position:fixed;inset:0;z-index:95;background:var(--cream);overflow-y:auto;">
+<div id="confirmationOverlay" class="hidden" style="position:fixed;inset:0;z-index:1103;background:var(--cream);overflow-y:auto;">
   <div style="border-bottom:1px solid var(--cream-line);background:#fff;">
     <div class="wrap-sm" style="padding:16px 24px;">
       <img class="logo-asset" src="" style="width:26px;height:26px;object-fit:contain;">
@@ -1752,7 +1782,7 @@ async function loadRestaurantIntoState(restaurantId){
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
     id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
-    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status,
+    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes,
     createdAt:new Date(o.created_at),
   }));
 
@@ -1803,7 +1833,7 @@ function onRealtimeNewOrder(row){
   if(DEMO_ORDERS.some(o => o.id === row.id)) return;
   const order = {
     id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
-    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status,
+    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes,
     createdAt:new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(order);
@@ -1840,6 +1870,64 @@ function unlockAudioOnce(){
 }
 document.addEventListener('click', unlockAudioOnce, {once:true});
 document.addEventListener('touchstart', unlockAudioOnce, {once:true});
+
+/* ---------------- SUIVI DE COMMANDE CLIENT ----------------
+   localStorage sert UNIQUEMENT à retenir QUELLES commandes proposer
+   dans "Suivre ma commande" sur CE navigateur — jamais comme source du
+   statut réel, qui est toujours redemandé à Supabase via track_order()
+   au moment d'ouvrir la fenêtre. Usage conforme : état pratique côté
+   client, jamais une donnée métier stockée à la place de Supabase. */
+const MY_ORDERS_KEY = 'tg_my_orders';
+function getMyOrders(){
+  if(!RESTAURANT.id) return [];
+  try{
+    const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
+    return all[RESTAURANT.id] || [];
+  }catch(e){ return []; }
+}
+function rememberMyOrder(num, phone){
+  if(!RESTAURANT.id || !num) return;
+  try{
+    const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
+    const list = all[RESTAURANT.id] || [];
+    if(!list.some(o=>o.num===num)) list.unshift({num, phone: phone||''});
+    all[RESTAURANT.id] = list.slice(0, 10); // garde les 10 dernières commandes sur ce restaurant
+    localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(all));
+  }catch(e){ /* localStorage indisponible (navigation privée stricte...) — pas bloquant */ }
+}
+function renderTrackOrderButton(){
+  const btn = document.getElementById('trackOrderBtn');
+  if(!btn) return;
+  btn.classList.toggle('hidden', viewerIsStaff || getMyOrders().length === 0);
+}
+async function openTrackOrderModal(){
+  const overlay = document.getElementById('trackOrderOverlay');
+  overlay.classList.remove('hidden');
+  const body = document.getElementById('trackOrderBody');
+  const myOrders = getMyOrders();
+  body.innerHTML = `<div class="text-center" style="padding:30px 0;">${ic('loader',26,{className:'spin', stroke:'var(--amber-deep)'})}</div>`;
+  hydrateIcons(body);
+
+  const results = await Promise.all(myOrders.map(async ref => {
+    const {data, error} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: ref.num, p_phone: ref.phone});
+    return {ref, row: Array.isArray(data) ? data[0] : data, error};
+  }));
+
+  body.innerHTML = results.map(({ref, row}) => {
+    if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p></div>`;
+    const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
+    return `<div class="card" style="padding:14px;margin-bottom:10px;">
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
+        <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+      </div>
+      <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
+      <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
+    </div>`;
+  }).join('') || `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune commande à afficher.</p>`;
+  hydrateIcons(body);
+}
+function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').classList.add('hidden'); }
 
 function playNotificationSound(){
   try{
@@ -2047,7 +2135,7 @@ function renderStorefrontGateOverlay(){
     if(!overlay){
       overlay = document.createElement('div');
       overlay.id = 'storefrontGateOverlay';
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:200;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
       container.appendChild(overlay);
     }
     const status = computeEffectiveSubscriptionStatus();
@@ -2091,7 +2179,7 @@ function renderRestaurantNotFound(){
   if(!overlay){
     overlay = document.createElement('div');
     overlay.id = 'restaurantNotFoundOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1201;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
     document.body.appendChild(overlay);
   }
   overlay.innerHTML = `
@@ -2981,6 +3069,7 @@ const state = {
   view:'landing',
   cart:[], // {id,name,price,qty,variant,emoji}
   activeCategory:'all',
+  storefrontSearch:'',
   yearly:false,
   dashSection:'overview',
   checkoutStep:0,
@@ -3083,7 +3172,7 @@ function setView(view){
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
   if(view==='dashboard') { renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); requestNotificationPermissionOnce(); }
   if(view==='pricing') renderPricing();
-  if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); }
+  if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); renderTrackOrderButton(); }
   if(view==='onboarding') renderOnboarding();
   hydrateIcons();
 }
@@ -3884,12 +3973,24 @@ function renderStorefrontHero(){
     `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
   ).join('');
 
-  // Localisation — uniquement si activée ET un vrai lien Google Maps est
-  // renseigné ; jamais de carte ou de lien fictif.
+  // Localisation — vraie carte intégrée (iframe Google Maps sans clé
+  // API, construite à partir de l'adresse RÉELLEMENT enregistrée par le
+  // restaurateur — jamais une adresse inventée ni un lieu par défaut).
+  // Le lien "Voir sur Google Maps" utilise le lien explicite du
+  // restaurateur s'il existe, sinon une recherche construite sur la
+  // même adresse réelle, pour ne jamais afficher un lien mort.
   const mapEl = document.getElementById('sfMapContainer');
-  mapEl.innerHTML = (RESTAURANT.showMap && RESTAURANT.mapsLink.trim())
-    ? `<a href="${normalizeUrl(RESTAURANT.mapsLink)}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Voir sur Google Maps</a>`
-    : '';
+  const mapQuery = [RESTAURANT.name, RESTAURANT.address, RESTAURANT.city].filter(Boolean).join(', ').trim();
+  if(RESTAURANT.showMap && mapQuery){
+    const mapLinkHref = RESTAURANT.mapsLink.trim() ? normalizeUrl(RESTAURANT.mapsLink) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+    mapEl.innerHTML = `
+      <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);margin-top:0.75rem;">
+        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${RESTO_NAME}"></iframe>
+      </div>
+      <a href="${mapLinkHref}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Itinéraire sur Google Maps</a>`;
+  } else {
+    mapEl.innerHTML = '';
+  }
 
   // Cadenas de brouillon/expiration — recalculé ici aussi, car ce
   // header/hero peut se redessiner sans repasser par setView().
@@ -3915,6 +4016,14 @@ function setActiveCategory(cat){
   renderProductSections();
   document.getElementById('tgMenu').scrollIntoView({behavior:'smooth', block:'start'});
 }
+/* Barre de recherche réelle, sur les vrais produits du restaurant —
+   pas de re-rendu complet de l'input à chaque frappe (juste la grille
+   de résultats), pour ne jamais faire sauter le curseur pendant la
+   saisie. */
+function tgSearchProducts(q){
+  state.storefrontSearch = q;
+  renderProductSections();
+}
 
 function productCardHtml(p){
   return `
@@ -3936,9 +4045,13 @@ function productCardHtml(p){
 
 function renderProductSections(){
   const visible = PRODUCTS.filter(p=>p.active);
-  const items = state.activeCategory==='all' ? visible : visible.filter(p=>p.cat===state.activeCategory);
+  let items = state.activeCategory==='all' ? visible : visible.filter(p=>p.cat===state.activeCategory);
+  const q = (state.storefrontSearch||'').trim().toLowerCase();
+  if(q){
+    items = items.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q));
+  }
   document.getElementById('sfProductSections').innerHTML = items.length ? items.map(productCardHtml).join('') : `
-    <div class="no-results" style="grid-column:1/-1;"><i class="fa-solid fa-utensils" style="font-size:2.5rem;margin-bottom:0.8rem;color:#CCC;"></i><h3>Aucun plat disponible pour le moment.</h3></div>`;
+    <div class="no-results" style="grid-column:1/-1;"><i class="fa-solid fa-utensils" style="font-size:2.5rem;margin-bottom:0.8rem;color:#CCC;"></i><h3>${q?'Aucun plat ne correspond à votre recherche.':'Aucun plat disponible pour le moment.'}</h3></div>`;
 
   // Meilleures ventes — calculées à partir des VRAIES commandes déjà
   // passées sur ce restaurant (jamais un badge "populaire" inventé).
@@ -4208,6 +4321,8 @@ function renderCheckout(){
           <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-top:4px;"><span>Total</span><span class="font-tabular">${fmt(sub+fee)}</span></div>
         </div>
       </div>
+      <label class="field-label">Une précision pour le restaurant ? (facultatif)</label>
+      <textarea class="field-input" id="ckNotes" rows="2" placeholder="Ex : sans piment, sonnette cassée, livrer au portail..." style="margin-bottom:18px;" oninput="ckField('notes',this.value)">${c.notes||''}</textarea>
       <button id="submitOrderBtn" class="btn btn-secondary btn-lg w-full" onclick="submitOrder()">${ic('check',16)} Confirmer la commande</button>`;
   }
 
@@ -4262,6 +4377,7 @@ async function submitOrderInternal(){
       product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
     })),
     p_pay: c.payment,
+    p_notes: c.notes || null,
   });
 
   if(error){
@@ -4277,7 +4393,7 @@ async function submitOrderInternal(){
   const newOrder = {
     id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
     items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
-    status: row.status, createdAt: new Date(row.created_at),
+    status: row.status, notes: row.notes, createdAt: new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
@@ -4301,11 +4417,14 @@ async function submitOrderInternal(){
     }
   });
   state.cart = [];
+  state.checkout.notes = ''; // spécifique à CETTE commande — ne doit pas préremplir la suivante
+  rememberMyOrder(row.num, c.phone);
   updateFloatingCartButton();
   closeCheckout();
   renderConfirmation();
   document.getElementById('confirmationOverlay').classList.remove('hidden');
   renderProductSections();
+  renderTrackOrderButton();
 }
 
 function renderConfirmation(){
@@ -4574,6 +4693,10 @@ function openOrderDetail(i){
       </div>
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Produits</p>
       ${o.items.map(orderItemLine).join('')}
+      ${o.notes ? `<div style="background:rgba(232,135,30,.08);border-radius:12px;padding:10px 12px;margin-top:10px;">
+        <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--amber-ink);margin-bottom:3px;">Note du client</p>
+        <p style="font-size:13px;color:var(--ink-soft);">${o.notes}</p>
+      </div>` : ''}
       <div style="border-top:1px solid var(--cream-line);margin-top:10px;padding-top:10px;">
         <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
         <div class="flex items-center gap-2" style="margin-top:8px;">${paymentMark(o.pay,22)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.pay]}</span><span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div>
