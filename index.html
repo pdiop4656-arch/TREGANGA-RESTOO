@@ -166,6 +166,38 @@ body.storefront-active .gnav{ display:none; }
 </head>
 <body>
 
+<!-- ============================================================
+     ÉCRAN DE CHARGEMENT — uniquement pour un lien direct vers un
+     restaurant (?resto=slug), jamais pour la page d'accueil générale
+     TerangaResto. Le petit script juste en dessous s'exécute de façon
+     SYNCHRONE, avant tout le reste de l'application — sans ça, la page
+     d'accueil (active par défaut dans le HTML) serait visible une
+     fraction de seconde avant que ce script ne la masque, exactement
+     le "passage" que cette modification doit supprimer.
+     ============================================================ -->
+<div id="restoSplash" class="hidden" style="position:fixed;inset:0;z-index:99999;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+  <div id="restoSplashLogo" style="width:88px;height:88px;border-radius:22px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 24px rgba(43,24,16,.14);background:#fff;opacity:0;transform:translateY(8px);transition:opacity .5s ease, transform .5s ease;"></div>
+  <p id="restoSplashName" style="font-family:'Fraunces',serif;font-size:20px;margin-top:18px;color:#2B1810;opacity:0;transition:opacity .5s ease .1s;"></p>
+  <p id="restoSplashSlogan" style="font-size:12.5px;color:#8a7466;margin-top:4px;opacity:0;transition:opacity .5s ease .18s;"></p>
+  <div style="width:140px;height:3px;background:rgba(43,24,16,.08);border-radius:999px;margin-top:26px;overflow:hidden;opacity:0;transition:opacity .5s ease .25s;" id="restoSplashBarTrack">
+    <div id="restoSplashBar" style="height:100%;width:8%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
+  </div>
+</div>
+<script>
+  // Doit rester la toute première chose exécutée dans <body> : détecte
+  // et masque immédiatement la page d'accueil générale AVANT qu'elle
+  // n'ait la moindre chance d'être peinte à l'écran.
+  if(/[?&]resto=/.test(location.search)){
+    document.getElementById('restoSplash').classList.remove('hidden');
+    requestAnimationFrame(()=>{
+      ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
+        document.getElementById(id).style.opacity = '1';
+        document.getElementById(id).style.transform = 'none';
+      });
+    });
+  }
+</script>
+
 <header class="gnav" id="platformHeader">
   <div class="gnav-inner">
     <a href="#" class="flex items-center gap-2" onclick="setView('landing');return false;">
@@ -2401,6 +2433,7 @@ async function restoreSession(){
     // d'une frappe sur la vraie session.
     const rid = await findMyRestaurantId();
     if(rid){
+      hideRestoSplash(); // garde-fou : si un ?resto= était aussi présent dans l'URL, ne jamais laisser l'écran de chargement bloqué au-dessus du tableau de bord
       await loadRestaurantIntoState(rid);
       viewerIsStaff = true;
       setView('dashboard');
@@ -2427,13 +2460,24 @@ async function restoreSession(){
 
     const restoSlug = new URLSearchParams(location.search).get('resto');
     if(restoSlug){
+      restoSplashProgress(45);
       const found = await loadRestaurantBySlug(restoSlug);
       viewerIsStaff = false;
-      if(found){ setView('storefront'); return; }
+      if(found){
+        populateRestoSplash();
+        setView('storefront');
+        // Laisse un très bref instant voir le vrai logo/nom du
+        // restaurant affichés sur l'écran de chargement avant la
+        // transition — sinon la barre saute directement à 100% sans
+        // que personne n'ait eu le temps de la voir se remplir.
+        setTimeout(hideRestoSplash, 260);
+        return;
+      }
       // Un lien de restaurant qui ne correspond à rien ne doit jamais
       // retomber sur la page d'accueil générale TerangaResto — ça
       // laisserait croire au visiteur qu'il est "sur la plateforme"
       // plutôt que sur un lien de restaurant cassé/expiré.
+      hideRestoSplash();
       renderRestaurantNotFound();
       return;
     }
@@ -2441,7 +2485,47 @@ async function restoreSession(){
     // d'accueil TerangaResto par défaut (state.view==='landing').
   }catch(e){
     console.error('Supabase — échec du chargement initial', e);
+    hideRestoSplash(); // ne jamais laisser le client bloqué indéfiniment sur l'écran de chargement
   }
+}
+</script>
+
+<script>
+/* ---------------- ÉCRAN DE CHARGEMENT DU RESTAURANT ----------------
+   Le petit script juste après <body> se contente de l'AFFICHER
+   instantanément (avant que la page d'accueil générale n'ait pu
+   apparaître) ; tout le reste — logo/nom réels une fois chargés,
+   progression, disparition — est piloté ici, une fois l'application
+   réellement démarrée. */
+function restoSplashProgress(pct){
+  const bar = document.getElementById('restoSplashBar');
+  if(bar) bar.style.width = pct + '%';
+}
+function populateRestoSplash(){
+  const logoEl = document.getElementById('restoSplashLogo');
+  const nameEl = document.getElementById('restoSplashName');
+  const sloganEl = document.getElementById('restoSplashSlogan');
+  if(!logoEl) return;
+  if(RESTAURANT.logoDataUrl){
+    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    // Pas de logo enregistré : la première lettre du nom plutôt qu'une
+    // image cassée ou un logo générique imposé.
+    logoEl.innerHTML = `<span style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:#c96a12;">${(RESTO_NAME||'T').charAt(0).toUpperCase()}</span>`;
+  }
+  nameEl.textContent = RESTO_NAME || 'TerangaResto';
+  // Réutilise le sous-titre du Hero déjà configurable par le
+  // restaurateur (Paramètres → Titre d'accueil) comme "slogan" — pas
+  // un nouveau champ inventé pour cette seule fonctionnalité.
+  sloganEl.textContent = RESTAURANT.heroSubtitle || 'Bienvenue chez nous';
+}
+function hideRestoSplash(){
+  const el = document.getElementById('restoSplash');
+  if(!el || el.classList.contains('hidden')) return;
+  restoSplashProgress(100);
+  el.style.transition = 'opacity .35s ease';
+  el.style.opacity = '0';
+  setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 380);
 }
 </script>
 
