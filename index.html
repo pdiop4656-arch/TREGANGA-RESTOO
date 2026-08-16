@@ -4617,6 +4617,16 @@ async function submitOrder(){
   if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = 'Envoi de la commande…'; }
   try{
     await submitOrderInternal();
+  } catch(e) {
+    // Filet de sécurité : si submitOrderInternal() lève une exception
+    // JavaScript (pas seulement une erreur renvoyée par Supabase, mais
+    // une vraie exception — référence nulle, donnée inattendue...),
+    // l'absence de catch faisait disparaître l'erreur en silence
+    // (rejet de promesse non intercepté, rien à l'écran). Corrigé :
+    // toute défaillance, quelle qu'elle soit, affiche désormais un
+    // message visible plutôt que de ne rien faire.
+    console.error('submitOrder — erreur inattendue :', e);
+    toast("Une erreur inattendue a empêché l'envoi de la commande. Votre panier a été conservé — réessayez, et si le problème persiste, contactez le restaurant directement.");
   } finally {
     orderSubmitInFlight = false;
     // Le bouton n'a pas besoin d'être ré-activé après un succès (le
@@ -4652,7 +4662,18 @@ async function submitOrderInternal(){
   });
 
   if(error){
-    toast("Impossible d'envoyer la commande : " + error.message);
+    console.error('create_order — erreur Supabase complète :', error);
+    // PGRST202 = PostgREST ne trouve aucune fonction create_order()
+    // correspondant EXACTEMENT aux paramètres envoyés — presque
+    // toujours le signe que le SQL le plus récent (supabase_schema.sql)
+    // n'a pas encore été (ré-)exécuté dans ce projet Supabase, pas un
+    // vrai problème de commande. Message spécifique pour ne pas laisser
+    // deviner, conformément à ce qui a été demandé.
+    if(error.code === 'PGRST202'){
+      toast("La fonction de commande installée sur Supabase ne correspond plus à cette version du site (probablement supabase_schema.sql pas encore ré-exécuté après une mise à jour). Contactez le support technique — votre panier a été conservé.");
+    } else {
+      toast("Impossible d'envoyer la commande : " + error.message);
+    }
     return;
   }
   const row = Array.isArray(data) ? data[0] : data;
