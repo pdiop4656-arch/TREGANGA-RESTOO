@@ -486,6 +486,19 @@ body.storefront-active .gnav{ display:none; }
   </div>
 </div>
 
+<!-- Avis client — note 1 à 5 étoiles + commentaire, lié à la commande
+     depuis laquelle il a été ouvert quand elle est connue. -->
+<div id="reviewOverlay" class="hidden" style="position:fixed;inset:0;z-index:1105;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeReviewModal()"></div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,92vw);background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+      <h2 class="font-display" style="font-size:17px;">Votre avis compte</h2>
+      <button onclick="closeReviewModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
+    </div>
+    <div style="padding:20px;" id="reviewBody"></div>
+  </div>
+</div>
+
 <!-- Cart drawer overlay -->
 <div id="cartDrawerOverlay" class="hidden" style="position:fixed;inset:0;z-index:1100;">
   <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeCart()"></div>
@@ -1707,13 +1720,14 @@ let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/perso
 
 async function loadRestaurantIntoState(restaurantId){
   const isLoggedIn = !!currentUser;
-  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes, paymentsRes] = await Promise.all([
+  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes, paymentsRes, reviewsRes] = await Promise.all([
     supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
     supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
     supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
     isLoggedIn ? supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
     isLoggedIn ? supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId) : Promise.resolve({data:[]}),
     isLoggedIn ? supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10) : Promise.resolve({data:[]}),
+    isLoggedIn ? supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
   ]);
   if(!r) return false;
 
@@ -1796,6 +1810,7 @@ async function loadRestaurantIntoState(restaurantId){
   // Historique des paiements PayTech (abonnement du restaurateur —
   // jamais mélangé avec les commandes de ses propres clients).
   paymentsHistory = (paymentsRes && paymentsRes.data) || [];
+  REVIEWS = (reviewsRes && reviewsRes.data) || [];
 
   // Réinitialise les sélections d'écran qui pointaient peut-être vers
   // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
@@ -1901,6 +1916,7 @@ function renderTrackOrderButton(){
   btn.classList.toggle('hidden', viewerIsStaff || getMyOrders().length === 0);
 }
 async function openTrackOrderModal(){
+  unsubscribeFromOrderTracking(); // quitte le suivi d'une commande précise si on revient à la liste
   const overlay = document.getElementById('trackOrderOverlay');
   overlay.classList.remove('hidden');
   const body = document.getElementById('trackOrderBody');
@@ -1916,18 +1932,152 @@ async function openTrackOrderModal(){
   body.innerHTML = results.map(({ref, row}) => {
     if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p></div>`;
     const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
-    return `<div class="card" style="padding:14px;margin-bottom:10px;">
+    return `<button onclick="openOrderTrackingDetail('${row.num}','${ref.phone}')" class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;">
       <div class="flex items-center justify-between" style="margin-bottom:6px;">
         <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
         <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
       </div>
       <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
       <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
-    </div>`;
+    </button>`;
   }).join('') || `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune commande à afficher.</p>`;
   hydrateIcons(body);
 }
-function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').classList.add('hidden'); }
+function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').classList.add('hidden'); unsubscribeFromOrderTracking(); }
+
+/* Suivi d'UNE commande précise — barre de progression visuelle basée
+   uniquement sur le vrai statut Supabase (jamais un statut fictif). Se
+   met à jour automatiquement via Realtime quand le restaurateur change
+   le statut depuis son tableau de bord — pas besoin d'actualiser. */
+const STEP_LABELS = {new:'Reçue', preparing:'En préparation', ready:'Prête', delivering:'En livraison', completed:'Terminée'};
+async function openOrderTrackingDetail(num, phone){
+  const overlay = document.getElementById('trackOrderOverlay');
+  overlay.classList.remove('hidden');
+  const body = document.getElementById('trackOrderBody');
+  body.innerHTML = `<div class="text-center" style="padding:30px 0;">${ic('loader',26,{className:'spin', stroke:'var(--amber-deep)'})}</div>`;
+  hydrateIcons(body);
+  rememberMyOrder(num, phone);
+  const {data, error} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: num, p_phone: phone});
+  const row = Array.isArray(data) ? data[0] : data;
+  if(!row){
+    body.innerHTML = `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Commande introuvable.</p>
+      <button class="btn btn-outline w-full" style="margin-top:14px;" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
+    hydrateIcons(body);
+    return;
+  }
+  renderOrderTrackingDetail(row, phone);
+  subscribeToOrderTracking(num, phone);
+  renderTrackOrderButton();
+}
+function renderOrderTrackingDetail(row, phone){
+  const body = document.getElementById('trackOrderBody');
+  const isPickupOrDineIn = !/livraison/i.test(row.type||'');
+  const steps = ['new','preparing','ready','delivering','completed'].filter(s => s!=='delivering' || !isPickupOrDineIn);
+  const currentIdx = steps.indexOf(row.status);
+  const itemsLabel = (row.items||[]).map(orderItemNameQty);
+  body.innerHTML = `
+    <div class="text-center" style="margin-bottom:18px;">
+      <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
+      <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}" style="margin-top:6px;">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+    </div>
+    ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;"><p style="font-size:13px;color:var(--terracotta);">Cette commande a été annulée.</p></div>` : `
+    <div class="flex items-start" style="margin-bottom:22px;">
+      ${steps.map((s,i)=>`
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
+          ${i<steps.length-1?`<div style="position:absolute;top:13px;left:50%;width:100%;height:2px;background:${i<currentIdx?'var(--amber)':'var(--cream-line)'};"></div>`:''}
+          <div style="width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:${i<=currentIdx?'var(--amber)':'var(--cream-line)'};color:${i<=currentIdx?'#fff':'var(--ink-faint)'};font-size:11px;font-weight:700;z-index:1;position:relative;">${i<currentIdx?ic('check',12):i+1}</div>
+          <p style="font-size:9px;text-align:center;margin-top:4px;color:${i<=currentIdx?'var(--ink)':'var(--ink-faint)'};font-weight:${i===currentIdx?'700':'500'};line-height:1.2;">${STEP_LABELS[s]}</p>
+        </div>`).join('')}
+    </div>`}
+    <div class="card" style="padding:14px;margin-bottom:12px;">
+      ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${q}× ${n}</p>`).join('')}
+      <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
+    </div>
+    <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
+  hydrateIcons(body);
+}
+// REMPLACE une tentative initiale par Supabase Realtime : postgres_changes
+// respecte les policies RLS de SELECT pour décider ce qu'une connexion
+// peut recevoir, et orders_staff_read réserve la lecture de `orders`
+// au propriétaire/personnel — un client anonyme ne recevrait donc
+// JAMAIS ces événements, même avec un filtre correct. Plutôt que de
+// laisser un "suivi en temps réel" qui semble actif mais ne se
+// déclenche jamais, on interroge simplement track_order() (RPC qui,
+// elle, autorise volontairement cet accès étroit) à intervalle
+// régulier tant que la fenêtre de suivi reste ouverte.
+let trackingPollTimer = null;
+function subscribeToOrderTracking(num, phone){
+  unsubscribeFromOrderTracking();
+  trackingPollTimer = setInterval(async () => {
+    if(!RESTAURANT.id) return;
+    const {data} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: num, p_phone: phone});
+    const row = Array.isArray(data) ? data[0] : data;
+    if(row) renderOrderTrackingDetail(row, phone);
+  }, 8000);
+}
+function unsubscribeFromOrderTracking(){
+  if(trackingPollTimer){ clearInterval(trackingPollTimer); trackingPollTimer = null; }
+}
+
+/* ---------------- AVIS CLIENT ---------------- */
+let reviewRating = 0;
+let reviewOrderNum = null;
+function openReviewModal(orderNum){
+  reviewRating = 0;
+  reviewOrderNum = orderNum || null;
+  document.getElementById('reviewOverlay').classList.remove('hidden');
+  renderReviewModal();
+}
+function closeReviewModal(){ document.getElementById('reviewOverlay').classList.add('hidden'); }
+function setReviewRating(n){ reviewRating = n; renderReviewModal(); }
+function renderReviewModal(){
+  document.getElementById('reviewBody').innerHTML = `
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${RESTO_NAME}</span> ?</p>
+    <div class="flex items-center justify-center gap-2" style="margin-bottom:18px;">
+      ${[1,2,3,4,5].map(n=>`<button onclick="setReviewRating(${n})" style="padding:2px;">${ic('star',30,{fill: n<=reviewRating?'var(--amber)':'none', stroke: n<=reviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}
+    </div>
+    <textarea class="field-input" id="reviewComment" rows="3" placeholder="Écrivez votre avis…" style="margin-bottom:16px;"></textarea>
+    <button class="btn btn-secondary btn-lg w-full" onclick="submitReview()">Envoyer mon avis</button>`;
+  hydrateIcons(document.getElementById('reviewBody'));
+}
+async function submitReview(){
+  if(reviewRating < 1 || reviewRating > 5){
+    toast('Choisissez une note de 1 à 5 étoiles avant d\'envoyer.');
+    return;
+  }
+  if(!RESTAURANT.id) return;
+  const comment = (document.getElementById('reviewComment').value || '').trim();
+  const btn = document.querySelector('#reviewBody .btn-secondary');
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
+
+  let orderId = null;
+  if(reviewOrderNum){
+    const found = DEMO_ORDERS.find(o=>o.num===reviewOrderNum);
+    if(found) orderId = found.id;
+  }
+
+  const { error } = await supabaseClient.from('reviews').insert({
+    restaurant_id: RESTAURANT.id,
+    order_id: orderId,
+    client: state.checkout.firstName ? `${state.checkout.firstName} ${state.checkout.lastName||''}`.trim() : null,
+    rating: reviewRating,
+    comment: comment || null,
+  });
+
+  if(error){
+    toast("Votre avis n'a pas pu être enregistré : " + error.message);
+    if(btn){ btn.disabled = false; btn.textContent = 'Envoyer mon avis'; }
+    return;
+  }
+
+  document.getElementById('reviewBody').innerHTML = `
+    <div class="text-center" style="padding:20px 0;">
+      <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',36)}</div>
+      <p class="font-display" style="font-size:17px;">Merci pour votre avis !</p>
+    </div>`;
+  hydrateIcons(document.getElementById('reviewBody'));
+  setTimeout(closeReviewModal, 1800);
+}
 
 function playNotificationSound(){
   try{
@@ -4037,7 +4187,7 @@ function productCardHtml(p){
       <p class="product-desc">${p.desc||''}</p>
       <div class="product-footer">
         <span class="product-price">${fmt(p.price)}</span>
-        <button class="add-cart-btn" onclick='openProductModal("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
+        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
       </div>
     </div>
   </div>`;
@@ -4121,6 +4271,32 @@ function renderProductModal(){
       <button class="btn btn-secondary btn-lg w-full" onclick="addToCartFromModal()" ${p.variantsRequired && !modalVariant ? 'style="opacity:.5;cursor:not-allowed;"' : ''}>Ajouter · ${fmt(unit*modalQty)}</button>
     </div>`;
   hydrateIcons(document.getElementById('productModalBody'));
+}
+
+/* Ajout rapide depuis la grille produits (bouton "+") — n'ouvre PLUS
+   systématiquement la fiche produit : ajoute directement au panier si
+   le produit n'a pas de variante ou si sa variante est facultative
+   (avec la configuration par défaut déjà prévue ailleurs dans le
+   projet — la première variante de la liste). N'ouvre l'interface de
+   sélection (la fiche produit elle-même, déjà légère) QUE si une
+   variante est réellement obligatoire, pour ne jamais ajouter un
+   article dont la configuration serait ambiguë. */
+function quickAddToCart(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  if(!p.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
+  const hasVariants = p.variants && p.variants.length > 0;
+  if(hasVariants && p.variantsRequired){
+    openProductModal(id);
+    return;
+  }
+  const defaultVariant = hasVariants ? p.variants[0] : null;
+  const key = p.id + '::' + (defaultVariant ? defaultVariant.name : '');
+  const existing = state.cart.find(l=>l.key===key);
+  if(existing){ existing.qty += 1; }
+  else{ state.cart.push({key, id:p.id, name:p.name, price:p.price, variant:defaultVariant, qty:1, cat:p.cat, photo:p.photo}); }
+  updateFloatingCartButton();
+  toast(ic('checkCircle',14)+` ${p.name} ajouté au panier.`, true);
 }
 
 function addToCartFromModal(){
@@ -4400,7 +4576,7 @@ async function submitOrderInternal(){
 
   state.lastOrder = {
     num: row.num, items: row.items, total: Number(row.total),
-    payment: c.payment, firstName: c.firstName,
+    payment: c.payment, firstName: c.firstName, phone: c.phone,
   };
   // Reflet local immédiat du stock vendu, pour que l'interface de CE
   // navigateur affiche tout de suite le produit en rupture s'il vient
@@ -4448,7 +4624,11 @@ function renderConfirmation(){
         ${paymentMark(o.payment,24)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.payment]}</span><span class="pill pill-amber">En attente</span>
       </div>
     </div>
-    <button class="btn btn-ghost w-full" style="margin-top:20px;" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');">Retour au menu</button>`;
+    <button class="btn btn-ghost w-full" style="margin-top:20px;" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');">Retourner au menu</button>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <button class="btn" style="background:var(--ink);color:var(--cream);" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openOrderTrackingDetail('${o.num}','${o.phone||''}');">${ic('receipt',15)} Suivre ma commande</button>
+      <button class="btn btn-outline" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openReviewModal('${o.num}');">${ic('star',15)} Avis client</button>
+    </div>`;
   hydrateIcons(document.getElementById('confirmationBody'));
 }
 </script>
@@ -4685,6 +4865,10 @@ function openOrderDetail(i){
     </div>
     <div style="padding:20px 22px;">
       <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 8px;">Changer le statut</p>
+      <div class="flex gap-2" style="flex-wrap:wrap;margin-bottom:4px;">
+        ${Object.keys(ORDER_STATUS_LABELS).map(s=>`<button onclick="changeOrderStatus(${i},'${s}')" class="pill ${o.status===s?toneClass(ORDER_STATUS_TONE[s]):'pill-neutral'}" style="cursor:pointer;border:none;${o.status===s?'':'opacity:.6;'}">${ORDER_STATUS_LABELS[s]}</button>`).join('')}
+      </div>
       <div class="flex flex-col gap-2" style="background:var(--cream);border-radius:16px;padding:14px;margin:16px 0;">
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);">Client</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${o.client}</p>
@@ -4702,9 +4886,26 @@ function openOrderDetail(i){
         <div class="flex items-center gap-2" style="margin-top:8px;">${paymentMark(o.pay,22)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.pay]}</span><span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div>
       </div>
     </div>`;
+  hydrateIcons(document.getElementById('orderDetailPanel'));
   document.getElementById('orderDetailOverlay').classList.remove('hidden');
 }
 function closeOrderDetail(){ document.getElementById('orderDetailOverlay').classList.add('hidden'); }
+/* Seul véritable point d'écriture du statut d'une commande — la
+   fonction persistOrderUpdate() existait déjà mais n'était appelée par
+   AUCUNE action de l'interface (aucun contrôle de changement de statut
+   n'existait), ce qui rendait le suivi client → statut réel côté
+   restaurateur impossible à déclencher. Corrigé ici : met à jour l'état
+   local immédiatement (retour visuel instantané), puis persiste dans
+   Supabase — protégé par la policy RLS orders_staff_update, donc même
+   un appel direct par un rôle non autorisé échouerait côté serveur. */
+function changeOrderStatus(i, newStatus){
+  const o = DEMO_ORDERS[i];
+  if(!o || o.status === newStatus) return;
+  o.status = newStatus;
+  openOrderDetail(i);
+  renderDashSection(state.dashSection);
+  persistOrderUpdate(o);
+}
 /* Une ligne de commande peut être soit l'ancien format hérité
    [nom, quantité] (commandes créées avant l'ajout des variantes/ids
    réels aux commandes), soit le nouveau format riche
@@ -5369,14 +5570,24 @@ function togglePayment(m){
 }
 
 /* ---------------- CUSTOMERS ---------------- */
+let dashCustomersTab = 'clients';
 function dashCustomers(){
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Clients</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Calculés à partir des commandes réelles de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <div class="flex gap-2" style="margin-bottom:18px;">
+    <button class="btn btn-sm ${dashCustomersTab==='clients'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('clients')">Clients</button>
+    <button class="btn btn-sm ${dashCustomersTab==='reviews'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('reviews')">${ic('star',13)} Avis clients${REVIEWS.length?` (${REVIEWS.length})`:''}</button>
+  </div>
+  <div id="dashCustomersBody">${dashCustomersTab==='clients' ? dashClientsListHtml() : dashReviewsHtml()}</div>`;
+}
+function setDashCustomersTab(tab){ dashCustomersTab = tab; renderDashSection('customers'); }
+function dashClientsListHtml(){
+  return `
   <div style="position:relative;max-width:280px;margin-bottom:16px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" id="customerSearch" style="padding-left:34px;" placeholder="Rechercher un client..." oninput="document.getElementById('customersTableBody').innerHTML=customersRowsHtml(this.value)"></div>
   <div class="card overflow-x-auto">
     <table class="data-table">
-      <thead><tr><th>Nom</th><th>Téléphone</th><th>Commandes</th><th>Total dépensé</th><th>Dernière commande</th></tr></thead>
+      <thead><tr><th>Nom</th><th>Téléphone</th><th>Commandes</th><th>Total dépensé</th><th>Dernière commande</th><th>En cours</th></tr></thead>
       <tbody id="customersTableBody">${customersRowsHtml('')}</tbody>
     </table>
   </div>`;
@@ -5394,8 +5605,59 @@ function computeCustomersFromOrders(){
 function customersRowsHtml(query){
   const q = (query||'').trim().toLowerCase();
   const customers = computeCustomersFromOrders().filter(c=>!q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
-  if(customers.length===0) return `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--ink-faint);">${q?'Aucun client ne correspond à votre recherche.':'Aucun client pour le moment.'}</td></tr>`;
-  return customers.map(c=>`<tr><td>${c.name}</td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td></tr>`).join('');
+  if(customers.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">${q?'Aucun client ne correspond à votre recherche.':'Aucun client pour le moment.'}</td></tr>`;
+  return customers.map(c=>{
+    // "En cours" = ni terminée ni annulée — visible et cliquable
+    // directement depuis la fiche client, sans devoir la rechercher
+    // dans la liste générale des commandes.
+    const inProgress = DEMO_ORDERS.filter(o=>o.phone===c.phone && !['completed','cancelled'].includes(o.status));
+    return `<tr>
+      <td>${c.name}</td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
+      <td>${inProgress.length ? inProgress.map(o=>`<button onclick="openOrderDetailByNum('${o.num}')" class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="margin:2px;cursor:pointer;">#${o.num}</button>`).join('') : `<span style="color:var(--ink-faint);font-size:12px;">—</span>`}</td>
+    </tr>`;
+  }).join('');
+}
+function openOrderDetailByNum(num){
+  const i = DEMO_ORDERS.findIndex(o=>o.num===num);
+  if(i!==-1) openOrderDetail(i);
+}
+/* Moyenne et nombre d'avis calculés directement à partir de REVIEWS
+   (vraies lignes Supabase pour CE restaurant) — jamais un chiffre codé
+   en dur. */
+function dashReviewsHtml(){
+  if(REVIEWS.length===0){
+    return `<div class="empty-state">${ic('star',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après que des clients en laissent depuis la page de confirmation de commande.</p></div>`;
+  }
+  const avg = REVIEWS.reduce((s,r)=>s+r.rating,0) / REVIEWS.length;
+  return `
+  <div class="card" style="padding:18px;margin-bottom:16px;display:flex;align-items:center;gap:20px;max-width:400px;">
+    <div class="text-center">
+      <p class="font-display font-tabular" style="font-size:30px;">${avg.toFixed(1)}</p>
+      <div style="display:flex;gap:1px;justify-content:center;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=Math.round(avg)?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
+    </div>
+    <div style="border-left:1px solid var(--cream-line);padding-left:18px;">
+      <p style="font-size:22px;font-weight:700;">${REVIEWS.length}</p>
+      <p style="font-size:12px;color:var(--ink-faint);">avis reçu${REVIEWS.length>1?'s':''}</p>
+    </div>
+  </div>
+  <div class="flex-col gap-2" style="max-width:560px;">
+    ${REVIEWS.map(r=>`<div class="card" style="padding:14px;">
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
+        <button onclick="deleteReview('${r.id}')" title="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
+      </div>
+      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${r.comment}</p>`:''}
+      <p style="font-size:11.5px;color:var(--ink-faint);">${r.client||'Client anonyme'} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
+    </div>`).join('')}
+  </div>`;
+}
+async function deleteReview(id){
+  if(!confirm('Supprimer cet avis ?')) return;
+  const {error} = await supabaseClient.from('reviews').delete().eq('id', id);
+  if(error){ toast('Suppression impossible : ' + error.message); return; }
+  REVIEWS = REVIEWS.filter(r=>r.id!==id);
+  document.getElementById('dashCustomersBody').innerHTML = dashReviewsHtml();
+  hydrateIcons();
 }
 
 /* ---------------- QR CODE ---------------- */
@@ -6182,6 +6444,10 @@ async function abonApplyPlan(){
    propres clients (Wave/Orange Money/espèces — un système entièrement
    séparé, table `orders`, jamais mélangé avec `payments` ci-dessous). */
 let paymentsHistory = [];
+/* Avis clients réellement enregistrés dans Supabase pour CE restaurant
+   uniquement — jamais mélangés avec ceux d'un autre restaurant, jamais
+   de note ou de nombre d'avis inventé pour l'affichage. */
+let REVIEWS = [];
 async function startPayTechCheckout(plan){
   const btn = document.getElementById('paytechBtn');
   const price = priceForPlan(plan);
