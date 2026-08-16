@@ -3645,7 +3645,7 @@ function renderPricing(){
    ONBOARDING — espace de création, séparé du tableau de bord.
    Compte → Restaurant → Thème → Configuration → Abonnement → Paiement → Confirmation
    ============================================================ */
-const OB_STEPS = ['Compte','Restaurant','Thème','Configuration','Abonnement','Paiement','Activé'];
+const OB_STEPS = ['Compte','Restaurant','Logo','Configuration','Abonnement','Paiement','Activé'];
 
 /* ---------------- SOUS-DOMAINE — génération automatique et unique ----------------
    Reproduit ce que ferait le vrai backend à la création du restaurant :
@@ -3951,46 +3951,7 @@ function renderOnboarding(){
   document.getElementById('obCard').innerHTML = obStepHtml();
   hydrateIcons(document.getElementById('obCard'));
   if(obState.step===1) updateSlugPreview();
-  if(obState.step===2) renderObPreview();
 
-}
-
-function obColorRow(label, key, value, hint){
-  return `<div class="flex items-center gap-3" style="margin-bottom:12px;">
-    <input type="color" id="obPicker_${key}" value="${value}" oninput="obField('${key}',this.value);document.getElementById('obHex_${key}').value=this.value.toUpperCase();renderObPreview();" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
-    <div style="flex:1;">
-      <label class="field-label" style="margin-bottom:3px;">${label}</label>
-      <input class="field-input font-tabular" id="obHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="obSyncHexInput('${key}',this.value)">
-    </div>
-    <span style="font-size:10.5px;color:var(--ink-faint);max-width:88px;text-align:right;flex-shrink:0;">${hint}</span>
-  </div>`;
-}
-function obSyncHexInput(key, val){
-  val = val.trim();
-  if(val && !val.startsWith('#')) val = '#'+val;
-  if(/^#[0-9a-fA-F]{6}$/.test(val)){
-    obField(key, val);
-    const picker = document.getElementById('obPicker_'+key);
-    if(picker) picker.value = val;
-    renderObPreview();
-  }
-}
-function renderObPreview(){
-  const el = document.getElementById('obColorPreview');
-  if(!el) return;
-  const p = obState.obPrimary, s = obState.obSecondary, t = obState.obTextColor;
-  el.innerHTML = `
-    <p style="font-family:var(--font-display);font-size:17px;font-weight:600;color:${t};margin-bottom:6px;">${obState.restoName || 'Votre restaurant'}</p>
-    <p style="font-size:12.5px;color:${shadeColor(t,55)};margin-bottom:16px;">Voici un aperçu de vos couleurs sur votre site.</p>
-    <div class="flex gap-2" style="margin-bottom:16px;flex-wrap:wrap;">
-      <span style="background:${p};color:#fff;border-radius:12px;padding:9px 16px;font-size:12.5px;font-weight:600;">Bouton principal</span>
-      <span style="border:2px solid ${s};color:${shadeColor(s,-15)};border-radius:12px;padding:7px 16px;font-size:12.5px;font-weight:600;">Bouton secondaire</span>
-    </div>
-    <div style="background:var(--cream);border-radius:12px;padding:14px;">
-      <p style="font-size:12.5px;font-weight:600;color:${t};margin-bottom:3px;">Thiéboudienne</p>
-      <p style="font-size:11.5px;color:${shadeColor(t,55)};">Riz au poisson mijoté, recette traditionnelle.</p>
-      <p class="font-tabular" style="font-size:12.5px;font-weight:700;color:${p};margin-top:8px;">3 500 FCFA</p>
-    </div>`;
 }
 
 function updateSlugPreview(){
@@ -4053,15 +4014,8 @@ function obStepHtml(){
 
   if(step===2){
     return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez les couleurs de votre site</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Personnalisez les couleurs de votre site. Vous pourrez les modifier à tout moment depuis Paramètres.</p>
-
-    ${obColorRow('Couleur principale', 'obPrimary', o.obPrimary, "Boutons principaux et accents.")}
-    ${obColorRow('Couleur secondaire', 'obSecondary', o.obSecondary, "Boutons secondaires et badges.")}
-    ${obColorRow('Couleur du texte', 'obTextColor', o.obTextColor, "Texte principal du site public.")}
-
-    <p class="field-label" style="margin-top:4px;">Aperçu</p>
-    <div id="obColorPreview" style="border:1px solid var(--cream-line);border-radius:16px;padding:18px;margin-bottom:18px;"></div>
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Logo et couverture</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Facultatif — vous pourrez les ajouter ou les modifier à tout moment depuis Paramètres.</p>
 
     <p class="field-label">Logo et couverture (facultatif)</p>
     <div class="flex gap-3">
@@ -4894,7 +4848,6 @@ function renderDashSection(key){
   el.innerHTML = (renderers[key]||dashOverview)();
   if(key==='qrcode'){}
   if(key==='analytics') drawRevenueChart();
-  if(key==='settings' && settingsTab==='Thème') renderSettingsColorPreview();
   hydrateIcons();
 }
 
@@ -6251,7 +6204,7 @@ function dashSettings(){
     <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
   </div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:16px;">
-    ${['Général','Horaires','Livraison','Réseaux & carte','Thème'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
+    ${['Général','Horaires','Livraison','Réseaux & carte'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
   <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="saveSettings()">${ic('save',16)} Enregistrer</button>`;
@@ -6414,61 +6367,7 @@ function settingsBodyHtml(){
     </div>`;
   }
 
-  if(settingsTab==='Thème'){
-    return `
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">Choisissez directement les couleurs de votre site public. Chaque changement s'applique immédiatement.</p>
-    ${settingsColorRow('Couleur principale', 'primary', RESTAURANT.primary, "Boutons principaux et accents.")}
-    ${settingsColorRow('Couleur secondaire', 'secondary', RESTAURANT.secondary, "Boutons secondaires et badges.")}
-    ${settingsColorRow('Couleur du texte', 'textColor', RESTAURANT.textColor, "Texte principal du site public.")}
-    <p class="field-label" style="margin-top:6px;">Aperçu</p>
-    <div id="settingsColorPreview" style="border:1px solid var(--cream-line);border-radius:16px;padding:18px;margin-bottom:14px;"></div>
-    <button class="btn btn-outline btn-sm" onclick="setView('storefront')">${ic('externalLink',13)} Voir mon site</button>`;
-  }
   return '';
-}
-
-function settingsColorRow(label, key, value, hint){
-  return `<div class="flex items-center gap-3" style="margin-bottom:12px;max-width:480px;">
-    <input type="color" id="setPicker_${key}" value="${value}" oninput="settingsApplyColor('${key}',this.value)" onchange="persistRestaurant()" style="width:42px;height:42px;border-radius:11px;border:1px solid var(--cream-line);padding:0;cursor:pointer;flex-shrink:0;">
-    <div style="flex:1;">
-      <label class="field-label" style="margin-bottom:3px;">${label}</label>
-      <input class="field-input font-tabular" id="setHex_${key}" style="text-transform:uppercase;padding:7px 12px;font-size:12.5px;" value="${value}" maxlength="7" oninput="settingsSyncHexInput('${key}',this.value)" onchange="persistRestaurant()">
-    </div>
-    <span style="font-size:10.5px;color:var(--ink-faint);max-width:100px;text-align:right;flex-shrink:0;">${hint}</span>
-  </div>`;
-}
-function settingsApplyColor(key, val){
-  const doc = { primary: () => applyThemeColors(val, RESTAURANT.secondary, RESTAURANT.textColor),
-                secondary: () => applyThemeColors(RESTAURANT.primary, val, RESTAURANT.textColor),
-                textColor: () => applyThemeColors(RESTAURANT.primary, RESTAURANT.secondary, val) };
-  doc[key]();
-  const hexEl = document.getElementById('setHex_'+key); if(hexEl) hexEl.value = val.toUpperCase();
-  renderSettingsColorPreview();
-}
-function settingsSyncHexInput(key, val){
-  val = val.trim();
-  if(val && !val.startsWith('#')) val = '#'+val;
-  if(/^#[0-9a-fA-F]{6}$/.test(val)){
-    settingsApplyColor(key, val);
-    const picker = document.getElementById('setPicker_'+key); if(picker) picker.value = val;
-  }
-}
-function renderSettingsColorPreview(){
-  const el = document.getElementById('settingsColorPreview');
-  if(!el) return;
-  const p = RESTAURANT.primary, s = RESTAURANT.secondary, t = RESTAURANT.textColor;
-  el.innerHTML = `
-    <p style="font-family:var(--font-display);font-size:17px;font-weight:600;color:${t};margin-bottom:6px;" class="resto-name">${RESTO_NAME}</p>
-    <p style="font-size:12.5px;color:${shadeColor(t,55)};margin-bottom:16px;">Voici un aperçu de vos couleurs sur votre site.</p>
-    <div class="flex gap-2" style="margin-bottom:16px;flex-wrap:wrap;">
-      <span style="background:${p};color:#fff;border-radius:12px;padding:9px 16px;font-size:12.5px;font-weight:600;">Bouton principal</span>
-      <span style="border:2px solid ${s};color:${shadeColor(s,-15)};border-radius:12px;padding:7px 16px;font-size:12.5px;font-weight:600;">Bouton secondaire</span>
-    </div>
-    <div style="background:var(--cream);border-radius:12px;padding:14px;">
-      <p style="font-size:12.5px;font-weight:600;color:${t};margin-bottom:3px;">Thiéboudienne</p>
-      <p style="font-size:11.5px;color:${shadeColor(t,55)};">Riz au poisson mijoté, recette traditionnelle.</p>
-      <p class="font-tabular" style="font-size:12.5px;font-weight:700;color:${p};margin-top:8px;">3 500 FCFA</p>
-    </div>`;
 }
 
 async function saveSettings(){
