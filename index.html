@@ -1796,7 +1796,7 @@ async function loadRestaurantIntoState(restaurantId){
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
     id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
-    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
+    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes,
     createdAt:new Date(o.created_at),
   }));
 
@@ -1848,7 +1848,7 @@ function onRealtimeNewOrder(row){
   if(DEMO_ORDERS.some(o => o.id === row.id)) return;
   const order = {
     id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
-    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes,
     createdAt:new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(order);
@@ -1949,15 +1949,15 @@ function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').cl
    uniquement sur le vrai statut Supabase (jamais un statut fictif). Se
    met à jour automatiquement via Realtime quand le restaurateur change
    le statut depuis son tableau de bord — pas besoin d'actualiser. */
-/* Icône + titre + courte description par étape — utilisés par la
-   progression verticale du suivi client. */
+/* Icône + titre + courte description par étape — matches exactement
+   les statuts déjà utilisés dans orders.status, aucun statut nouveau
+   ou incompatible introduit. */
 const STEP_INFO = {
-  new:        {icon:'bag',         label:'Commande reçue',    desc:'Votre commande vient d\'être envoyée au restaurant.'},
-  confirmed:  {icon:'checkCircle', label:'Confirmée',         desc:'Le restaurant a accepté votre commande.'},
-  preparing:  {icon:'flame',       label:'En préparation',    desc:'Votre commande est en cours de préparation.'},
-  ready:      {icon:'package',     label:'Prête',             desc:'Votre commande est prête.'},
-  delivering: {icon:'bike',        label:'En livraison',      desc:'Votre commande est en route.'},
-  delivered:  {icon:'checkCircle', label:'Livrée',            desc:'Bon appétit !'},
+  new:        {icon:'bag',         label:'Commande reçue', desc:'Votre commande a été reçue par le restaurant.'},
+  preparing:  {icon:'flame',       label:'En préparation', desc:'Votre restaurant prépare votre commande.'},
+  ready:      {icon:'package',     label:'Prête',          desc:'Votre commande est prête.'},
+  delivering: {icon:'bike',        label:'En livraison',   desc:'Votre commande est en route.'},
+  completed:  {icon:'checkCircle', label:'Terminée',       desc:'Votre commande est terminée.'},
 };
 async function openOrderTrackingDetail(num, phone){
   const overlay = document.getElementById('trackOrderOverlay');
@@ -1981,29 +1981,25 @@ async function openOrderTrackingDetail(num, phone){
 function renderOrderTrackingDetail(row, phone){
   const body = document.getElementById('trackOrderBody');
   const delivery = isDeliveryOrder(row.type);
-  const steps = ORDER_STATUS_FLOW.filter(s => s!=='delivering' || delivery);
-  const normalizedStatus = row.status==='completed' ? 'delivered' : row.status;
-  const currentIdx = steps.indexOf(normalizedStatus);
+  const steps = ['new','preparing','ready','delivering','completed'].filter(s => s!=='delivering' || delivery);
+  const currentIdx = steps.indexOf(row.status);
   const itemsLabel = (row.items||[]).map(orderItemNameQty);
-  const created = row.created_at ? new Date(row.created_at) : null;
-
   body.innerHTML = `
     <div class="text-center" style="margin-bottom:18px;">
       <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
       <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${RESTO_NAME}</p>
-      ${created ? `<p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${created.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} · ${created.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</p>` : ''}
     </div>
     ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;">${ic('x',22,{stroke:'var(--terracotta)'})}<p style="font-size:13px;color:var(--terracotta);margin-top:6px;">Cette commande a été annulée.</p></div>` : `
     <!-- Progression VERTICALE : icône + titre + description par étape,
-         ligne de connexion, couleur du thème du restaurant pour l'étape
-         active — jamais un simple texte. -->
+         ligne de connexion, étape actuelle mise en valeur — jamais un
+         simple texte. -->
     <div style="margin-bottom:22px;">
       ${steps.map((s,i)=>{
         const info = STEP_INFO[s];
         const done = i < currentIdx, active = i === currentIdx, upcoming = i > currentIdx;
         return `<div style="display:flex;gap:14px;">
           <div style="display:flex;flex-direction:column;align-items:center;">
-            <div style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s ease;background:${done||active?'var(--amber)':'var(--cream-line)'};color:${done||active?'#fff':'var(--ink-faint)'};${active?`box-shadow:0 0 0 5px ${hexToRgba(RESTAURANT.primary,.18)};transform:scale(1.06);`:''}">
+            <div style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s ease;background:${done||active?'var(--amber)':'var(--cream-line)'};color:${done||active?'#fff':'var(--ink-faint)'};${active?'box-shadow:0 0 0 5px rgba(232,135,30,.18);transform:scale(1.06);':''}">
               ${done ? ic('check',16) : ic(info.icon,16)}
             </div>
             ${i<steps.length-1?`<div style="width:2px;flex:1;min-height:26px;background:${done?'var(--amber)':'var(--cream-line)'};margin:2px 0;transition:background .3s ease;"></div>`:''}
@@ -2016,14 +2012,10 @@ function renderOrderTrackingDetail(row, phone){
         </div>`;
       }).join('')}
     </div>`}
-    <div class="card" style="padding:14px;margin-bottom:10px;">
+    <div class="card" style="padding:14px;margin-bottom:12px;">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Votre commande</p>
       ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${q}× ${n}</p>`).join('')}
       <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
-    </div>
-    <div class="card" style="padding:14px;margin-bottom:12px;">
-      <div class="flex items-center gap-2" style="margin-bottom:${row.address?'8px':'0'};">${paymentMark(row.pay,20)}<span style="font-size:12.5px;color:var(--ink-soft);">${PAYMENT_LABELS[row.pay]||row.pay}</span><span style="font-size:12px;color:var(--ink-faint);">· ${row.type}</span></div>
-      ${row.address ? `<p style="font-size:12.5px;color:var(--ink-soft);display:flex;align-items:flex-start;gap:6px;">${ic('mapPin',13,{stroke:'var(--ink-faint)'})}${row.address}</p>` : ''}
     </div>
     <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
   hydrateIcons(body);
@@ -2061,28 +2053,15 @@ function openReviewModal(orderNum){
   renderReviewModal();
 }
 function closeReviewModal(){ document.getElementById('reviewOverlay').classList.add('hidden'); }
-function setReviewRating(n){
-  reviewRating = n;
-  // Ne met à jour QUE les étoiles, jamais tout le corps de la fenêtre —
-  // sinon un commentaire déjà tapé serait effacé à chaque clic sur une
-  // étoile (le textarea aurait été régénéré vide par un rendu complet).
-  const starsEl = document.getElementById('reviewStars');
-  if(starsEl){ starsEl.innerHTML = [1,2,3,4,5].map(starButtonHtml).join(''); hydrateIcons(starsEl); }
-}
-function starButtonHtml(n){
-  const filled = n<=reviewRating;
-  return `<button onclick="setReviewRating(${n})" style="padding:3px;transition:transform .15s ease;transform:scale(${filled?1.08:1});" onmouseenter="this.style.transform='scale(1.18)'" onmouseleave="this.style.transform='scale(${filled?1.08:1})'">${ic('star',32,{fill:filled?'var(--amber)':'none', stroke:filled?'var(--amber)':'var(--cream-line)', strokeWidth:1.6})}</button>`;
-}
+function setReviewRating(n){ reviewRating = n; renderReviewModal(); }
 function renderReviewModal(){
   document.getElementById('reviewBody').innerHTML = `
-    <div style="display:flex;justify-content:center;margin-bottom:8px;">${ic('star',24,{fill:'var(--amber)', stroke:'var(--amber)'})}</div>
-    <p style="font-size:13.5px;font-weight:600;color:var(--ink);text-align:center;">Comment avez-vous trouvé votre commande ?</p>
-    <p style="font-size:11.5px;color:var(--ink-faint);margin-bottom:16px;text-align:center;">chez <span class="resto-name">${RESTO_NAME}</span></p>
-    <div class="flex items-center justify-center gap-1" id="reviewStars" style="margin-bottom:18px;">
-      ${[1,2,3,4,5].map(starButtonHtml).join('')}
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${RESTO_NAME}</span> ?</p>
+    <div class="flex items-center justify-center gap-2" style="margin-bottom:18px;">
+      ${[1,2,3,4,5].map(n=>`<button onclick="setReviewRating(${n})" style="padding:2px;">${ic('star',30,{fill: n<=reviewRating?'var(--amber)':'none', stroke: n<=reviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}
     </div>
     <textarea class="field-input" id="reviewComment" rows="3" placeholder="Écrivez votre avis…" style="margin-bottom:16px;"></textarea>
-    <button class="btn btn-secondary btn-lg w-full" onclick="submitReview()">${ic('send',15)} Envoyer mon avis</button>`;
+    <button class="btn btn-secondary btn-lg w-full" onclick="submitReview()">Envoyer mon avis</button>`;
   hydrateIcons(document.getElementById('reviewBody'));
 }
 async function submitReview(){
@@ -2105,21 +2084,11 @@ async function submitReview(){
     restaurant_id: RESTAURANT.id,
     order_id: orderId,
     client: state.checkout.firstName ? `${state.checkout.firstName} ${state.checkout.lastName||''}`.trim() : null,
-    client_phone: state.checkout.phone || null,
     rating: reviewRating,
     comment: comment || null,
   });
 
   if(error){
-    // 23505 = violation de l'index unique reviews_one_per_order —
-    // un avis existe déjà pour cette commande précise (par exemple un
-    // second envoi après un simple rafraîchissement de page). Message
-    // clair plutôt que l'erreur Postgres brute.
-    if(error.code === '23505'){
-      toast('Vous avez déjà laissé un avis pour cette commande — merci !');
-      closeReviewModal();
-      return;
-    }
     toast("Votre avis n'a pas pu être enregistré : " + error.message);
     if(btn){ btn.disabled = false; btn.textContent = 'Envoyer mon avis'; }
     return;
@@ -2129,7 +2098,6 @@ async function submitReview(){
     <div class="text-center" style="padding:20px 0;">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',36)}</div>
       <p class="font-display" style="font-size:17px;">Merci pour votre avis !</p>
-      <p style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">Votre retour a bien été enregistré.</p>
     </div>`;
   hydrateIcons(document.getElementById('reviewBody'));
   setTimeout(closeReviewModal, 1800);
@@ -3021,31 +2989,21 @@ const DEMO_ORDERS = [];
 const DEMO_STAFF = [];
 
 const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison'};
-/* Statuts réels d'une commande — "delivered" est désormais le statut
-   terminal (remplace "completed"), et "confirmed" a été ajouté entre
-   "new" et "preparing", pour correspondre exactement au flux demandé :
-   Nouvelle → Confirmée → En préparation → Prête → En livraison → Livrée.
-   "completed" reste reconnu et traité IDENTIQUEMENT à "delivered" —
-   compatibilité avec d'éventuelles commandes déjà enregistrées avec
-   l'ancien nom, jamais une migration destructive des données existantes. */
-const ORDER_STATUS_LABELS = {new:'Nouvelle',confirmed:'Confirmée',preparing:'En préparation',ready:'Prête',delivering:'En livraison',delivered:'Livrée',completed:'Livrée',cancelled:'Annulée'};
-const ORDER_STATUS_TONE = {new:'amber',confirmed:'amber',preparing:'amber',ready:'forest',delivering:'forest',delivered:'ink',completed:'ink',cancelled:'terracotta'};
-/* Un pickup/dine-in n'a jamais d'étape "En livraison" — cette liste
-   sert de référence à l'ordre normal ; la version affichée au client
-   comme au restaurateur retire "delivering" quand la commande n'est
-   pas une livraison (voir isDeliveryOrder ci-dessous). */
-const ORDER_STATUS_FLOW = ['new','confirmed','preparing','ready','delivering','delivered'];
+const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
+const ORDER_STATUS_TONE = {new:'amber',preparing:'amber',ready:'forest',delivering:'forest',completed:'ink',cancelled:'terracotta'};
+/* Action suivante UNIQUE pour le restaurateur — jamais plusieurs
+   boutons de statut affichés en même temps. S'adapte automatiquement
+   au type de commande : une commande à emporter/sur place passe
+   directement de "Prête" à "Terminée" (pas d'étape "En livraison"),
+   une livraison passe par "En livraison" avant "Terminée". */
 function isDeliveryOrder(type){ return /livraison/i.test(type||''); }
-/* Action suivante unique et sans ambiguïté pour le restaurateur — une
-   seule action possible à la fois, jamais plusieurs boutons contradictoires. */
 function nextStatusAction(o){
   const delivery = isDeliveryOrder(o.type);
-  if(o.status==='new') return {next:'confirmed', label:'Confirmer la commande', icon:'checkCircle'};
-  if(o.status==='confirmed') return {next:'preparing', label:'Démarrer la préparation', icon:'flame'};
+  if(o.status==='new') return {next:'preparing', label:'Démarrer la préparation', icon:'flame'};
   if(o.status==='preparing') return {next:'ready', label:'Marquer comme prête', icon:'package'};
-  if(o.status==='ready') return delivery ? {next:'delivering', label:'Mettre en livraison', icon:'bike'} : {next:'delivered', label:'Marquer comme récupérée', icon:'checkCircle'};
-  if(o.status==='delivering') return {next:'delivered', label:'Marquer comme livrée', icon:'checkCircle'};
-  return null; // delivered/completed/cancelled : plus aucune action de progression
+  if(o.status==='ready') return delivery ? {next:'delivering', label:'Passer en livraison', icon:'bike'} : {next:'completed', label:'Terminer la commande', icon:'checkCircle'};
+  if(o.status==='delivering') return {next:'completed', label:'Terminer la commande', icon:'checkCircle'};
+  return null; // completed/cancelled : plus aucune action de progression
 }
 const PAY_STATUS_LABELS = {paid:'Payé',pending:'En attente',failed:'Échoué'};
 const PAY_STATUS_TONE = {paid:'forest',pending:'amber',failed:'terracotta'};
@@ -3260,27 +3218,17 @@ function applyThemeColors(primary, secondary, textColor){
   RESTAURANT.primary = primary;
   RESTAURANT.secondary = secondary;
   if(textColor) RESTAURANT.textColor = textColor;
-  // Les fenêtres de suivi de commande et d'avis (trackOrderOverlay,
-  // reviewOverlay) sont des éléments FRÈRES de #view-storefront dans
-  // le HTML, pas des descendants — les variables CSS posées seulement
-  // sur #view-storefront ne leur parviennent donc jamais (une variable
-  // CSS ne descend qu'aux descendants de l'élément qui la définit).
-  // Sans ce correctif, la couleur "active" du suivi de commande
-  // retombait silencieusement sur l'ambre générique de la plateforme
-  // au lieu de la vraie couleur choisie par CE restaurant. On applique
-  // donc exactement les mêmes variables aux trois éléments.
-  ['view-storefront','trackOrderOverlay','reviewOverlay'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.style.setProperty('--amber', primary);
-    el.style.setProperty('--amber-deep', shadeColor(primary,-18));
-    el.style.setProperty('--brand-secondary', secondary);
-    el.style.setProperty('--brand-secondary-deep', shadeColor(secondary,-15));
+  const sf = document.getElementById('view-storefront');
+  if(sf){
+    sf.style.setProperty('--amber', primary);
+    sf.style.setProperty('--amber-deep', shadeColor(primary,-18));
+    sf.style.setProperty('--brand-secondary', secondary);
+    sf.style.setProperty('--brand-secondary-deep', shadeColor(secondary,-15));
     const tc = RESTAURANT.textColor || '#2B1810';
-    el.style.setProperty('--ink', tc);
-    el.style.setProperty('--ink-soft', shadeColor(tc,55));
-    el.style.setProperty('--ink-faint', shadeColor(tc,78));
-  });
+    sf.style.setProperty('--ink', tc);
+    sf.style.setProperty('--ink-soft', shadeColor(tc,55));
+    sf.style.setProperty('--ink-faint', shadeColor(tc,78));
+  }
   if(typeof renderStorefrontHero==='function') renderStorefrontHero();
   if(typeof updateFloatingCartButton==='function') updateFloatingCartButton();
 }
@@ -3289,10 +3237,6 @@ function shadeColor(hex, percent){
   const R = f>>16, G = f>>8&0x00FF, B = f&0x0000FF;
   const c = (v)=>Math.round((t-v)*p)+v;
   return '#'+(0x1000000 + c(R)*0x10000 + c(G)*0x100 + c(B)).toString(16).slice(1);
-}
-function hexToRgba(hex, alpha){
-  const f = parseInt((hex||'#E8871E').slice(1),16);
-  return `rgba(${f>>16},${f>>8&0x00FF},${f&0x0000FF},${alpha})`;
 }
 
 function toneClass(t){ return {amber:'pill-amber',forest:'pill-forest',terracotta:'pill-terracotta',neutral:'pill-neutral',ink:'pill-ink'}[t] || 'pill-neutral'; }
@@ -4618,13 +4562,14 @@ async function submitOrder(){
   try{
     await submitOrderInternal();
   } catch(e) {
-    // Filet de sécurité : si submitOrderInternal() lève une exception
-    // JavaScript (pas seulement une erreur renvoyée par Supabase, mais
-    // une vraie exception — référence nulle, donnée inattendue...),
-    // l'absence de catch faisait disparaître l'erreur en silence
-    // (rejet de promesse non intercepté, rien à l'écran). Corrigé :
-    // toute défaillance, quelle qu'elle soit, affiche désormais un
-    // message visible plutôt que de ne rien faire.
+    // CORRECTION DE LA RÉGRESSION SIGNALÉE : ce bloc n'existait pas
+    // (try/finally seul, sans catch) — toute exception JavaScript
+    // survenant pendant l'envoi (pas seulement une erreur renvoyée par
+    // Supabase, mais une vraie exception) disparaissait en silence
+    // (rejet de promesse non intercepté), sans aucun message à
+    // l'écran. C'est exactement le symptôme "rien ne se passe, aucune
+    // erreur claire" — corrigé : toute défaillance affiche désormais un
+    // message visible, et le panier n'est jamais vidé avant succès réel.
     console.error('submitOrder — erreur inattendue :', e);
     toast("Une erreur inattendue a empêché l'envoi de la commande. Votre panier a été conservé — réessayez, et si le problème persiste, contactez le restaurant directement.");
   } finally {
@@ -4658,19 +4603,18 @@ async function submitOrderInternal(){
     })),
     p_pay: c.payment,
     p_notes: c.notes || null,
-    p_address: c.orderType==='delivery' ? (c.address || null) : null,
   });
 
   if(error){
     console.error('create_order — erreur Supabase complète :', error);
     // PGRST202 = PostgREST ne trouve aucune fonction create_order()
-    // correspondant EXACTEMENT aux paramètres envoyés — presque
-    // toujours le signe que le SQL le plus récent (supabase_schema.sql)
-    // n'a pas encore été (ré-)exécuté dans ce projet Supabase, pas un
-    // vrai problème de commande. Message spécifique pour ne pas laisser
-    // deviner, conformément à ce qui a été demandé.
+    // correspondant EXACTEMENT aux paramètres envoyés par index.html —
+    // presque toujours le signe que le supabase_schema.sql actuellement
+    // exécuté sur ce projet Supabase est une version différente de
+    // celle-ci. Message spécifique pour diagnostiquer directement,
+    // plutôt que de laisser deviner.
     if(error.code === 'PGRST202'){
-      toast("La fonction de commande installée sur Supabase ne correspond plus à cette version du site (probablement supabase_schema.sql pas encore ré-exécuté après une mise à jour). Contactez le support technique — votre panier a été conservé.");
+      toast("La fonction de commande installée sur Supabase ne correspond pas à cette version du site. Il faut ré-exécuter supabase_schema.sql dans Supabase → SQL Editor. Votre panier a été conservé.");
     } else {
       toast("Impossible d'envoyer la commande : " + error.message);
     }
@@ -4685,7 +4629,7 @@ async function submitOrderInternal(){
   const newOrder = {
     id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
     items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
-    status: row.status, notes: row.notes, address: row.address, createdAt: new Date(row.created_at),
+    status: row.status, notes: row.notes, createdAt: new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
@@ -4876,8 +4820,8 @@ function dashOverview(){
   const paidOrders = periodOrders.filter(o=>o.status!=='cancelled');
   const revenue = paidOrders.reduce((s,o)=>s+o.total,0);
   const avgBasket = paidOrders.length ? revenue/paidOrders.length : 0;
-  const pending = periodOrders.filter(o=>['new','confirmed','preparing','ready','delivering'].includes(o.status)).length;
-  const completedCount = periodOrders.filter(o=>o.status==='delivered' || o.status==='completed').length;
+  const pending = periodOrders.filter(o=>['new','preparing','ready','delivering'].includes(o.status)).length;
+  const completedCount = periodOrders.filter(o=>o.status==='completed').length;
   const uniqueClients = new Set(periodOrders.map(o=>o.phone)).size;
   const activeProducts = PRODUCTS.filter(p=>p.active).length;
   const inactiveProducts = PRODUCTS.filter(p=>!p.active).length;
@@ -4928,7 +4872,7 @@ function dashOverview(){
 /* ---------------- ORDERS ---------------- */
 let orderSearch = '';
 let orderStatusFilter = 'all';
-const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['confirmed','Confirmées'],['preparing','En préparation'],['ready','Prêtes'],['delivering','En livraison'],['delivered','Livrées'],['cancelled','Annulées']];
+const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing','En préparation'],['ready','Prêtes'],['delivering','En livraison'],['completed','Terminées'],['cancelled','Annulées']];
 
 function dashOrders(){
   return `
@@ -4953,7 +4897,7 @@ function dashOrders(){
 function filteredOrders(){
   const q = orderSearch.trim().toLowerCase();
   return DEMO_ORDERS.filter(o =>
-    (orderStatusFilter==='all' || o.status===orderStatusFilter || (orderStatusFilter==='delivered' && o.status==='completed')) &&
+    (orderStatusFilter==='all' || o.status===orderStatusFilter) &&
     (!q || o.client.toLowerCase().includes(q) || o.num.includes(q) || o.phone.includes(q))
   );
 }
@@ -4975,7 +4919,7 @@ function ordersRowsHtml(){
 function openOrderDetail(i){
   const o = DEMO_ORDERS[i];
   const action = nextStatusAction(o);
-  const isTerminal = o.status==='delivered' || o.status==='completed' || o.status==='cancelled';
+  const isTerminal = o.status==='completed' || o.status==='cancelled';
   document.getElementById('orderDetailPanel').innerHTML = `
     <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid var(--cream-line);">
       <div><p class="font-tabular font-display" style="font-size:17px;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
@@ -4984,10 +4928,10 @@ function openOrderDetail(i){
     <div style="padding:20px 22px;">
       <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span>
       <!-- Une seule action possible à la fois — jamais plusieurs
-           boutons de statut contradictoires. La commande reste ouverte
-           après le clic (voir changeOrderStatus : plus d'appel à
-           renderDashSection qui remplaçait tout #dashContent, y
-           compris ce panneau lui-même, et le refermait aussitôt). -->
+           boutons contradictoires. La commande reste ouverte après le
+           clic (voir changeOrderStatus : ne rafraîchit plus que le
+           tableau en arrière-plan, jamais toute la section, qui
+           refermait ce panneau à chaque changement de statut). -->
       ${action ? `<button onclick="changeOrderStatus(${i},'${action.next}')" class="btn btn-secondary btn-lg w-full" style="margin-top:14px;">${ic(action.icon,16)} ${action.label}</button>` : ''}
       ${!isTerminal ? `<button onclick="if(confirm('Annuler cette commande ?'))changeOrderStatus(${i},'cancelled')" style="margin-top:10px;font-size:12px;color:var(--terracotta);text-align:center;width:100%;">Annuler la commande</button>` : ''}
       <div class="flex flex-col gap-2" style="background:var(--cream);border-radius:16px;padding:14px;margin:16px 0;">
@@ -4995,7 +4939,6 @@ function openOrderDetail(i){
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${o.client}</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('phone',14,{stroke:'var(--ink-faint)'})}${o.phone}</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('mapPin',14,{stroke:'var(--ink-faint)'})}${o.type}</p>
-        ${o.address ? `<p style="font-size:13.5px;display:flex;align-items:flex-start;gap:7px;"><span style="margin-top:1px;">${ic('map',14,{stroke:'var(--ink-faint)'})}</span>${o.address}</p>` : ''}
       </div>
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Produits</p>
       ${o.items.map(orderItemLine).join('')}
@@ -5012,14 +4955,21 @@ function openOrderDetail(i){
   document.getElementById('orderDetailOverlay').classList.remove('hidden');
 }
 function closeOrderDetail(){ document.getElementById('orderDetailOverlay').classList.add('hidden'); }
-/* Seul véritable point d'écriture du statut d'une commande. CORRIGÉ :
-   la version précédente appelait renderDashSection(state.dashSection)
-   après avoir rouvert le panneau — mais orderDetailOverlay fait partie
-   du HTML retourné par dashOrders() elle-même, donc ce second appel
-   remplaçait #dashContent EN ENTIER, y compris le panneau qu'on venait
-   juste de rouvrir, qui repartait dans son état "hidden" par défaut.
-   Résultat : le restaurateur était éjecté de la commande à chaque
-   changement de statut. Corrigé en ne rafraîchissant QUE le tableau en
+/* Seul véritable point d'écriture du statut d'une commande — la
+   fonction persistOrderUpdate() existait déjà mais n'était appelée par
+   AUCUNE action de l'interface (aucun contrôle de changement de statut
+   n'existait), ce qui rendait le suivi client → statut réel côté
+   restaurateur impossible à déclencher. Corrigé ici : met à jour l'état
+   local immédiatement (retour visuel instantané), puis persiste dans
+   Supabase — protégé par la policy RLS orders_staff_update, donc même
+   un appel direct par un rôle non autorisé échouerait côté serveur. */
+/* CORRECTION DE LA RÉGRESSION SIGNALÉE (le restaurateur était éjecté de
+   la commande à chaque changement de statut) : orderDetailOverlay/
+   orderDetailPanel font partie du HTML retourné par dashOrders()
+   elle-même — appeler renderDashSection(state.dashSection) juste après
+   avoir rouvert le panneau remplaçait TOUT #dashContent, y compris ce
+   panneau qu'on venait de rouvrir, qui repartait dans son état "hidden"
+   par défaut. Corrigé : on ne rafraîchit plus que le tableau en
    arrière-plan (ordersTableBody), qui existe indépendamment du
    panneau — jamais tout #dashContent. */
 function changeOrderStatus(i, newStatus){
@@ -5736,49 +5686,12 @@ function customersRowsHtml(query){
     // "En cours" = ni terminée ni annulée — visible et cliquable
     // directement depuis la fiche client, sans devoir la rechercher
     // dans la liste générale des commandes.
-    const inProgress = DEMO_ORDERS.filter(o=>o.phone===c.phone && !['completed','delivered','cancelled'].includes(o.status));
+    const inProgress = DEMO_ORDERS.filter(o=>o.phone===c.phone && !['completed','cancelled'].includes(o.status));
     return `<tr>
-      <td><button onclick="openClientDetail('${c.phone}')" style="color:var(--amber-ink);font-weight:600;text-decoration:underline;text-underline-offset:2px;">${c.name}</button></td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
+      <td>${c.name}</td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
       <td>${inProgress.length ? inProgress.map(o=>`<button onclick="openOrderDetailByNum('${o.num}')" class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="margin:2px;cursor:pointer;">#${o.num}</button>`).join('') : `<span style="color:var(--ink-faint);font-size:12px;">—</span>`}</td>
     </tr>`;
   }).join('');
-}
-/* Fiche client — réutilise le même panneau latéral que le détail d'une
-   commande (orderDetailPanel), avec un contenu différent : agrégats
-   réels (commandes, dépenses), historique cliquable, et les avis
-   laissés par CE client (rapprochés par téléphone — le seul
-   identifiant fiable dont on dispose côté client public, aucun compte
-   n'étant requis pour commander). */
-function openClientDetail(phone){
-  const c = computeCustomersFromOrders().find(x=>x.phone===phone);
-  if(!c) return;
-  const clientOrders = DEMO_ORDERS.filter(o=>o.phone===phone).sort((a,b)=>b.createdAt-a.createdAt);
-  const clientReviews = REVIEWS.filter(r=>r.client_phone===phone);
-  document.getElementById('orderDetailPanel').innerHTML = `
-    <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid var(--cream-line);">
-      <div><p class="font-display" style="font-size:17px;">${c.name}</p><p class="font-tabular" style="font-size:11px;color:var(--ink-faint);">${c.phone}</p></div>
-      <button onclick="closeOrderDetail()" style="font-size:18px;color:var(--ink-soft);">${ic('x',18)}</button>
-    </div>
-    <div style="padding:20px 22px;">
-      <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
-        <div class="card" style="padding:12px;text-align:center;"><p class="font-tabular font-display" style="font-size:20px;">${c.orders}</p><p style="font-size:11px;color:var(--ink-faint);">commande${c.orders>1?'s':''}</p></div>
-        <div class="card" style="padding:12px;text-align:center;"><p class="font-tabular font-display" style="font-size:16px;">${fmt(c.spent)}</p><p style="font-size:11px;color:var(--ink-faint);">dépensés</p></div>
-      </div>
-      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Historique des commandes</p>
-      ${clientOrders.map(o=>`<button onclick="openOrderDetailByNum('${o.num}')" class="flex items-center justify-between" style="width:100%;padding:9px 0;border-top:1px solid var(--cream-line);text-align:left;">
-        <div><p style="font-size:13px;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
-        <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="font-size:10px;">${ORDER_STATUS_LABELS[o.status]}</span>
-      </button>`).join('')}
-      ${clientReviews.length ? `
-      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin:18px 0 8px;">Avis laissés par ce client</p>
-      ${clientReviews.map(r=>`<div class="card" style="padding:12px;margin-bottom:8px;">
-        <div style="display:flex;gap:1px;margin-bottom:4px;">${[1,2,3,4,5].map(n=>ic('star',12,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
-        ${r.comment?`<p style="font-size:12.5px;color:var(--ink-soft);">${r.comment}</p>`:''}
-        <p style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;">${timeAgo(new Date(r.created_at))}</p>
-      </div>`).join('')}` : ''}
-    </div>`;
-  hydrateIcons(document.getElementById('orderDetailPanel'));
-  document.getElementById('orderDetailOverlay').classList.remove('hidden');
 }
 function openOrderDetailByNum(num){
   const i = DEMO_ORDERS.findIndex(o=>o.num===num);
