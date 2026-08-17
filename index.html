@@ -1750,16 +1750,26 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
 let currentUser = null; // session Supabase courante, ou null si visiteur anonyme
 let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/personnel du restaurant chargé (autorise la prévisualisation même non publiée)
 
-async function loadRestaurantIntoState(restaurantId){
-  const isLoggedIn = !!currentUser;
-  const [{data:r}, {data:cats}, {data:prods}, ordersRes, staffRes, paymentsRes, reviewsRes] = await Promise.all([
+/* CORRECTION ARCHITECTURALE (pas juste une re-vérification) :
+   auparavant, une seule fonction attendait TOUJOURS les 7 requêtes
+   (restaurant + catégories + produits + commandes + personnel +
+   paiements + avis) avant d'afficher quoi que ce soit — si UNE seule
+   traînait (typiquement "orders", qui accumule le plus de lignes au
+   fil des tests), tout le tableau de bord restait bloqué derrière
+   elle. Désormais séparé en deux phases : la phase "cœur" (rapide,
+   nécessaire pour afficher immédiatement l'espace) et la phase
+   "secondaire" (commandes/personnel/paiements/avis — chargée APRÈS
+   affichage du tableau de bord, en arrière-plan, jamais bloquante).
+   loadRestaurantIntoState() reste inchangée en apparence (toujours les
+   deux phases, toujours awaited) pour le site public (loadRestaurantBySlug),
+   qui n'a de toute façon jamais chargé la partie secondaire
+   (isLoggedIn=false). Les chemins de connexion appellent maintenant
+   directement les deux phases séparément. */
+async function loadRestaurantCore(restaurantId){
+  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
     supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
     supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
     supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
-    isLoggedIn ? supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
-    isLoggedIn ? supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId) : Promise.resolve({data:[]}),
-    isLoggedIn ? supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10) : Promise.resolve({data:[]}),
-    isLoggedIn ? supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}) : Promise.resolve({data:[]}),
   ]);
   if(!r) return false;
 
@@ -1795,8 +1805,11 @@ async function loadRestaurantIntoState(restaurantId){
   // HTML autonome. Passe par une fonction RPC dédiée, à sens unique
   // vers l'expiration (jamais vers l'activation) — voir "VERROU
   // CRITIQUE" dans supabase_schema.sql ; subscription_status n'est
-  // plus modifiable par une simple mise à jour de paramètres.
-  if(isLoggedIn && computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')){
+  // plus modifiable par une simple mise à jour de paramètres. Lancée
+  // SANS attendre (fire-and-forget) : ne doit jamais retarder
+  // l'affichage du tableau de bord pour une simple synchronisation de
+  // routine.
+  if(!!currentUser && computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')){
     supabaseClient.rpc('sync_my_subscription_expiry').then(({error}) => {
       if(error) console.error('sync_my_subscription_expiry:', error.message);
     });
@@ -1825,6 +1838,28 @@ async function loadRestaurantIntoState(restaurantId){
     variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
   }));
 
+  // Réinitialise les sélections d'écran qui pointaient peut-être vers
+  // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
+  // même onglet (changement de compte sans recharger la page).
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
+  return true;
+}
+
+/* Phase secondaire — commandes, personnel, paiements, avis. Toujours
+   appelée APRÈS que le tableau de bord soit déjà affiché avec les
+   données "cœur" ; redessine la section actuellement visible une fois
+   arrivée, pour que les vrais chiffres remplacent silencieusement les
+   listes vides initiales, sans jamais avoir bloqué l'accès au compte. */
+async function loadRestaurantSecondaryData(restaurantId){
+  const [ordersRes, staffRes, paymentsRes, reviewsRes] = await Promise.all([
+    supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
+    supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId),
+    supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10),
+    supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
+  ]);
+
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
     id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
@@ -1844,15 +1879,30 @@ async function loadRestaurantIntoState(restaurantId){
   paymentsHistory = (paymentsRes && paymentsRes.data) || [];
   REVIEWS = (reviewsRes && reviewsRes.data) || [];
 
-  // Réinitialise les sélections d'écran qui pointaient peut-être vers
-  // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
-  // même onglet (changement de compte sans recharger la page).
-  variantsSelectedProduct = null;
-  abonSelectedPlan = null;
-  abonSelectedCycle = null;
+  subscribeToOrdersRealtime(restaurantId);
+  subscribeToReviewsRealtime(restaurantId);
 
-  if(isLoggedIn) subscribeToOrdersRealtime(restaurantId);
-  if(isLoggedIn) subscribeToReviewsRealtime(restaurantId);
+  // Le tableau de bord était déjà affiché (avec des listes vides) avant
+  // que ces données n'arrivent — on redessine la section actuellement
+  // visible pour qu'elle reflète les vrais chiffres, exactement le
+  // même principe que le rafraîchissement déjà utilisé pour une
+  // nouvelle commande en temps réel.
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers','staff','payments'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+  refreshNotifDot();
+}
+
+async function loadRestaurantIntoState(restaurantId){
+  const ok = await loadRestaurantCore(restaurantId);
+  if(!ok) return false;
+  if(!!currentUser){
+    await loadRestaurantSecondaryData(restaurantId);
+  } else {
+    // Site public (visiteur anonyme) : jamais de commandes/personnel/
+    // paiements/avis à charger — comportement inchangé.
+    DEMO_ORDERS.length = 0; staffState.length = 0; paymentsHistory = []; REVIEWS = [];
+  }
   return true;
 }
 
@@ -2479,10 +2529,16 @@ async function restoreSession(){
     const rid = await findMyRestaurantId();
     if(rid){
       hideRestoSplash(); // garde-fou : si un ?resto= était aussi présent dans l'URL, ne jamais laisser l'écran de chargement bloqué au-dessus du tableau de bord
-      await loadRestaurantIntoState(rid);
+      // Phase rapide seulement ici : affiche le tableau de bord dès que
+      // le restaurant/catégories/produits sont prêts. Commandes/
+      // personnel/paiements/avis se chargent APRÈS, en arrière-plan
+      // (voir loadRestaurantSecondaryData), sans retarder l'accès.
+      const ok = await loadRestaurantCore(rid);
+      if(!ok) return;
       viewerIsStaff = true;
       setView('dashboard');
       setDashSection('overview');
+      loadRestaurantSecondaryData(rid);
       // Retour depuis PayTech (success_url/cancel_url de paytech-checkout) —
       // informe la personne de ce qui vient de se passer. Le forfait n'est
       // considéré actif que si subscription_status l'est VRAIMENT (rechargé
@@ -2657,11 +2713,12 @@ async function submitLogin(){
     startOnboarding();
     return;
   }
-  await loadRestaurantIntoState(rid);
+  await loadRestaurantCore(rid);
   viewerIsStaff = true;
   setView('dashboard');
   setDashSection('overview');
   toast('Connecté — bienvenue sur votre tableau de bord.');
+  loadRestaurantSecondaryData(rid); // commandes/personnel/paiements/avis : en arrière-plan, jamais avant d'afficher le compte
 }
 
 async function submitSignup(){
@@ -2732,11 +2789,12 @@ async function submitInviteAccept(){
   if(acceptErr){ toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
 
   closeLogin();
-  await loadRestaurantIntoState(accepted.restaurant_id);
+  await loadRestaurantCore(accepted.restaurant_id);
   viewerIsStaff = true;
   setSimulatedRole(accepted.role, accepted.permissions);
   setView('dashboard');
   toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
+  loadRestaurantSecondaryData(accepted.restaurant_id); // en arrière-plan, jamais avant l'accès
 }
 
 async function signOutSupabase(){
