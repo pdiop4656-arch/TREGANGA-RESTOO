@@ -2437,11 +2437,23 @@ function renderRestaurantNotFound(){
    finishOnboarding() : après une connexion, un id local en retard sur
    la vraie session ferait manquer le restaurant existant et relancerait
    l'onboarding à tort. */
-async function findMyRestaurantId(){
-  const { data: userData } = await supabaseClient.auth.getUser();
-  const user = userData ? userData.user : null;
+/* p_knownUserId : optionnel — évite un aller-retour réseau
+   supplémentaire vers auth.getUser() quand l'appelant a DÉJÀ un
+   utilisateur fraîchement authentifié sous la main (ex: juste après
+   signInWithPassword(), qui vient LUI-MÊME de valider la session).
+   Sans paramètre, comportement inchangé pour tous les autres appels
+   (restoreSession, etc.) : revalidation en direct, nécessaire quand on
+   ne sait pas encore avec certitude si une session existe. */
+async function findMyRestaurantId(p_knownUserId){
+  let user;
+  if(p_knownUserId){
+    user = {id: p_knownUserId};
+  } else {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    user = userData ? userData.user : null;
+    if(user) currentUser = user;
+  }
   if(!user) return null;
-  currentUser = user;
   const {data:owned} = await supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle();
   if(owned) return owned.id;
   const {data:staffRow} = await supabaseClient.from('staff').select('restaurant_id').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle();
@@ -2636,7 +2648,7 @@ async function submitLogin(){
   closeLogin();
   currentUser = data.user;
   simulatedRole = null;
-  const rid = await findMyRestaurantId();
+  const rid = await findMyRestaurantId(data.user.id);
   if(!rid){
     // Pas de fausse entreprise pré-remplie : ce compte n'a encore aucun
     // restaurant dans Supabase — on l'envoie créer le sien, comme le
@@ -5119,6 +5131,18 @@ function dashPos(){
         </div>
         <span class="font-tabular" style="font-size:13px;">${fmt(amt)}</span>
       </div>`).join('')}
+  </div>
+  <div class="card" style="padding:18px;margin-top:16px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:4px;">Détail des commandes encaissées de la période</h2>
+    <p style="font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;">Ce sont exactement les ${paid.length} commande${paid.length>1?'s':''} additionnées ci-dessus — chaque montant vient directement de la commande enregistrée dans Supabase, jamais recalculé séparément.</p>
+    ${paid.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:10px 0;">Aucune commande encaissée sur cette période.</p>` : `
+    <table class="data-table">
+      <thead><tr><th>Commande</th><th>Date</th><th>Paiement</th><th style="text-align:right;">Montant</th></tr></thead>
+      <tbody>
+        ${paid.map(o=>`<tr><td class="font-tabular">#${o.num}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${PAYMENT_LABELS[o.pay]||o.pay}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
+      </tbody>
+      <tfoot><tr style="font-weight:700;"><td colspan="3">Total</td><td class="font-tabular" style="text-align:right;">${fmt(total)}</td></tr></tfoot>
+    </table>`}
   </div>`;
 }
 
