@@ -637,13 +637,18 @@ body.storefront-active .gnav{ display:none; }
     </div>
   </div>
 
-  <!-- Mobile bottom navigation (application mobile, pas une sidebar réduite) -->
+  <!-- Mobile bottom navigation (application mobile, pas une sidebar réduite) —
+       exactement 5 éléments réels, jamais un 6e bouton "Plus" : les
+       autres sections (Analyses, Comptabilité, Catégories, Variantes,
+       Paiements, Personnel, Inventaire) ainsi que Paramètres et
+       Déconnexion restent accessibles depuis Accueil (voir
+       dashOverview()), jamais depuis cette barre. -->
   <nav id="mobileBottomNav" class="hidden">
     <button class="mbn-item active" data-key="overview" onclick="setDashSection('overview')"><span class="mbn-icon" data-icon="dashboard" data-size="19"></span><span>Accueil</span></button>
     <button class="mbn-item" data-key="orders" onclick="setDashSection('orders')"><span class="mbn-icon" data-icon="receipt" data-size="19"></span><span>Commandes</span></button>
     <button class="mbn-item" data-key="products" onclick="setDashSection('products')"><span class="mbn-icon" data-icon="utensils" data-size="19"></span><span>Produits</span></button>
-    <button class="mbn-item" data-key="analytics" onclick="setDashSection('analytics')"><span class="mbn-icon" data-icon="chart" data-size="19"></span><span>Analyses</span></button>
-    <button class="mbn-item" data-key="more" onclick="openMoreSheet()"><span class="mbn-icon" data-icon="moreHorizontal" data-size="19"></span><span>Plus</span></button>
+    <button class="mbn-item" data-key="customers" onclick="setDashSection('customers')"><span class="mbn-icon" data-icon="users" data-size="19"></span><span>Clients</span></button>
+    <button class="mbn-item" data-key="qrcode" onclick="setDashSection('qrcode')"><span class="mbn-icon" data-icon="qrcode" data-size="19"></span><span>QR Code</span></button>
   </nav>
 
   <!-- "Plus" bottom sheet -->
@@ -701,7 +706,14 @@ body.storefront-active .gnav{ display:none; }
   #dashContent{ padding-bottom:96px !important; }
   #quickAddBtn .hide-sm{ display:none; }
   .dash-topbar{ padding:12px 14px; }
+  .mobile-tablet-only{ display:flex !important; }
 }
+/* Masqué par défaut (ordinateur) — jamais affiché en dehors de
+   téléphone/tablette, jamais de changement visuel du desktop. Toujours
+   en display:flex quand visible (avec flex-direction:column si besoin
+   d'un empilement) — jamais display:block, pour que gap/align-items
+   fonctionnent directement sans style supplémentaire à chaque usage. */
+.mobile-tablet-only{ display:none; }
 
 /* =====================================================================
    THÈME "DARK PREMIUM" — exclusif au tableau de bord restaurateur.
@@ -4939,7 +4951,7 @@ const NAV_ITEMS = [
   ['staff','userGroup','Personnel'],
   ['settings','settings','Paramètres'],
 ];
-const MOBILE_PRIMARY = ['overview','orders','products','analytics'];
+const MOBILE_PRIMARY = ['overview','orders','products','customers','qrcode'];
 
 function renderDashNav(){
   document.getElementById('dashNav').innerHTML = NAV_ITEMS.filter(([key])=>canSeeSection(key)).map(([key,icon,label])=>
@@ -4969,7 +4981,10 @@ function setDashSection(key){
 }
 
 function openMoreSheet(){
-  const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k) && canSeeSection(k));
+  // "settings" est volontairement exclu ici : il a désormais son propre
+  // accès direct et bien visible depuis Accueil (bloc "Mon compte"),
+  // pas besoin de l'avoir aussi dans cette grille secondaire.
+  const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k) && k!=='settings' && canSeeSection(k));
   if(canSeeSection('settings')) rest.push(['abonnement','wallet','Abonnement']);
   document.getElementById('moreSheetGrid').innerHTML = rest.map(([key,icon,label])=>{
     const locked = (key==='staff' && !isPremiumActive());
@@ -5095,6 +5110,39 @@ function dashOverview(){
         <span class="font-tabular pill pill-neutral" style="font-size:11px;">${qty} vendus</span>
       </div>`).join('')}
     </div>
+  </div>
+
+  <!-- Téléphone/tablette uniquement : la barre de navigation basse ne
+       contient volontairement que 5 éléments (Accueil, Commandes,
+       Produits, Clients, QR Code) — les autres sections du dashboard
+       (Analyses, Comptabilité, Catégories, Variantes, Paiements,
+       Personnel, Inventaire) ainsi que Paramètres et Déconnexion
+       restent accessibles ici, depuis Accueil, jamais depuis la barre
+       elle-même. Invisible sur ordinateur, où la barre latérale donne
+       déjà accès à tout. -->
+  <div class="mobile-tablet-only" style="flex-direction:column;gap:10px;margin-top:20px;">
+    <div class="card" style="padding:16px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Mon compte</p>
+      <div class="flex-col gap-2">
+        <button onclick="setDashSection('settings')" class="flex items-center gap-3" style="width:100%;padding:10px 4px;text-align:left;">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;">${ic('settings',16)}</span>
+          <span style="flex:1;font-size:13.5px;font-weight:500;">Paramètres</span>
+          ${ic('arrowRight',14,{stroke:'var(--ink-faint)'})}
+        </button>
+        <button onclick="logoutDashboard()" class="flex items-center gap-3" style="width:100%;padding:10px 4px;text-align:left;">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--terracotta-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--terracotta);">${ic('logout',16)}</span>
+          <span style="flex:1;font-size:13.5px;font-weight:500;color:var(--terracotta);">Déconnexion</span>
+        </button>
+      </div>
+    </div>
+    <button onclick="openMoreSheet()" class="card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;">
+      <span style="width:34px;height:34px;border-radius:10px;background:rgba(232,135,30,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--amber-deep);">${ic('grid',16)}</span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:13.5px;font-weight:500;">Plus de fonctionnalités</span>
+        <span style="display:block;font-size:11px;color:var(--ink-faint);">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
+      </span>
+      ${ic('arrowRight',14,{stroke:'var(--ink-faint)'})}
+    </button>
   </div>`;
 }
 
@@ -6413,6 +6461,7 @@ function refreshSocialCards(){
 
 function dashSettings(){
   return `
+  <button class="mobile-tablet-only" onclick="setDashSection('overview')" style="align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:6px 2px;border:none;background:none;">${ic('arrowLeft',15)} Retour à l'accueil</button>
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
     <div><h1 class="font-display" style="font-size:22px;">Paramètres</h1><p style="font-size:13px;color:var(--ink-soft);">Toute modification, une fois enregistrée, apparaît sur votre site public.</p></div>
     <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
