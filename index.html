@@ -2963,6 +2963,9 @@ const ICON_PATHS = {
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/>',
   trash:'<line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
   pencil:'<path d="M4 20l.9-4L16.5 4.4a1.6 1.6 0 012.3 0l.8.8a1.6 1.6 0 010 2.3L8 19.1z"/><line x1="14.5" y1="6.5" x2="17.5" y2="9.5"/>',
+  lightbulb:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z"/>',
+  megaphone:'<path d="M3 11v2a2 2 0 002 2h1l3 5V4L6 9H5a2 2 0 00-2 2z"/><path d="M13 8a4 4 0 010 8M17 5a8 8 0 010 14"/>',
+  helpCircle:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 014.8 1c0 1.7-2.3 2-2.3 3.5"/><line x1="12" y1="17" x2="12" y2="17.1"/>',
   printer:'<path d="M6 9V3.5h12V9"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><rect x="7" y="14" width="10" height="6.5"/>',
   copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/>',
   download:'<path d="M12 3v12"/><polyline points="7,10.5 12,15.5 17,10.5"/><line x1="4" y1="20" x2="20" y2="20"/>',
@@ -5029,13 +5032,13 @@ function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 const AI_QUICK_ACTIONS = [
-  {emoji:'📊', label:'Analyser mon restaurant', prompt:"Analyse mon restaurant dans son ensemble : points forts, points faibles, opportunités, et recommandations prioritaires."},
-  {emoji:'📈', label:'Analyser mes ventes', prompt:"Analyse mes ventes récentes : commandes, chiffre d'affaires, produits vendus, tendances. Explique-moi simplement les résultats."},
-  {emoji:'🍽️', label:'Améliorer mon menu', prompt:"Regarde mes produits (noms, descriptions, prix, catégories) et propose des améliorations concrètes."},
-  {emoji:'🔥', label:'Quels produits mettre en avant ?', prompt:"D'après mes commandes récentes, quels produits devrais-je mettre en avant sur ma page d'accueil, et pourquoi ?"},
-  {emoji:'📢', label:'Créer une promotion', prompt:"Aide-moi à réfléchir à une promotion adaptée à mon restaurant : sur quel produit, quel objectif, quelle réduction et quelle durée seraient pertinents ?"},
-  {emoji:'💡', label:'Donne-moi des idées', prompt:"Donne-moi des idées adaptées à mon restaurant : promotions, nouveaux produits, offres, fidélisation, communication, expérience client."},
-  {emoji:'🆘', label:'Aide TerangaResto', prompt:"Explique-moi comment utiliser TerangaResto : commandes, produits, caisse, clients, paramètres, abonnement, publication et site public."},
+  {icon:'chart', label:'Analyser mon restaurant', prompt:"Analyse mon restaurant dans son ensemble : points forts, points faibles, opportunités, et recommandations prioritaires."},
+  {icon:'trendingUp', label:'Analyser mes ventes', prompt:"Analyse mes ventes récentes : commandes, chiffre d'affaires, produits vendus, tendances. Explique-moi simplement les résultats."},
+  {icon:'utensils', label:'Améliorer mon menu', prompt:"Regarde mes produits (noms, descriptions, prix, catégories) et propose des améliorations concrètes."},
+  {icon:'flame', label:'Quels produits mettre en avant ?', prompt:"D'après mes commandes récentes, quels produits devrais-je mettre en avant sur ma page d'accueil, et pourquoi ?"},
+  {icon:'megaphone', label:'Créer une promotion', prompt:"Aide-moi à réfléchir à une promotion adaptée à mon restaurant : sur quel produit, quel objectif, quelle réduction et quelle durée seraient pertinents ?"},
+  {icon:'lightbulb', label:'Donne-moi des idées', prompt:"Donne-moi des idées adaptées à mon restaurant : promotions, nouveaux produits, offres, fidélisation, communication, expérience client."},
+  {icon:'helpCircle', label:'Aide TerangaResto', prompt:"Explique-moi comment utiliser TerangaResto : commandes, produits, caisse, clients, paramètres, abonnement, publication et site public."},
 ];
 let aiAgencyHistory = [];
 let aiAgencyLoading = false;
@@ -5049,17 +5052,18 @@ function renderAiAgencyBody(){
   if(aiAgencyHistory.length === 0){
     body.innerHTML = `
       <div class="text-center" style="margin-bottom:20px;">
-        <p style="font-size:15px;font-weight:600;">Bonjour 👋</p>
+        <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:8px;">${ic('sparkles',24)}</div>
+        <p style="font-size:15px;font-weight:600;">Bonjour</p>
         <p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Je suis votre Agence IA TerangaResto. Je peux analyser votre restaurant, vos commandes, vos produits et vos performances pour vous proposer des actions concrètes.</p>
       </div>
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Actions rapides</p>
       <div class="flex-col gap-2" style="margin-bottom:8px;">
         ${AI_QUICK_ACTIONS.map((a,i)=>`<button onclick="runAiQuickAction(${i})" class="card" style="padding:12px 14px;text-align:left;display:flex;align-items:center;gap:10px;width:100%;">
-          <span style="font-size:17px;">${a.emoji}</span>
+          <span style="color:var(--amber-deep);flex-shrink:0;">${ic(a.icon,17)}</span>
           <span style="font-size:13px;font-weight:500;">${a.label}</span>
         </button>`).join('')}
         <button onclick="openImproveDescriptionPicker()" class="card" style="padding:12px 14px;text-align:left;display:flex;align-items:center;gap:10px;width:100%;">
-          <span style="font-size:17px;">✍️</span>
+          <span style="color:var(--amber-deep);flex-shrink:0;">${ic('pencil',17)}</span>
           <span style="font-size:13px;font-weight:500;">Améliorer une description</span>
         </button>
       </div>`;
@@ -5107,9 +5111,18 @@ async function sendAiAgencyMessage(presetText){
   aiAgencyLoading = false;
 
   if(error || !data || data.error){
+    // Toujours loggé en entier — jamais seulement le message générique
+    // affiché à l'écran — pour permettre un vrai diagnostic. `error`
+    // ici est une erreur de TRANSPORT (session invalide, fonction non
+    // déployée, réseau...) ; data.error est un échec APPLICATIF déjà
+    // identifié par la fonction elle-même (ex: clé IA manquante, appel
+    // au moteur IA refusé) — les deux sont distingués dans la console.
+    console.error('ai-agency (chat) — échec :', {error, data});
     const errMsg = (data && data.error === 'not_configured')
       ? (data.message || "L'Agence IA est prête, mais la connexion au moteur IA doit encore être configurée.")
-      : "L'Agence IA est momentanément indisponible. Réessayez dans quelques instants.";
+      : (data && typeof data.error === 'string')
+        ? "Je n'arrive pas à contacter le moteur IA pour le moment. Réessayez dans quelques secondes."
+        : "L'Agence IA est momentanément indisponible. Réessayez dans quelques instants.";
     aiAgencyHistory.push({role:'assistant', content: errMsg, isError:true});
     renderAiAgencyBody();
     return;
@@ -5148,7 +5161,8 @@ async function requestImprovedDescription(productId){
   });
 
   if(error || !data || data.error){
-    const errMsg = (data && data.error==='not_configured') ? (data.message||"La connexion au moteur IA doit encore être configurée.") : "L'Agence IA est momentanément indisponible. Réessayez dans quelques instants.";
+    console.error('ai-agency (improve_description) — échec :', {error, data});
+    const errMsg = (data && data.error==='not_configured') ? (data.message||"La connexion au moteur IA doit encore être configurée.") : "Je n'arrive pas à contacter le moteur IA pour le moment. Réessayez dans quelques secondes.";
     body.innerHTML = `<p style="font-size:13px;color:var(--terracotta);text-align:center;padding:20px 0;">${escapeHtml(errMsg)}</p><button onclick="openImproveDescriptionPicker()" class="btn btn-outline w-full">Retour</button>`;
     return;
   }
