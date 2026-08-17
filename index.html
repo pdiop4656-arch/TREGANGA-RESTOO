@@ -183,11 +183,27 @@ body.storefront-active .gnav{ display:none; }
     <div id="restoSplashBar" style="height:100%;width:8%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
   </div>
 </div>
+
+<!-- Écran de vérification neutre — affiché UNIQUEMENT si cet appareil a
+     déjà atteint un tableau de bord auparavant (voir tg_returning_user),
+     pendant que restoreSession() revalide la vraie session. Sans lui,
+     la page d'accueil publique (active par défaut dans le HTML tant que
+     rien ne dit le contraire) serait révélée une fraction de seconde à
+     chaque actualisation d'un utilisateur déjà connecté. -->
+<div id="authCheckSplash" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+  <div style="width:32px;height:32px;border:3px solid rgba(43,24,16,.12);border-top-color:#c96a12;border-radius:999px;animation:icSpin 0.8s linear infinite;"></div>
+  <p style="font-family:'Manrope',sans-serif;font-size:12.5px;color:#8a7466;margin-top:16px;">Vérification de votre session…</p>
+</div>
 <script>
-  // Doit rester la toute première chose exécutée dans <body> : détecte
-  // et masque immédiatement la page d'accueil générale AVANT qu'elle
-  // n'ait la moindre chance d'être peinte à l'écran.
-  if(/[?&]resto=/.test(location.search)){
+  // Doit rester la toute première chose exécutée dans <body> : décide,
+  // AVANT que la page d'accueil générale n'ait la moindre chance d'être
+  // peinte à l'écran, laquelle des deux situations s'applique — jamais
+  // les deux en même temps. Reflète exactement l'ordre de priorité
+  // réel utilisé par restoreSession() (session existante d'abord, lien
+  // direct vers un restaurant ensuite).
+  if(localStorage.getItem('tg_returning_user')){
+    document.getElementById('authCheckSplash').classList.remove('hidden');
+  } else if(/[?&]resto=/.test(location.search)){
     document.getElementById('restoSplash').classList.remove('hidden');
     requestAnimationFrame(()=>{
       ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
@@ -2529,6 +2545,7 @@ async function restoreSession(){
     const rid = await findMyRestaurantId();
     if(rid){
       hideRestoSplash(); // garde-fou : si un ?resto= était aussi présent dans l'URL, ne jamais laisser l'écran de chargement bloqué au-dessus du tableau de bord
+      hideAuthCheckSplash();
       // Phase rapide seulement ici : affiche le tableau de bord dès que
       // le restaurant/catégories/produits sont prêts. Commandes/
       // personnel/paiements/avis se chargent APRÈS, en arrière-plan
@@ -2559,6 +2576,15 @@ async function restoreSession(){
       return;
     }
 
+    // Ici, rid est confirmé null : soit aucune session, soit une session
+    // qui ne correspond plus à un restaurant réel. Dans les deux cas,
+    // le marqueur "utilisateur de retour" ne doit plus déclencher
+    // l'écran de vérification au PROCHAIN chargement — sinon la
+    // personne resterait bloquée dessus indéfiniment à chaque visite
+    // future, alors qu'elle n'a en réalité plus de session valide.
+    try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
+    hideAuthCheckSplash();
+
     const restoSlug = new URLSearchParams(location.search).get('resto');
     if(restoSlug){
       restoSplashProgress(45);
@@ -2587,6 +2613,7 @@ async function restoreSession(){
   }catch(e){
     console.error('Supabase — échec du chargement initial', e);
     hideRestoSplash(); // ne jamais laisser le client bloqué indéfiniment sur l'écran de chargement
+    hideAuthCheckSplash();
   }
 }
 </script>
@@ -2628,6 +2655,10 @@ function hideRestoSplash(){
   el.style.opacity = '0';
   setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 380);
 }
+function hideAuthCheckSplash(){
+  const el = document.getElementById('authCheckSplash');
+  if(el) el.classList.add('hidden');
+}
 </script>
 
 <script>
@@ -2638,6 +2669,26 @@ function goToAnchor(id){
 function closeMobileNav(){ document.getElementById('gnavTabs').classList.remove('mobile-open'); }
 function openLogin(tab){ document.getElementById('loginOverlay').classList.remove('hidden'); setLoginTab(tab||'login'); }
 function closeLogin(){ document.getElementById('loginOverlay').classList.add('hidden'); }
+/* État de vérification visible DANS la modale (jamais un délai
+   artificiel — dure exactement le temps des vraies requêtes réseau en
+   cours). Désactive le bouton pour empêcher un second clic pendant la
+   vérification. Réutilisable pour n'importe quel bouton de la modale
+   (connexion, acceptation d'invitation...). */
+function setLoginVerifying(on, btnId, label){
+  const btn = document.getElementById(btnId || 'loginSubmitBtn');
+  if(!btn) return;
+  if(on){
+    btn.dataset.originalLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '.7';
+    btn.innerHTML = `${ic('loader',15,{className:'spin'})} ${label || 'Vérification de vos informations…'}`;
+    hydrateIcons(btn);
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    if(btn.dataset.originalLabel) btn.innerHTML = btn.dataset.originalLabel;
+  }
+}
 
 let loginTab = 'login';
 function setLoginTab(tab){
@@ -2658,7 +2709,7 @@ function setLoginTab(tab){
         <button type="button" onclick="togglePasswordVisibility('loginPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
       </div>
       <a href="#" onclick="sendPasswordReset();return false;" style="font-size:11.5px;color:var(--amber-ink);">Mot de passe oublié ?</a>
-      <button class="btn btn-secondary btn-lg w-full" onclick="submitLogin()" style="margin-top:14px;">Se connecter</button>`;
+      <button id="loginSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitLogin()" style="margin-top:14px;">Se connecter</button>`;
   } else if(tab==='signup'){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Créez votre compte pour ensuite créer votre restaurant.</p>
@@ -2689,7 +2740,7 @@ function setLoginTab(tab){
         <button type="button" onclick="togglePasswordVisibility('invitePasswordInput',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
       </div>
       <div id="invitePwStrength" style="margin-bottom:16px;"></div>
-      <button class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
+      <button id="inviteSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
       <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Ce mot de passe crée votre compte TerangaResto (ou vous y connecte s'il existe déjà).</p>`;
   }
   hydrateIcons(body);
@@ -2699,9 +2750,18 @@ async function submitLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
+  // CORRECTION DE LA RÉGRESSION SIGNALÉE : closeLogin() se déclenchait
+  // ici, AVANT que findMyRestaurantId()/loadRestaurantCore() (tous deux
+  // asynchrones) ne soient terminés — la modale se fermait donc et
+  // révélait la page d'accueil publique DERRIÈRE elle pendant toute
+  // cette attente, avant que setView('dashboard') ne s'exécute enfin.
+  // C'est exactement "Connexion → Accueil → Dashboard". Corrigé : la
+  // modale reste ouverte, avec un état de vérification visible, tant
+  // qu'on ne sait pas encore où rediriger — elle ne se ferme QUE juste
+  // avant setView('dashboard'), jamais avant.
+  setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ toast(error.message || 'Connexion impossible.'); return; }
-  closeLogin();
+  if(error){ setLoginVerifying(false); toast(error.message || 'Connexion impossible.'); return; }
   currentUser = data.user;
   simulatedRole = null;
   const rid = await findMyRestaurantId(data.user.id);
@@ -2709,12 +2769,15 @@ async function submitLogin(){
     // Pas de fausse entreprise pré-remplie : ce compte n'a encore aucun
     // restaurant dans Supabase — on l'envoie créer le sien, comme le
     // ferait une vraie application.
+    setLoginVerifying(false);
+    closeLogin();
     toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
     startOnboarding();
     return;
   }
   await loadRestaurantCore(rid);
   viewerIsStaff = true;
+  closeLogin(); // fermée seulement maintenant, juste avant le passage réel au tableau de bord — jamais avant
   setView('dashboard');
   setDashSection('overview');
   toast('Connecté — bienvenue sur votre tableau de bord.');
@@ -2760,21 +2823,23 @@ async function submitInviteAccept(){
   const password = document.getElementById('invitePasswordInput').value;
   if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
 
+  setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
+
   // Vérification e-mail + code via une fonction dédiée (RPC) : la
   // personne n'a pas encore de compte, donc pas de session permettant
   // à RLS de l'identifier — voir find_staff_invite dans supabase_schema.sql.
   const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
   const match = (matchRows && matchRows[0]) || null;
-  if(findErr || !match){ toast("E-mail ou code d'invitation incorrect."); return; }
-  if(match.status === 'Actif'){ toast('Cette invitation a déjà été utilisée.'); return; }
-  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ toast('Cette invitation a expiré.'); return; }
+  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast("E-mail ou code d'invitation incorrect."); return; }
+  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
+  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
 
   // Compte du membre du personnel : on tente une inscription, et si
   // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
   let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
   if(signErr){
     const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
+    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
     signData = inData;
   }
   currentUser = signData.user;
@@ -2786,11 +2851,17 @@ async function submitInviteAccept(){
   // jamais les permissions par défaut d'un autre rôle.
   const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
   const accepted = (acceptRows && acceptRows[0]) || match;
-  if(acceptErr){ toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
+  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
 
-  closeLogin();
+  // CORRECTION DE LA MÊME RÉGRESSION QUE submitLogin() : closeLogin()
+  // se déclenchait ici AVANT loadRestaurantCore() (asynchrone) — la
+  // page d'accueil publique était donc révélée derrière la modale déjà
+  // fermée, pendant toute cette attente. Fermée seulement juste avant
+  // setView('dashboard') désormais, jamais avant.
   await loadRestaurantCore(accepted.restaurant_id);
   viewerIsStaff = true;
+  setLoginVerifying(false,'inviteSubmitBtn');
+  closeLogin();
   setSimulatedRole(accepted.role, accepted.permissions);
   setView('dashboard');
   toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
@@ -3545,7 +3616,15 @@ function setView(view){
   window.scrollTo({top:0,behavior:'instant' in window ? 'instant':'auto'});
   document.getElementById('mobileBottomNav').classList.toggle('active-grid', view==='dashboard' && window.innerWidth<=900);
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
-  if(view==='dashboard') { renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); requestNotificationPermissionOnce(); }
+  if(view==='dashboard') {
+    renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); requestNotificationPermissionOnce();
+    // Marqueur local (jamais une donnée sensible, juste "cette
+    // personne a déjà atteint son tableau de bord sur cet appareil")
+    // — permet, au prochain chargement de page, de savoir s'il faut
+    // afficher un écran de vérification neutre plutôt que la page
+    // d'accueil publique pendant que la session est revalidée.
+    try{ localStorage.setItem('tg_returning_user','1'); }catch(e){}
+  }
   if(view==='pricing') renderPricing();
   if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); renderTrackOrderButton(); }
   if(view==='onboarding') renderOnboarding();
@@ -4930,6 +5009,7 @@ async function logoutDashboard(){
   unsubscribeOrdersRealtime();
   unsubscribeReviewsRealtime();
   viewerIsStaff = false;
+  try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
   setView('landing');
   toast('Déconnecté.');
 }
