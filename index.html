@@ -1852,6 +1852,7 @@ async function loadRestaurantIntoState(restaurantId){
   abonSelectedCycle = null;
 
   if(isLoggedIn) subscribeToOrdersRealtime(restaurantId);
+  if(isLoggedIn) subscribeToReviewsRealtime(restaurantId);
   return true;
 }
 
@@ -1872,6 +1873,38 @@ function subscribeToOrdersRealtime(restaurantId){
 }
 function unsubscribeOrdersRealtime(){
   if(ordersRealtimeChannel){ supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
+}
+/* Mêmes principes que les commandes en temps réel ci-dessus, appliqués
+   aux avis : le personnel passe déjà la policy RLS reviews_staff_read
+   (contrairement à un client anonyme sur son propre suivi de commande,
+   qui n'y a pas droit — c'est pour ça que ce dernier utilise un
+   sondage périodique plutôt que Realtime), donc Supabase Realtime
+   fonctionne ici directement, sans contournement. */
+let reviewsRealtimeChannel = null;
+function subscribeToReviewsRealtime(restaurantId){
+  if(reviewsRealtimeChannel){ supabaseClient.removeChannel(reviewsRealtimeChannel); reviewsRealtimeChannel = null; }
+  reviewsRealtimeChannel = supabaseClient
+    .channel('reviews-restaurant-'+restaurantId)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'reviews', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeNewReview(payload.new);
+    })
+    .subscribe();
+}
+function unsubscribeReviewsRealtime(){
+  if(reviewsRealtimeChannel){ supabaseClient.removeChannel(reviewsRealtimeChannel); reviewsRealtimeChannel = null; }
+}
+function onRealtimeNewReview(row){
+  // Déduplication : si cet avis est déjà dans REVIEWS (par exemple
+  // parce que ce même onglet vient de le charger), ne le duplique pas.
+  if(REVIEWS.some(r => r.id === row.id)) return;
+  REVIEWS.unshift(row);
+  // Ne redessine QUE si la section "Avis clients" est actuellement
+  // affichée — jamais un rafraîchissement de toute la page, exactement
+  // comme le principe déjà utilisé pour les nouvelles commandes.
+  if(state.dashSection==='customers' && dashCustomersTab==='reviews'){
+    const body = document.getElementById('dashCustomersBody');
+    if(body){ body.innerHTML = dashReviewsHtml(); hydrateIcons(body); }
+  }
 }
 function onRealtimeNewOrder(row){
   // Déduplication : si cette commande est déjà dans DEMO_ORDERS (par
@@ -3864,8 +3897,15 @@ async function createRestaurantFromOnboarding(){
     // On ne prétend JAMAIS que la création a réussi si Supabase l'a
     // refusée — pas de redirection vers le tableau de bord, pas de
     // toast de succès qui écraserait visuellement ce message d'erreur.
+    // Le message affiché au client ne mentionne jamais "Supabase" —
+    // c'est un détail d'infrastructure interne, pas quelque chose que
+    // l'utilisateur a besoin de voir. Les fonctions RPC (comme
+    // create_my_restaurant) renvoient déjà des messages rédigés pour
+    // être lus directement par une personne (ex: "Ce compte a déjà un
+    // restaurant."), donc on les affiche tels quels plutôt que de les
+    // envelopper dans une phrase technique.
     RESTAURANT.created = false;
-    toast("Le restaurant n'a pas pu être enregistré dans Supabase : " + (error ? error.message : 'réponse vide.'));
+    toast(error ? error.message : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
     return null;
   }
 
@@ -3873,6 +3913,7 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
+  subscribeToReviewsRealtime(RESTAURANT.id);
   // Catégories par défaut, créées une seule fois avec le restaurant.
   const catRows = Object.entries(catsState).map(([key,label],i) => ({
     restaurant_id: RESTAURANT.id, key, label, sort_order:i,
@@ -4817,6 +4858,7 @@ async function logoutDashboard(){
   simulatedRole = null;
   await signOutSupabase();
   unsubscribeOrdersRealtime();
+  unsubscribeReviewsRealtime();
   viewerIsStaff = false;
   setView('landing');
   toast('Déconnecté.');
@@ -5040,7 +5082,17 @@ function orderItemNameQty(it){
 /* ---------------- CAISSE (POS) ---------------- */
 function dashPos(){
   const periodOrders = ordersForPeriod();
-  const paid = periodOrders.filter(o=>o.payStatus==='paid');
+  // CORRECTION : "Total encaissé" restait à 0 FCFA car il filtrait sur
+  // payStatus==='paid' — un champ qui n'est en réalité JAMAIS mis à
+  // jour nulle part dans le projet (aucun système de confirmation de
+  // paiement électronique n'existe pour les commandes clients ; Wave/
+  // Orange Money restent des moyens déclaratifs, encaissés en réalité
+  // à la livraison/au retrait, comme les espèces). Le signal réel et
+  // déjà disponible qu'un encaissement a effectivement eu lieu est le
+  // statut de la commande : une commande marquée "Terminée" a été
+  // réellement remise au client, donc réellement payée. Les commandes
+  // annulées restent explicitement exclues.
+  const paid = periodOrders.filter(o=>o.status==='completed');
   const total = paid.reduce((s,o)=>s+o.total,0);
   const byMethod = {};
   paid.forEach(o=>{ byMethod[o.pay]=(byMethod[o.pay]||0)+o.total; });
