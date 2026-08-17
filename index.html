@@ -5083,6 +5083,35 @@ function aiThinkingHtml(){
   return `<div style="display:flex;margin-bottom:12px;"><div style="padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--cream-line);border-bottom-left-radius:4px;font-size:13px;color:var(--ink-faint);display:flex;align-items:center;gap:8px;"><span data-icon="loader" data-size="13" class="spin"></span> L'Agence IA réfléchit…</div></div>`;
 }
 function runAiQuickAction(i){ sendAiAgencyMessage(AI_QUICK_ACTIONS[i].prompt); }
+/* Filet de sécurité : garantit que l'état de chargement ne reste
+   jamais bloqué indéfiniment, même si le réseau reste bloqué sans
+   jamais répondre ni échouer explicitement (functions.invoke() n'a pas
+   de délai limite intégré par défaut). */
+function invokeWithTimeout(name, options, timeoutMs){
+  return Promise.race([
+    supabaseClient.functions.invoke(name, options),
+    new Promise(resolve => setTimeout(() => resolve({data:null, error:{message:'Délai dépassé — le serveur met trop de temps à répondre.'}}), timeoutMs)),
+  ]);
+}
+/* Traduit une réponse d'échec de ai-agency en message clair pour
+   l'utilisateur, SANS jamais tout regrouper derrière une seule phrase
+   générique — le détail technique complet reste dans la console pour
+   le diagnostic, jamais affiché brut à l'écran. */
+function explainAiAgencyFailure(error, data){
+  console.error('ai-agency — échec complet :', {error, data});
+  if(!data){
+    // Erreur de TRANSPORT pure (fonction non déployée, session Supabase
+    // elle-même invalide au niveau du SDK, réseau coupé...) — aucun
+    // corps JSON n'a pu être lu du tout.
+    return "Je n'arrive pas à contacter l'Agence IA pour le moment (connexion au serveur impossible). Réessayez dans quelques secondes.";
+  }
+  if(data.error === 'not_configured') return data.message || "L'Agence IA est prête, mais la connexion au moteur IA doit encore être configurée.";
+  if(data.error === 'Authentification requise.' || data.error === 'Session invalide.') return "Votre session a expiré — reconnectez-vous puis réessayez.";
+  if(data.error === 'Accès refusé à ce restaurant.') return "Accès refusé pour ce restaurant. Reconnectez-vous et réessayez.";
+  if(typeof data.error === 'string' && data.error.startsWith("Vérification d'accès impossible")) return "Un problème de configuration empêche de vérifier votre accès pour le moment. Contactez le support technique.";
+  if(typeof data.error === 'string') return "Je n'arrive pas à contacter le moteur IA pour le moment. Réessayez dans quelques secondes.";
+  return "L'Agence IA est momentanément indisponible. Réessayez dans quelques instants.";
+}
 async function sendAiAgencyMessage(presetText){
   if(aiAgencyLoading) return;
   const input = document.getElementById('aiAgencyInput');
@@ -5105,25 +5134,13 @@ async function sendAiAgencyMessage(presetText){
     return;
   }
 
-  const {data, error} = await supabaseClient.functions.invoke('ai-agency', {
+  const {data, error} = await invokeWithTimeout('ai-agency', {
     body: { restaurant_id: RESTAURANT.id, action:'chat', message:text, history: historyBeforeThisMessage }
-  });
+  }, 30000);
   aiAgencyLoading = false;
 
   if(error || !data || data.error){
-    // Toujours loggé en entier — jamais seulement le message générique
-    // affiché à l'écran — pour permettre un vrai diagnostic. `error`
-    // ici est une erreur de TRANSPORT (session invalide, fonction non
-    // déployée, réseau...) ; data.error est un échec APPLICATIF déjà
-    // identifié par la fonction elle-même (ex: clé IA manquante, appel
-    // au moteur IA refusé) — les deux sont distingués dans la console.
-    console.error('ai-agency (chat) — échec :', {error, data});
-    const errMsg = (data && data.error === 'not_configured')
-      ? (data.message || "L'Agence IA est prête, mais la connexion au moteur IA doit encore être configurée.")
-      : (data && typeof data.error === 'string')
-        ? "Je n'arrive pas à contacter le moteur IA pour le moment. Réessayez dans quelques secondes."
-        : "L'Agence IA est momentanément indisponible. Réessayez dans quelques instants.";
-    aiAgencyHistory.push({role:'assistant', content: errMsg, isError:true});
+    aiAgencyHistory.push({role:'assistant', content: explainAiAgencyFailure(error, data), isError:true});
     renderAiAgencyBody();
     return;
   }
@@ -5156,13 +5173,12 @@ async function requestImprovedDescription(productId){
   body.innerHTML = `<div class="text-center" style="padding:40px 0;"><span data-icon="loader" data-size="24" class="spin" style="color:var(--amber-deep);"></span><p style="font-size:12.5px;color:var(--ink-faint);margin-top:10px;">L'Agence IA réfléchit…</p></div>`;
   hydrateIcons(body);
 
-  const {data, error} = await supabaseClient.functions.invoke('ai-agency', {
+  const {data, error} = await invokeWithTimeout('ai-agency', {
     body: { restaurant_id: RESTAURANT.id, action:'improve_description', product_id: productId }
-  });
+  }, 30000);
 
   if(error || !data || data.error){
-    console.error('ai-agency (improve_description) — échec :', {error, data});
-    const errMsg = (data && data.error==='not_configured') ? (data.message||"La connexion au moteur IA doit encore être configurée.") : "Je n'arrive pas à contacter le moteur IA pour le moment. Réessayez dans quelques secondes.";
+    const errMsg = explainAiAgencyFailure(error, data);
     body.innerHTML = `<p style="font-size:13px;color:var(--terracotta);text-align:center;padding:20px 0;">${escapeHtml(errMsg)}</p><button onclick="openImproveDescriptionPicker()" class="btn btn-outline w-full">Retour</button>`;
     return;
   }
