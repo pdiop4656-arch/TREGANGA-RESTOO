@@ -1891,7 +1891,7 @@ async function loadRestaurantSecondaryData(restaurantId){
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
     id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
-    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes,
+    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
     createdAt:new Date(o.created_at),
   }));
 
@@ -1947,6 +1947,17 @@ function subscribeToOrdersRealtime(restaurantId){
     .on('postgres_changes', {event:'INSERT', schema:'public', table:'orders', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
       onRealtimeNewOrder(payload.new);
     })
+    // AJOUT (audit) : le canal n'écoutait auparavant que les nouvelles
+    // commandes (INSERT) — un changement de statut fait par un AUTRE
+    // membre du personnel (ou depuis un autre onglet/appareil) n'était
+    // donc jamais répercuté ailleurs sans un rechargement manuel de la
+    // page. RLS s'applique de la même façon aux deux types
+    // d'événements (le filtre restaurant_id=eq.${restaurantId}
+    // combiné à la policy orders_staff_read garantit qu'aucune session
+    // ne reçoit jamais les commandes d'un AUTRE restaurant).
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'orders', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeOrderUpdated(payload.new);
+    })
     .subscribe();
 }
 function unsubscribeOrdersRealtime(){
@@ -1991,7 +2002,7 @@ function onRealtimeNewOrder(row){
   if(DEMO_ORDERS.some(o => o.id === row.id)) return;
   const order = {
     id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
-    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes,
+    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
     createdAt:new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(order);
@@ -2004,6 +2015,33 @@ function onRealtimeNewOrder(row){
   // Rafraîchit les vues du tableau de bord actuellement affichées, pour
   // que la commande apparaisse immédiatement sans que l'utilisateur
   // ait à changer de section.
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+}
+/* AJOUT (audit) : répercute un changement de commande fait ailleurs
+   (autre appareil, autre membre du personnel, autre onglet) — jamais
+   de nouvelle alerte sonore/notification ici, uniquement pour une
+   VRAIE nouvelle commande (onRealtimeNewOrder ci-dessus) ; une mise à
+   jour de statut doit rester silencieuse mais visible immédiatement. */
+function onRealtimeOrderUpdated(row){
+  const i = DEMO_ORDERS.findIndex(o => o.id === row.id);
+  if(i === -1){
+    // Commande pas encore connue de cet onglet (ex: créée sur cet
+    // appareil avant que la session ne soit ouverte) — on l'ajoute
+    // proprement plutôt que d'ignorer la mise à jour.
+    DEMO_ORDERS.push({
+      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+      total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+      createdAt:new Date(row.created_at),
+    });
+  } else {
+    Object.assign(DEMO_ORDERS[i], {
+      client:row.client, phone:row.phone, type:row.type, items:row.items,
+      total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+    });
+  }
+  refreshNotifDot();
   if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
     renderDashSection(state.dashSection);
   }
@@ -2159,6 +2197,7 @@ function renderOrderTrackingDetail(row, phone){
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Votre commande</p>
       ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${q}× ${n}</p>`).join('')}
       <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
+      ${delivery && row.address ? `<div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',13,{stroke:'var(--ink-faint)'})}</span><span style="font-size:12.5px;color:var(--ink-soft);">${escapeAttr(row.address)}</span></div>` : ''}
     </div>
     <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
   hydrateIcons(body);
@@ -5023,6 +5062,11 @@ async function submitOrderInternal(){
     })),
     p_pay: c.payment,
     p_notes: c.notes || null,
+    // RÉTABLI (audit — régression détectée) : le champ "Adresse de
+    // livraison" du formulaire restait affiché mais n'était plus
+    // envoyé nulle part depuis une réinitialisation antérieure du
+    // fichier SQL — l'adresse saisie disparaissait silencieusement.
+    p_address: c.orderType==='delivery' ? (c.address || null) : null,
   });
 
   if(error){
@@ -5049,7 +5093,7 @@ async function submitOrderInternal(){
   const newOrder = {
     id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
     items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
-    status: row.status, notes: row.notes, createdAt: new Date(row.created_at),
+    status: row.status, notes: row.notes, address: row.address, createdAt: new Date(row.created_at),
   };
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
@@ -5062,9 +5106,9 @@ async function submitOrderInternal(){
   // navigateur affiche tout de suite le produit en rupture s'il vient
   // d'atteindre 0 — la déduction qui compte réellement (celle qui évite
   // les doubles déductions si deux clients commandent en même temps)
-  // est faite côté base de données par le trigger déclenché sur
-  // l'insertion de la commande, jamais par une écriture séparée depuis
-  // ce navigateur.
+  // est faite côté base de données DIRECTEMENT dans create_order(), sous
+  // verrou de ligne ("for update"), jamais par une écriture séparée
+  // depuis ce navigateur.
   state.cart.forEach(line => {
     const p = PRODUCTS.find(x => x.id === line.id);
     if(p && typeof p.stock === 'number'){
@@ -5396,6 +5440,7 @@ function openOrderDetail(i){
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${o.client}</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('phone',14,{stroke:'var(--ink-faint)'})}${o.phone}</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('mapPin',14,{stroke:'var(--ink-faint)'})}${o.type}</p>
+        ${o.address ? `<p style="font-size:13.5px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',14,{stroke:'var(--ink-faint)'})}</span><span>${escapeAttr(o.address)}</span></p>` : ''}
       </div>
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Produits</p>
       ${o.items.map(orderItemLine).join('')}
