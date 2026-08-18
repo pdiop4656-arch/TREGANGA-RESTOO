@@ -1847,7 +1847,7 @@ async function loadRestaurantCore(restaurantId){
   // de sécurité pour d'éventuelles lignes plus anciennes, jamais un
   // nouveau choix silencieux à la création.
   state.plan = r.plan || 'free';
-  state.toggles = Object.assign({wave:false,orange_money:false,cash:true,on_delivery:true}, r.payment_toggles || {});
+  state.toggles = Object.assign({wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''}, r.payment_toggles || {});
   applyRestaurantName(r.name);
   applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
 
@@ -3582,7 +3582,7 @@ const state = {
   checkoutStep:0,
   checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null},
   lastOrder:null,
-  toggles:{wave:false,orange_money:false,cash:true,on_delivery:true},
+  toggles:{wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
   plan:'starter', // 'starter' | 'pro' — débloqué uniquement après confirmation de paiement (même simulée en démo)
 };
 
@@ -5125,6 +5125,18 @@ async function submitOrderInternal(){
   document.getElementById('confirmationOverlay').classList.remove('hidden');
   renderProductSections();
   renderTrackOrderButton();
+
+  // Redirection vers le lien Wave/Orange Money du RESTAURANT (jamais un
+  // lien inventé ou généré ici — uniquement celui que le restaurateur a
+  // lui-même renseigné dans Paramètres → Paiements, voir state.toggles.
+  // Nouvel onglet plutôt qu'une redirection complète : le client garde
+  // sa confirmation de commande et son suivi ouverts dans cet onglet,
+  // même s'il abandonne ou revient de l'app Wave/Orange Money.
+  if(c.payment === 'wave' && state.toggles.wave_link){
+    window.open(state.toggles.wave_link, '_blank', 'noopener');
+  } else if(c.payment === 'orange_money' && state.toggles.orange_money_link){
+    window.open(state.toggles.orange_money_link, '_blank', 'noopener');
+  }
 }
 
 function renderConfirmation(){
@@ -6130,9 +6142,18 @@ function removeVariant(i){
 }
 
 /* ---------------- PAYMENTS ---------------- */
-const PAYMENT_DETAILS_FIELDS = {
-  wave: {number:'', account:''},
-  orange_money: {number:'', account:''},
+// CORRECTION : PAYMENT_DETAILS_FIELDS (numéro + nom de compte) a été
+// entièrement retiré — ces champs n'étaient de toute façon JAMAIS
+// enregistrés dans Supabase (simple objet JS en mémoire, perdu à
+// chaque actualisation), et le principe même (demander un numéro de
+// téléphone) ne correspond plus à ce qui est demandé : un lien de
+// paiement, réellement stocké dans payment_toggles (colonne déjà
+// existante et déjà couverte par les permissions actuelles — aucune
+// modification SQL nécessaire), donc disponible après actualisation,
+// reconnexion, ou changement d'appareil.
+const PAYMENT_LINK_FIELD = {
+  wave: {key:'wave_link', label:'Lien de paiement Wave'},
+  orange_money: {key:'orange_money_link', label:'Lien de paiement Orange Money'},
 };
 function dashPayments(){
   const methods = ['cash','on_delivery','wave','orange_money'];
@@ -6149,7 +6170,8 @@ function paymentsListHtml(methods){
   return methods.map(m=>{
     const on = state.toggles[m];
     const locked = PRO_ONLY_METHODS.includes(m) && !isPremiumActive();
-    const hasDetails = PAYMENT_DETAILS_FIELDS[m] && on && !locked;
+    const linkField = PAYMENT_LINK_FIELD[m];
+    const hasDetails = linkField && on && !locked;
     return `<div class="card" style="padding:14px;${locked?'opacity:.85;':''}">
       <div class="flex items-center gap-3">
         ${paymentMark(m,36)}
@@ -6159,9 +6181,10 @@ function paymentsListHtml(methods){
         <div class="toggle ${on && !locked?'on':''}" style="${locked?'cursor:not-allowed;':''}" onclick="togglePayment('${m}')"><div class="dot"></div></div>
       </div>
       ${locked?`<div style="margin-top:10px;">${lockedNotice(PRO_ONLY_LABEL[m], true)}</div>`:''}
-      ${hasDetails?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
-        <div><label class="field-label" style="font-size:11px;">Numéro ${PAYMENT_LABELS[m]}</label><input class="field-input" placeholder="77 XXX XX XX" value="${PAYMENT_DETAILS_FIELDS[m].number}" oninput="PAYMENT_DETAILS_FIELDS['${m}'].number=this.value"></div>
-        <div><label class="field-label" style="font-size:11px;">Nom du compte</label><input class="field-input" placeholder="Nom de votre restaurant" value="${PAYMENT_DETAILS_FIELDS[m].account}" oninput="PAYMENT_DETAILS_FIELDS['${m}'].account=this.value"></div>
+      ${hasDetails?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
+        <label class="field-label" style="font-size:11px;">${linkField.label}</label>
+        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:5px;">Le client sera redirigé vers ce lien au moment de payer avec ${PAYMENT_LABELS[m]}.</p>
       </div>`:''}
     </div>`;
   }).join('');
