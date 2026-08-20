@@ -168,7 +168,7 @@ body.storefront-active .gnav{ display:none; }
 
 <!-- ============================================================
      ÉCRAN DE CHARGEMENT — uniquement pour un lien direct vers un
-     restaurant (?resto=slug), jamais pour la page d'accueil générale
+     restaurant un sous-domaine restaurant ou un ancien lien ?resto=slug, jamais pour la page d'accueil générale
      TerangaResto. Le petit script juste en dessous s'exécute de façon
      SYNCHRONE, avant tout le reste de l'application — sans ça, la page
      d'accueil (active par défaut dans le HTML) serait visible une
@@ -201,9 +201,27 @@ body.storefront-active .gnav{ display:none; }
   // les deux en même temps. Reflète exactement l'ordre de priorité
   // réel utilisé par restoreSession() (session existante d'abord, lien
   // direct vers un restaurant ensuite).
+  // Un sous-domaine restaurant est désormais l'adresse publique définitive.
+  // Le format ?resto=slug reste accepté pour compatibilité avec les anciens liens.
+  function getRestaurantSlugFromHostname(){
+    const host = (location.hostname || '').toLowerCase().replace(/\.$/, '');
+    const root = 'terangaresto.com';
+    if(!host.endsWith('.' + root)) return null;
+    const subdomain = host.slice(0, -(root.length + 1));
+    if(!subdomain || subdomain === 'www' || subdomain.includes('.') || !/^[a-z0-9-]+$/.test(subdomain)) return null;
+    return subdomain;
+  }
+  function getPublicRestaurantSlug(){
+    // Le sous-domaine est prioritaire : un paramètre ?resto= différent ne peut
+    // jamais faire afficher un autre restaurant sur son domaine public.
+    return getRestaurantSlugFromHostname() || new URLSearchParams(location.search).get('resto');
+  }
+  window.TerangaRestoPublic = { getRestaurantSlugFromHostname, getPublicRestaurantSlug };
+
+  const publicRestaurantSlug = getPublicRestaurantSlug();
   if(localStorage.getItem('tg_returning_user')){
     document.getElementById('authCheckSplash').classList.remove('hidden');
-  } else if(/[?&]resto=/.test(location.search)){
+  } else if(publicRestaurantSlug){
     document.getElementById('restoSplash').classList.remove('hidden');
     requestAnimationFrame(()=>{
       ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
@@ -2373,8 +2391,12 @@ async function togglePublish(){
   await persistRestaurant();
   toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
 }
+function getRestaurantPublicUrl(slug){
+  const cleanSlug = String(slug || '').trim().toLowerCase();
+  return cleanSlug ? `https://${cleanSlug}.terangaresto.com` : 'https://terangaresto.com';
+}
 function copyPublicSiteLink(){
-  const link = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const link = getRestaurantPublicUrl(RESTAURANT.slug);
   navigator.clipboard?.writeText(link).then(
     () => toast('Lien copié.'),
     () => toast(link)
@@ -2449,11 +2471,8 @@ async function persistOrderUpdate(o){
 
 /* Charge un restaurant précis par son identifiant public (slug) —
    c'est le lien que chaque restaurant partage à ses clients :
-   https://votre-site.vercel.app/?resto=SLUG-DU-RESTAURANT
-   (En attendant un vrai sous-domaine slug.terangaresto.com, configurable
-   séparément via une règle de rewrite Vercel — voir le résumé en fin
-   de réponse — ce paramètre d'URL joue le même rôle dans un fichier
-   HTML autonome.) */
+   https://SLUG-DU-RESTAURANT.terangaresto.com
+   Le sous-domaine est maintenant l'adresse publique définitive. Le format ?resto=slug reste accepté uniquement pour la compatibilité avec les anciens liens. */
 /* Brouillon vs publié : tant que le restaurant n'a pas cliqué sur
    "Publier" dans Paramètres, sa boutique publique n'est pas visible
    pour un client — seul le propriétaire/personnel peut la prévisualiser
@@ -2578,7 +2597,7 @@ async function findMyRestaurantId(p_knownUserId){
 }
 
 /* Empêche définitivement le bug "affiche le restaurant le plus
-   récemment créé" : SANS lien direct (?resto=slug) ET sans compte
+   récemment créé" : SANS sous-domaine restaurant ni ancien lien direct (?resto=slug) ET sans compte
    connecté possédant un restaurant, la racine du site affiche la page
    TerangaResto générique (celle déjà codée en dur comme vue par
    défaut : "landing"), jamais les données d'un restaurant au hasard.
@@ -2644,7 +2663,7 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    const restoSlug = new URLSearchParams(location.search).get('resto');
+    const restoSlug = getPublicRestaurantSlug();
     if(restoSlug){
       restoSplashProgress(45);
       const found = await loadRestaurantBySlug(restoSlug);
@@ -4392,7 +4411,7 @@ function updateSlugPreview(){
     <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
       ${ic('link',13,{stroke:'var(--forest)'})}
       <span style="color:var(--ink-soft);">Votre lien, une fois publié :</span>
-      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${candidate}</span>
+      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${getRestaurantPublicUrl(candidate)}</span>
     </div>
     ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
   hydrateIcons(el);
@@ -4507,7 +4526,7 @@ function obStepHtml(){
       <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
-        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${o.slug || slugify(o.restoName)}</span>
+        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${getRestaurantPublicUrl(o.slug || slugify(o.restoName))}</span>
       </div>
       <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
@@ -6303,7 +6322,7 @@ async function deleteReview(id){
 
 /* ---------------- QR CODE ---------------- */
 function dashQrcode(){
-  const url = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const url = `${getRestaurantPublicUrl(RESTAURANT.slug)}`;
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
@@ -6324,7 +6343,7 @@ function dashQrcode(){
   </div>`;
 }
 function shareQr(){
-  const publicUrl = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const publicUrl = `${getRestaurantPublicUrl(RESTAURANT.slug)}`;
   if(navigator.share){
     navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
   } else {
@@ -6768,7 +6787,7 @@ function settingsBodyHtml(){
         ${ic('link',16,{stroke:'var(--forest)'})}
         <div style="flex:1;min-width:0;">
           <p style="font-size:11px;color:var(--ink-faint);">Lien de votre site public</p>
-          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${RESTAURANT.slug}</p>
+          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${getRestaurantPublicUrl(RESTAURANT.slug)}</p>
         </div>
         <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
       </div>`:''}
