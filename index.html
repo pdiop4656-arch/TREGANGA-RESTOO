@@ -378,7 +378,7 @@ body.storefront-active .gnav{ display:none; }
         <img class="logo-asset" src="" style="width:52px;height:52px;object-fit:contain;">
       </div>
 
-      <div class="flex items-center" style="margin-bottom:32px;" id="obProgress"></div>
+      <div class="ob-progress-wrap" style="margin-bottom:32px;"><div class="flex items-center ob-progress" id="obProgress"></div></div>
 
       <div class="card" style="padding:32px;" id="obCard"></div>
 
@@ -1758,6 +1758,31 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Client global, utilisé par toutes les fonctions du fichier.
 // Clé PUBLISHABLE uniquement — jamais de clé service_role ici.
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Domaine public officiel TerangaResto. En production, tous les liens
+// restaurant, QR Codes et partages utilisent ce domaine; en local,
+// l'origine locale reste utilisable pour les tests.
+const PRODUCTION_SITE_ORIGIN = "https://www.terangaresto.com";
+function getPublicSiteOrigin(){
+  return /(^|\.)terangaresto\.com$/i.test(location.hostname) ? PRODUCTION_SITE_ORIGIN : location.origin;
+}
+function publicRestaurantUrl(slug){
+  const clean = String(slug || '').trim();
+  return clean ? `${getPublicSiteOrigin()}/?resto=${encodeURIComponent(clean)}` : getPublicSiteOrigin();
+}
+
+// Support futur des liens par sous-domaine si *.terangaresto.com est
+// configuré dans Vercel/DNS. Tant que ce wildcard n'est pas configuré,
+// le lien canonique ?resto=slug reste utilisé pour garantir un lien
+// immédiatement fonctionnel.
+function restaurantSlugFromLocation(){
+  const host = location.hostname.toLowerCase();
+  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
+    const prefix = host.slice(0, -'.terangaresto.com'.length);
+    if(prefix && !prefix.includes('.')) return decodeURIComponent(prefix);
+  }
+  return new URLSearchParams(location.search).get('resto');
+}
 </script>
 
 <script>
@@ -2374,7 +2399,7 @@ async function togglePublish(){
   toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
 }
 function copyPublicSiteLink(){
-  const link = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const link = publicRestaurantUrl(RESTAURANT.slug);
   navigator.clipboard?.writeText(link).then(
     () => toast('Lien copié.'),
     () => toast(link)
@@ -2644,7 +2669,7 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    const restoSlug = new URLSearchParams(location.search).get('resto');
+    const restoSlug = restaurantSlugFromLocation();
     if(restoSlug){
       restoSplashProgress(45);
       const found = await loadRestaurantBySlug(restoSlug);
@@ -4089,7 +4114,7 @@ async function obNext(){
         // ajoutées à la liste "Redirect URLs" (Authentication → URL
         // Configuration) — voir le rapport final pour l'action
         // nécessaire de votre côté.
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: getPublicSiteOrigin(),
       },
     });
     setLoginVerifying(false, 'obNextBtn');
@@ -4114,6 +4139,19 @@ async function obNext(){
     }
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
+  if(o.step===1){
+    const name = o.restoName.trim();
+    const {data:available, error:nameErr} = await supabaseClient.rpc('is_restaurant_name_available', {p_name:name});
+    if(nameErr){
+      console.error('is_restaurant_name_available:', nameErr);
+      toast('Impossible de vérifier le nom du restaurant pour le moment.');
+      return;
+    }
+    if(!available){
+      toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
+      return;
+    }
+  }
   if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
@@ -4285,7 +4323,7 @@ function renderOnboardingEmailPendingScreen(){
 async function resendOnboardingConfirmationEmail(){
   const {error} = await supabaseClient.auth.resend({
     type:'signup', email: obState.pendingEmail,
-    options:{ emailRedirectTo: window.location.origin },
+    options:{ emailRedirectTo: getPublicSiteOrigin() },
   });
   toast(error ? ("Impossible de renvoyer l'e-mail : " + error.message) : "E-mail de confirmation renvoyé.");
 }
@@ -4359,7 +4397,7 @@ async function createRestaurantAndPay(){
 
 function renderOnboarding(){
   document.getElementById('obProgress').innerHTML = OB_STEPS.map((label,i)=>`
-    <div class="flex-col items-center" style="flex:1;">
+    <div class="flex-col items-center" style="flex:1;min-width:74px;">
       <div class="flex items-center w-full">
         <span onclick="${i<obState.step?`obGoStep(${i})`:''}" style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${i<obState.step?'cursor:pointer;':''}
           background:${i<obState.step?'var(--forest)':i===obState.step?'var(--amber-deep)':'#fff'};
@@ -4392,7 +4430,7 @@ function updateSlugPreview(){
     <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
       ${ic('link',13,{stroke:'var(--forest)'})}
       <span style="color:var(--ink-soft);">Votre lien, une fois publié :</span>
-      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${candidate}</span>
+      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(candidate)}</span>
     </div>
     ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
   hydrateIcons(el);
@@ -4421,7 +4459,7 @@ function obStepHtml(){
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre restaurant</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Ces informations seront visibles sur votre page publique.</p>
     <label class="field-label">Nom du restaurant</label>
-    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="Nom de votre restaurant" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
+    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="TerangaResto.com" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
     <div id="obSlugPreview" style="margin-bottom:14px;"></div>
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" style="margin-bottom:12px;" onchange="obField('restoType',this.value)">
@@ -4474,8 +4512,8 @@ function obStepHtml(){
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours. Starter et Premium se paient immédiatement par PayTech, à l'étape suivante — aucun essai gratuit sur ces forfaits.</p>
-    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;">
-      ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
+    <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
+      ${plans.map(p=>`<button class="ob-plan-card" onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
         <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
         <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
         ${p.duration?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:600;margin-bottom:8px;">${p.duration}</p>`:'<p style="margin-bottom:10px;"></p>'}
@@ -4507,7 +4545,7 @@ function obStepHtml(){
       <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
-        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${o.slug || slugify(o.restoName)}</span>
+        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
       </div>
       <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
@@ -5098,6 +5136,20 @@ async function submitOrderInternal(){
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
 
+  // Notification e-mail sécurisée : aucun secret Resend n'est exposé
+  // dans le navigateur. L'Edge Function reçoit l'id de commande + un
+  // jeton à usage de notification créé côté base, puis retrouve l'e-mail
+  // du propriétaire et envoie le message via Resend.
+  if(row.email_notify_token){
+    supabaseClient.functions.invoke('send-order-email', {
+      body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
+    }).then(({error:emailError})=>{
+      if(emailError) console.error('send-order-email:', emailError.message);
+    }).catch(err=>console.error('send-order-email:', err));
+  } else {
+    console.warn('Notification commande non envoyée : email_notify_token absent. Exécutez la migration SQL fournie.');
+  }
+
   state.lastOrder = {
     num: row.num, items: row.items, total: Number(row.total),
     payment: c.payment, firstName: c.firstName, phone: c.phone,
@@ -5345,6 +5397,21 @@ function dashOverview(){
         <span style="flex:1;font-size:13px;">${name}</span>
         <span class="font-tabular pill pill-neutral" style="font-size:11px;">${qty} vendus</span>
       </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- QR Code mobile : aperçu directement sur Accueil pour éviter de
+       devoir ouvrir un menu secondaire. Le même lien canonique est utilisé
+       partout dans le tableau de bord. -->
+  <div class="mobile-tablet-only" style="margin-top:18px;">
+    <div class="card mobile-qr-card" style="padding:16px;display:flex;align-items:center;gap:14px;">
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;">QR Code</p>
+        <p style="font-size:13.5px;font-weight:700;margin-bottom:4px;">Votre QR Code est prêt</p>
+        <p style="font-size:11.5px;color:var(--ink-soft);">Scannez-le ou partagez votre lien public.</p>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="setDashSection('qrcode')">${ic('qrcode',14)} Afficher le QR Code</button>
+      </div>
+      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${RESTO_NAME}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
     </div>
   </div>
 
@@ -6293,13 +6360,13 @@ async function deleteReview(id){
 
 /* ---------------- QR CODE ---------------- */
 function dashQrcode(){
-  const url = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const url = publicRestaurantUrl(RESTAURANT.slug);
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="180" height="180" alt="QR Code ${RESTO_NAME}" style="display:block;"></div>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${RESTO_NAME}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
     <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
     <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
@@ -6314,7 +6381,7 @@ function dashQrcode(){
   </div>`;
 }
 function shareQr(){
-  const publicUrl = `${location.origin}/?resto=${RESTAURANT.slug}`;
+  const publicUrl = publicRestaurantUrl(RESTAURANT.slug);
   if(navigator.share){
     navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
   } else {
@@ -6758,7 +6825,7 @@ function settingsBodyHtml(){
         ${ic('link',16,{stroke:'var(--forest)'})}
         <div style="flex:1;min-width:0;">
           <p style="font-size:11px;color:var(--ink-faint);">Lien de votre site public</p>
-          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${RESTAURANT.slug}</p>
+          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(RESTAURANT.slug)}</p>
         </div>
         <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
       </div>`:''}
@@ -7093,6 +7160,30 @@ async function reactivateSubscription(){
 
 
 <style>
+/* ---------------- CORRECTIONS MOBILE / CONTRASTE / QR ---------------- */
+.ob-progress-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:2px 0 6px;}
+.ob-progress{min-width:520px;}
+.ob-progress > div{min-width:74px;}
+.ob-plan-grid{align-items:stretch;}
+.ob-plan-card{min-height:250px;display:flex;flex-direction:column;justify-content:flex-start;color:var(--ink);background:var(--surface);}
+.ob-plan-card:hover{border-color:var(--amber-deep) !important;box-shadow:0 8px 22px rgba(43,24,16,.08);}
+.ob-plan-card:focus-visible{outline:3px solid rgba(232,135,30,.28);outline-offset:2px;}
+#view-dashboard .icon-btn,#view-dashboard .btn-outline,#view-dashboard .lib-card-actions button{transition:background .15s,color .15s,border-color .15s,transform .15s;}
+#view-dashboard .icon-btn{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.10);color:#fff;}
+#view-dashboard .icon-btn:hover{background:var(--amber-deep);color:#fff;border-color:var(--amber-deep);}
+#view-dashboard .btn-outline{background:#fff;color:#0F1830;border-color:rgba(15,24,48,.16);}
+#view-dashboard .btn-outline:hover,#view-dashboard .btn-outline:active{background:#0B1220;color:#fff;border-color:#0B1220;}
+#view-dashboard .lib-card-actions button{background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);}
+#view-dashboard .lib-card-actions button:hover,#view-dashboard .lib-card-actions button:active{background:#0B1220;color:#fff;border-color:#0B1220;}
+.mobile-qr-card{background:linear-gradient(135deg,#ffffff,#f8fafc);}
+@media (max-width:640px){
+  .ob-plan-grid{grid-template-columns:1fr !important;gap:10px !important;}
+  .ob-plan-card{min-height:0;padding:16px !important;}
+  .ob-progress{min-width:560px;}
+  .mobile-qr-card{align-items:flex-start;}
+  .mobile-qr-card img{width:92px !important;height:92px !important;}
+}
+
 /* ---------------- RESPONSIVE ---------------- */
 @keyframes icSpin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 .spin{ animation:icSpin 1s linear infinite; }
