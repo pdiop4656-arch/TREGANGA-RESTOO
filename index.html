@@ -2316,51 +2316,32 @@ function playNotificationSound(){
     if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
     const now = sharedAudioCtx.currentTime;
 
-    // Notification courte et nettement plus audible, avec un timbre
-    // de clochette/app moderne. Son original, sans fichier propriétaire.
+    // Notification courte type app : deux notes ascendantes et une petite
+    // brillance finale. Niveau volontairement audible mais non agressif.
     const notes = [
-      [880.00,  0.00, 0.16, 0.28],
-      [1174.66, 0.08, 0.19, 0.31],
-      [1568.00, 0.17, 0.24, 0.34]
+      [880.00,  0.00, 0.18, 0.36],
+      [1174.66, 0.075, 0.23, 0.42],
+      [1760.00, 0.18, 0.30, 0.28]
     ];
 
     notes.forEach(([freq, delay, dur, volume])=>{
       const start = now + delay;
       const osc = sharedAudioCtx.createOscillator();
       const gain = sharedAudioCtx.createGain();
-      const filter = sharedAudioCtx.createBiquadFilter();
 
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, start);
-
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(300, start);
-      filter.Q.setValueAtTime(0.7, start);
-
-      osc.connect(filter);
-      filter.connect(gain);
+      osc.connect(gain);
       gain.connect(sharedAudioCtx.destination);
 
       gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
       gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
 
       osc.start(start);
-      osc.stop(start + dur + 0.03);
+      osc.stop(start + dur + 0.02);
     });
-
-    const finalTone = sharedAudioCtx.createOscillator();
-    const finalGain = sharedAudioCtx.createGain();
-    finalTone.type = 'sine';
-    finalTone.frequency.setValueAtTime(2093, now + 0.30);
-    finalTone.connect(finalGain);
-    finalGain.connect(sharedAudioCtx.destination);
-    finalGain.gain.setValueAtTime(0.001, now + 0.30);
-    finalGain.gain.exponentialRampToValueAtTime(0.18, now + 0.315);
-    finalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.43);
-    finalTone.start(now + 0.30);
-    finalTone.stop(now + 0.45);
-  }catch(e){ }
+  }catch(e){}
 }
 
 /* ---------------- NOTIFICATIONS NAVIGATEUR — nouvelle commande ----------------
