@@ -2716,33 +2716,24 @@ function renderStorefrontGateOverlay(){
 }
 
 async function loadRestaurantBySlug(slug){
-  // Cette requête existe déjà pour identifier le restaurant.
-  // On récupère simplement aussi son logo et son nom pour que l'écran
-  // de chargement puisse afficher son identité immédiatement, sans
-  // ajouter une requête réseau supplémentaire.
+  // Requête minimale : uniquement l'identifiant. On évite de télécharger
+  // le logo/base64 avant le chargement réel du restaurant, ce qui ralentirait
+  // inutilement l'ouverture du site public.
   const {data} = await supabaseClient
     .from('restaurants')
-    .select('id,name,logo_data_url,hero_subtitle')
+    .select('id')
     .eq('slug', slug)
     .maybeSingle();
 
   if(data){
-    // Alimente immédiatement l'écran de chargement avec les données
-    // légères déjà reçues, pendant que le chargement complet continue.
-    RESTAURANT.id = data.id;
-    RESTAURANT.name = data.name || '';
-    RESTAURANT.logoDataUrl = data.logo_data_url || '';
-    RESTAURANT.heroSubtitle = data.hero_subtitle || '';
+    await loadRestaurantIntoState(data.id);
 
+    // La fiche complète contient déjà le logo : dès qu'elle est arrivée,
+    // on l'affiche dans le splash avant sa disparition.
     if(typeof applyRestaurantName === 'function') applyRestaurantName(RESTAURANT.name);
     if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
     if(typeof populateRestoSplash === 'function') populateRestoSplash();
-    restoSplashProgress(55);
-
-    await loadRestaurantIntoState(data.id);
-    // Réaffiche le vrai logo si la fiche complète fournit une version
-    // différente après son chargement.
-    if(typeof populateRestoSplash === 'function') populateRestoSplash();
+    restoSplashProgress(100);
     return true;
   }
   return false;
