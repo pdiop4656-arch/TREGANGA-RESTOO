@@ -2464,20 +2464,36 @@ function playNotificationSound(){
   try{
     if(!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
     if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+
     const now = sharedAudioCtx.currentTime;
-    // Deux notes brèves et distinctes (façon clochette e-commerce),
-    // pas un simple bip unique.
-    [[1046.5, 0, 0.09], [1568, 0.1, 0.13]].forEach(([freq, delay, dur])=>{
-      const start = now + delay;
-      const osc = sharedAudioCtx.createOscillator(); const gain = sharedAudioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.value = freq;
-      osc.connect(gain); gain.connect(sharedAudioCtx.destination);
-      gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start+0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, start+dur);
-      osc.start(start); osc.stop(start+dur+0.02);
+
+    // Notification courte, élégante et clairement audible :
+    // deux notes ascendantes + une petite résonance finale.
+    const notes = [
+      { f: 987.77,  d: 0.00, len: 0.16, v: 0.16 },
+      { f: 1318.51, d: 0.09, len: 0.22, v: 0.20 },
+      { f: 1567.98, d: 0.19, len: 0.28, v: 0.10 }
+    ];
+
+    notes.forEach(({f,d,len,v})=>{
+      const start = now + d;
+      const osc = sharedAudioCtx.createOscillator();
+      const gain = sharedAudioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, start);
+
+      osc.connect(gain);
+      gain.connect(sharedAudioCtx.destination);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(v, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + len);
+
+      osc.start(start);
+      osc.stop(start + len + 0.025);
     });
-  }catch(e){ /* audio non disponible dans ce navigateur — silencieux, jamais simulé */ }
+  }catch(e){ /* audio non disponible dans ce navigateur */ }
 }
 
 /* ---------------- NOTIFICATIONS NAVIGATEUR — nouvelle commande ----------------
