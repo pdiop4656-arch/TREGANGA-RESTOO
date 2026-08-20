@@ -1763,12 +1763,16 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLI
 // restaurant, QR Codes et partages utilisent ce domaine; en local,
 // l'origine locale reste utilisable pour les tests.
 const PRODUCTION_SITE_ORIGIN = "https://www.terangaresto.com";
+const RESTAURANT_SUBDOMAIN_BASE = "https://terangaresto.com";
 function getPublicSiteOrigin(){
   return /(^|\.)terangaresto\.com$/i.test(location.hostname) ? PRODUCTION_SITE_ORIGIN : location.origin;
 }
 function publicRestaurantUrl(slug){
-  const clean = String(slug || '').trim();
-  return clean ? `${getPublicSiteOrigin()}/?resto=${encodeURIComponent(clean)}` : getPublicSiteOrigin();
+  const clean = String(slug || '').trim().toLowerCase();
+  if(!clean) return PRODUCTION_SITE_ORIGIN;
+  // URL publique canonique : un sous-domaine par restaurant.
+  // Requiert le wildcard *.terangaresto.com côté Vercel/DNS pour être joignable.
+  return `https://${clean}.terangaresto.com`;
 }
 
 // Support futur des liens par sous-domaine si *.terangaresto.com est
@@ -4429,7 +4433,7 @@ function updateSlugPreview(){
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
       ${ic('link',13,{stroke:'var(--forest)'})}
-      <span style="color:var(--ink-soft);">Votre lien, une fois publié :</span>
+      <span style="color:var(--ink-soft);">Votre sous-domaine, une fois publié :</span>
       <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(candidate)}</span>
     </div>
     ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
@@ -4478,8 +4482,18 @@ function obStepHtml(){
 
     <p class="field-label">Logo et couverture (facultatif)</p>
     <div class="flex gap-3">
-      <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}</button>
-      <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="flex:1;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}</button>
+      <div style="position:relative;width:76px;height:76px;flex-shrink:0;">
+        <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">
+          ${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}
+        </button>
+        ${o.logoPhoto?`<button type="button" aria-label="Supprimer le logo" title="Supprimer le logo" onclick="obField('logoPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
+      </div>
+      <div style="position:relative;flex:1;height:76px;">
+        <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="width:100%;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">
+          ${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}
+        </button>
+        ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
+      </div>
     </div>
     ${obNav(true)}`;
   }
@@ -5317,6 +5331,14 @@ async function logoutDashboard(){
   toast('Déconnecté.');
 }
 
+function dashboardHomeButton(){
+  return `<div class="dashboard-home-return" style="margin:0 0 14px;">
+    <button type="button" class="btn btn-outline btn-sm" onclick="setDashSection('overview')" style="min-height:38px;">
+      ${ic('arrowLeft',15)} Accueil
+    </button>
+  </div>`;
+}
+
 function renderDashSection(key){
   const el = document.getElementById('dashContent');
   // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
@@ -5340,7 +5362,8 @@ function renderDashSection(key){
     payments: dashPayments, customers: dashCustomers, qrcode: dashQrcode,
     staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
   };
-  el.innerHTML = (renderers[key]||dashOverview)();
+  const bodyHtml = (renderers[key]||dashOverview)();
+  el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
   if(key==='qrcode'){}
   if(key==='analytics') drawRevenueChart();
   hydrateIcons();
@@ -5415,15 +5438,18 @@ function dashOverview(){
     </div>
   </div>
 
-  <!-- Téléphone/tablette uniquement : la barre de navigation basse ne
-       contient volontairement que 5 éléments (Accueil, Commandes,
-       Produits, Clients, QR Code) — les autres sections du dashboard
-       (Analyses, Comptabilité, Catégories, Variantes, Paiements,
-       Personnel, Inventaire) ainsi que Paramètres et Déconnexion
-       restent accessibles ici, depuis Accueil, jamais depuis la barre
-       elle-même. Invisible sur ordinateur, où la barre latérale donne
-       déjà accès à tout. -->
+  <!-- Mobile/tablette : "Plus de fonctionnalités" en haut et en blanc,
+       puis "Mon compte" en bas. -->
   <div class="mobile-tablet-only" style="flex-direction:column;gap:10px;margin-top:20px;">
+    <button onclick="openMoreSheet()" class="card mobile-more-card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);box-shadow:0 10px 26px rgba(15,24,48,.12);">
+      <span style="width:36px;height:36px;border-radius:11px;background:#0F1830;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;">${ic('grid',17,{stroke:'#fff'})}</span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:13.5px;font-weight:700;color:#0F1830;">Plus de fonctionnalités</span>
+        <span style="display:block;font-size:11px;color:#4b5563;">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
+      </span>
+      ${ic('arrowRight',15,{stroke:'#0F1830'})}
+    </button>
+
     <div class="card" style="padding:16px;">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Mon compte</p>
       <div class="flex-col gap-2">
@@ -5438,14 +5464,6 @@ function dashOverview(){
         </button>
       </div>
     </div>
-    <button onclick="openMoreSheet()" class="card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;">
-      <span style="width:34px;height:34px;border-radius:10px;background:rgba(232,135,30,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--amber-deep);">${ic('grid',16)}</span>
-      <span style="flex:1;">
-        <span style="display:block;font-size:13.5px;font-weight:500;">Plus de fonctionnalités</span>
-        <span style="display:block;font-size:11px;color:var(--ink-faint);">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
-      </span>
-      ${ic('arrowRight',14,{stroke:'var(--ink-faint)'})}
-    </button>
   </div>`;
 }
 
@@ -6855,7 +6873,7 @@ function settingsBodyHtml(){
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
             ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
-          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
         </div>
         ${RESTAURANT.logoDataUrl?`<button onclick="pickLogo()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:''}
       </div>
@@ -6865,7 +6883,7 @@ function settingsBodyHtml(){
           <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
             ${RESTAURANT.coverDataUrl?'':`${ic('upload',18,{stroke:'var(--ink-faint)'})}<span style="font-size:11px;color:var(--ink-faint);">Ajouter une couverture</span>`}
           </button>
-          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
         </div>
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
@@ -7161,6 +7179,16 @@ async function reactivateSubscription(){
 
 <style>
 /* ---------------- CORRECTIONS MOBILE / CONTRASTE / QR ---------------- */
+ 
+.dashboard-home-return .btn{font-weight:700;}
+.mobile-more-card:active{transform:translateY(1px);}
+.mobile-more-card:hover{background:#fff !important;border-color:#0F1830 !important;}
+@media (max-width:640px){
+  .dashboard-home-return{position:sticky;top:8px;z-index:8;}
+  .dashboard-home-return .btn{width:100%;background:#fff;color:#0F1830;border-color:rgba(15,24,48,.18);}
+  .dashboard-home-return .btn:active{background:#0F1830;color:#fff;}
+}
+
 .ob-progress-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:2px 0 6px;}
 .ob-progress{min-width:520px;}
 .ob-progress > div{min-width:74px;}
