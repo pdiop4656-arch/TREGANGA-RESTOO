@@ -2308,19 +2308,59 @@ function playNotificationSound(){
     if(!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
     if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
     const now = sharedAudioCtx.currentTime;
-    // Deux notes brèves et distinctes (façon clochette e-commerce),
-    // pas un simple bip unique.
-    [[1046.5, 0, 0.09], [1568, 0.1, 0.13]].forEach(([freq, delay, dur])=>{
+
+    // Son de nouvelle commande : clochette courte, plus forte et plus
+    // présente qu'avant, avec plusieurs harmoniques pour donner un effet
+    // de notification "secouée". Le son est généré localement et n'utilise
+    // aucun fichier audio externe.
+    const notes = [
+      [880,  0.00, 0.16, 0.18],
+      [1174.66, 0.07, 0.18, 0.20],
+      [1568, 0.15, 0.24, 0.22],
+      [1174.66, 0.29, 0.13, 0.12]
+    ];
+
+    notes.forEach(([freq, delay, dur, volume])=>{
       const start = now + delay;
-      const osc = sharedAudioCtx.createOscillator(); const gain = sharedAudioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.value = freq;
-      osc.connect(gain); gain.connect(sharedAudioCtx.destination);
+
+      const osc = sharedAudioCtx.createOscillator();
+      const gain = sharedAudioCtx.createGain();
+      const filter = sharedAudioCtx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+      osc.detune.setValueAtTime(2, start);
+
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(260, start);
+      filter.Q.setValueAtTime(0.7, start);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(sharedAudioCtx.destination);
+
       gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start+0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, start+dur);
-      osc.start(start); osc.stop(start+dur+0.02);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+
+      osc.start(start);
+      osc.stop(start + dur + 0.03);
     });
-  }catch(e){ /* audio non disponible dans ce navigateur — silencieux, jamais simulé */ }
+
+    // Petit "tintement" aigu final pour rendre l'alerte immédiatement
+    // reconnaissable sans utiliser le son propriétaire d'une autre marque.
+    const shimmer = sharedAudioCtx.createOscillator();
+    const shimmerGain = sharedAudioCtx.createGain();
+    shimmer.type = 'sine';
+    shimmer.frequency.setValueAtTime(2093, now + 0.32);
+    shimmer.connect(shimmerGain);
+    shimmerGain.connect(sharedAudioCtx.destination);
+    shimmerGain.gain.setValueAtTime(0.001, now + 0.32);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.09, now + 0.33);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    shimmer.start(now + 0.32);
+    shimmer.stop(now + 0.47);
+  }catch(e){ /* audio non disponible dans ce navigateur — silencieux */ }
 }
 
 /* ---------------- NOTIFICATIONS NAVIGATEUR — nouvelle commande ----------------
@@ -4459,8 +4499,14 @@ function obStepHtml(){
 
     <p class="field-label">Logo et couverture (facultatif)</p>
     <div class="flex gap-3">
-      <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}</button>
-      <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="flex:1;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}</button>
+      <div style="position:relative;width:76px;height:76px;flex-shrink:0;">
+        <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}</button>
+        ${o.logoPhoto?`<button type="button" aria-label="Supprimer le logo" title="Supprimer le logo" onclick="event.stopPropagation();obField('logoPhoto',null);renderOnboarding();" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#2b1810;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.25);z-index:3;">${ic('x',13,{stroke:'#fff'})}</button>`:''}
+      </div>
+      <div style="position:relative;flex:1;height:76px;">
+        <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}</button>
+        ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="event.stopPropagation();obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#2b1810;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.25);z-index:3;">${ic('x',13,{stroke:'#fff'})}</button>`:''}
+      </div>
     </div>
     ${obNav(true)}`;
   }
@@ -6817,7 +6863,7 @@ function settingsBodyHtml(){
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
             ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
-          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#2b1810;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.25);z-index:3;">${ic('x',13,{stroke:'#fff'})}</button>`:''}
         </div>
         ${RESTAURANT.logoDataUrl?`<button onclick="pickLogo()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:''}
       </div>
@@ -6827,7 +6873,7 @@ function settingsBodyHtml(){
           <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
             ${RESTAURANT.coverDataUrl?'':`${ic('upload',18,{stroke:'var(--ink-faint)'})}<span style="font-size:11px;color:var(--ink-faint);">Ajouter une couverture</span>`}
           </button>
-          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#2b1810;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px rgba(0,0,0,.25);z-index:3;">${ic('x',13,{stroke:'#fff'})}</button>`:''}
         </div>
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
