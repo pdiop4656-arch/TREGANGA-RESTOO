@@ -321,7 +321,7 @@ button,a,input,select,textarea{font-family:inherit;}
   <p id="restoSplashName" style="font-family:'Fraunces',serif;font-size:20px;margin-top:18px;color:#2B1810;opacity:0;transition:opacity .5s ease .1s;"></p>
   <p id="restoSplashSlogan" style="font-size:12.5px;color:#8a7466;margin-top:4px;opacity:0;transition:opacity .5s ease .18s;"></p>
   <div style="width:140px;height:3px;background:rgba(43,24,16,.08);border-radius:999px;margin-top:26px;overflow:hidden;opacity:0;transition:opacity .5s ease .25s;" id="restoSplashBarTrack">
-    <div id="restoSplashBar" style="height:100%;width:8%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
+    <div id="restoSplashBar" style="height:100%;width:12%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
   </div>
 </div>
 
@@ -344,7 +344,9 @@ button,a,input,select,textarea{font-family:inherit;}
   // direct vers un restaurant ensuite).
   if(localStorage.getItem('tg_returning_user')){
     document.getElementById('authCheckSplash').classList.remove('hidden');
-  } else if(/[?&]resto=/.test(location.search)){
+  } else if(/[?&]resto=/.test(location.search) ||
+            (location.hostname.endsWith('.terangaresto.com') &&
+             location.hostname !== 'www.terangaresto.com')){
     document.getElementById('restoSplash').classList.remove('hidden');
     requestAnimationFrame(()=>{
       ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
@@ -1979,6 +1981,8 @@ async function loadRestaurantCore(restaurantId){
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
   RESTAURANT.logoDataUrl = r.logo_data_url; RESTAURANT.coverDataUrl = r.cover_data_url;
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  // Le logo du restaurateur devient immédiatement l'icône de son site public.
+  if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
   // Remplacement INCONDITIONNEL (jamais "seulement si non vide") : un
   // restaurant qui a RÉELLEMENT des horaires/livraison/réseaux vides
@@ -2861,7 +2865,7 @@ async function restoreSession(){
         // restaurant affichés sur l'écran de chargement avant la
         // transition — sinon la barre saute directement à 100% sans
         // que personne n'ait eu le temps de la voir se remplir.
-        setTimeout(hideRestoSplash, 260);
+        hideRestoSplash();
         return;
       }
       // Un lien de restaurant qui ne correspond à rien ne doit jamais
@@ -2915,9 +2919,9 @@ function hideRestoSplash(){
   const el = document.getElementById('restoSplash');
   if(!el || el.classList.contains('hidden')) return;
   restoSplashProgress(100);
-  el.style.transition = 'opacity .35s ease';
+  el.style.transition = 'opacity .12s ease';
   el.style.opacity = '0';
-  setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 380);
+  setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 130);
 }
 function hideAuthCheckSplash(){
   const el = document.getElementById('authCheckSplash');
@@ -3937,6 +3941,7 @@ function setView(view){
   // tableau de bord via le petit bouton flottant dédié, pas ici.
   document.body.classList.toggle('storefront-active', view==='storefront');
   document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
+  if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.gnav-tab').forEach(t=>t.classList.toggle('active', t.dataset.view===view));
@@ -7556,12 +7561,19 @@ window.addEventListener('resize', checkMobile);
    éviter de dupliquer le base64 dans le <head>. Fonctionne en local
    comme après déploiement, puisqu'il s'agit d'une data URI autonome,
    sans dépendance à un chemin de fichier externe. */
-(function setFavicon(){
+function setRestaurantFavicon(){
   const fav = document.getElementById('faviconLink');
   const touch = document.getElementById('appleTouchIconLink');
-  if(fav) fav.href = LOGO_SRC;
-  if(touch) touch.href = LOGO_SRC;
-})();
+  // Sur le site public, le logo réel du restaurant devient l'icône du site.
+  // Tant que les données du restaurant ne sont pas encore chargées, on garde
+  // le fallback TerangaResto existant.
+  const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
+    ? RESTAURANT.logoDataUrl
+    : LOGO_SRC;
+  if(fav) fav.href = iconSrc;
+  if(touch) touch.href = iconSrc;
+}
+setRestaurantFavicon();
 document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
 
 /* Charge d'abord la session + les données Supabase (restaurant du
