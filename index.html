@@ -163,115 +163,6 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
    bord via le petit bouton flottant dédié, pas depuis cet en-tête). */
 body.storefront-active .gnav{ display:none; }
 </style>
-
-<style>
-/* ===== OTP 8 chiffres + responsive renforcé ===== */
-#signupOtpInput{
-  width:min(100%,320px);
-  box-sizing:border-box;
-  text-align:center !important;
-  letter-spacing:.28em !important;
-  padding-left:.38em !important;
-  font-variant-numeric:tabular-nums;
-}
-@media (max-width:420px){
-  #signupOtpInput{font-size:22px !important; letter-spacing:.20em !important; padding-left:.20em !important;}
-}
-
-/* ===== Site public restaurant : aucune coupe horizontale sur mobile ===== */
-.tg-classic, .tg-classic .header, .tg-classic .header-container, .tg-classic .header-actions,
-.tg-classic .hero, .tg-classic .container, .tg-classic .section, .tg-classic section{max-width:100%;}
-.tg-classic .header-container{width:100%; min-width:0; padding-left:16px; padding-right:16px;}
-.tg-classic .logo{min-width:0; flex:1 1 auto; overflow:hidden; white-space:nowrap;}
-.tg-classic .logo > *{min-width:0;}
-@media (max-width:768px){
-  .tg-classic .header-container{height:64px; gap:8px;}
-  .tg-classic .logo{font-size:1.02rem; gap:.45rem;}
-  .tg-classic .header-actions{flex:0 0 auto; gap:.35rem;}
-  .tg-classic .cart-icon-btn{width:40px;height:40px;flex:0 0 40px;}
-  .tg-classic .hamburger{width:40px;height:40px;flex:0 0 40px;}
-  .tg-classic .hero{margin-top:64px; min-height:420px; height:68vh;}
-  .tg-classic .hero-content{max-width:calc(100vw - 32px); padding:0 16px;}
-  .tg-classic .hero-content h1{font-size:2rem; line-height:1.15;}
-  .tg-classic .hero-content p{font-size:.95rem;}
-  .tg-classic .section-title{padding-left:4px;padding-right:4px;}
-  .tg-classic .products-grid{width:100%; grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
-  .tg-classic .product-card{min-width:0; overflow:hidden;}
-  .tg-classic .product-content{min-width:0;}
-  .tg-classic .product-title, .tg-classic .product-price{overflow-wrap:anywhere;}
-  .tg-classic .info-grid{width:100%;}
-  .tg-classic .location-card, .tg-classic .hours-card{min-width:0;}
-  .tg-classic img{max-width:100%;height:auto;}
-}
-@media (max-width:390px){
-  .tg-classic .header-container{padding-left:10px;padding-right:10px;}
-  .tg-classic .logo{font-size:.94rem;}
-  .tg-classic .hero-content h1{font-size:1.75rem;}
-  .tg-classic .products-grid{gap:.65rem !important;}
-  .tg-classic .product-img-wrapper{height:120px !important;}
-}
-</style>
-
-<style id="mobile-polish-v3">
-/* Mobile public-site navigation: no clipped labels, full visible drawer. */
-@media (max-width: 768px){
-  .tg-classic .mobile-menu{
-    left:0 !important;
-    width:min(88vw,360px) !important;
-    max-width:none !important;
-    padding:20px 18px 24px !important;
-    transform:translateX(-105%);
-    box-sizing:border-box !important;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-  }
-  .tg-classic .mobile-menu.open{
-    transform:translateX(0) !important;
-  }
-  .tg-classic .mobile-menu-header{
-    min-height:52px;
-    padding-bottom:14px !important;
-  }
-  .tg-classic .mobile-nav-links{
-    gap:14px !important;
-    padding:0 2px !important;
-  }
-  .tg-classic .mobile-nav-links li{
-    width:100%;
-  }
-  .tg-classic .mobile-nav-links a{
-    width:100%;
-    min-height:48px;
-    display:flex !important;
-    align-items:center;
-    gap:8px;
-    padding:12px 6px !important;
-    white-space:normal !important;
-    overflow:visible !important;
-    text-overflow:clip !important;
-    line-height:1.35 !important;
-  }
-  .dashboard-home-return{
-    margin:0 0 16px !important;
-    position:sticky;
-    top:0;
-    z-index:20;
-    padding:6px 0 10px;
-    background:linear-gradient(#0B1220 78%, rgba(11,18,32,0));
-  }
-  #view-dashboard .dashboard-home-return .btn{
-    width:100% !important;
-    min-height:46px !important;
-    justify-content:flex-start !important;
-    padding:0 16px !important;
-    background:#ffffff !important;
-    color:#0F1830 !important;
-    border:1px solid rgba(255,255,255,.18) !important;
-    box-shadow:0 8px 18px rgba(0,0,0,.16);
-    font-weight:700 !important;
-  }
-}
-</style>
 </head>
 <body>
 
@@ -487,7 +378,7 @@ body.storefront-active .gnav{ display:none; }
         <img class="logo-asset" src="" style="width:52px;height:52px;object-fit:contain;">
       </div>
 
-      <div class="ob-progress-wrap" style="margin-bottom:32px;"><div class="flex items-center ob-progress" id="obProgress"></div></div>
+      <div class="flex items-center" style="margin-bottom:32px;" id="obProgress"></div>
 
       <div class="card" style="padding:32px;" id="obCard"></div>
 
@@ -724,7 +615,7 @@ body.storefront-active .gnav{ display:none; }
           </div>
         </div>
         <div class="flex items-center gap-2" style="flex-shrink:0;">
-          <button id="quickAddBtn" class="btn btn-secondary btn-sm" onclick="setDashSection('products');openProductForm();" style="display:none !important;">
+          <button id="quickAddBtn" class="btn btn-secondary btn-sm" onclick="setDashSection('products');openProductForm();" style="display:none;">
             <span data-icon="plus" data-size="14"></span><span class="hide-sm">Produit</span>
           </button>
           <button class="icon-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
@@ -809,13 +700,11 @@ body.storefront-active .gnav{ display:none; }
 .more-tile{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 6px; border-radius:16px; background:var(--cream); font-size:11px; font-weight:600; color:var(--ink-soft); text-align:center; }
 .more-tile.locked{ opacity:.55; }
 
-.mobile-add-product-card{width:100%;}
 @media (max-width: 900px){
-  .mobile-add-product-card{display:flex;min-height:62px;}
   #dashSidebar{ display:none !important; }
   #mobileBottomNav.active-grid{ display:grid; }
   #dashContent{ padding-bottom:96px !important; }
-  #quickAddBtn, #quickAddBtn .hide-sm{ display:none !important; }
+  #quickAddBtn .hide-sm{ display:none; }
   .dash-topbar{ padding:12px 14px; }
   .mobile-tablet-only{ display:flex !important; }
 }
@@ -1870,34 +1759,30 @@ const SUPABASE_PUBLISHABLE_KEY =
 // Clé PUBLISHABLE uniquement — jamais de clé service_role ici.
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Domaine public officiel TerangaResto. En production, tous les liens
-// restaurant, QR Codes et partages utilisent ce domaine; en local,
-// l'origine locale reste utilisable pour les tests.
 const PRODUCTION_SITE_ORIGIN = "https://www.terangaresto.com";
 const RESTAURANT_SUBDOMAIN_BASE = "https://terangaresto.com";
+
 function getPublicSiteOrigin(){
-  return /(^|\.)terangaresto\.com$/i.test(location.hostname) ? PRODUCTION_SITE_ORIGIN : location.origin;
+  return /(^|\.)terangaresto\.com$/i.test(location.hostname)
+    ? PRODUCTION_SITE_ORIGIN
+    : location.origin;
 }
+
 function publicRestaurantUrl(slug){
   const clean = String(slug || '').trim().toLowerCase();
   if(!clean) return PRODUCTION_SITE_ORIGIN;
-  // URL publique canonique : un sous-domaine par restaurant.
-  // Requiert le wildcard *.terangaresto.com côté Vercel/DNS pour être joignable.
   return `https://${clean}.terangaresto.com`;
 }
 
-// Support futur des liens par sous-domaine si *.terangaresto.com est
-// configuré dans Vercel/DNS. Tant que ce wildcard n'est pas configuré,
-// le lien canonique ?resto=slug reste utilisé pour garantir un lien
-// immédiatement fonctionnel.
 function restaurantSlugFromLocation(){
   const host = location.hostname.toLowerCase();
-  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
+  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com'){
     const prefix = host.slice(0, -'.terangaresto.com'.length);
     if(prefix && !prefix.includes('.')) return decodeURIComponent(prefix);
   }
   return new URLSearchParams(location.search).get('resto');
 }
+
 </script>
 
 <script>
@@ -1959,9 +1844,6 @@ async function loadRestaurantCore(restaurantId){
   RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
-  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
-  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
-  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
   RESTAURANT.isPublished = !!r.is_published;
   RESTAURANT.heroTitle = r.hero_title || '';
   RESTAURANT.heroSubtitle = r.hero_subtitle || '';
@@ -2433,19 +2315,52 @@ function playNotificationSound(){
     if(!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
     if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
     const now = sharedAudioCtx.currentTime;
-    // Deux notes brèves et distinctes (façon clochette e-commerce),
-    // pas un simple bip unique.
-    [[1046.5, 0, 0.09], [1568, 0.1, 0.13]].forEach(([freq, delay, dur])=>{
+
+    // Notification courte et nettement plus audible, avec un timbre
+    // de clochette/app moderne. Son original, sans fichier propriétaire.
+    const notes = [
+      [880.00,  0.00, 0.16, 0.28],
+      [1174.66, 0.08, 0.19, 0.31],
+      [1568.00, 0.17, 0.24, 0.34]
+    ];
+
+    notes.forEach(([freq, delay, dur, volume])=>{
       const start = now + delay;
-      const osc = sharedAudioCtx.createOscillator(); const gain = sharedAudioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.value = freq;
-      osc.connect(gain); gain.connect(sharedAudioCtx.destination);
+      const osc = sharedAudioCtx.createOscillator();
+      const gain = sharedAudioCtx.createGain();
+      const filter = sharedAudioCtx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(300, start);
+      filter.Q.setValueAtTime(0.7, start);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(sharedAudioCtx.destination);
+
       gain.gain.setValueAtTime(0.001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start+0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, start+dur);
-      osc.start(start); osc.stop(start+dur+0.02);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+
+      osc.start(start);
+      osc.stop(start + dur + 0.03);
     });
-  }catch(e){ /* audio non disponible dans ce navigateur — silencieux, jamais simulé */ }
+
+    const finalTone = sharedAudioCtx.createOscillator();
+    const finalGain = sharedAudioCtx.createGain();
+    finalTone.type = 'sine';
+    finalTone.frequency.setValueAtTime(2093, now + 0.30);
+    finalTone.connect(finalGain);
+    finalGain.connect(sharedAudioCtx.destination);
+    finalGain.gain.setValueAtTime(0.001, now + 0.30);
+    finalGain.gain.exponentialRampToValueAtTime(0.18, now + 0.315);
+    finalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.43);
+    finalTone.start(now + 0.30);
+    finalTone.stop(now + 0.45);
+  }catch(e){ }
 }
 
 /* ---------------- NOTIFICATIONS NAVIGATEUR — nouvelle commande ----------------
@@ -2504,9 +2419,7 @@ async function persistRestaurant(){
     address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
     hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
     payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
-    notifications_enabled:RESTAURANT.notificationsEnabled,
-    order_notification_email:RESTAURANT.orderNotificationEmailVerified ? (RESTAURANT.orderNotificationEmail||null) : null,
-    plan:state.plan, is_published:RESTAURANT.isPublished,
+    notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:RESTAURANT.isPublished,
     hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
   }).eq('id', RESTAURANT.id);
   if(error) toast('Enregistrement Supabase impossible : ' + error.message);
@@ -2519,7 +2432,7 @@ async function togglePublish(){
   toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
 }
 function copyPublicSiteLink(){
-  const link = publicRestaurantUrl(RESTAURANT.slug);
+  const link = `${location.origin}/?resto=${RESTAURANT.slug}`;
   navigator.clipboard?.writeText(link).then(
     () => toast('Lien copié.'),
     () => toast(link)
@@ -2772,18 +2685,6 @@ async function restoreSession(){
       return;
     }
 
-    const pendingOtp = loadPendingOnboarding();
-    if(pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
-      Object.assign(obState, pendingOtp);
-      otpPendingEmail = pendingOtp.pendingEmail;
-      otpPendingName = pendingOtp.accountName || '';
-      otpPendingSource = 'onboarding';
-      hideRestoSplash(); hideAuthCheckSplash();
-      setView('onboarding');
-      renderOnboardingOtpScreen();
-      return;
-    }
-
     // Ici, rid est confirmé null : soit aucune session, soit une session
     // qui ne correspond plus à un restaurant réel. AVANT de conclure
     // "aucune session utile", on vérifie s'il s'agit en réalité d'une
@@ -2801,7 +2702,7 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    const restoSlug = restaurantSlugFromLocation();
+    const restoSlug = new URLSearchParams(location.search).get('resto');
     if(restoSlug){
       restoSplashProgress(45);
       const found = await loadRestaurantBySlug(restoSlug);
@@ -3002,94 +2903,36 @@ async function submitLogin(){
 
 async function submitSignup(){
   const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const email = document.getElementById('signupEmail').value.trim();
   const pw = document.getElementById('signupPassword').value;
   const pw2 = document.getElementById('signupPassword2').value;
   if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
   if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
-  setLoginVerifying(true);
+  // L'unicité de l'e-mail est vérifiée par Supabase Auth lui-même
+  // (contrainte réelle, persistante entre tous les utilisateurs) —
+  // plus besoin d'une liste en mémoire côté client.
   const {data, error} = await supabaseClient.auth.signUp({
-    email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
+    email, password: pw, options:{data:{name}},
   });
-  setLoginVerifying(false);
   if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
   if(!data.session){
-    otpPendingEmail=email;
-    otpPendingName=name;
-    otpPendingSource='signupModal';
-    Object.assign(obState,{step:0,accountName:name,accountEmail:email,accountPassword:pw,emailConfirmationPending:true,pendingEmail:email});
-    savePendingOnboarding();
-    renderSignupOtpScreen();
+    // Le projet Supabase exige une confirmation par e-mail avant que la
+    // session ne soit active — on informe la personne au lieu de la
+    // laisser bloquée sur un formulaire qui semble n'avoir rien fait.
+    closeLogin();
+    toast('Compte créé — vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.');
     return;
   }
-  currentUser=data.user;
+  currentUser = data.user;
   closeLogin();
   startOnboarding();
-  obState.accountName=name;
-  obState.accountEmail=email;
-  obState.accountPassword=pw;
+  obState.accountName = name;
+  obState.accountEmail = email;
   renderOnboarding();
   toast('Compte créé — continuons avec votre restaurant.');
 }
-
-function startOtpResendCountdown(seconds=60){
-  otpResendTimer=seconds;
-  if(otpResendInterval) clearInterval(otpResendInterval);
-  const tick=()=>{
-    const el=document.getElementById('otpResendBtn');
-    if(el) el.textContent=otpResendTimer>0 ? `Renvoyer le code (${otpResendTimer}s)` : 'Renvoyer le code';
-    if(otpResendTimer<=0){clearInterval(otpResendInterval);otpResendInterval=null;}
-    otpResendTimer--;
-  };
-  tick();
-  otpResendInterval=setInterval(tick,1000);
-}
-
-function renderOtpCard(targetId,mode){
-  const target=document.getElementById(targetId); if(!target) return;
-  const email=escapeAttr(otpPendingEmail);
-  const title=mode==='modal'?'Vérifiez votre adresse e-mail':'Confirmez votre adresse e-mail';
-  target.innerHTML=`
-    <div class="text-center" style="padding:20px 8px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',38)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">${title}</h2>
-      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Nous avons envoyé un code à 8 chiffres à <strong>${email}</strong>.</p>
-      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 18px;">Entrez le code reçu pour confirmer votre compte. Aucun lien à ouvrir.</p>
-      <input id="signupOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="00000000" style="text-align:center;letter-spacing:.38em;font-size:26px;font-weight:800;max-width:260px;margin:0 auto 14px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
-      <button id="verifySignupOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifySignupOtp()">Vérifier le code</button>
-      <button id="otpResendBtn" class="btn btn-outline w-full" style="margin-top:10px;" onclick="resendSignupOtp()">Renvoyer le code</button>
-      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="changeOtpEmail()">Utiliser une autre adresse e-mail</button>
-    </div>`;
-  hydrateIcons(target);
-  startOtpResendCountdown(60);
-  setTimeout(()=>document.getElementById('signupOtpInput')?.focus(),50);
-}
-function renderSignupOtpScreen(){ renderOtpCard('loginTabBody','modal'); }
-function renderOnboardingOtpScreen(){ obState.emailConfirmationPending=true; obState.pendingEmail=otpPendingEmail||obState.pendingEmail||obState.accountEmail; savePendingOnboarding(); renderOtpCard('obCard','onboarding'); }
-async function verifySignupOtp(){
-  const token=(document.getElementById('signupOtpInput')?.value||'').trim();
-  if(!/^\d{8}$/.test(token)){toast('Entrez le code à 8 chiffres reçu par e-mail.');return;}
-  const btn=document.getElementById('verifySignupOtpBtn'); if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:otpPendingEmail,token,type:'email'});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(error.message||'Code invalide ou expiré.');return;}
-  currentUser=data.user||null;
-  obState.emailConfirmationPending=false; obState.pendingEmail=otpPendingEmail; obState.accountEmail=otpPendingEmail; obState.accountName=otpPendingName||obState.accountName; clearPendingOnboarding();
-  if(otpPendingSource==='signupModal'){
-    closeLogin(); startOnboarding(); obState.accountName=otpPendingName; obState.accountEmail=otpPendingEmail; obState.accountPassword=''; toast(ic('checkCircle',15)+' E-mail vérifié — vous pouvez créer votre restaurant.',true);
-  }else{
-    obState.step=Math.max(1,Number(obState.step)||1); hideAuthCheckSplash(); setView('onboarding'); renderOnboarding(); toast(ic('checkCircle',15)+' E-mail vérifié — poursuivons la création de votre restaurant.',true);
-  }
-  otpPendingEmail=''; otpPendingName='';
-}
-async function resendSignupOtp(){
-  if(otpResendTimer>0){toast(`Veuillez attendre ${otpResendTimer} seconde(s) avant de renvoyer le code.`);return;}
-  const {error}=await supabaseClient.auth.resend({type:'signup',email:otpPendingEmail,options:{emailRedirectTo:getPublicSiteOrigin()}});
-  if(error){toast('Impossible de renvoyer le code : '+error.message);return;}
-  toast('Nouveau code envoyé.'); startOtpResendCountdown(60);
-}
-function changeOtpEmail(){clearPendingOnboarding();otpPendingEmail='';otpPendingName='';if(otpPendingSource==='signupModal')setLoginTab('signup');else{obState.emailConfirmationPending=false;obState.pendingEmail='';renderOnboarding();}}
 
 async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
@@ -3234,7 +3077,7 @@ const ICON_PATHS = {
   share:'<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><line x1="8.2" y1="10.8" x2="15.8" y2="6.2"/><line x1="8.2" y1="13.2" x2="15.8" y2="17.8"/>',
   layers:'<polygon points="12,3 21,8 12,13 3,8"/><polyline points="3,13.5 12,18.5 21,13.5"/><polyline points="3,18 12,23 21,18"/>',
   save:'<path d="M5 3h11l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 3v6h8V3"/><path d="M7 21v-7h10v7"/>',
-  library:'<rect x="4" y="4" width="12" height="16" rx="2"/><line x1="8" y1="12" x2="12" y2="12"/><line x1="10" y1="10" x2="10" y2="14"/><path d="M18 8v10a2 2 0 01-2 2"/>',
+  library:'<path d="M4 3h4v18H4zM10 3h4v18h-4z" fill="none"/><rect x="4" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><path d="M17 4.3l3.4 17.6-4 .8L13 5" />',
   home:'<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v10a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1V10"/>',
   moreHorizontal:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   rocket:'<path d="M12 2c3 1.5 5 5 5 9 0 2-.7 3.7-1.4 4.8L12 19l-3.6-3.2C7.7 14.7 7 13 7 11c0-4 2-7.5 5-9z"/><circle cx="12" cy="10" r="1.6"/><path d="M8.5 15.5L6 18M15.5 15.5L18 18M9 19l-1.5 2M15 19l1.5 2"/>',
@@ -3438,14 +3281,14 @@ function periodPickerHtml(){
 
 /* Catalogue vide au départ — un restaurant qui vient d'être créé n'a
    réellement aucun produit tant que le restaurateur n'en ajoute pas,
-   que ce soit manuellement ou depuis la Plats prédéfinis
+   que ce soit manuellement ou depuis la Bibliothèque TerangaResto
    (LIBRARY_ITEMS, plus bas, reste un catalogue de référence à part :
    ce n'est jamais la liste de produits du restaurant lui-même). */
 const PRODUCTS = [];
 
-/* Plats prédéfinis — importée depuis l'export produits fourni.
+/* Bibliothèque TerangaResto — importée depuis l'export produits fourni.
    Ce sont des données de référence en LECTURE SEULE : ajouter un produit
-   depuis les plats prédéfinis crée une COPIE indépendante dans PRODUCTS ; modifier
+   depuis la bibliothèque crée une COPIE indépendante dans PRODUCTS ; modifier
    ou supprimer cette copie ne touche jamais aux entrées ci-dessous. */
 const LIBRARY_ITEMS = [
   {name:'amberger',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/435f51ca-e0be-4464-b3b4-38f2b7a10e41.jpg?v=1785949962'},
@@ -3601,9 +3444,6 @@ const RESTAURANT = {
   showMap:true,
   mapsLink:'',
   notificationsEnabled:true,
-  orderNotificationEmail:'',
-  orderNotificationEmailVerified:false,
-  orderNotificationEmailPending:'',
   isPublished:false, // le site public n'est visible aux clients qu'une fois publié (bouton "Publier" dans Paramètres)
   heroTitle:'', heroSubtitle:'', // vides = texte générique honnête utilisé côté client (voir renderStorefrontHero)
   subscriptionStatus:'trialing', // 'trialing' | 'active' | 'cancelled' | 'expired' — jamais 'active' sans action explicite du restaurateur, jamais via un faux paiement
@@ -4005,7 +3845,7 @@ const FEATURES = [
 const STEPS = [
   ['Créez votre restaurant',"Nom, type de restaurant, adresse — la base de votre espace en une minute."],
   ['Personnalisez votre menu',"Choisissez un thème, vos couleurs, votre logo et votre couverture."],
-  ['Ajoutez vos produits',"Depuis zéro ou depuis les plats prédéfinis, en quelques clics."],
+  ['Ajoutez vos produits',"Depuis zéro ou depuis la bibliothèque TerangaResto, en quelques clics."],
   ['Configurez vos paiements',"Wave, Orange Money, espèces ou carte — activez ce que vous acceptez."],
   ['Recevez votre QR Code',"Généré automatiquement, prêt à imprimer et à poser sur vos tables."],
   ['Partagez votre site',"Votre lien public est prêt à être diffusé à vos clients."],
@@ -4182,11 +4022,6 @@ const obState = {
    jamais redemander quoi que ce soit à la personne. */
 const PENDING_ONBOARDING_KEY = 'tg_pending_onboarding';
 let resumingOnboarding = false;
-let otpPendingEmail = '';
-let otpPendingName = '';
-let otpPendingSource = 'onboarding';
-let otpResendTimer = 0;
-let otpResendInterval = null;
 function savePendingOnboarding(){
   try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
 }
@@ -4283,30 +4118,60 @@ async function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
   if(o.step===0 && !currentUser){
+    // Compte pas encore créé (arrivée directe sur l'onboarding, sans
+    // passer par le formulaire d'inscription de la modale) — on le crée
+    // maintenant, réellement, dans Supabase Auth.
     if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    // signUp() est un vrai appel réseau vers Supabase — son temps de
+    // réponse n'est jamais artificiel et ne peut pas être supprimé par
+    // ce code. Ce qui EST corrigé ici : auparavant, le bouton ne
+    // donnait AUCUN signe de vie pendant cet appel (aucun changement
+    // visuel du tout), ce qui faisait paraître un délai réseau normal
+    // comme un blocage. Un retour visuel immédiat, dès le clic,
+    // règle ce problème de perception sans rien accélérer
+    // artificiellement.
     setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
-    const email=o.accountEmail.trim().toLowerCase();
-    const name=o.accountName.trim();
-    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
-    setLoginVerifying(false,'obNextBtn');
-    if(error){toast(error.message||'Impossible de créer ce compte.');return;}
-    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
-    currentUser=data.user; o.emailConfirmationPending=false;
+    const {data, error} = await supabaseClient.auth.signUp({
+      email:o.accountEmail.trim(), password:o.accountPassword, options:{
+        data:{name:o.accountName.trim()},
+        // CORRECTION DU LIEN "localhost" : sans ce paramètre, Supabase
+        // utilise l'URL "Site URL" configurée dans le tableau de bord
+        // du projet — qui reste très souvent une valeur de
+        // développement (localhost) tant que personne ne l'a changée
+        // manuellement. En la précisant explicitement ici, avec
+        // l'origine RÉELLE de la page actuellement ouverte (jamais une
+        // valeur codée en dur), le lien de confirmation pointe
+        // toujours vers le bon domaine, en développement comme en
+        // production, sans configuration supplémentaire dans le code.
+        // ATTENTION : Supabase n'autorise que les URLs explicitement
+        // ajoutées à la liste "Redirect URLs" (Authentication → URL
+        // Configuration) — voir le rapport final pour l'action
+        // nécessaire de votre côté.
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    setLoginVerifying(false, 'obNextBtn');
+    if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
+    if(!data.session){
+      // Confirmation e-mail exigée par la configuration du projet —
+      // AUCUNE session tant que le lien n'est pas cliqué. Mais rien
+      // n'empêche de continuer le parcours pour autant : les étapes
+      // suivantes ne font QUE remplir obState localement, aucune
+      // n'écrit encore dans Supabase avant la toute dernière ("Créer
+      // mon restaurant"/paiement). On mémorise donc simplement que la
+      // confirmation reste en attente, et on sauvegarde une copie de
+      // tout ce qui a déjà été saisi pour pouvoir le retrouver
+      // automatiquement une fois l'e-mail confirmé — jamais besoin de
+      // tout ressaisir, jamais de reconnexion manuelle demandée ici.
+      o.emailConfirmationPending = true;
+      o.pendingEmail = o.accountEmail.trim();
+      savePendingOnboarding();
+    } else {
+      currentUser = data.user;
+      o.emailConfirmationPending = false;
+    }
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
-  if(o.step===1){
-    const name = o.restoName.trim();
-    const {data:available, error:nameErr} = await supabaseClient.rpc('is_restaurant_name_available', {p_name:name});
-    if(nameErr){
-      console.error('is_restaurant_name_available:', nameErr);
-      toast('Impossible de vérifier le nom du restaurant pour le moment.');
-      return;
-    }
-    if(!available){
-      toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
-      return;
-    }
-  }
   if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
@@ -4441,12 +4306,6 @@ async function createRestaurantFromOnboarding(){
   }
 
   RESTAURANT.id = restaurantRow.id;
-  // Par défaut, l'adresse de réception des commandes est celle du compte créateur.
-  // Elle devient ensuite indépendante et modifiable depuis Paramètres après vérification.
-  RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
-  RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
-  RESTAURANT.orderNotificationEmailPending = '';
-  await persistRestaurant();
   RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
@@ -4471,16 +4330,22 @@ async function createRestaurantFromOnboarding(){
    retrouve automatiquement et termine la création sans rien
    redemander. */
 function renderOnboardingEmailPendingScreen(){
-  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
-  otpPendingName=obState.accountName||'';
-  otpPendingSource='onboarding';
-  renderOnboardingOtpScreen();
+  document.getElementById('obCard').innerHTML = `
+    <div class="text-center" style="padding:20px 10px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',36)}</div>
+      <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Confirmez votre e-mail</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:360px;margin:0 auto 6px;">Nous avons envoyé un lien de confirmation à <strong>${escapeAttr(obState.pendingEmail)}</strong>.</p>
+      <p style="font-size:12.5px;color:var(--ink-faint);max-width:360px;margin:0 auto 20px;">Toutes vos informations sont déjà enregistrées — dès que vous cliquez sur le lien reçu, votre restaurant ${escapeAttr(obState.restoName)||''} est créé automatiquement et vous arrivez directement dans votre tableau de bord. Aucune reconnexion manuelle n'est nécessaire.</p>
+      <button class="btn btn-outline" onclick="resendOnboardingConfirmationEmail()">${ic('refreshCw',14)} Renvoyer l'e-mail</button>
+    </div>`;
+  hydrateIcons(document.getElementById('obCard'));
 }
 async function resendOnboardingConfirmationEmail(){
-  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
-  otpPendingName=obState.accountName||'';
-  otpPendingSource='onboarding';
-  return resendSignupOtp();
+  const {error} = await supabaseClient.auth.resend({
+    type:'signup', email: obState.pendingEmail,
+    options:{ emailRedirectTo: window.location.origin },
+  });
+  toast(error ? ("Impossible de renvoyer l'e-mail : " + error.message) : "E-mail de confirmation renvoyé.");
 }
 /* Échappement minimal pour du texte inséré dans un attribut/contenu
    HTML généré ici — évite qu'un nom de restaurant ou un e-mail
@@ -4552,7 +4417,7 @@ async function createRestaurantAndPay(){
 
 function renderOnboarding(){
   document.getElementById('obProgress').innerHTML = OB_STEPS.map((label,i)=>`
-    <div class="flex-col items-center" style="flex:1;min-width:74px;">
+    <div class="flex-col items-center" style="flex:1;">
       <div class="flex items-center w-full">
         <span onclick="${i<obState.step?`obGoStep(${i})`:''}" style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${i<obState.step?'cursor:pointer;':''}
           background:${i<obState.step?'var(--forest)':i===obState.step?'var(--amber-deep)':'#fff'};
@@ -4584,8 +4449,8 @@ function updateSlugPreview(){
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
       ${ic('link',13,{stroke:'var(--forest)'})}
-      <span style="color:var(--ink-soft);">Votre sous-domaine, une fois publié :</span>
-      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(candidate)}</span>
+      <span style="color:var(--ink-soft);">Votre lien, une fois publié :</span>
+      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${candidate}</span>
     </div>
     ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
   hydrateIcons(el);
@@ -4614,7 +4479,7 @@ function obStepHtml(){
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre restaurant</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Ces informations seront visibles sur votre page publique.</p>
     <label class="field-label">Nom du restaurant</label>
-    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="TerangaResto.com" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
+    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="Nom de votre restaurant" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
     <div id="obSlugPreview" style="margin-bottom:14px;"></div>
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" style="margin-bottom:12px;" onchange="obField('restoType',this.value)">
@@ -4633,18 +4498,8 @@ function obStepHtml(){
 
     <p class="field-label">Logo et couverture (facultatif)</p>
     <div class="flex gap-3">
-      <div style="position:relative;width:76px;height:76px;flex-shrink:0;">
-        <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">
-          ${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}
-        </button>
-        ${o.logoPhoto?`<button type="button" aria-label="Supprimer le logo" title="Supprimer le logo" onclick="obField('logoPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
-      </div>
-      <div style="position:relative;flex:1;height:76px;">
-        <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="width:100%;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">
-          ${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}
-        </button>
-        ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
-      </div>
+      <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}</button>
+      <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="flex:1;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}</button>
     </div>
     ${obNav(true)}`;
   }
@@ -4677,8 +4532,8 @@ function obStepHtml(){
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours. Starter et Premium se paient immédiatement par PayTech, à l'étape suivante — aucun essai gratuit sur ces forfaits.</p>
-    <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
-      ${plans.map(p=>`<button class="ob-plan-card" onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      ${plans.map(p=>`<button onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
         <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
         <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
         ${p.duration?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:600;margin-bottom:8px;">${p.duration}</p>`:'<p style="margin-bottom:10px;"></p>'}
@@ -4710,7 +4565,7 @@ function obStepHtml(){
       <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
-        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
+        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${o.slug || slugify(o.restoName)}</span>
       </div>
       <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
@@ -5301,18 +5156,6 @@ async function submitOrderInternal(){
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
 
-  // Notification e-mail automatique : aucun secret Resend n'est exposé dans le navigateur.
-  // L'Edge Function retrouve l'adresse de réception vérifiée du restaurant côté serveur.
-  if(row.email_notify_token){
-    supabaseClient.functions.invoke('send-order-email', {
-      body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
-    }).then(({error:emailError})=>{
-      if(emailError) console.error('send-order-email:', emailError.message);
-    }).catch(err=>console.error('send-order-email:', err));
-  } else {
-    console.warn('Notification commande non envoyée : email_notify_token absent. Exécutez la migration SQL fournie.');
-  }
-
   state.lastOrder = {
     num: row.num, items: row.items, total: Number(row.total),
     payment: c.payment, firstName: c.firstName, phone: c.phone,
@@ -5480,14 +5323,6 @@ async function logoutDashboard(){
   toast('Déconnecté.');
 }
 
-function dashboardHomeButton(){
-  return `<div class="dashboard-home-return" style="margin:0 0 14px;">
-    <button type="button" class="btn btn-outline btn-sm" onclick="setDashSection('overview')" style="min-height:38px;">
-      ${ic('arrowLeft',15)} Retour à l'accueil
-    </button>
-  </div>`;
-}
-
 function renderDashSection(key){
   const el = document.getElementById('dashContent');
   // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
@@ -5511,8 +5346,7 @@ function renderDashSection(key){
     payments: dashPayments, customers: dashCustomers, qrcode: dashQrcode,
     staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
   };
-  const bodyHtml = (renderers[key]||dashOverview)();
-  el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
+  el.innerHTML = (renderers[key]||dashOverview)();
   if(key==='qrcode'){}
   if(key==='analytics') drawRevenueChart();
   hydrateIcons();
@@ -5572,50 +5406,15 @@ function dashOverview(){
     </div>
   </div>
 
-  <!-- Action principale mobile : ajout d’un nouveau produit, volontairement
-       placée juste au-dessus du QR Code sur l’Accueil pour être immédiatement visible. -->
-  <div class="mobile-tablet-only" style="margin-top:18px;">
-    ${canAddProduct() ? `
-      <button onclick="setDashSection('products');openProductForm();" class="card" style="width:100%;padding:17px 18px;border:1.5px solid rgba(232,135,30,.45);background:linear-gradient(135deg,#fff,#fffaf2);color:#0F1830;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;box-shadow:0 10px 24px rgba(232,135,30,.14);border-radius:16px;">
-        <span style="width:40px;height:40px;border-radius:12px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;box-shadow:0 6px 14px rgba(232,135,30,.22);">${ic('plus',20,{stroke:'#fff'})}</span>
-        <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;">Ajouter un nouveau produit</span>
-      </button>` : `
-      <div class="card" style="width:100%;padding:15px 16px;border:1.5px solid rgba(240,101,58,.25);background:#fff9f7;color:#0F1830;display:flex;align-items:center;gap:10px;text-align:left;border-radius:16px;">
-        <span style="width:40px;height:40px;border-radius:12px;background:rgba(240,101,58,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--terracotta);">${ic('lock',18,{stroke:'var(--terracotta)'})}</span>
-        <span style="flex:1;min-width:0;">
-          <span style="display:block;font-size:14px;font-weight:800;">Limite de produits atteinte</span>
-          <span style="display:block;font-size:11.5px;color:#5b4b45;margin-top:2px;">Passez à Starter ou Premium pour ajouter un nouveau produit.</span>
-        </span>
-      </div>`}
-  </div>
-
-  <!-- QR Code mobile : aperçu directement sur Accueil pour éviter de
-       devoir ouvrir un menu secondaire. Le même lien canonique est utilisé
-       partout dans le tableau de bord. -->
-  <div class="mobile-tablet-only" style="margin-top:18px;">
-    <div class="card mobile-qr-card" style="padding:16px;display:flex;align-items:center;gap:14px;">
-      <div style="flex:1;min-width:0;">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;">QR Code</p>
-        <p style="font-size:13.5px;font-weight:700;margin-bottom:4px;">Votre QR Code est prêt</p>
-        <p style="font-size:11.5px;color:var(--ink-soft);">Scannez-le ou partagez votre lien public.</p>
-        <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="setDashSection('qrcode')">${ic('qrcode',14)} Afficher le QR Code</button>
-      </div>
-      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${RESTO_NAME}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
-    </div>
-  </div>
-
-  <!-- Mobile/tablette : "Plus de fonctionnalités" en haut et en blanc,
-       puis "Mon compte" en bas. -->
+  <!-- Téléphone/tablette uniquement : la barre de navigation basse ne
+       contient volontairement que 5 éléments (Accueil, Commandes,
+       Produits, Clients, QR Code) — les autres sections du dashboard
+       (Analyses, Comptabilité, Catégories, Variantes, Paiements,
+       Personnel, Inventaire) ainsi que Paramètres et Déconnexion
+       restent accessibles ici, depuis Accueil, jamais depuis la barre
+       elle-même. Invisible sur ordinateur, où la barre latérale donne
+       déjà accès à tout. -->
   <div class="mobile-tablet-only" style="flex-direction:column;gap:10px;margin-top:20px;">
-    <button onclick="openMoreSheet()" class="card mobile-more-card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);box-shadow:0 10px 26px rgba(15,24,48,.12);">
-      <span style="width:36px;height:36px;border-radius:11px;background:#0F1830;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;">${ic('grid',17,{stroke:'#fff'})}</span>
-      <span style="flex:1;">
-        <span style="display:block;font-size:13.5px;font-weight:700;color:#0F1830;">Plus de fonctionnalités</span>
-        <span style="display:block;font-size:11px;color:#4b5563;">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
-      </span>
-      ${ic('arrowRight',15,{stroke:'#0F1830'})}
-    </button>
-
     <div class="card" style="padding:16px;">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Mon compte</p>
       <div class="flex-col gap-2">
@@ -5630,6 +5429,14 @@ function dashOverview(){
         </button>
       </div>
     </div>
+    <button onclick="openMoreSheet()" class="card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;">
+      <span style="width:34px;height:34px;border-radius:10px;background:rgba(232,135,30,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--amber-deep);">${ic('grid',16)}</span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:13.5px;font-weight:500;">Plus de fonctionnalités</span>
+        <span style="display:block;font-size:11px;color:var(--ink-faint);">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
+      </span>
+      ${ic('arrowRight',14,{stroke:'var(--ink-faint)'})}
+    </button>
   </div>`;
 }
 
@@ -5786,7 +5593,7 @@ function dashPos(){
   const cancelled = periodOrders.filter(o=>o.status==='cancelled').length;
 
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Caisse</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${RESTO_NAME}.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
@@ -5833,7 +5640,7 @@ function dashAnalytics(){
   const topProductEntry = Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];
 
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Analyses</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${RESTO_NAME}, calculée à partir des commandes réelles.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
@@ -5902,7 +5709,7 @@ let expandedCat = 'plats';
 function dashCategories(){
   const atLimit = !canAddCategory();
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Catégories</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix — ${Object.keys(catsState).length} catégorie${Object.keys(catsState).length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_CATEGORIES} (forfait Gratuit)`:''}. La gestion des produits se fait dans la section Produits.</p>
   ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;max-width:640px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_CATEGORIES} catalogues atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Premium</a> pour continuer.</p></div>`:''}
@@ -5959,7 +5766,7 @@ function dashProducts(){
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
     <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
-      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('plus',15)} Plats prédéfinis</button>
+      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('library',15)} Bibliothèque TerangaResto</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
     </div>
   </div>
@@ -5981,9 +5788,9 @@ function productsListHtml(){
     return `<div class="empty-state">
       ${ic('utensils',28,{stroke:'var(--amber-deep)'})}
       <p style="margin-top:10px;font-size:14px;font-weight:600;">Aucun produit pour le moment</p>
-      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis les plats prédéfinis ou créez-en un vous-même.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis la bibliothèque TerangaResto ou créez-en un vous-même.</p>
       <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('plus',14)} Ajouter depuis les plats prédéfinis</button>
+        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('library',14)} Ajouter depuis la bibliothèque</button>
         <button class="btn btn-outline btn-sm" onclick="openProductForm()">${ic('plus',14)} Créer un produit</button>
       </div>
     </div>`;
@@ -6141,7 +5948,7 @@ function openLibrary(){
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeLibrary()"></div>
     <div class="card" style="position:relative;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;">
       <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
-        <div><h2 class="font-display" style="font-size:17px;">Plats prédéfinis</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
+        <div><h2 class="font-display" style="font-size:17px;">Bibliothèque TerangaResto</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
         <button onclick="closeLibrary()">${ic('x',17)}</button>
       </div>
       <div style="padding:12px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
@@ -6237,7 +6044,7 @@ function dashInventory(){
   const lowStock = rows.filter(r=>r.stock!==null && r.stock<=r.p.threshold).length;
 
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Inventaire</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Le stock diminue automatiquement à chaque commande validée sur votre site public.</p>
   ${lowStock>0 ? `<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
@@ -6292,7 +6099,7 @@ function dashAccounting(){
   validOrders.forEach(o=>{ byMethod[o.pay] = (byMethod[o.pay]||0) + o.total; });
 
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Comptabilité</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${RESTO_NAME}</span>, calculée à partir de vos commandes.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
@@ -6324,7 +6131,7 @@ function dashVariants(){
   }
   if(!PRODUCTS.length){
     return `
-    
+    ${backToHomeBtnHtml()}
     <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
     <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
     <div class="empty-state" style="max-width:460px;text-align:center;padding:30px 20px;">
@@ -6334,7 +6141,7 @@ function dashVariants(){
     </div>`;
   }
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
   <div style="max-width:480px;">
@@ -6409,7 +6216,7 @@ const PAYMENT_LINK_FIELD = {
 function dashPayments(){
   const methods = ['cash','on_delivery','wave','orange_money'];
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Paiements</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Choisissez les moyens de paiement que vos clients peuvent utiliser.</p>
   <div class="flex-col gap-3" style="max-width:560px;" id="paymentsList">${paymentsListHtml(methods)}</div>
@@ -6544,13 +6351,13 @@ async function deleteReview(id){
 
 /* ---------------- QR CODE ---------------- */
 function dashQrcode(){
-  const url = publicRestaurantUrl(RESTAURANT.slug);
+  const url = `${location.origin}/?resto=${RESTAURANT.slug}`;
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${RESTO_NAME}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="180" height="180" alt="QR Code ${RESTO_NAME}" style="display:block;"></div>
     <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
     <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
@@ -6565,7 +6372,7 @@ function dashQrcode(){
   </div>`;
 }
 function shareQr(){
-  const publicUrl = publicRestaurantUrl(RESTAURANT.slug);
+  const publicUrl = `${location.origin}/?resto=${RESTAURANT.slug}`;
   if(navigator.share){
     navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
   } else {
@@ -6603,7 +6410,7 @@ function genInviteCode(){
 function dashStaff(){
   if(!isPremiumActive()){
     return `
-    
+    ${backToHomeBtnHtml()}
     <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
     <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Invitez des membres de votre équipe et définissez leurs permissions.</p>
     <div class="card" style="padding:28px;max-width:560px;display:flex;align-items:flex-start;gap:14px;">
@@ -6620,7 +6427,7 @@ function dashStaff(){
   invitePermissions = invitePermissions || ROLE_SECTIONS[inviteRole];
 
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Invitez des membres de votre équipe et définissez précisément ce qu'ils peuvent voir.</p>
   <div class="card" style="padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -6807,7 +6614,7 @@ function dashLibrary(){
   return `
   <div class="lib-header">
     <div>
-      <h1 class="font-display" style="font-size:22px;">Plats prédéfinis</h1>
+      <h1 class="font-display" style="font-size:22px;">Bibliothèque</h1>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${RESTO_NAME}</span>.</p>
     </div>
     <button class="btn btn-secondary btn-sm lib-add-btn" onclick="toast('Sélecteur de fichiers (démo)')">${ic('upload',14)}<span>Ajouter des images</span></button>
@@ -6860,7 +6667,7 @@ function libraryCardsHtml(){
     });
   }
 
-  if(cards.length===0) return `<div class="empty-state">${ic('plus',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun plat prédéfini dans cette catégorie.</p></div>`;
+  if(cards.length===0) return `<div class="empty-state">${ic('library',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune ressource dans cette catégorie.</p></div>`;
   return cards.join('');
 }
 
@@ -6980,7 +6787,7 @@ function backToHomeBtnHtml(){
 }
 function dashSettings(){
   return `
-  
+  ${backToHomeBtnHtml()}
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
     <div><h1 class="font-display" style="font-size:22px;">Paramètres</h1><p style="font-size:13px;color:var(--ink-soft);">Toute modification, une fois enregistrée, apparaît sur votre site public.</p></div>
     <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
@@ -7009,7 +6816,7 @@ function settingsBodyHtml(){
         ${ic('link',16,{stroke:'var(--forest)'})}
         <div style="flex:1;min-width:0;">
           <p style="font-size:11px;color:var(--ink-faint);">Lien de votre site public</p>
-          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(RESTAURANT.slug)}</p>
+          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${location.origin}/?resto=${RESTAURANT.slug}</p>
         </div>
         <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
       </div>`:''}
@@ -7039,7 +6846,7 @@ function settingsBodyHtml(){
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
             ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
-          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
         </div>
         ${RESTAURANT.logoDataUrl?`<button onclick="pickLogo()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:''}
       </div>
@@ -7049,33 +6856,12 @@ function settingsBodyHtml(){
           <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
             ${RESTAURANT.coverDataUrl?'':`${ic('upload',18,{stroke:'var(--ink-faint)'})}<span style="font-size:11px;color:var(--ink-faint);">Ajouter une couverture</span>`}
           </button>
-          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
+          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);">${ic('x',12)}</button>`:''}
         </div>
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div class="card" style="padding:14px 16px;margin-top:18px;margin-bottom:14px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
-        <div>
-          <p style="font-size:13.5px;font-weight:700;">E-mail de réception des commandes</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
-        </div>
-        ${RESTAURANT.orderNotificationEmailVerified ? `<span class="pill pill-forest">Vérifié</span>` : `<span class="pill pill-terracotta">Non vérifié</span>`}
-      </div>
-      <label class="field-label">Adresse e-mail</label>
-      <input class="field-input" id="orderNotifyEmail" type="email" placeholder="commandes@votrerestaurant.com" value="${RESTAURANT.orderNotificationEmail || ''}" style="margin-bottom:10px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="requestOrderNotificationEmailChange()">${ic('send',13)} ${RESTAURANT.orderNotificationEmailVerified ? 'Changer l’adresse' : 'Définir l’adresse'}</button>
-        ${RESTAURANT.orderNotificationEmailPending ? `<button class="btn btn-outline btn-sm" onclick="verifyOrderNotificationEmail()">${ic('check',13)} Vérifier le code</button>` : ''}
-      </div>
-      ${RESTAURANT.orderNotificationEmailPending ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
-        <label class="field-label">Code de vérification à 8 chiffres</label>
-        <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:.22em;text-align:center;font-weight:800;font-size:18px;max-width:240px;">
-        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Nous avons envoyé ce code à <strong>${RESTAURANT.orderNotificationEmailPending}</strong>.</p>
-      </div>` : ''}
-    </div>
-
-    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
+    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:18px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
     </div>`;
@@ -7173,35 +6959,6 @@ function settingsBodyHtml(){
   return '';
 }
 
-async function requestOrderNotificationEmailChange(){
-  if(!RESTAURANT.id) return;
-  const input = document.getElementById('orderNotifyEmail');
-  const email = (input?.value || '').trim().toLowerCase();
-  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
-  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
-    body:{ action:'request', restaurant_id:RESTAURANT.id, email }
-  });
-  if(error || data?.error){ toast(data?.error || error?.message || 'Impossible d’envoyer le code.'); return; }
-  RESTAURANT.orderNotificationEmailPending = email;
-  renderDashSection('settings');
-  toast('Code envoyé. Vérifiez cette adresse e-mail.');
-}
-
-async function verifyOrderNotificationEmail(){
-  if(!RESTAURANT.id || !RESTAURANT.orderNotificationEmailPending) return;
-  const code = (document.getElementById('orderNotifyCode')?.value || '').replace(/\D/g,'').slice(0,8);
-  if(code.length !== 8){ toast('Entrez le code à 8 chiffres.'); return; }
-  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
-    body:{ action:'verify', restaurant_id:RESTAURANT.id, code }
-  });
-  if(error || data?.error){ toast(data?.error || error?.message || 'Code incorrect ou expiré.'); return; }
-  RESTAURANT.orderNotificationEmail = RESTAURANT.orderNotificationEmailPending;
-  RESTAURANT.orderNotificationEmailVerified = true;
-  RESTAURANT.orderNotificationEmailPending = '';
-  renderDashSection('settings');
-  toast('Adresse de réception vérifiée.');
-}
-
 async function saveSettings(){
   const nameEl = document.getElementById('setName');
   if(nameEl){ RESTAURANT.name = nameEl.value.trim() || RESTAURANT.name; applyRestaurantName(RESTAURANT.name); }
@@ -7254,7 +7011,7 @@ function dashAbonnement(){
   const planName = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
   const planLabel = (state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} (en attente de paiement)` : planName;
   return `
-  
+  ${backToHomeBtnHtml()}
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
@@ -7394,45 +7151,6 @@ async function reactivateSubscription(){
 
 
 <style>
-/* ---------------- CORRECTIONS MOBILE / CONTRASTE / QR ---------------- */
- 
-.dashboard-home-return .btn{font-weight:700;}
-.mobile-more-card:active{transform:translateY(1px);}
-.mobile-more-card:hover{background:#fff !important;border-color:#0F1830 !important;}
-@media (max-width:640px){
-  .dashboard-home-return{position:sticky;top:8px;z-index:8;}
-  .dashboard-home-return .btn{width:100%;background:#fff;color:#0F1830;border-color:rgba(15,24,48,.18);}
-  .dashboard-home-return .btn:active{background:#0F1830;color:#fff;}
-}
-
-.ob-progress-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:2px 0 6px;}
-.ob-progress{min-width:520px;}
-.ob-progress > div{min-width:74px;}
-.ob-plan-grid{align-items:stretch;}
-.ob-plan-card{min-height:250px;display:flex;flex-direction:column;justify-content:flex-start;color:var(--ink);background:var(--surface);}
-.ob-plan-card:hover{border-color:var(--amber-deep) !important;box-shadow:0 8px 22px rgba(43,24,16,.08);}
-.ob-plan-card:focus-visible{outline:3px solid rgba(232,135,30,.28);outline-offset:2px;}
-#view-dashboard .icon-btn,#view-dashboard .btn-outline,#view-dashboard .lib-card-actions button{transition:background .15s,color .15s,border-color .15s,transform .15s;}
-#view-dashboard .icon-btn{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.10);color:#fff;}
-#view-dashboard .icon-btn:hover{background:var(--amber-deep);color:#fff;border-color:var(--amber-deep);}
-#view-dashboard .btn-outline{background:#fff;color:#0F1830;border-color:rgba(15,24,48,.16);}
-#view-dashboard .btn-outline:hover,#view-dashboard .btn-outline:active{background:#0B1220;color:#fff;border-color:#0B1220;}
-#view-dashboard .lib-card-actions button{background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);}
-#view-dashboard .lib-card-actions button:hover,#view-dashboard .lib-card-actions button:active{background:#0B1220;color:#fff;border-color:#0B1220;}
-.mobile-qr-card{background:linear-gradient(135deg,#ffffff,#f8fafc);width:100%;max-width:none;align-self:stretch;box-sizing:border-box;}
-@media (max-width:900px){
-  /* Les 3 blocs de l'accueil mobile doivent avoir exactement la même largeur.
-     Dans un conteneur flex, le bloc QR pouvait se réduire à la largeur de son contenu. */
-  .mobile-tablet-only > *{width:100% !important;max-width:none !important;box-sizing:border-box;}
-}
-@media (max-width:640px){
-  .ob-plan-grid{grid-template-columns:1fr !important;gap:10px !important;}
-  .ob-plan-card{min-height:0;padding:16px !important;}
-  .ob-progress{min-width:560px;}
-  .mobile-qr-card{align-items:flex-start;}
-  .mobile-qr-card img{width:92px !important;height:92px !important;}
-}
-
 /* ---------------- RESPONSIVE ---------------- */
 @keyframes icSpin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 .spin{ animation:icSpin 1s linear infinite; }
