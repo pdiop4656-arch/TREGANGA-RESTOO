@@ -2716,26 +2716,8 @@ function renderStorefrontGateOverlay(){
 }
 
 async function loadRestaurantBySlug(slug){
-  // Requête minimale : uniquement l'identifiant. On évite de télécharger
-  // le logo/base64 avant le chargement réel du restaurant, ce qui ralentirait
-  // inutilement l'ouverture du site public.
-  const {data} = await supabaseClient
-    .from('restaurants')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle();
-
-  if(data){
-    await loadRestaurantIntoState(data.id);
-
-    // La fiche complète contient déjà le logo : dès qu'elle est arrivée,
-    // on l'affiche dans le splash avant sa disparition.
-    if(typeof applyRestaurantName === 'function') applyRestaurantName(RESTAURANT.name);
-    if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
-    if(typeof populateRestoSplash === 'function') populateRestoSplash();
-    restoSplashProgress(100);
-    return true;
-  }
+  const {data} = await supabaseClient.from('restaurants').select('id').eq('slug', slug).maybeSingle();
+  if(data){ await loadRestaurantIntoState(data.id); return true; }
   return false;
 }
 
@@ -2921,9 +2903,7 @@ function populateRestoSplash(){
   const sloganEl = document.getElementById('restoSplashSlogan');
   if(!logoEl) return;
   if(RESTAURANT.logoDataUrl){
-    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" alt="${(RESTO_NAME||'Restaurant').replace(/"/g,'&quot;')}" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;">`;
-    logoEl.style.opacity = '1';
-    logoEl.style.transform = 'none';
+    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
   } else {
     // Pas de logo enregistré : la première lettre du nom plutôt qu'une
     // image cassée ou un logo générique imposé.
@@ -7576,63 +7556,3 @@ function checkMobile(){
 }
 window.addEventListener('resize', checkMobile);
 
-/* Favicon — le vrai logo TerangaResto, jamais déformé (même source que
-   partout ailleurs dans l'app, pas une copie séparée). Réglé en JS pour
-   éviter de dupliquer le base64 dans le <head>. Fonctionne en local
-   comme après déploiement, puisqu'il s'agit d'une data URI autonome,
-   sans dépendance à un chemin de fichier externe. */
-function setRestaurantFavicon(){
-  const fav = document.getElementById('faviconLink');
-  const touch = document.getElementById('appleTouchIconLink');
-  // Sur le site public, le logo réel du restaurant devient l'icône du site.
-  // Tant que les données du restaurant ne sont pas encore chargées, on garde
-  // le fallback TerangaResto existant.
-  const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
-    ? RESTAURANT.logoDataUrl
-    : LOGO_SRC;
-  if(fav) fav.href = iconSrc;
-  if(touch) touch.href = iconSrc;
-}
-setRestaurantFavicon();
-document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
-
-/* Charge d'abord la session + les données Supabase (restaurant du
-   visiteur ou du propriétaire connecté), PUIS rend la page — évite
-   d'afficher un état vide qui clignoterait avant que les vraies
-   données n'arrivent. */
-(async function init(){
-  await restoreSession();
-  renderPricing();
-  renderStorefrontHero();
-  renderProductSections();
-  updateFloatingCartButton();
-  checkMobile();
-  hydrateIcons();
-})();
-
-/* Recharge automatiquement les données quand l'état de connexion
-   change ailleurs (autre onglet, expiration de session, etc.). */
-supabaseClient.auth.onAuthStateChange((event, session) => {
-  if(event === 'SIGNED_OUT'){ currentUser = null; }
-  // Filet de sécurité event-driven pour la confirmation d'e-mail : le
-  // client Supabase détecte et établit automatiquement la session à
-  // partir de l'URL de retour du lien de confirmation (comportement
-  // par défaut, "detectSessionInUrl") et déclenche SIGNED_IN à ce
-  // moment précis — potentiellement avant, après, ou en même temps que
-  // le premier appel de restoreSession() au chargement de la page. Ne
-  // pas se fier à un seul de ces deux déclencheurs : les DEUX tentent
-  // de reprendre l'onboarding en attente, et tryResumePendingOnboarding()
-  // est conçue pour être sûre à appeler plusieurs fois (garde-fou
-  // resumingOnboarding + la sauvegarde locale est supprimée dès la
-  // première réussite, donc un second appel ne trouve simplement plus
-  // rien à reprendre).
-  if(event === 'SIGNED_IN' && session){
-    currentUser = session.user;
-    tryResumePendingOnboarding();
-  }
-});
-</script>
-
-
-</body>
-</html>
