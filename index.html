@@ -7357,7 +7357,12 @@ async function reactivateSubscription(){
 #view-dashboard .btn-outline:hover,#view-dashboard .btn-outline:active{background:#0B1220;color:#fff;border-color:#0B1220;}
 #view-dashboard .lib-card-actions button{background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);}
 #view-dashboard .lib-card-actions button:hover,#view-dashboard .lib-card-actions button:active{background:#0B1220;color:#fff;border-color:#0B1220;}
-.mobile-qr-card{background:linear-gradient(135deg,#ffffff,#f8fafc);}
+.mobile-qr-card{background:linear-gradient(135deg,#ffffff,#f8fafc);width:100%;max-width:none;align-self:stretch;box-sizing:border-box;}
+@media (max-width:900px){
+  /* Les 3 blocs de l'accueil mobile doivent avoir exactement la même largeur.
+     Dans un conteneur flex, le bloc QR pouvait se réduire à la largeur de son contenu. */
+  .mobile-tablet-only > *{width:100% !important;max-width:none !important;box-sizing:border-box;}
+}
 @media (max-width:640px){
   .ob-plan-grid{grid-template-columns:1fr !important;gap:10px !important;}
   .ob-plan-card{min-height:0;padding:16px !important;}
