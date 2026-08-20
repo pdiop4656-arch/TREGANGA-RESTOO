@@ -316,13 +316,59 @@ button,a,input,select,textarea{font-family:inherit;}
      fraction de seconde avant que ce script ne la masque, exactement
      le "passage" que cette modification doit supprimer.
      ============================================================ -->
-<div id="restoSplash" class="hidden" style="position:fixed;inset:0;z-index:99999;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
-  <div id="restoSplashLogo" style="width:88px;height:88px;border-radius:22px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 24px rgba(43,24,16,.14);background:#fff;opacity:0;transform:translateY(8px);transition:opacity .5s ease, transform .5s ease;"></div>
-  <p id="restoSplashName" style="font-family:'Fraunces',serif;font-size:20px;margin-top:18px;color:#2B1810;opacity:0;transition:opacity .5s ease .1s;"></p>
-  <p id="restoSplashSlogan" style="font-size:12.5px;color:#8a7466;margin-top:4px;opacity:0;transition:opacity .5s ease .18s;"></p>
-  <div style="width:140px;height:3px;background:rgba(43,24,16,.08);border-radius:999px;margin-top:26px;overflow:hidden;opacity:0;transition:opacity .5s ease .25s;" id="restoSplashBarTrack">
-    <div id="restoSplashBar" style="height:100%;width:12%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
+<style>
+/* Chargeur public : aucun logo/image/réseau. Tout est inline et affichable
+   immédiatement, afin de ne pas ajouter de délai au chargement réel. */
+@keyframes tgLoaderSpin{to{transform:rotate(360deg)}}
+@keyframes tgLoaderPulse{0%,100%{opacity:.35;transform:scale(.82)}50%{opacity:1;transform:scale(1)}}
+@keyframes tgLoaderBar{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+#restoSplash{
+  position:fixed;inset:0;z-index:99999;background:#FBF3E4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;text-align:center;
+}
+#restoSplash.hidden{display:none}
+#tgFastLoaderIcon{
+  width:42px;height:42px;border:3px solid rgba(43,24,16,.10);
+  border-top-color:#c96a12;border-radius:50%;
+  animation:tgLoaderSpin .62s linear infinite;
+}
+#tgFastLoaderPlate{
+  position:absolute;width:12px;height:12px;border:2px solid #c96a12;
+  border-radius:50%;opacity:.9;
+}
+#tgFastLoaderText{
+  margin-top:17px;font-family:'Manrope',sans-serif;font-size:12.5px;
+  color:#8a7466;letter-spacing:.01em;
+}
+#tgFastLoaderTrack{
+  width:150px;height:3px;margin-top:14px;border-radius:999px;
+  background:rgba(43,24,16,.08);overflow:hidden;
+}
+#tgFastLoaderBar{
+  width:42%;height:100%;border-radius:999px;background:#c96a12;
+  animation:tgLoaderBar .72s ease-in-out infinite;
+  will-change:transform;
+}
+#tgFastLoaderDots{display:flex;gap:4px;margin-top:11px}
+#tgFastLoaderDots span{
+  width:4px;height:4px;border-radius:50%;background:#c96a12;
+  animation:tgLoaderPulse .72s ease-in-out infinite;
+}
+#tgFastLoaderDots span:nth-child(2){animation-delay:.12s}
+#tgFastLoaderDots span:nth-child(3){animation-delay:.24s}
+@media(prefers-reduced-motion:reduce){
+  #tgFastLoaderIcon,#tgFastLoaderBar,#tgFastLoaderDots span{animation:none}
+}
+</style>
+<div id="restoSplash" class="hidden" aria-live="polite" aria-label="Chargement de la boutique">
+  <div style="position:relative;width:42px;height:42px;display:flex;align-items:center;justify-content:center;">
+    <div id="tgFastLoaderIcon"></div>
+    <div id="tgFastLoaderPlate"></div>
   </div>
+  <div id="tgFastLoaderText">Chargement de la boutique…</div>
+  <div id="tgFastLoaderTrack"><div id="tgFastLoaderBar"></div></div>
+  <div id="tgFastLoaderDots" aria-hidden="true"><span></span><span></span><span></span></div>
 </div>
 
 <!-- Écran de vérification neutre — affiché UNIQUEMENT si cet appareil a
@@ -348,12 +394,6 @@ button,a,input,select,textarea{font-family:inherit;}
             (location.hostname.endsWith('.terangaresto.com') &&
              location.hostname !== 'www.terangaresto.com')){
     document.getElementById('restoSplash').classList.remove('hidden');
-    requestAnimationFrame(()=>{
-      ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
-        document.getElementById(id).style.opacity = '1';
-        document.getElementById(id).style.transform = 'none';
-      });
-    });
   }
 </script>
 
@@ -2715,9 +2755,125 @@ function renderStorefrontGateOverlay(){
   }
 }
 
+
+/* ---------------- CHARGEMENT PUBLIC ULTRA-RAPIDE ----------------
+   Le visiteur public n'a pas besoin des images pour entrer dans la boutique.
+   On charge d'abord uniquement les données nécessaires au premier affichage,
+   puis les images (logo/couverture/photos produits) en arrière-plan.
+   Le chemin propriétaire/dashboard reste inchangé. */
+async function loadRestaurantPublicFast(restaurantId){
+  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+    supabaseClient.from('restaurants').select(
+      'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
+      'address,city,phone,hours,delivery,social,show_map,maps_link,' +
+      'notifications_enabled,order_notification_email,order_notification_email_verified,' +
+      'order_notification_email_pending,is_published,hero_title,hero_subtitle,' +
+      'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
+      'plan,payment_toggles'
+    ).eq('id', restaurantId).single(),
+    supabaseClient.from('categories').select(
+      'key,label,visible_on_home,sort_order'
+    ).eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select(
+      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
+    ).eq('restaurant_id', restaurantId).order('created_at')
+  ]);
+
+  if(!r) return false;
+
+  RESTAURANT.id = r.id;
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = new Date(r.created_at).getTime();
+  RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
+  RESTAURANT.logoDataUrl = '';
+  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
+  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
+  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
+  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
+  RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
+  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
+  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
+  RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.heroTitle = r.hero_title || '';
+  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
+  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
+  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
+  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
+
+  state.plan = r.plan || 'free';
+  state.toggles = Object.assign(
+    {wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
+    r.payment_toggles || {}
+  );
+
+  applyRestaurantName(r.name);
+  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
+
+  catsState = {};
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => {
+    catsState[c.key] = c.label;
+    catsHomeVisible[c.key] = c.visible_on_home !== false;
+  });
+
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:'', variants:p.variants||[],
+    variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
+  }));
+
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
+
+  // Images are deliberately non-blocking.
+  loadRestaurantPublicImagesFast(restaurantId);
+  return true;
+}
+
+async function loadRestaurantPublicImagesFast(restaurantId){
+  try{
+    const [{data:r}, {data:photos}] = await Promise.all([
+      supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
+      supabaseClient.from('products').select('id,photo').eq('restaurant_id', restaurantId)
+    ]);
+
+    if(r){
+      RESTAURANT.logoDataUrl = r.logo_data_url || '';
+      RESTAURANT.coverDataUrl = r.cover_data_url || '';
+      if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+    }
+
+    const photoMap = new Map((photos||[]).map(p => [p.id, p.photo || '']));
+    PRODUCTS.forEach(p => { if(photoMap.has(p.id)) p.photo = photoMap.get(p.id); });
+
+    // Update only the storefront after the public page is already visible.
+    if(state.view === 'storefront'){
+      renderStorefrontHero();
+      renderProductSections();
+    }
+  }catch(e){
+    console.warn('Chargement différé des images du restaurant:', e);
+  }
+}
+
 async function loadRestaurantBySlug(slug){
-  const {data} = await supabaseClient.from('restaurants').select('id').eq('slug', slug).maybeSingle();
-  if(data){ await loadRestaurantIntoState(data.id); return true; }
+  const {data} = await supabaseClient
+    .from('restaurants')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if(data){
+    return await loadRestaurantPublicFast(data.id);
+  }
   return false;
 }
 
@@ -2859,7 +3015,6 @@ async function restoreSession(){
       const found = await loadRestaurantBySlug(restoSlug);
       viewerIsStaff = false;
       if(found){
-        populateRestoSplash();
         setView('storefront');
         // Laisse un très bref instant voir le vrai logo/nom du
         // restaurant affichés sur l'écran de chargement avant la
@@ -2894,34 +3049,13 @@ async function restoreSession(){
    progression, disparition — est piloté ici, une fois l'application
    réellement démarrée. */
 function restoSplashProgress(pct){
-  const bar = document.getElementById('restoSplashBar');
-  if(bar) bar.style.width = pct + '%';
-}
-function populateRestoSplash(){
-  const logoEl = document.getElementById('restoSplashLogo');
-  const nameEl = document.getElementById('restoSplashName');
-  const sloganEl = document.getElementById('restoSplashSlogan');
-  if(!logoEl) return;
-  if(RESTAURANT.logoDataUrl){
-    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
-  } else {
-    // Pas de logo enregistré : la première lettre du nom plutôt qu'une
-    // image cassée ou un logo générique imposé.
-    logoEl.innerHTML = `<span style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:#c96a12;">${(RESTO_NAME||'T').charAt(0).toUpperCase()}</span>`;
-  }
-  nameEl.textContent = RESTO_NAME || 'TerangaResto';
-  // Réutilise le sous-titre du Hero déjà configurable par le
-  // restaurateur (Paramètres → Titre d'accueil) comme "slogan" — pas
-  // un nouveau champ inventé pour cette seule fonctionnalité.
-  sloganEl.textContent = RESTAURANT.heroSubtitle || 'Bienvenue chez nous';
+  // Le nouveau chargeur est indéterminé : sa barre CSS tourne sans
+  // attendre des pourcentages artificiels qui pourraient ralentir l'entrée.
 }
 function hideRestoSplash(){
   const el = document.getElementById('restoSplash');
   if(!el || el.classList.contains('hidden')) return;
-  restoSplashProgress(100);
-  el.style.transition = 'opacity .12s ease';
-  el.style.opacity = '0';
-  setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 130);
+  el.classList.add('hidden');
 }
 function hideAuthCheckSplash(){
   const el = document.getElementById('authCheckSplash');
@@ -7556,3 +7690,63 @@ function checkMobile(){
 }
 window.addEventListener('resize', checkMobile);
 
+/* Favicon — le vrai logo TerangaResto, jamais déformé (même source que
+   partout ailleurs dans l'app, pas une copie séparée). Réglé en JS pour
+   éviter de dupliquer le base64 dans le <head>. Fonctionne en local
+   comme après déploiement, puisqu'il s'agit d'une data URI autonome,
+   sans dépendance à un chemin de fichier externe. */
+function setRestaurantFavicon(){
+  const fav = document.getElementById('faviconLink');
+  const touch = document.getElementById('appleTouchIconLink');
+  // Sur le site public, le logo réel du restaurant devient l'icône du site.
+  // Tant que les données du restaurant ne sont pas encore chargées, on garde
+  // le fallback TerangaResto existant.
+  const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
+    ? RESTAURANT.logoDataUrl
+    : LOGO_SRC;
+  if(fav) fav.href = iconSrc;
+  if(touch) touch.href = iconSrc;
+}
+setRestaurantFavicon();
+document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
+
+/* Charge d'abord la session + les données Supabase (restaurant du
+   visiteur ou du propriétaire connecté), PUIS rend la page — évite
+   d'afficher un état vide qui clignoterait avant que les vraies
+   données n'arrivent. */
+(async function init(){
+  await restoreSession();
+  renderPricing();
+  renderStorefrontHero();
+  renderProductSections();
+  updateFloatingCartButton();
+  checkMobile();
+  hydrateIcons();
+})();
+
+/* Recharge automatiquement les données quand l'état de connexion
+   change ailleurs (autre onglet, expiration de session, etc.). */
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_OUT'){ currentUser = null; }
+  // Filet de sécurité event-driven pour la confirmation d'e-mail : le
+  // client Supabase détecte et établit automatiquement la session à
+  // partir de l'URL de retour du lien de confirmation (comportement
+  // par défaut, "detectSessionInUrl") et déclenche SIGNED_IN à ce
+  // moment précis — potentiellement avant, après, ou en même temps que
+  // le premier appel de restoreSession() au chargement de la page. Ne
+  // pas se fier à un seul de ces deux déclencheurs : les DEUX tentent
+  // de reprendre l'onboarding en attente, et tryResumePendingOnboarding()
+  // est conçue pour être sûre à appeler plusieurs fois (garde-fou
+  // resumingOnboarding + la sauvegarde locale est supprimée dès la
+  // première réussite, donc un second appel ne trouve simplement plus
+  // rien à reprendre).
+  if(event === 'SIGNED_IN' && session){
+    currentUser = session.user;
+    tryResumePendingOnboarding();
+  }
+});
+</script>
+
+
+</body>
+</html>
