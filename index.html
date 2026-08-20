@@ -1959,6 +1959,9 @@ async function loadRestaurantCore(restaurantId){
   RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
+  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
+  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
   RESTAURANT.isPublished = !!r.is_published;
   RESTAURANT.heroTitle = r.hero_title || '';
   RESTAURANT.heroSubtitle = r.hero_subtitle || '';
@@ -2501,7 +2504,9 @@ async function persistRestaurant(){
     address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
     hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
     payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
-    notifications_enabled:RESTAURANT.notificationsEnabled, plan:state.plan, is_published:RESTAURANT.isPublished,
+    notifications_enabled:RESTAURANT.notificationsEnabled,
+    order_notification_email:RESTAURANT.orderNotificationEmailVerified ? (RESTAURANT.orderNotificationEmail||null) : null,
+    plan:state.plan, is_published:RESTAURANT.isPublished,
     hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
   }).eq('id', RESTAURANT.id);
   if(error) toast('Enregistrement Supabase impossible : ' + error.message);
@@ -3596,6 +3601,9 @@ const RESTAURANT = {
   showMap:true,
   mapsLink:'',
   notificationsEnabled:true,
+  orderNotificationEmail:'',
+  orderNotificationEmailVerified:false,
+  orderNotificationEmailPending:'',
   isPublished:false, // le site public n'est visible aux clients qu'une fois publié (bouton "Publier" dans Paramètres)
   heroTitle:'', heroSubtitle:'', // vides = texte générique honnête utilisé côté client (voir renderStorefrontHero)
   subscriptionStatus:'trialing', // 'trialing' | 'active' | 'cancelled' | 'expired' — jamais 'active' sans action explicite du restaurateur, jamais via un faux paiement
@@ -4433,6 +4441,12 @@ async function createRestaurantFromOnboarding(){
   }
 
   RESTAURANT.id = restaurantRow.id;
+  // Par défaut, l'adresse de réception des commandes est celle du compte créateur.
+  // Elle devient ensuite indépendante et modifiable depuis Paramètres après vérification.
+  RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
+  RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
+  RESTAURANT.orderNotificationEmailPending = '';
+  await persistRestaurant();
   RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
@@ -5287,10 +5301,8 @@ async function submitOrderInternal(){
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
 
-  // Notification e-mail sécurisée : aucun secret Resend n'est exposé
-  // dans le navigateur. L'Edge Function reçoit l'id de commande + un
-  // jeton à usage de notification créé côté base, puis retrouve l'e-mail
-  // du propriétaire et envoie le message via Resend.
+  // Notification e-mail automatique : aucun secret Resend n'est exposé dans le navigateur.
+  // L'Edge Function retrouve l'adresse de réception vérifiée du restaurant côté serveur.
   if(row.email_notify_token){
     supabaseClient.functions.invoke('send-order-email', {
       body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
@@ -7042,7 +7054,28 @@ function settingsBodyHtml(){
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:18px;padding-top:14px;">
+    <div class="card" style="padding:14px 16px;margin-top:18px;margin-bottom:14px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <div>
+          <p style="font-size:13.5px;font-weight:700;">E-mail de réception des commandes</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
+        </div>
+        ${RESTAURANT.orderNotificationEmailVerified ? `<span class="pill pill-forest">Vérifié</span>` : `<span class="pill pill-terracotta">Non vérifié</span>`}
+      </div>
+      <label class="field-label">Adresse e-mail</label>
+      <input class="field-input" id="orderNotifyEmail" type="email" placeholder="commandes@votrerestaurant.com" value="${RESTAURANT.orderNotificationEmail || ''}" style="margin-bottom:10px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="requestOrderNotificationEmailChange()">${ic('send',13)} ${RESTAURANT.orderNotificationEmailVerified ? 'Changer l’adresse' : 'Définir l’adresse'}</button>
+        ${RESTAURANT.orderNotificationEmailPending ? `<button class="btn btn-outline btn-sm" onclick="verifyOrderNotificationEmail()">${ic('check',13)} Vérifier le code</button>` : ''}
+      </div>
+      ${RESTAURANT.orderNotificationEmailPending ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
+        <label class="field-label">Code de vérification à 8 chiffres</label>
+        <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:.22em;text-align:center;font-weight:800;font-size:18px;max-width:240px;">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Nous avons envoyé ce code à <strong>${RESTAURANT.orderNotificationEmailPending}</strong>.</p>
+      </div>` : ''}
+    </div>
+
+    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
     </div>`;
@@ -7138,6 +7171,35 @@ function settingsBodyHtml(){
   }
 
   return '';
+}
+
+async function requestOrderNotificationEmailChange(){
+  if(!RESTAURANT.id) return;
+  const input = document.getElementById('orderNotifyEmail');
+  const email = (input?.value || '').trim().toLowerCase();
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
+    body:{ action:'request', restaurant_id:RESTAURANT.id, email }
+  });
+  if(error || data?.error){ toast(data?.error || error?.message || 'Impossible d’envoyer le code.'); return; }
+  RESTAURANT.orderNotificationEmailPending = email;
+  renderDashSection('settings');
+  toast('Code envoyé. Vérifiez cette adresse e-mail.');
+}
+
+async function verifyOrderNotificationEmail(){
+  if(!RESTAURANT.id || !RESTAURANT.orderNotificationEmailPending) return;
+  const code = (document.getElementById('orderNotifyCode')?.value || '').replace(/\D/g,'').slice(0,8);
+  if(code.length !== 8){ toast('Entrez le code à 8 chiffres.'); return; }
+  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
+    body:{ action:'verify', restaurant_id:RESTAURANT.id, code }
+  });
+  if(error || data?.error){ toast(data?.error || error?.message || 'Code incorrect ou expiré.'); return; }
+  RESTAURANT.orderNotificationEmail = RESTAURANT.orderNotificationEmailPending;
+  RESTAURANT.orderNotificationEmailVerified = true;
+  RESTAURANT.orderNotificationEmailPending = '';
+  renderDashSection('settings');
+  toast('Adresse de réception vérifiée.');
 }
 
 async function saveSettings(){
