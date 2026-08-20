@@ -211,6 +211,67 @@ body.storefront-active .gnav{ display:none; }
   .tg-classic .product-img-wrapper{height:120px !important;}
 }
 </style>
+
+<style id="mobile-polish-v3">
+/* Mobile public-site navigation: no clipped labels, full visible drawer. */
+@media (max-width: 768px){
+  .tg-classic .mobile-menu{
+    left:0 !important;
+    width:min(88vw,360px) !important;
+    max-width:none !important;
+    padding:20px 18px 24px !important;
+    transform:translateX(-105%);
+    box-sizing:border-box !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  .tg-classic .mobile-menu.open{
+    transform:translateX(0) !important;
+  }
+  .tg-classic .mobile-menu-header{
+    min-height:52px;
+    padding-bottom:14px !important;
+  }
+  .tg-classic .mobile-nav-links{
+    gap:14px !important;
+    padding:0 2px !important;
+  }
+  .tg-classic .mobile-nav-links li{
+    width:100%;
+  }
+  .tg-classic .mobile-nav-links a{
+    width:100%;
+    min-height:48px;
+    display:flex !important;
+    align-items:center;
+    gap:8px;
+    padding:12px 6px !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.35 !important;
+  }
+  .dashboard-home-return{
+    margin:0 0 16px !important;
+    position:sticky;
+    top:0;
+    z-index:20;
+    padding:6px 0 10px;
+    background:linear-gradient(#0B1220 78%, rgba(11,18,32,0));
+  }
+  #view-dashboard .dashboard-home-return .btn{
+    width:100% !important;
+    min-height:46px !important;
+    justify-content:flex-start !important;
+    padding:0 16px !important;
+    background:#ffffff !important;
+    color:#0F1830 !important;
+    border:1px solid rgba(255,255,255,.18) !important;
+    box-shadow:0 8px 18px rgba(0,0,0,.16);
+    font-weight:700 !important;
+  }
+}
+</style>
 </head>
 <body>
 
@@ -3166,7 +3227,7 @@ const ICON_PATHS = {
   share:'<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><line x1="8.2" y1="10.8" x2="15.8" y2="6.2"/><line x1="8.2" y1="13.2" x2="15.8" y2="17.8"/>',
   layers:'<polygon points="12,3 21,8 12,13 3,8"/><polyline points="3,13.5 12,18.5 21,13.5"/><polyline points="3,18 12,23 21,18"/>',
   save:'<path d="M5 3h11l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 3v6h8V3"/><path d="M7 21v-7h10v7"/>',
-  library:'<path d="M4 3h4v18H4zM10 3h4v18h-4z" fill="none"/><rect x="4" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><path d="M17 4.3l3.4 17.6-4 .8L13 5" />',
+  library:'<rect x="4" y="4" width="12" height="16" rx="2"/><line x1="8" y1="12" x2="12" y2="12"/><line x1="10" y1="10" x2="10" y2="14"/><path d="M18 8v10a2 2 0 01-2 2"/>',
   home:'<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v10a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1V10"/>',
   moreHorizontal:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   rocket:'<path d="M12 2c3 1.5 5 5 5 9 0 2-.7 3.7-1.4 4.8L12 19l-3.6-3.2C7.7 14.7 7 13 7 11c0-4 2-7.5 5-9z"/><circle cx="12" cy="10" r="1.6"/><path d="M8.5 15.5L6 18M15.5 15.5L18 18M9 19l-1.5 2M15 19l1.5 2"/>',
@@ -3370,14 +3431,14 @@ function periodPickerHtml(){
 
 /* Catalogue vide au départ — un restaurant qui vient d'être créé n'a
    réellement aucun produit tant que le restaurateur n'en ajoute pas,
-   que ce soit manuellement ou depuis la Bibliothèque TerangaResto
+   que ce soit manuellement ou depuis la Plats prédéfinis
    (LIBRARY_ITEMS, plus bas, reste un catalogue de référence à part :
    ce n'est jamais la liste de produits du restaurant lui-même). */
 const PRODUCTS = [];
 
-/* Bibliothèque TerangaResto — importée depuis l'export produits fourni.
+/* Plats prédéfinis — importée depuis l'export produits fourni.
    Ce sont des données de référence en LECTURE SEULE : ajouter un produit
-   depuis la bibliothèque crée une COPIE indépendante dans PRODUCTS ; modifier
+   depuis les plats prédéfinis crée une COPIE indépendante dans PRODUCTS ; modifier
    ou supprimer cette copie ne touche jamais aux entrées ci-dessous. */
 const LIBRARY_ITEMS = [
   {name:'amberger',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/435f51ca-e0be-4464-b3b4-38f2b7a10e41.jpg?v=1785949962'},
@@ -3934,7 +3995,7 @@ const FEATURES = [
 const STEPS = [
   ['Créez votre restaurant',"Nom, type de restaurant, adresse — la base de votre espace en une minute."],
   ['Personnalisez votre menu',"Choisissez un thème, vos couleurs, votre logo et votre couverture."],
-  ['Ajoutez vos produits',"Depuis zéro ou depuis la bibliothèque TerangaResto, en quelques clics."],
+  ['Ajoutez vos produits',"Depuis zéro ou depuis les plats prédéfinis, en quelques clics."],
   ['Configurez vos paiements',"Wave, Orange Money, espèces ou carte — activez ce que vous acceptez."],
   ['Recevez votre QR Code',"Généré automatiquement, prêt à imprimer et à poser sur vos tables."],
   ['Partagez votre site',"Votre lien public est prêt à être diffusé à vos clients."],
@@ -5867,7 +5928,7 @@ function dashProducts(){
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
     <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
-      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('library',15)} Bibliothèque TerangaResto</button>
+      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('plus',15)} Plats prédéfinis</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
     </div>
   </div>
@@ -5889,9 +5950,9 @@ function productsListHtml(){
     return `<div class="empty-state">
       ${ic('utensils',28,{stroke:'var(--amber-deep)'})}
       <p style="margin-top:10px;font-size:14px;font-weight:600;">Aucun produit pour le moment</p>
-      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis la bibliothèque TerangaResto ou créez-en un vous-même.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis les plats prédéfinis ou créez-en un vous-même.</p>
       <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('library',14)} Ajouter depuis la bibliothèque</button>
+        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('plus',14)} Ajouter depuis les plats prédéfinis</button>
         <button class="btn btn-outline btn-sm" onclick="openProductForm()">${ic('plus',14)} Créer un produit</button>
       </div>
     </div>`;
@@ -6049,7 +6110,7 @@ function openLibrary(){
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeLibrary()"></div>
     <div class="card" style="position:relative;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;">
       <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
-        <div><h2 class="font-display" style="font-size:17px;">Bibliothèque TerangaResto</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
+        <div><h2 class="font-display" style="font-size:17px;">Plats prédéfinis</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
         <button onclick="closeLibrary()">${ic('x',17)}</button>
       </div>
       <div style="padding:12px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
@@ -6715,7 +6776,7 @@ function dashLibrary(){
   return `
   <div class="lib-header">
     <div>
-      <h1 class="font-display" style="font-size:22px;">Bibliothèque</h1>
+      <h1 class="font-display" style="font-size:22px;">Plats prédéfinis</h1>
       <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${RESTO_NAME}</span>.</p>
     </div>
     <button class="btn btn-secondary btn-sm lib-add-btn" onclick="toast('Sélecteur de fichiers (démo)')">${ic('upload',14)}<span>Ajouter des images</span></button>
@@ -6768,7 +6829,7 @@ function libraryCardsHtml(){
     });
   }
 
-  if(cards.length===0) return `<div class="empty-state">${ic('library',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune ressource dans cette catégorie.</p></div>`;
+  if(cards.length===0) return `<div class="empty-state">${ic('plus',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun plat prédéfini dans cette catégorie.</p></div>`;
   return cards.join('');
 }
 
