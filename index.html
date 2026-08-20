@@ -2656,6 +2656,18 @@ async function restoreSession(){
       return;
     }
 
+    const pendingOtp = loadPendingOnboarding();
+    if(pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
+      Object.assign(obState, pendingOtp);
+      otpPendingEmail = pendingOtp.pendingEmail;
+      otpPendingName = pendingOtp.accountName || '';
+      otpPendingSource = 'onboarding';
+      hideRestoSplash(); hideAuthCheckSplash();
+      setView('onboarding');
+      renderOnboardingOtpScreen();
+      return;
+    }
+
     // Ici, rid est confirmé null : soit aucune session, soit une session
     // qui ne correspond plus à un restaurant réel. AVANT de conclure
     // "aucune session utile", on vérifie s'il s'agit en réalité d'une
@@ -2874,36 +2886,94 @@ async function submitLogin(){
 
 async function submitSignup(){
   const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
+  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
   const pw = document.getElementById('signupPassword').value;
   const pw2 = document.getElementById('signupPassword2').value;
   if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
   if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
-  // L'unicité de l'e-mail est vérifiée par Supabase Auth lui-même
-  // (contrainte réelle, persistante entre tous les utilisateurs) —
-  // plus besoin d'une liste en mémoire côté client.
+  setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signUp({
-    email, password: pw, options:{data:{name}},
+    email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
   });
+  setLoginVerifying(false);
   if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
   if(!data.session){
-    // Le projet Supabase exige une confirmation par e-mail avant que la
-    // session ne soit active — on informe la personne au lieu de la
-    // laisser bloquée sur un formulaire qui semble n'avoir rien fait.
-    closeLogin();
-    toast('Compte créé — vérifiez votre e-mail pour confirmer votre adresse, puis connectez-vous.');
+    otpPendingEmail=email;
+    otpPendingName=name;
+    otpPendingSource='signupModal';
+    Object.assign(obState,{step:0,accountName:name,accountEmail:email,accountPassword:pw,emailConfirmationPending:true,pendingEmail:email});
+    savePendingOnboarding();
+    renderSignupOtpScreen();
     return;
   }
-  currentUser = data.user;
+  currentUser=data.user;
   closeLogin();
   startOnboarding();
-  obState.accountName = name;
-  obState.accountEmail = email;
+  obState.accountName=name;
+  obState.accountEmail=email;
+  obState.accountPassword=pw;
   renderOnboarding();
   toast('Compte créé — continuons avec votre restaurant.');
 }
+
+function startOtpResendCountdown(seconds=60){
+  otpResendTimer=seconds;
+  if(otpResendInterval) clearInterval(otpResendInterval);
+  const tick=()=>{
+    const el=document.getElementById('otpResendBtn');
+    if(el) el.textContent=otpResendTimer>0 ? `Renvoyer le code (${otpResendTimer}s)` : 'Renvoyer le code';
+    if(otpResendTimer<=0){clearInterval(otpResendInterval);otpResendInterval=null;}
+    otpResendTimer--;
+  };
+  tick();
+  otpResendInterval=setInterval(tick,1000);
+}
+
+function renderOtpCard(targetId,mode){
+  const target=document.getElementById(targetId); if(!target) return;
+  const email=escapeAttr(otpPendingEmail);
+  const title=mode==='modal'?'Vérifiez votre adresse e-mail':'Confirmez votre adresse e-mail';
+  target.innerHTML=`
+    <div class="text-center" style="padding:20px 8px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',38)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">${title}</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Nous avons envoyé un code à 6 chiffres à <strong>${email}</strong>.</p>
+      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 18px;">Entrez le code reçu pour confirmer votre compte. Aucun lien à ouvrir.</p>
+      <input id="signupOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" style="text-align:center;letter-spacing:.38em;font-size:26px;font-weight:800;max-width:260px;margin:0 auto 14px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6)">
+      <button id="verifySignupOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifySignupOtp()">Vérifier le code</button>
+      <button id="otpResendBtn" class="btn btn-outline w-full" style="margin-top:10px;" onclick="resendSignupOtp()">Renvoyer le code</button>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="changeOtpEmail()">Utiliser une autre adresse e-mail</button>
+    </div>`;
+  hydrateIcons(target);
+  startOtpResendCountdown(60);
+  setTimeout(()=>document.getElementById('signupOtpInput')?.focus(),50);
+}
+function renderSignupOtpScreen(){ renderOtpCard('loginTabBody','modal'); }
+function renderOnboardingOtpScreen(){ obState.emailConfirmationPending=true; obState.pendingEmail=otpPendingEmail||obState.pendingEmail||obState.accountEmail; savePendingOnboarding(); renderOtpCard('obCard','onboarding'); }
+async function verifySignupOtp(){
+  const token=(document.getElementById('signupOtpInput')?.value||'').trim();
+  if(!/^\d{6}$/.test(token)){toast('Entrez le code à 6 chiffres reçu par e-mail.');return;}
+  const btn=document.getElementById('verifySignupOtpBtn'); if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
+  const {data,error}=await supabaseClient.auth.verifyOtp({email:otpPendingEmail,token,type:'email'});
+  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(error.message||'Code invalide ou expiré.');return;}
+  currentUser=data.user||null;
+  obState.emailConfirmationPending=false; obState.pendingEmail=otpPendingEmail; obState.accountEmail=otpPendingEmail; obState.accountName=otpPendingName||obState.accountName; clearPendingOnboarding();
+  if(otpPendingSource==='signupModal'){
+    closeLogin(); startOnboarding(); obState.accountName=otpPendingName; obState.accountEmail=otpPendingEmail; obState.accountPassword=''; toast(ic('checkCircle',15)+' E-mail vérifié — vous pouvez créer votre restaurant.',true);
+  }else{
+    obState.step=Math.max(1,Number(obState.step)||1); hideAuthCheckSplash(); setView('onboarding'); renderOnboarding(); toast(ic('checkCircle',15)+' E-mail vérifié — poursuivons la création de votre restaurant.',true);
+  }
+  otpPendingEmail=''; otpPendingName='';
+}
+async function resendSignupOtp(){
+  if(otpResendTimer>0){toast(`Veuillez attendre ${otpResendTimer} seconde(s) avant de renvoyer le code.`);return;}
+  const {error}=await supabaseClient.auth.resend({type:'signup',email:otpPendingEmail,options:{emailRedirectTo:getPublicSiteOrigin()}});
+  if(error){toast('Impossible de renvoyer le code : '+error.message);return;}
+  toast('Nouveau code envoyé.'); startOtpResendCountdown(60);
+}
+function changeOtpEmail(){clearPendingOnboarding();otpPendingEmail='';otpPendingName='';if(otpPendingSource==='signupModal')setLoginTab('signup');else{obState.emailConfirmationPending=false;obState.pendingEmail='';renderOnboarding();}}
 
 async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
@@ -3993,6 +4063,11 @@ const obState = {
    jamais redemander quoi que ce soit à la personne. */
 const PENDING_ONBOARDING_KEY = 'tg_pending_onboarding';
 let resumingOnboarding = false;
+let otpPendingEmail = '';
+let otpPendingName = '';
+let otpPendingSource = 'onboarding';
+let otpResendTimer = 0;
+let otpResendInterval = null;
 function savePendingOnboarding(){
   try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
 }
@@ -4089,58 +4164,15 @@ async function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
   if(o.step===0 && !currentUser){
-    // Compte pas encore créé (arrivée directe sur l'onboarding, sans
-    // passer par le formulaire d'inscription de la modale) — on le crée
-    // maintenant, réellement, dans Supabase Auth.
     if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
-    // signUp() est un vrai appel réseau vers Supabase — son temps de
-    // réponse n'est jamais artificiel et ne peut pas être supprimé par
-    // ce code. Ce qui EST corrigé ici : auparavant, le bouton ne
-    // donnait AUCUN signe de vie pendant cet appel (aucun changement
-    // visuel du tout), ce qui faisait paraître un délai réseau normal
-    // comme un blocage. Un retour visuel immédiat, dès le clic,
-    // règle ce problème de perception sans rien accélérer
-    // artificiellement.
     setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
-    const {data, error} = await supabaseClient.auth.signUp({
-      email:o.accountEmail.trim(), password:o.accountPassword, options:{
-        data:{name:o.accountName.trim()},
-        // CORRECTION DU LIEN "localhost" : sans ce paramètre, Supabase
-        // utilise l'URL "Site URL" configurée dans le tableau de bord
-        // du projet — qui reste très souvent une valeur de
-        // développement (localhost) tant que personne ne l'a changée
-        // manuellement. En la précisant explicitement ici, avec
-        // l'origine RÉELLE de la page actuellement ouverte (jamais une
-        // valeur codée en dur), le lien de confirmation pointe
-        // toujours vers le bon domaine, en développement comme en
-        // production, sans configuration supplémentaire dans le code.
-        // ATTENTION : Supabase n'autorise que les URLs explicitement
-        // ajoutées à la liste "Redirect URLs" (Authentication → URL
-        // Configuration) — voir le rapport final pour l'action
-        // nécessaire de votre côté.
-        emailRedirectTo: getPublicSiteOrigin(),
-      },
-    });
-    setLoginVerifying(false, 'obNextBtn');
-    if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
-    if(!data.session){
-      // Confirmation e-mail exigée par la configuration du projet —
-      // AUCUNE session tant que le lien n'est pas cliqué. Mais rien
-      // n'empêche de continuer le parcours pour autant : les étapes
-      // suivantes ne font QUE remplir obState localement, aucune
-      // n'écrit encore dans Supabase avant la toute dernière ("Créer
-      // mon restaurant"/paiement). On mémorise donc simplement que la
-      // confirmation reste en attente, et on sauvegarde une copie de
-      // tout ce qui a déjà été saisi pour pouvoir le retrouver
-      // automatiquement une fois l'e-mail confirmé — jamais besoin de
-      // tout ressaisir, jamais de reconnexion manuelle demandée ici.
-      o.emailConfirmationPending = true;
-      o.pendingEmail = o.accountEmail.trim();
-      savePendingOnboarding();
-    } else {
-      currentUser = data.user;
-      o.emailConfirmationPending = false;
-    }
+    const email=o.accountEmail.trim().toLowerCase();
+    const name=o.accountName.trim();
+    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
+    setLoginVerifying(false,'obNextBtn');
+    if(error){toast(error.message||'Impossible de créer ce compte.');return;}
+    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
+    currentUser=data.user; o.emailConfirmationPending=false;
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
   if(o.step===1){
@@ -4314,22 +4346,16 @@ async function createRestaurantFromOnboarding(){
    retrouve automatiquement et termine la création sans rien
    redemander. */
 function renderOnboardingEmailPendingScreen(){
-  document.getElementById('obCard').innerHTML = `
-    <div class="text-center" style="padding:20px 10px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',36)}</div>
-      <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Confirmez votre e-mail</h2>
-      <p style="font-size:13px;color:var(--ink-soft);max-width:360px;margin:0 auto 6px;">Nous avons envoyé un lien de confirmation à <strong>${escapeAttr(obState.pendingEmail)}</strong>.</p>
-      <p style="font-size:12.5px;color:var(--ink-faint);max-width:360px;margin:0 auto 20px;">Toutes vos informations sont déjà enregistrées — dès que vous cliquez sur le lien reçu, votre restaurant ${escapeAttr(obState.restoName)||''} est créé automatiquement et vous arrivez directement dans votre tableau de bord. Aucune reconnexion manuelle n'est nécessaire.</p>
-      <button class="btn btn-outline" onclick="resendOnboardingConfirmationEmail()">${ic('refreshCw',14)} Renvoyer l'e-mail</button>
-    </div>`;
-  hydrateIcons(document.getElementById('obCard'));
+  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
+  otpPendingName=obState.accountName||'';
+  otpPendingSource='onboarding';
+  renderOnboardingOtpScreen();
 }
 async function resendOnboardingConfirmationEmail(){
-  const {error} = await supabaseClient.auth.resend({
-    type:'signup', email: obState.pendingEmail,
-    options:{ emailRedirectTo: getPublicSiteOrigin() },
-  });
-  toast(error ? ("Impossible de renvoyer l'e-mail : " + error.message) : "E-mail de confirmation renvoyé.");
+  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
+  otpPendingName=obState.accountName||'';
+  otpPendingSource='onboarding';
+  return resendSignupOtp();
 }
 /* Échappement minimal pour du texte inséré dans un attribut/contenu
    HTML généré ici — évite qu'un nom de restaurant ou un e-mail
