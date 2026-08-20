@@ -2716,8 +2716,35 @@ function renderStorefrontGateOverlay(){
 }
 
 async function loadRestaurantBySlug(slug){
-  const {data} = await supabaseClient.from('restaurants').select('id').eq('slug', slug).maybeSingle();
-  if(data){ await loadRestaurantIntoState(data.id); return true; }
+  // Cette requête existe déjà pour identifier le restaurant.
+  // On récupère simplement aussi son logo et son nom pour que l'écran
+  // de chargement puisse afficher son identité immédiatement, sans
+  // ajouter une requête réseau supplémentaire.
+  const {data} = await supabaseClient
+    .from('restaurants')
+    .select('id,name,logo_data_url,hero_subtitle')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if(data){
+    // Alimente immédiatement l'écran de chargement avec les données
+    // légères déjà reçues, pendant que le chargement complet continue.
+    RESTAURANT.id = data.id;
+    RESTAURANT.name = data.name || '';
+    RESTAURANT.logoDataUrl = data.logo_data_url || '';
+    RESTAURANT.heroSubtitle = data.hero_subtitle || '';
+
+    if(typeof applyRestaurantName === 'function') applyRestaurantName(RESTAURANT.name);
+    if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+    if(typeof populateRestoSplash === 'function') populateRestoSplash();
+    restoSplashProgress(55);
+
+    await loadRestaurantIntoState(data.id);
+    // Réaffiche le vrai logo si la fiche complète fournit une version
+    // différente après son chargement.
+    if(typeof populateRestoSplash === 'function') populateRestoSplash();
+    return true;
+  }
   return false;
 }
 
@@ -2903,7 +2930,9 @@ function populateRestoSplash(){
   const sloganEl = document.getElementById('restoSplashSlogan');
   if(!logoEl) return;
   if(RESTAURANT.logoDataUrl){
-    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" alt="${(RESTO_NAME||'Restaurant').replace(/"/g,'&quot;')}" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+    logoEl.style.opacity = '1';
+    logoEl.style.transform = 'none';
   } else {
     // Pas de logo enregistré : la première lettre du nom plutôt qu'une
     // image cassée ou un logo générique imposé.
