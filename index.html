@@ -724,7 +724,7 @@ body.storefront-active .gnav{ display:none; }
           </div>
         </div>
         <div class="flex items-center gap-2" style="flex-shrink:0;">
-          <button id="quickAddBtn" class="btn btn-secondary btn-sm" onclick="setDashSection('products');openProductForm();" style="display:none;">
+          <button id="quickAddBtn" class="btn btn-secondary btn-sm" onclick="setDashSection('products');openProductForm();" style="display:none !important;">
             <span data-icon="plus" data-size="14"></span><span class="hide-sm">Produit</span>
           </button>
           <button class="icon-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
@@ -809,11 +809,13 @@ body.storefront-active .gnav{ display:none; }
 .more-tile{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 6px; border-radius:16px; background:var(--cream); font-size:11px; font-weight:600; color:var(--ink-soft); text-align:center; }
 .more-tile.locked{ opacity:.55; }
 
+.mobile-add-product-card{width:100%;}
 @media (max-width: 900px){
+  .mobile-add-product-card{display:flex;min-height:62px;}
   #dashSidebar{ display:none !important; }
   #mobileBottomNav.active-grid{ display:grid; }
   #dashContent{ padding-bottom:96px !important; }
-  #quickAddBtn .hide-sm{ display:none; }
+  #quickAddBtn, #quickAddBtn .hide-sm{ display:none !important; }
   .dash-topbar{ padding:12px 14px; }
   .mobile-tablet-only{ display:flex !important; }
 }
@@ -5556,6 +5558,23 @@ function dashOverview(){
         <span class="font-tabular pill pill-neutral" style="font-size:11px;">${qty} vendus</span>
       </div>`).join('')}
     </div>
+  </div>
+
+  <!-- Action principale mobile : ajout d’un nouveau produit, volontairement
+       placée juste au-dessus du QR Code sur l’Accueil pour être immédiatement visible. -->
+  <div class="mobile-tablet-only" style="margin-top:18px;">
+    ${canAddProduct() ? `
+      <button onclick="setDashSection('products');openProductForm();" class="card" style="width:100%;padding:17px 18px;border:1.5px solid rgba(232,135,30,.45);background:linear-gradient(135deg,#fff,#fffaf2);color:#0F1830;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;box-shadow:0 10px 24px rgba(232,135,30,.14);border-radius:16px;">
+        <span style="width:40px;height:40px;border-radius:12px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;box-shadow:0 6px 14px rgba(232,135,30,.22);">${ic('plus',20,{stroke:'#fff'})}</span>
+        <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;">Ajouter un nouveau produit</span>
+      </button>` : `
+      <div class="card" style="width:100%;padding:15px 16px;border:1.5px solid rgba(240,101,58,.25);background:#fff9f7;color:#0F1830;display:flex;align-items:center;gap:10px;text-align:left;border-radius:16px;">
+        <span style="width:40px;height:40px;border-radius:12px;background:rgba(240,101,58,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--terracotta);">${ic('lock',18,{stroke:'var(--terracotta)'})}</span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:14px;font-weight:800;">Limite de produits atteinte</span>
+          <span style="display:block;font-size:11.5px;color:#5b4b45;margin-top:2px;">Passez à Starter ou Premium pour ajouter un nouveau produit.</span>
+        </span>
+      </div>`}
   </div>
 
   <!-- QR Code mobile : aperçu directement sur Accueil pour éviter de
