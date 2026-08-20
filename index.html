@@ -163,6 +163,11 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
    bord via le petit bouton flottant dédié, pas depuis cet en-tête). */
 body.storefront-active .gnav{ display:none; }
 </style>
+<style>
+.tg-save-spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;margin-right:5px;animation:tgSaveSpin .55s linear infinite}
+@keyframes tgSaveSpin{to{transform:rotate(360deg)}}
+</style>
+
 
 <style>
 /* ===== OTP 8 chiffres + responsive renforcé ===== */
@@ -2579,36 +2584,103 @@ function notificationBlockedBannerHtml(){
    commise dans Paramètres (nom, horaires, livraison, réseaux sociaux,
    notifications, carte...). Échec silencieux avec toast — la personne
    ne perd jamais sa saisie locale même si le réseau flanche. */
+let restaurantSaveInFlight = null;
+let restaurantSavePending = false;
+let restaurantSaveTimer = null;
+
+function setRestaurantSaveState(state){
+  const btn = document.getElementById('settingsSaveBtn');
+  const status = document.getElementById('settingsSaveStatus');
+  if(btn){
+    btn.disabled = state === 'saving';
+    btn.style.opacity = state === 'saving' ? '.72' : '1';
+    btn.style.pointerEvents = state === 'saving' ? 'none' : '';
+    btn.innerHTML = state === 'saving'
+      ? '<span class="tg-save-spinner" aria-hidden="true"></span> Enregistrement…'
+      : state === 'saved'
+        ? '<span style="font-size:16px;line-height:1">✓</span> Enregistré'
+        : 'Enregistrer';
+  }
+  if(status){
+    status.textContent = state === 'saving' ? 'Enregistrement en cours…'
+      : state === 'saved' ? 'Enregistré et synchronisé avec votre site public.'
+      : state === 'error' ? 'Impossible d’enregistrer pour le moment. Réessayez.' : '';
+    status.style.color = state === 'error' ? 'var(--terracotta)' : 'var(--ink-soft)';
+  }
+}
+
 async function persistRestaurant(){
-  if(!RESTAURANT.id) return;
-  // "slug" et les champs d'abonnement (plan mis à part) sont
-  // volontairement absents de cet appel : ils ne sont plus modifiables
-  // par une simple mise à jour de paramètres — voir "VERROU CRITIQUE"
-  // dans supabase_schema.sql. subscription_status en particulier ne
-  // peut être activé que par le webhook PayTech, jamais depuis ce
-  // fichier ; les transitions légitimes côté client passent par des
-  // fonctions RPC dédiées (cancelSubscription, reactivateSubscription,
-  // syncMySubscriptionExpiry).
-  const {error} = await supabaseClient.from('restaurants').update({
-    name:RESTAURANT.name, type:RESTAURANT.type,
-    logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
-    primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
-    address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
-    hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
-    payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
-    notifications_enabled:RESTAURANT.notificationsEnabled,
-    order_notification_email:RESTAURANT.orderNotificationEmailVerified ? (RESTAURANT.orderNotificationEmail||null) : null,
-    plan:state.plan, is_published:RESTAURANT.isPublished,
-    hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
-  }).eq('id', RESTAURANT.id);
-  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+  if(!RESTAURANT.id) return false;
+
+  // Si une sauvegarde est déjà en cours, on mémorise seulement la dernière
+  // modification. Elle sera envoyée juste après la requête courante.
+  if(restaurantSaveInFlight){
+    restaurantSavePending = true;
+    return restaurantSaveInFlight;
+  }
+
+  setRestaurantSaveState('saving');
+  restaurantSaveInFlight = (async()=>{
+    // IMPORTANT : ne transmettre que les colonnes autorisées par le schéma
+    // Supabase. Les champs d'e-mail de notification et les champs hero sont
+    // gérés par leurs mécanismes dédiés / le patch SQL associé.
+    const payload = {
+      name:RESTAURANT.name, type:RESTAURANT.type,
+      logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
+      primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
+      address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
+      hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
+      payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
+      notifications_enabled:RESTAURANT.notificationsEnabled,
+      plan:state.plan, is_published:RESTAURANT.isPublished,
+      hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
+    };
+
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .update(payload)
+      .eq('id', RESTAURANT.id)
+      .select('id')
+      .maybeSingle();
+
+    if(error || !data){
+      console.error('TerangaResto — sauvegarde Supabase:', error);
+      setRestaurantSaveState('error');
+      return false;
+    }
+
+    setRestaurantSaveState('saved');
+    setTimeout(()=>{
+      if(!restaurantSaveInFlight) setRestaurantSaveState('');
+    },2200);
+    return true;
+  })();
+
+  try{
+    return await restaurantSaveInFlight;
+  }finally{
+    restaurantSaveInFlight = null;
+    if(restaurantSavePending){
+      restaurantSavePending = false;
+      // Une seule nouvelle écriture pour absorber plusieurs changements
+      // rapprochés (notamment les horaires).
+      clearTimeout(restaurantSaveTimer);
+      restaurantSaveTimer = setTimeout(()=>persistRestaurant(),120);
+    }
+  }
 }
 
 async function togglePublish(){
+  const previous = RESTAURANT.isPublished;
   RESTAURANT.isPublished = !RESTAURANT.isPublished;
   renderDashSection('settings');
-  await persistRestaurant();
-  toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  const saved = await persistRestaurant();
+  if(saved){
+    toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  }else{
+    RESTAURANT.isPublished = previous;
+    renderDashSection('settings');
+  }
 }
 function copyPublicSiteLink(){
   const link = publicRestaurantUrl(RESTAURANT.slug);
@@ -6132,7 +6204,7 @@ async function toggleCategoryHomeVisibility(key){
   const {error} = await supabaseClient.from('categories')
     .update({visible_on_home: catsHomeVisible[key]})
     .eq('restaurant_id', RESTAURANT.id).eq('key', key);
-  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+  if(error){ console.error('TerangaResto — catégorie non enregistrée:', error); toast('Impossible d’enregistrer cette modification pour le moment.'); }
 }
 
 /* ---------------- PRODUITS (gestion centrale du catalogue) ---------------- */
@@ -7176,7 +7248,7 @@ function dashSettings(){
     ${['Général','Horaires','Livraison','Réseaux & carte'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
-  <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="saveSettings()">${ic('save',16)} Enregistrer</button>`;
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
 }
 
 function settingsBodyHtml(){
@@ -7402,8 +7474,8 @@ async function saveSettings(){
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
-  await persistRestaurant();
-  toast('Modifications enregistrées — visibles sur votre site public.');
+  const saved = await persistRestaurant();
+  if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
 }
 function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
