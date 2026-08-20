@@ -3078,7 +3078,7 @@ const ICON_PATHS = {
   share:'<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><line x1="8.2" y1="10.8" x2="15.8" y2="6.2"/><line x1="8.2" y1="13.2" x2="15.8" y2="17.8"/>',
   layers:'<polygon points="12,3 21,8 12,13 3,8"/><polyline points="3,13.5 12,18.5 21,13.5"/><polyline points="3,18 12,23 21,18"/>',
   save:'<path d="M5 3h11l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 3v6h8V3"/><path d="M7 21v-7h10v7"/>',
-  library:'<path d="M4 3h4v18H4zM10 3h4v18h-4z" fill="none"/><rect x="4" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><path d="M17 4.3l3.4 17.6-4 .8L13 5" />',
+  library:'<path d="M6 8h12l1 12.5a1.5 1.5 0 01-1.5 1.5H6.5A1.5 1.5 0 015 20.5L6 8z"/><path d="M9 8V6.5a3 3 0 016 0V8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/>,
   home:'<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v10a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1V10"/>',
   moreHorizontal:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   rocket:'<path d="M12 2c3 1.5 5 5 5 9 0 2-.7 3.7-1.4 4.8L12 19l-3.6-3.2C7.7 14.7 7 13 7 11c0-4 2-7.5 5-9z"/><circle cx="12" cy="10" r="1.6"/><path d="M8.5 15.5L6 18M15.5 15.5L18 18M9 19l-1.5 2M15 19l1.5 2"/>',
@@ -3282,12 +3282,12 @@ function periodPickerHtml(){
 
 /* Catalogue vide au départ — un restaurant qui vient d'être créé n'a
    réellement aucun produit tant que le restaurateur n'en ajoute pas,
-   que ce soit manuellement ou depuis la Bibliothèque TerangaResto
+   que ce soit manuellement ou depuis la Catalogue prédéfini
    (LIBRARY_ITEMS, plus bas, reste un catalogue de référence à part :
    ce n'est jamais la liste de produits du restaurant lui-même). */
 const PRODUCTS = [];
 
-/* Bibliothèque TerangaResto — importée depuis l'export produits fourni.
+/* Catalogue prédéfini — importée depuis l'export produits fourni.
    Ce sont des données de référence en LECTURE SEULE : ajouter un produit
    depuis la bibliothèque crée une COPIE indépendante dans PRODUCTS ; modifier
    ou supprimer cette copie ne touche jamais aux entrées ci-dessous. */
@@ -5783,7 +5783,7 @@ function dashProducts(){
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
     <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
-      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('library',15)} Bibliothèque TerangaResto</button>
+      <button class="btn btn-outline btn-sm" onclick="openLibrary()" style="background:#fff;color:var(--ink);border-color:rgba(43,24,16,.18);">${ic('library',15)} Catalogue prédéfini</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
     </div>
   </div>
@@ -5965,7 +5965,7 @@ function openLibrary(){
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeLibrary()"></div>
     <div class="card" style="position:relative;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;">
       <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
-        <div><h2 class="font-display" style="font-size:17px;">Bibliothèque TerangaResto</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
+        <div><h2 class="font-display" style="font-size:17px;">Catalogue prédéfini</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
         <button onclick="closeLibrary()">${ic('x',17)}</button>
       </div>
       <div style="padding:12px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
