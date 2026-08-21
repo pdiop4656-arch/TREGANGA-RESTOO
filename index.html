@@ -2044,9 +2044,6 @@ async function loadRestaurantCore(restaurantId){
   // defaultSocial() renvoient toujours un objet neuf, jamais partagé.
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  if(!Array.isArray(RESTAURANT.delivery.zones) || RESTAURANT.delivery.zones.length===0){
-    RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
-  }
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
@@ -2402,7 +2399,7 @@ function renderOrderTrackingDetail(row, phone){
   body.innerHTML = `
     <div class="text-center" style="margin-bottom:18px;">
       <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
-      <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${escapeHtml(RESTO_NAME)}</p>
+      <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${RESTO_NAME}</p>
     </div>
     ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;">${ic('x',22,{stroke:'var(--terracotta)'})}<p style="font-size:13px;color:var(--terracotta);margin-top:6px;">Cette commande a été annulée.</p></div>` : `
     <!-- Progression VERTICALE : icône + titre + description par étape,
@@ -2472,7 +2469,7 @@ function closeReviewModal(){ document.getElementById('reviewOverlay').classList.
 function setReviewRating(n){ reviewRating = n; renderReviewModal(); }
 function renderReviewModal(){
   document.getElementById('reviewBody').innerHTML = `
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> ?</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${RESTO_NAME}</span> ?</p>
     <div class="flex items-center justify-center gap-2" style="margin-bottom:18px;">
       ${[1,2,3,4,5].map(n=>`<button onclick="setReviewRating(${n})" style="padding:2px;">${ic('star',30,{fill: n<=reviewRating?'var(--amber)':'none', stroke: n<=reviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}
     </div>
@@ -2505,7 +2502,7 @@ async function submitReview(){
   });
 
   if(error){
-    toast("Votre avis n'a pas pu être enregistré : " + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+    toast("Votre avis n'a pas pu être enregistré : " + error.message);
     if(btn){ btn.disabled = false; btn.textContent = 'Envoyer mon avis'; }
     return;
   }
@@ -2721,7 +2718,7 @@ function copyPublicSiteLink(){
    update. Après un insert, l'id local ('p_...') est remplacé par le
    vrai id Supabase pour que les futures opérations le retrouvent. */
 async function persistProduct(p){
-  if(!RESTAURANT.id) return false;
+  if(!RESTAURANT.id) return;
   const payload = {
     restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
     prep:p.prep, active:p.active, available:p.available, photo:p.photo,
@@ -2730,18 +2727,17 @@ async function persistProduct(p){
   const isNew = !p.id || String(p.id).startsWith('p_');
   if(isNew){
     const {data, error} = await supabaseClient.from('products').insert(payload).select().single();
-    if(error){ toast('Produit non enregistré dans Supabase : ' + supabaseErrorFr(error,'Le produit n’a pas pu être enregistré.')); return false; }
+    if(error){ toast('Produit non enregistré dans Supabase : ' + error.message); return; }
     p.id = data.id;
   } else {
     const {error} = await supabaseClient.from('products').update(payload).eq('id', p.id);
-    if(error){ toast('Produit non mis à jour dans Supabase : ' + supabaseErrorFr(error,'Le produit n’a pas pu être mis à jour.')); return false; }
+    if(error) toast('Produit non mis à jour dans Supabase : ' + error.message);
   }
-  return true;
 }
 async function deleteProductRow(id){
   if(!RESTAURANT.id || String(id).startsWith('p_')) return;
   const {error} = await supabaseClient.from('products').delete().eq('id', id);
-  if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
 }
 
 /* Personnel — reflète chaque action de la section "Personnel" dans la
@@ -2753,7 +2749,7 @@ async function persistStaffInsert(s){
     permissions:s.permissions, status:s.status, code:s.code,
     invited_at:new Date(s.createdAt).toISOString(), expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
   }).select().single();
-  if(error){ toast('Invitation non enregistrée dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
+  if(error){ toast('Invitation non enregistrée dans Supabase : ' + error.message); return; }
   s.id = data.id;
 }
 async function persistStaffUpdate(s){
@@ -2762,12 +2758,12 @@ async function persistStaffUpdate(s){
     name:s.name, role:s.role, permissions:s.permissions, status:s.status,
     code:s.code, expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
   }).eq('id', s.id);
-  if(error) toast('Personnel non mis à jour dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+  if(error) toast('Personnel non mis à jour dans Supabase : ' + error.message);
 }
 async function deleteStaffRow(id){
   if(!RESTAURANT.id || !id) return;
   const {error} = await supabaseClient.from('staff').delete().eq('id', id);
-  if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
 }
 
 /* La création de commande passe désormais exclusivement par la RPC
@@ -2780,7 +2776,7 @@ async function persistOrderUpdate(o){
   const {error} = await supabaseClient.from('orders').update({
     status:o.status, pay_status:o.payStatus,
   }).eq('id', o.id);
-  if(error) toast('Commande non mise à jour dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+  if(error) toast('Commande non mise à jour dans Supabase : ' + error.message);
 }
 
 /* Charge un restaurant précis par son identifiant public (slug) —
@@ -2893,9 +2889,6 @@ async function loadRestaurantPublicFast(restaurantId){
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  if(!Array.isArray(RESTAURANT.delivery.zones) || RESTAURANT.delivery.zones.length===0){
-    RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
-  }
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
@@ -3257,7 +3250,7 @@ async function submitLogin(){
   // avant setView('dashboard'), jamais avant.
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
+  if(error){ setLoginVerifying(false); toast(error.message || 'Connexion impossible.'); return; }
   currentUser = data.user;
   simulatedRole = null;
   const rid = await findMyRestaurantId(data.user.id);
@@ -3287,15 +3280,14 @@ async function submitSignup(){
   const pw2 = document.getElementById('signupPassword2').value;
   if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
-  const pwValidation = validateStrongPassword(pw);
-  if(pwValidation){ toast(pwValidation); return; }
+  if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signUp({
     email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
   });
   setLoginVerifying(false);
-  if(error){ toast(supabaseErrorFr(error, 'Impossible de créer ce compte.')); return; }
+  if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
   if(!data.session){
     otpPendingEmail=email;
     otpPendingName=name;
@@ -3354,7 +3346,7 @@ async function verifySignupOtp(){
   if(!/^\d{8}$/.test(token)){toast('Entrez le code à 8 chiffres reçu par e-mail.');return;}
   const btn=document.getElementById('verifySignupOtpBtn'); if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
   const {data,error}=await supabaseClient.auth.verifyOtp({email:otpPendingEmail,token,type:'email'});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(supabaseErrorFr(error,'Code invalide ou expiré.'));return;}
+  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(error.message||'Code invalide ou expiré.');return;}
   currentUser=data.user||null;
   obState.emailConfirmationPending=false; obState.pendingEmail=otpPendingEmail; obState.accountEmail=otpPendingEmail; obState.accountName=otpPendingName||obState.accountName; clearPendingOnboarding();
   if(otpPendingSource==='signupModal'){
@@ -3367,7 +3359,7 @@ async function verifySignupOtp(){
 async function resendSignupOtp(){
   if(otpResendTimer>0){toast(`Veuillez attendre ${otpResendTimer} seconde(s) avant de renvoyer le code.`);return;}
   const {error}=await supabaseClient.auth.resend({type:'signup',email:otpPendingEmail,options:{emailRedirectTo:getPublicSiteOrigin()}});
-  if(error){toast(supabaseErrorFr(error,'Impossible de renvoyer le code.'));return;}
+  if(error){toast('Impossible de renvoyer le code : '+error.message);return;}
   toast('Nouveau code envoyé.'); startOtpResendCountdown(60);
 }
 function changeOtpEmail(){clearPendingOnboarding();otpPendingEmail='';otpPendingName='';if(otpPendingSource==='signupModal')setLoginTab('signup');else{obState.emailConfirmationPending=false;obState.pendingEmail='';renderOnboarding();}}
@@ -3377,8 +3369,6 @@ async function submitInviteAccept(){
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
   const password = document.getElementById('invitePasswordInput').value;
   if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
-  const invitePwValidation = validateStrongPassword(password);
-  if(invitePwValidation){ toast(invitePwValidation); return; }
 
   setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
 
@@ -3396,7 +3386,7 @@ async function submitInviteAccept(){
   let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
   if(signErr){
     const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant.')); return; }
+    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
     signData = inData;
   }
   currentUser = signData.user;
@@ -3408,7 +3398,7 @@ async function submitInviteAccept(){
   // jamais les permissions par défaut d'un autre rôle.
   const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
   const accepted = (acceptRows && acceptRows[0]) || match;
-  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de finaliser l’acceptation : ' + supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.')); return; }
+  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
 
   // CORRECTION DE LA MÊME RÉGRESSION QUE submitLogin() : closeLogin()
   // se déclenchait ici AVANT loadRestaurantCore() (asynchrone) — la
@@ -3851,7 +3841,7 @@ const DAY_LABELS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi',
 function productThumb(p,size){
   size = size||44;
   if(p.photo){
-    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;"></span>`;
   }
   return icBadge(CAT_ICON[p.cat]||'utensils', {size, bg:'var(--cream-deep)', color:'var(--amber-deep)', round:false});
 }
@@ -3874,7 +3864,6 @@ function defaultDelivery(){
       own:{enabled:true, allowCashOnDelivery:true},
       express:{enabled:false, fee:1500},
     },
-    zones:[{id:'zone-general',name:'Zone générale',fee:1000,enabled:true}],
   };
 }
 function defaultSocial(){
@@ -3997,17 +3986,10 @@ function enabledDeliveryModes(){
   return ['own','express'].filter(k => m[k] && m[k].enabled);
 }
 const DELIVERY_MODE_LABELS = {own:'Livraison du restaurant', express:'Livraison Express'};
-function enabledDeliveryZones(){
-  const zones=Array.isArray(RESTAURANT.delivery.zones)?RESTAURANT.delivery.zones:[];
-  return zones.filter(z=>z && z.enabled!==false && String(z.name||'').trim());
+function deliveryFeeFor(modeKey){
+  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee);
+  return Number(RESTAURANT.delivery.fee);
 }
-function deliveryFeeFor(modeKey, zoneId){
-  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee)||0;
-  const zone=enabledDeliveryZones().find(z=>z.id===zoneId);
-  if(zone) return Math.max(0,Number(zone.fee)||0);
-  return Number(RESTAURANT.delivery.fee)||0;
-}
-function deliveryZoneById(id){ return enabledDeliveryZones().find(z=>z.id===id)||null; }
 function deliveryModeAllowsCashOnDelivery(modeKey){
   if(modeKey==='express') return false; // structurel : un coursier tiers n'encaisse pas pour le restaurant
   return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
@@ -4023,8 +4005,6 @@ const DISCONTINUED_PAYMENT_METHODS = ['card'];
 function availablePaymentMethods(){
   const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
   return enabled.filter(m=>{
-    if(m === 'wave' && !isSafeHttpUrl(state.toggles.wave_link)) return false;
-    if(m === 'orange_money' && !isSafeHttpUrl(state.toggles.orange_money_link)) return false;
     if(m !== 'on_delivery') return true;
     if(state.checkout.orderType !== 'delivery') return false; // "à la livraison" n'a de sens que pour une livraison
     return deliveryModeAllowsCashOnDelivery(state.checkout.deliveryMode);
@@ -4106,7 +4086,7 @@ const state = {
   yearly:false,
   dashSection:'overview',
   checkoutStep:0,
-  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null,deliveryZone:null},
+  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null},
   lastOrder:null,
   toggles:{wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
   plan:'starter', // 'starter' | 'pro' — débloqué uniquement après confirmation de paiement (même simulée en démo)
@@ -4140,7 +4120,7 @@ function renderSidebarLogo(){
   const el = document.getElementById('sbLogoBadge');
   if(!el) return;
   el.innerHTML = RESTAURANT.logoDataUrl
-    ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`
     : ic('chefHat', 17, {stroke:'var(--amber-deep)'});
 }
 
@@ -4198,7 +4178,6 @@ function setView(view){
   document.body.classList.toggle('storefront-active', view==='storefront');
   document.body.classList.toggle('dashboard-active', view==='dashboard' && !!viewerIsStaff);
   document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
-  if(typeof updateRestaurantSeo==='function') updateRestaurantSeo();
   if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
@@ -4229,86 +4208,64 @@ function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElemen
    qu'elle a bien eu lieu. */
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
-let passwordRecoveryEmail = '';
 async function sendPasswordReset(){
-  const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
+  const email = document.getElementById('loginEmail').value.trim();
   if(!email || !/^\S+@\S+\.\S+$/.test(email)){
-    toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».');
+    toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur "Mot de passe oublié ?".');
     return;
   }
-  setLoginVerifying(true, 'loginSubmitBtn', 'Envoi du code…');
-  const {error} = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: getPublicSiteOrigin()
+
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
   });
-  setLoginVerifying(false, 'loginSubmitBtn');
-  if(error){ toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.')); return; }
-  passwordRecoveryEmail = email;
-  renderPasswordRecoveryCodeScreen();
-  toast('Un code de réinitialisation a été envoyé à votre adresse e-mail.');
-}
-function renderPasswordRecoveryCodeScreen(){
-  const body=document.getElementById('loginTabBody');
-  if(!body) return;
-  body.innerHTML=`
-    <div class="text-center" style="padding:10px 0 4px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Réinitialiser le mot de passe</h2>
-      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Un code de réinitialisation a été envoyé à <strong>${escapeHtml(passwordRecoveryEmail)}</strong>.</p>
-      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez le code reçu. Aucun lien n’est nécessaire si votre modèle e-mail utilise <code>{{ .Token }}</code>.</p>
-      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
-      <button id="verifyRecoveryOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
-      <div style="margin-top:12px;">
-        <label class="field-label" style="text-align:left;">Nouveau mot de passe</label>
-        <div style="position:relative;margin-bottom:6px;">
-          <input id="recoveryPassword" class="field-input" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
-          <button type="button" onclick="togglePasswordVisibility('recoveryPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
-        </div>
-        <div id="recoveryPwStrength" style="margin-bottom:8px;"></div>
-        <label class="field-label" style="text-align:left;">Confirmer le mot de passe</label>
-        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;">
-      </div>
-      <button id="saveRecoveryBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>
-      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
-    </div>`;
-  hydrateIcons(body);
-  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
-}
-async function verifyPasswordRecoveryOtp(){
-  const token=(document.getElementById('recoveryOtpInput')?.value||'').trim();
-  if(!/^\d{6,8}$/.test(token)){ toast('Entrez le code reçu par e-mail.'); return; }
-  const btn=document.getElementById('verifyRecoveryOtpBtn');
-  if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'recovery'});
+
   if(error){
-    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
-    toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
+    toast("Impossible d'envoyer le code : " + (error.message || 'erreur inconnue.'));
+    return;
   }
-  currentUser=data.user||currentUser;
-  if(btn){btn.disabled=true;btn.style.opacity='';btn.textContent='Code vérifié';}
-  toast('Code vérifié. Choisissez votre nouveau mot de passe.');
-}
-async function saveRecoveredPassword(){
-  const pw=document.getElementById('recoveryPassword')?.value||'';
-  const pw2=document.getElementById('recoveryPassword2')?.value||'';
-  const validation=validateStrongPassword(pw);
-  if(validation){toast(validation);return;}
-  if(pw!==pw2){toast('Les mots de passe ne correspondent pas.');return;}
-  const {data:sessionData}=await supabaseClient.auth.getSession();
-  if(!sessionData?.session){toast('Le code de réinitialisation n’est plus valide. Demandez un nouveau code.');return;}
-  const btn=document.getElementById('saveRecoveryBtn');
-  if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
-  const {error}=await supabaseClient.auth.updateUser({password:pw});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
-  passwordRecoveryEmail='';
-  toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
-  closeLogin();
-}
-function showPasswordRecoveryFormFromSession(session){
-  if(!session) return;
-  currentUser=session.user||currentUser;
-  passwordRecoveryEmail=session.user?.email||passwordRecoveryEmail||'';
-  if(document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('hidden');
-  renderPasswordRecoveryCodeScreen();
+
+  const token = (prompt('Entrez le code à 8 chiffres reçu par e-mail :') || '').trim();
+  if(!/^\d{8}$/.test(token)){
+    toast('Code invalide. Entrez les 8 chiffres reçus par e-mail.');
+    return;
+  }
+
+  const {error: verifyError} = await supabaseClient.auth.verifyOtp({
+    email,
+    token,
+    type: 'email'
+  });
+
+  if(verifyError){
+    toast('Code incorrect ou expiré : ' + (verifyError.message || 'réessayez.'));
+    return;
+  }
+
+  let newPassword = '';
+  while(true){
+    newPassword = prompt('Choisissez votre nouveau mot de passe (8 caractères minimum) :') || '';
+    if(newPassword.length < 8){
+      toast('Le mot de passe doit contenir au moins 8 caractères.');
+      continue;
+    }
+    if(!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)){
+      toast('Mot de passe trop faible. Utilisez au moins une majuscule, une minuscule et un chiffre.');
+      continue;
+    }
+    break;
+  }
+
+  const {error: updateError} = await supabaseClient.auth.updateUser({
+    password: newPassword
+  });
+
+  if(updateError){
+    toast('Impossible de modifier le mot de passe : ' + (updateError.message || 'réessayez.'));
+    return;
+  }
+
+  toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.', true);
 }
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
@@ -4736,7 +4693,7 @@ async function tryResumePendingOnboarding(){
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('overview');
-    toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
+    toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
     resumingOnboarding = false;
   }
   return true;
@@ -4771,7 +4728,7 @@ async function obNext(){
     const name=o.accountName.trim();
     const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
     setLoginVerifying(false,'obNextBtn');
-    if(error){toast(supabaseErrorFr(error,'Impossible de créer ce compte.'));return;}
+    if(error){toast(error.message||'Impossible de créer ce compte.');return;}
     if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
     currentUser=data.user; o.emailConfirmationPending=false;
   }
@@ -4935,7 +4892,7 @@ async function createRestaurantFromOnboarding(){
     // restaurant."), donc on les affiche tels quels plutôt que de les
     // envelopper dans une phrase technique.
     RESTAURANT.created = false;
-    toast(error ? supabaseErrorFr(error,"Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.") : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
+    toast(error ? error.message : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
     return null;
   }
 
@@ -4987,42 +4944,6 @@ async function resendOnboardingConfirmationEmail(){
    HTML généré ici — évite qu'un nom de restaurant ou un e-mail
    contenant des caractères spéciaux ne casse le balisage. */
 function escapeAttr(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function escapeHtml(s){
-  return String(s==null?'':s).replace(/[&<>"']/g, c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
-function supabaseErrorFr(error, fallback='Une erreur est survenue.'){ 
-  const msg=String(error?.message||'').toLowerCase();
-  const code=String(error?.code||'').toLowerCase();
-  if(msg.includes('invalid login credentials') || msg.includes('invalid credentials')) return 'E-mail ou mot de passe incorrect.';
-  if(msg.includes('email not confirmed')) return 'Votre adresse e-mail n’est pas encore confirmée.';
-  if(msg.includes('user already registered') || msg.includes('already registered')) return 'Cette adresse e-mail est déjà utilisée.';
-  if(msg.includes('password') && (msg.includes('weak') || msg.includes('too short'))) return 'Mot de passe trop faible. Utilisez au moins 8 caractères, une majuscule, une minuscule et un chiffre.';
-  if(msg.includes('expired') || code.includes('expired')) return 'Le code a expiré. Demandez un nouveau code.';
-  if(msg.includes('invalid') && msg.includes('otp')) return 'Code incorrect ou expiré.';
-  if(msg.includes('rate limit') || msg.includes('too many')) return 'Trop de tentatives. Attendez quelques instants avant de réessayer.';
-  if(msg.includes('network') || msg.includes('fetch')) return 'Connexion au serveur impossible. Vérifiez votre connexion Internet.';
-  if(msg.includes('row-level security') || msg.includes('permission')) return 'Vous n’avez pas l’autorisation d’effectuer cette action.';
-  return fallback;
-}
-function isSafeHttpUrl(value){
-  try{ const u=new URL(String(value||''),location.origin); return u.protocol==='http:' || u.protocol==='https:'; }catch(e){ return false; }
-}
-function safeImageSrc(value){
-  const v=String(value||'');
-  if(/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(v)) return v;
-  return isSafeHttpUrl(v) ? v : '';
-}
-
-function validateStrongPassword(pw){
-  if(pw.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
-  if(!/[A-Z]/.test(pw)) return 'Ajoutez au moins une lettre majuscule.';
-  if(!/[a-z]/.test(pw)) return 'Ajoutez au moins une lettre minuscule.';
-  if(!/\d/.test(pw)) return 'Ajoutez au moins un chiffre.';
-  return '';
-}
-
 
 async function finishOnboarding(){
   if(obState.emailConfirmationPending){
@@ -5039,7 +4960,7 @@ async function finishOnboarding(){
   clearPendingOnboarding();
   setView('dashboard');
   setDashSection('overview');
-  toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
+  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
 }
 
 /* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
@@ -5078,7 +4999,7 @@ async function createRestaurantAndPay(){
     body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
-    toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"réponse invalide du serveur.") : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('abonnement');
@@ -5274,17 +5195,6 @@ function obNavBackOnly(){ return `<button class="btn btn-outline w-full" onclick
 
 <script>
 /* ---------------- HERO / FOOTER — rendus depuis RESTAURANT (synchronisation réelle) ---------------- */
-function updateRestaurantSeo(){
-  const title = RESTO_NAME ? `${RESTO_NAME} — Menu, commandes et livraison` : 'TerangaResto';
-  document.title = state.view==='storefront' ? title : (RESTO_NAME + ' — TerangaResto');
-  let meta=document.querySelector('meta[name=description]');
-  if(!meta){meta=document.createElement('meta');meta.name='description';document.head.appendChild(meta);}
-  meta.content = RESTO_NAME ? `Découvrez le menu de ${RESTO_NAME}, passez votre commande en ligne et choisissez sur place, à emporter ou en livraison.` : 'Menu et commandes en ligne avec TerangaResto.';
-  let canonical=document.querySelector('link[rel=canonical]');
-  if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.appendChild(canonical);}
-  canonical.href = publicRestaurantUrl(RESTAURANT.slug);
-}
-
 function renderStorefrontHero(){
   // Bouton "Tableau de bord" — UNIQUEMENT si le visiteur actuel est
   // réellement le propriétaire/personnel de CE restaurant (viewerIsStaff),
@@ -5299,7 +5209,7 @@ function renderStorefrontHero(){
   // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
   // icône générique. Nom du restaurant à côté, comme le thème d'origine.
   const logoHtml = (RESTAURANT.logoDataUrl
-    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
     : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
   document.getElementById('tgLogo').innerHTML = logoHtml;
   document.getElementById('tgMobileLogo').innerHTML = logoHtml;
@@ -5309,7 +5219,7 @@ function renderStorefrontHero(){
   // sous-titre personnalisables (RESTAURANT.heroTitle/heroSubtitle),
   // sinon un texte générique honnête plutôt qu'un faux storytelling.
   document.getElementById('tgHeroBg').style.backgroundImage = RESTAURANT.coverDataUrl
-    ? `url('${safeImageSrc(RESTAURANT.coverDataUrl)}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
+    ? `url('${RESTAURANT.coverDataUrl}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
   document.getElementById('tgHeroTitle').textContent = RESTAURANT.heroTitle || `Bienvenue chez ${RESTO_NAME}`;
   document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
   document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
@@ -5334,8 +5244,8 @@ function renderStorefrontHero(){
       homeCats.map(c=>{
         const cover = (PRODUCTS.find(p=>p.cat===c && p.active && p.photo)||{}).photo;
         return `<div class="category-item ${state.activeCategory===c?'active':''}" onclick="setActiveCategory('${c}')">
-          <div class="category-img">${cover?`<img src="${safeImageSrc(cover)}" alt="${escapeAttr(catsState[c])}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
-          <span class="category-name">${escapeHtml(catsState[c])}</span>
+          <div class="category-img">${cover?`<img src="${cover}" alt="${catsState[c]}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
+          <span class="category-name">${catsState[c]}</span>
         </div>`;
       }).join('');
   }
@@ -5350,8 +5260,8 @@ function renderStorefrontHero(){
 
   // Contact — vraies données (Paramètres)
   document.getElementById('sfFooterInfo').innerHTML = `
-    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${escapeHtml(RESTAURANT.address)}${RESTAURANT.city?', '+escapeHtml(RESTAURANT.city):''}</p>` : ''}
-    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${escapeHtml(RESTAURANT.phone)}</p>` : ''}`;
+    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
+    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${RESTAURANT.phone}</p>` : ''}`;
 
   // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
   // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
@@ -5427,15 +5337,15 @@ function productCardHtml(p){
   return `
   <div class="product-card" style="${!p.available?'opacity:.6;':''}">
     <div class="product-img-wrapper" onclick='openProductModal("${p.id}")'>
-      ${p.photo ? `<img src="${safeImageSrc(p.photo)}" alt="${escapeAttr(p.name)}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
+      ${p.photo ? `<img src="${p.photo}" alt="${p.name}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
       ${!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : ''}
     </div>
     <div class="product-content">
-      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${escapeHtml(p.name)}</h3>
-      <p class="product-desc">${escapeHtml(p.desc||'')}</p>
+      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${p.name}</h3>
+      <p class="product-desc">${p.desc||''}</p>
       <div class="product-footer">
         <span class="product-price">${fmt(p.price)}</span>
-        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${escapeAttr(p.name)}"><i class="fa-solid fa-plus"></i></button>
+        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
       </div>
     </div>
   </div>`;
@@ -5493,17 +5403,17 @@ function renderProductModal(){
   const unit = p.price + (modalVariant?modalVariant.delta:0);
   document.getElementById('productModalBody').innerHTML = `
     <div style="position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      ${p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
+      ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
       <button onclick="closeProductModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;">${ic('x',16)}</button>
     </div>
     <div style="padding:22px;">
-      <h2 class="font-display" style="font-size:20px;">${escapeHtml(p.name)}</h2>
-      <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${escapeHtml(p.desc || 'Aucune description pour le moment.')}</p>
+      <h2 class="font-display" style="font-size:20px;">${p.name}</h2>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${p.desc || 'Aucune description pour le moment.'}</p>
       <p style="font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">${ic('clock',13)}Préparation : ${p.prep} min</p>
       ${p.variants.length ? `<p style="font-size:13.5px;font-weight:600;margin:16px 0 8px;">Options ${p.variantsRequired?'<span style="color:var(--terracotta);font-weight:500;font-size:11.5px;">· obligatoire</span>':'<span style="color:var(--ink-faint);font-weight:500;font-size:11.5px;">· facultatif</span>'}</p>
         <div class="flex-col gap-2">
           ${p.variants.map((v,i)=>`<button onclick="setModalVariant(${i})" style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:14px;border:2px solid ${modalVariant===v?'var(--amber-deep)':'var(--cream-line)'};${modalVariant===v?'background:rgba(232,135,30,.06);':''}">
-            <span style="font-size:13.5px;">${escapeHtml(v.name)}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
+            <span style="font-size:13.5px;">${v.name}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
         </div>
         ${p.variantsRequired && !modalVariant ? `<p style="font-size:11.5px;color:var(--terracotta);margin-top:6px;">Choisissez une option pour continuer.</p>`:''}` : ''}
       <div class="flex items-center justify-between" style="margin-top:18px;">
@@ -5544,7 +5454,7 @@ function quickAddToCart(id){
   if(existing){ existing.qty += 1; }
   else{ state.cart.push({key, id:p.id, name:p.name, price:p.price, variant:defaultVariant, qty:1, cat:p.cat, photo:p.photo}); }
   updateFloatingCartButton();
-  toast(ic('checkCircle',14)+` ${escapeHtml(p.name)} ajouté au panier.`, true);
+  toast(ic('checkCircle',14)+` ${p.name} ajouté au panier.`, true);
 }
 
 function addToCartFromModal(){
@@ -5615,7 +5525,7 @@ function renderCart(){
     </div>`).join('');
 
   const sub = cartSubtotal();
-  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode, state.checkout.deliveryZone) : 0;
+  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
   footerEl.innerHTML = `
     <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);margin-bottom:6px;"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
     <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-bottom:14px;"><span>Total</span><span class="font-tabular">${fmt(sub+deliveryFee)}</span></div>
@@ -5640,7 +5550,6 @@ function ckField(key,val){
   // "Livraison du restaurant" à "Express") — on l'efface pour forcer un
   // nouveau choix parmi les options réellement valides, plutôt que de
   // laisser passer une sélection devenue impossible.
-  if(key==='orderType' && val!=='delivery') state.checkout.deliveryZone=null;
   if((key==='orderType' || key==='deliveryMode') && state.checkout.payment){
     if(!availablePaymentMethods().includes(state.checkout.payment)) state.checkout.payment = null;
   }
@@ -5667,7 +5576,6 @@ function ckNext(){
   const c = state.checkout;
   if(state.checkoutStep===0 && (!c.firstName||!c.lastName||!c.phone)){ toast('Complétez vos informations.'); return; }
   if(state.checkoutStep===1 && c.orderType==='dine_in' && !c.table){ toast('Indiquez le numéro de table.'); return; }
-  if(state.checkoutStep===1 && c.orderType==='delivery' && !c.deliveryZone){ toast('Sélectionnez votre zone de livraison.'); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && !c.address){ toast("Indiquez l'adresse de livraison."); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && cartSubtotal() < Number(RESTAURANT.delivery.min)){ toast(`Commande minimum pour la livraison : ${fmt(RESTAURANT.delivery.min)}.`); return; }
   if(state.checkoutStep===2 && !c.payment){ toast('Choisissez un moyen de paiement.'); return; }
@@ -5680,7 +5588,7 @@ function renderCheckout(){
   const c = state.checkout;
   const step = state.checkoutStep;
   const sub = cartSubtotal();
-  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode, state.checkout.deliveryZone) : 0;
+  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
 
   const progress = `<div class="flex gap-2" style="margin-bottom:24px;">${[0,1,2].map(i=>`<div style="height:4px;flex:1;border-radius:999px;background:${i<=step?'var(--amber-deep)':'var(--cream-line)'};"></div>`).join('')}</div>`;
 
@@ -5713,13 +5621,8 @@ function renderCheckout(){
             <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${fmt(deliveryFeeFor(mk))}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
           </button>`).join('')}
         </div>`:''}
-        <label class="field-label">Zone de livraison</label>
-        <select class="field-input" onchange="ckField('deliveryZone',this.value);renderCheckout();" style="margin-bottom:12px;">
-          <option value="">Sélectionnez votre zone</option>
-          ${enabledDeliveryZones().map(z=>`<option value="${escapeAttr(z.id)}" ${c.deliveryZone===z.id?'selected':''}>${escapeHtml(z.name)} — ${Number(z.fee)===0?'Gratuit':fmt(Number(z.fee))}</option>`).join('')}
-        </select>
-        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${escapeHtml(c.address)}</textarea>
-        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${deliveryFeeFor(c.deliveryMode,c.deliveryZone)===0?'Gratuit':fmt(deliveryFeeFor(c.deliveryMode,c.deliveryZone))}</p>`:''}`:''}`;
+        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${c.address}</textarea>
+        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${fmt(deliveryFeeFor(c.deliveryMode))}</p>`:''}`:''}`;
   } else if(step===2){
     const methods = availablePaymentMethods();
     // Cas 1 — un seul moyen réellement activé par le restaurateur (via
@@ -5815,7 +5718,6 @@ async function submitOrderInternal(){
     p_order_type: c.orderType,
     p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
     p_delivery_mode: c.orderType==='delivery' ? c.deliveryMode : null,
-    p_delivery_zone: c.orderType==='delivery' ? c.deliveryZone : null,
     p_items: state.cart.map(l => ({
       product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
     })),
@@ -5825,7 +5727,7 @@ async function submitOrderInternal(){
     // livraison" du formulaire restait affiché mais n'était plus
     // envoyé nulle part depuis une réinitialisation antérieure du
     // fichier SQL — l'adresse saisie disparaissait silencieusement.
-    p_address: c.orderType==='delivery' ? ([deliveryZoneById(c.deliveryZone)?.name, c.address].filter(Boolean).join(' — ') || null) : null,
+    p_address: c.orderType==='delivery' ? (c.address || null) : null,
   });
 
   if(error){
@@ -5839,7 +5741,7 @@ async function submitOrderInternal(){
     if(error.code === 'PGRST202'){
       toast("La fonction de commande installée sur Supabase ne correspond pas à cette version du site. Il faut ré-exécuter supabase_schema.sql dans Supabase → SQL Editor. Votre panier a été conservé.");
     } else {
-      toast("Impossible d'envoyer la commande : " + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+      toast("Impossible d'envoyer la commande : " + error.message);
     }
     return;
   }
@@ -5903,9 +5805,9 @@ async function submitOrderInternal(){
   // Nouvel onglet plutôt qu'une redirection complète : le client garde
   // sa confirmation de commande et son suivi ouverts dans cet onglet,
   // même s'il abandonne ou revient de l'app Wave/Orange Money.
-  if(c.payment === 'wave' && isSafeHttpUrl(state.toggles.wave_link)){
+  if(c.payment === 'wave' && state.toggles.wave_link){
     window.open(state.toggles.wave_link, '_blank', 'noopener');
-  } else if(c.payment === 'orange_money' && isSafeHttpUrl(state.toggles.orange_money_link)){
+  } else if(c.payment === 'orange_money' && state.toggles.orange_money_link){
     window.open(state.toggles.orange_money_link, '_blank', 'noopener');
   }
 }
@@ -5916,7 +5818,7 @@ function renderConfirmation(){
     <div class="text-center" style="margin-bottom:28px;">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',40)}</div>
       <h1 class="font-display" style="font-size:22px;">Commande envoyée</h1>
-      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${RESTO_NAME}</span>.</p>
     </div>
     <div class="card" style="padding:18px;">
       <div class="flex justify-between items-center" style="margin-bottom:12px;">
@@ -6119,7 +6021,7 @@ function dashOverview(){
   return `
   ${notificationBlockedBannerHtml()}
   <div class="flex items-center justify-between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Vue d'ensemble</h1><p style="font-size:13px;color:var(--ink-soft);">Suivez l'activité de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> en un coup d'œil.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Vue d'ensemble</h1><p style="font-size:13px;color:var(--ink-soft);">Suivez l'activité de <span class="resto-name">${RESTO_NAME}</span> en un coup d'œil.</p></div>
   </div>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   ${periodOrders.length===0 ? `<div class="empty-state" style="margin-bottom:20px;">${ic('receipt',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune donnée pour cette période.</p></div>` : ''}
@@ -6182,7 +6084,7 @@ function dashOverview(){
         <p style="font-size:11.5px;color:var(--ink-soft);">Scannez-le ou partagez votre lien public.</p>
         <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="setDashSection('qrcode')">${ic('qrcode',14)} Afficher le QR Code</button>
       </div>
-      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${escapeAttr(RESTO_NAME)}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
+      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${RESTO_NAME}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
     </div>
   </div>
 
@@ -6223,7 +6125,7 @@ const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing',
 function dashOrders(){
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
   ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
   <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
@@ -6254,8 +6156,8 @@ function ordersRowsHtml(){
     const i = DEMO_ORDERS.indexOf(o);
     return `<tr onclick="openOrderDetail(${i})">
       <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
-      <td style="color:var(--ink-soft);">${escapeHtml(o.client)}</td>
-      <td style="color:var(--ink-soft);">${escapeHtml(o.type)}</td>
+      <td style="color:var(--ink-soft);">${o.client}</td>
+      <td style="color:var(--ink-soft);">${o.type}</td>
       <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
       <td class="font-tabular">${fmt(o.total)}</td>
       <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
@@ -6282,8 +6184,8 @@ function openOrderDetail(i){
       ${!isTerminal ? `<button onclick="if(confirm('Annuler cette commande ?'))changeOrderStatus(${i},'cancelled')" style="margin-top:10px;font-size:12px;color:var(--terracotta);text-align:center;width:100%;">Annuler la commande</button>` : ''}
       <div class="flex flex-col gap-2" style="background:var(--cream);border-radius:16px;padding:14px;margin:16px 0;">
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);">Client</p>
-        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${escapeHtml(o.client)}</p>
-        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('phone',14,{stroke:'var(--ink-faint)'})}${escapeHtml(o.phone)}</p>
+        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${o.client}</p>
+        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('phone',14,{stroke:'var(--ink-faint)'})}${o.phone}</p>
         <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('mapPin',14,{stroke:'var(--ink-faint)'})}${o.type}</p>
         ${o.address ? `<p style="font-size:13.5px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',14,{stroke:'var(--ink-faint)'})}</span><span>${escapeAttr(o.address)}</span></p>` : ''}
       </div>
@@ -6291,7 +6193,7 @@ function openOrderDetail(i){
       ${o.items.map(orderItemLine).join('')}
       ${o.notes ? `<div style="background:rgba(232,135,30,.08);border-radius:12px;padding:10px 12px;margin-top:10px;">
         <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--amber-ink);margin-bottom:3px;">Note du client</p>
-        <p style="font-size:13px;color:var(--ink-soft);">${escapeHtml(o.notes)}</p>
+        <p style="font-size:13px;color:var(--ink-soft);">${o.notes}</p>
       </div>` : ''}
       <div style="border-top:1px solid var(--cream-line);margin-top:10px;padding-top:10px;">
         <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
@@ -6338,7 +6240,7 @@ function orderItemLine(it){
   const name = isLegacy ? it[0] : it.name;
   const qty = isLegacy ? it[1] : it.qty;
   const variant = isLegacy ? null : it.variant;
-  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${escapeHtml(name)}${variant?` <span style="color:var(--ink-faint);">(${escapeHtml(variant)})</span>`:''}</span></div>`;
+  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${name}${variant?` <span style="color:var(--ink-faint);">(${variant})</span>`:''}</span></div>`;
 }
 /* Même logique que orderItemLine, mais renvoie juste [nom, quantité] —
    utilisé par les calculs (produits les plus vendus, etc.) qui n'ont
@@ -6370,7 +6272,7 @@ function dashPos(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Caisse</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${escapeHtml(RESTO_NAME)}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${RESTO_NAME}.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
     <div class="stat-card">${icBadge('wallet',{size:36,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:22px;font-weight:700;margin-top:10px;">${fmt(total)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Total encaissé · ${paid.length} commande${paid.length>1?'s':''}</p></div>
@@ -6417,7 +6319,7 @@ function dashAnalytics(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Analyses</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${escapeHtml(RESTO_NAME)}, calculée à partir des commandes réelles.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${RESTO_NAME}, calculée à partir des commandes réelles.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
     <div class="stat-card"><p class="font-tabular" style="font-size:19px;font-weight:700;">${fmt(revenue)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Chiffre d'affaires</p></div>
@@ -6510,7 +6412,7 @@ function renderCatList(){
         </div>
         ${items.length===0?`<p style="font-size:12px;color:var(--ink-faint);padding:6px 2px 12px;">Aucun produit dans cette catégorie.</p>`:
         items.map(p=>`<div class="flex items-center gap-3" style="background:var(--surface);border:1px solid var(--cream-line);border-radius:12px;padding:8px 12px;margin-bottom:6px;">
-          ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${escapeHtml(p.name)}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
+          ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${p.name}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
           <span class="pill ${p.active?'pill-forest':'pill-neutral'}" style="font-size:10px;">${p.active?'Actif':'Inactif'}</span>
         </div>`).join('')}
         <button class="btn btn-outline btn-sm" onclick="setDashSection('products')">${ic('utensils',13)} Gérer les produits</button>
@@ -6539,7 +6441,7 @@ function dashProducts(){
   const atLimit = !canAddProduct();
   return `
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
       <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('plus',15)} Plats prédéfinis</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
@@ -6571,7 +6473,7 @@ function productsListHtml(){
     </div>`;
   }
   if(list.length===0){
-    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${escapeHtml(productSearch)} ».</p></div>`;
+    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${productSearch} ».</p></div>`;
   }
   return `<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch;">
     ${list.map(p=>`
@@ -6579,8 +6481,8 @@ function productsListHtml(){
       <div class="flex items-center gap-3" style="margin-bottom:10px;">
         ${productThumb(p,44)}
         <div style="flex:1;min-width:0;">
-          <p style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(catsState[p.cat]||'—')}</p>
+          <p style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${catsState[p.cat]||'—'}</p>
         </div>
       </div>
       <div class="flex items-center justify-between" style="margin-bottom:10px;">
@@ -6801,7 +6703,7 @@ async function addCategory(){
     const {error} = await supabaseClient.from('categories').insert({
       restaurant_id: RESTAURANT.id, key, label, sort_order: Object.keys(catsState).length-1,
     });
-    if(error) toast('Catégorie non enregistrée dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+    if(error) toast('Catégorie non enregistrée dans Supabase : ' + error.message);
   }
 }
 
@@ -6831,7 +6733,7 @@ function dashInventory(){
       <thead><tr><th>Produit</th><th>Stock actuel</th><th>Seuil d'alerte</th><th>État</th><th>Actions</th></tr></thead>
       <tbody>
         ${rows.map(({p,stock,state_,tone})=>`<tr>
-          <td><div class="flex items-center gap-2">${productThumb(p,30)}<span>${escapeHtml(p.name)}</span></div></td>
+          <td><div class="flex items-center gap-2">${productThumb(p,30)}<span>${p.name}</span></div></td>
           <td class="font-tabular">${stock===null?'—':stock+' unités'}</td>
           <td class="font-tabular" style="color:var(--ink-soft);">${stock===null?'—':p.threshold}</td>
           <td><span class="pill ${tone}">${state_}</span></td>
@@ -6848,26 +6750,22 @@ function dashInventory(){
     </table>
   </div>`;
 }
-async function adjustStock(id, delta){
-  const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
-  const oldStock=typeof p.stock==='number'?p.stock:0, oldAvailable=p.available;
-  p.stock=Math.max(0,oldStock+delta);
-  if(p.stock>0 && !p.available) p.available=true;
-  if(p.stock===0) p.available=false;
-  const saved=await persistProduct(p);
-  if(!saved){p.stock=oldStock;p.available=oldAvailable;toast('Le stock n’a pas pu être enregistré.');return;}
+function adjustStock(id, delta){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(typeof p.stock !== 'number') p.stock = 0;
+  p.stock = Math.max(0, p.stock + delta);
+  if(p.stock > 0 && !p.available) p.available = true;
+  if(p.stock === 0) p.available = false;
   renderDashSection('inventory');
   if(state.view==='storefront') renderProductSections();
 }
-async function restockProduct(id){
-  const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
-  const oldStock=p.stock||0, oldAvailable=p.available;
-  p.stock=oldStock+20;p.available=true;
-  const saved=await persistProduct(p);
-  if(!saved){p.stock=oldStock;p.available=oldAvailable;toast('Le réapprovisionnement n’a pas pu être enregistré.');return;}
+function restockProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  p.stock = (p.stock||0) + 20;
+  p.available = true;
   renderDashSection('inventory');
   if(state.view==='storefront') renderProductSections();
-  toast(`${escapeHtml(p.name)} réapprovisionné : +20 unités.`);
+  toast(`${p.name} réapprovisionné : +20 unités.`);
 }
 
 /* ---------------- COMPTABILITÉ — revenus réels + historique des paiements d'abonnement ---------------- */
@@ -6880,7 +6778,7 @@ function dashAccounting(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Comptabilité</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>, calculée à partir de vos commandes.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${RESTO_NAME}</span>, calculée à partir de vos commandes.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;align-items:stretch;">
     <div class="stat-card">${icBadge('wallet',{size:34,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(grossRevenue)}</p><p style="font-size:11px;color:var(--ink-soft);">Chiffre d'affaires brut</p></div>
@@ -6926,7 +6824,7 @@ function dashVariants(){
   <div style="max-width:480px;">
     <label class="field-label">Produit</label>
     <select class="field-input" style="margin-bottom:16px;" onchange="variantsSelectedProduct=this.value;renderVariantsCard();">
-      ${PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===variantsSelectedProduct?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}
+      ${PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===variantsSelectedProduct?'selected':''}>${p.name}</option>`).join('')}
     </select>
     <div class="card" style="padding:18px;" id="variantsCard">${variantsCardHtml()}</div>
   </div>`;
@@ -7020,16 +6918,11 @@ function paymentsListHtml(methods){
       ${locked?`<div style="margin-top:10px;">${lockedNotice(PRO_ONLY_LABEL[m], true)}</div>`:''}
       ${hasDetails?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
         <label class="field-label" style="font-size:11px;">${linkField.label}</label>
-        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value;schedulePaymentPersist()">
+        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value">
         <p style="font-size:11px;color:var(--ink-faint);margin-top:5px;">Le client sera redirigé vers ce lien au moment de payer avec ${PAYMENT_LABELS[m]}.</p>
       </div>`:''}
     </div>`;
   }).join('');
-}
-let paymentSaveTimer=null;
-function schedulePaymentPersist(){
-  clearTimeout(paymentSaveTimer);
-  paymentSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
@@ -7040,7 +6933,6 @@ function togglePayment(m){
   state.toggles[m] = !state.toggles[m];
   document.getElementById('paymentsList').innerHTML = paymentsListHtml(['cash','on_delivery','wave','orange_money']);
   hydrateIcons();
-  schedulePaymentPersist();
 }
 
 /* ---------------- CUSTOMERS ---------------- */
@@ -7048,7 +6940,7 @@ let dashCustomersTab = 'clients';
 function dashCustomers(){
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Clients</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${RESTO_NAME}</span>.</p>
   <div class="flex gap-2" style="margin-bottom:18px;">
     <button class="btn btn-sm ${dashCustomersTab==='clients'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('clients')">Clients</button>
     <button class="btn btn-sm ${dashCustomersTab==='reviews'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('reviews')">${ic('star',13)} Avis clients${REVIEWS.length?` (${REVIEWS.length})`:''}</button>
@@ -7120,15 +7012,15 @@ function dashReviewsHtml(){
         <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
         <button onclick="deleteReview('${r.id}')" title="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
       </div>
-      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${escapeHtml(r.comment)}</p>`:''}
-      <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(r.client||'Client anonyme')} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
+      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${r.comment}</p>`:''}
+      <p style="font-size:11.5px;color:var(--ink-faint);">${r.client||'Client anonyme'} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
     </div>`).join('')}
   </div>`;
 }
 async function deleteReview(id){
   if(!confirm('Supprimer cet avis ?')) return;
   const {error} = await supabaseClient.from('reviews').delete().eq('id', id);
-  if(error){ toast('Suppression impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
+  if(error){ toast('Suppression impossible : ' + error.message); return; }
   REVIEWS = REVIEWS.filter(r=>r.id!==id);
   document.getElementById('dashCustomersBody').innerHTML = dashReviewsHtml();
   hydrateIcons();
@@ -7140,10 +7032,10 @@ function dashQrcode(){
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${escapeAttr(RESTO_NAME)}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
-    <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${escapeHtml(RESTO_NAME)}</p>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${RESTO_NAME}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
+    <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
     <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
     ${!RESTAURANT.isPublished ? `<p style="font-size:11px;color:var(--terracotta);margin-top:8px;">Votre site est encore en brouillon — publiez-le dans Paramètres avant de diffuser ce QR Code.</p>` : ''}
@@ -7262,8 +7154,8 @@ function staffActiveListHtml(){
     return `<div style="padding:12px 16px;border-top:1px solid var(--cream-line);">
       <div class="flex items-center gap-3">
         <div style="flex:1;min-width:0;">
-          <p style="font-size:13.5px;font-weight:500;">${escapeHtml(s.name)}</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(s.email)} · ${escapeHtml(s.role)}</p>
+          <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role}</p>
         </div>
         <span class="pill pill-forest">Actif</span>
         <button class="btn btn-outline btn-sm" onclick="openStaffEdit(${i})">${ic('pencil',13)} Modifier</button>
@@ -7280,8 +7172,8 @@ function staffPendingListHtml(){
     const i = staffState.indexOf(s);
     return `<div class="flex items-center gap-3" style="padding:12px 16px;border-top:1px solid var(--cream-line);">
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:500;">${escapeHtml(s.name)}</p>
-        <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(s.email)} · ${escapeHtml(s.role)} · Code ${escapeHtml(s.code)}</p>
+        <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+        <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role} · Code ${s.code}</p>
       </div>
       <span class="pill pill-amber">Invitation envoyée</span>
       <button class="btn btn-outline btn-sm" onclick="resendInvite(${i})">${ic('send',13)} Renvoyer</button>
@@ -7297,13 +7189,17 @@ function refreshStaffLists(){
 }
 
 async function inviteStaff(){
-  const email = document.getElementById('staffEmail').value.trim().toLowerCase();
+  const email = document.getElementById('staffEmail').value.trim();
   if(!email){ toast('Entrez un e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
   if(staffState.some(s=>s.email.toLowerCase()===email.toLowerCase())){
     toast('Cette adresse a déjà été invitée à ce restaurant.');
     return;
   }
+  // Une invitation est "personnalisée" si l'ensemble des accès choisis
+  // diffère RÉELLEMENT de la liste par défaut du rôle (comparaison du
+  // contenu, pas seulement de la longueur — deux listes de même taille
+  // peuvent contenir des sections différentes).
   const defaults = ROLE_SECTIONS[inviteRole] || [];
   const isCustomized = invitePermissions.length !== defaults.length
     || invitePermissions.slice().sort().join(',') !== defaults.slice().sort().join(',');
@@ -7312,23 +7208,14 @@ async function inviteStaff(){
     email, role: inviteRole, status:'En attente', code: genInviteCode(),
     permissions: isCustomized ? invitePermissions.slice() : null,
     createdAt: Date.now(),
-    expiresAt: Date.now() + 7*24*60*60*1000,
+    expiresAt: Date.now() + 7*24*60*60*1000, // 7 jours, comme une vraie invitation par e-mail
   };
-
-  // On crée d'abord la ligne réelle dans Supabase : le code d'invitation
-  // existe ainsi avant tout envoi d'e-mail et reste vérifiable côté serveur.
-  await persistStaffInsert(s);
-  if(!s.id){ toast('L’invitation n’a pas pu être enregistrée.'); return; }
-
   const {error: inviteEmailError} = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+    options: { shouldCreateUser: true }
   });
   if(inviteEmailError){
-    staffState.push(s);
-    refreshStaffLists();
-    renderDashSection('staff');
-    toast('Invitation créée, mais l’e-mail n’a pas pu être envoyé. Vous pouvez la renvoyer.');
+    toast('Impossible d’envoyer l’e-mail d’invitation : ' + (inviteEmailError.message || 'réessayez.'));
     return;
   }
 
@@ -7336,25 +7223,22 @@ async function inviteStaff(){
   document.getElementById('staffEmail').value = '';
   refreshStaffLists();
   renderDashSection('staff');
-  toast(`Invitation envoyée à ${email}. Le code d’invitation est ${s.code}.`);
+  toast(`Invitation créée pour ${email} — code ${s.code}. Un e-mail de connexion a été envoyé.`);
+  await persistStaffInsert(s);
 }
-
 async function resendInvite(i){
-  const s=staffState[i];
-  if(!s) return;
   const {error} = await supabaseClient.auth.signInWithOtp({
-    email: s.email,
-    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+    email: staffState[i].email,
+    options: { shouldCreateUser: true }
   });
   if(error){
-    toast(supabaseErrorFr(error,'Impossible de renvoyer l’e-mail d’invitation.'));
+    toast('Impossible de renvoyer l’e-mail : ' + (error.message || 'réessayez.'));
     return;
   }
-  s.expiresAt = Date.now() + 7*24*60*60*1000;
-  toast(`Invitation renvoyée à ${s.email}.`);
-  await persistStaffUpdate(s);
+  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
+  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours.`);
+  await persistStaffUpdate(staffState[i]);
 }
-
 async function cancelInvite(i){
   if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
   const id = staffState[i].id;
@@ -7381,7 +7265,7 @@ function openStaffEdit(i){
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeStaffEdit()"></div>
     <div class="card" style="position:relative;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;">
       <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
-        <h2 class="font-display" style="font-size:16px;">${escapeHtml(s.name)}</h2>
+        <h2 class="font-display" style="font-size:16px;">${s.name}</h2>
         <button onclick="closeStaffEdit()">${ic('x',17)}</button>
       </div>
       <div style="padding:16px 20px;">
@@ -7425,7 +7309,7 @@ function dashLibrary(){
   <div class="lib-header">
     <div>
       <h1 class="font-display" style="font-size:22px;">Plats prédéfinis</h1>
-      <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${RESTO_NAME}</span>.</p>
     </div>
     <button class="btn btn-secondary btn-sm lib-add-btn" onclick="toast('Sélecteur de fichiers (démo)')">${ic('upload',14)}<span>Ajouter des images</span></button>
   </div>
@@ -7452,7 +7336,7 @@ function libraryCardsHtml(){
 
   if(libraryTab!=='products'){
     cards.push(libCardShell({
-      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
       name:'Logo', meta: RESTAURANT.logoDataUrl ? 'Image active' : 'Aucune image',
       actions: RESTAURANT.logoDataUrl
         ? `<button onclick="pickLogo()">${ic('pencil',13)}</button><button onclick="RESTAURANT.logoDataUrl=null;renderDashSection('library');renderSidebarLogo();toast('Logo supprimé')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
@@ -7470,7 +7354,7 @@ function libraryCardsHtml(){
   if(libraryTab!=='brand'){
     PRODUCTS.forEach(p=>{
       cards.push(libCardShell({
-        imageHtml: p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
+        imageHtml: p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
         name: p.name, meta: (p.photo?'Photo produit':'Aucune image') + ' — ' + (catsState[p.cat]||''),
         actions: `<button onclick="setDashSection('products');openProductForm('${p.id}')">${ic('pencil',13)}</button>`,
       }));
@@ -7631,7 +7515,7 @@ function settingsBodyHtml(){
         <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
       </div>`:''}
     </div>
-    <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${escapeAttr(RESTAURANT.name)}" style="margin-bottom:14px;">
+    <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${RESTAURANT.name}" style="margin-bottom:14px;">
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" id="setType" style="margin-bottom:14px;">
       ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${RESTAURANT.type===t?'selected':''}>${t}</option>`).join('')}
@@ -7654,7 +7538,7 @@ function settingsBodyHtml(){
         <label class="field-label w-full">Logo</label>
         <div style="position:relative;width:100%;">
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
-            ${RESTAURANT.logoDataUrl?`<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
+            ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
           ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
         </div>
@@ -7726,22 +7610,7 @@ function settingsBodyHtml(){
       </div>`:''}
     </div>
     ${enabledDeliveryModes().length===0?`<p style="font-size:12px;color:var(--terracotta);margin-bottom:14px;">Aucun mode de livraison actif — la livraison n'apparaîtra pas au checkout tant qu'un mode n'est pas activé.</p>`:''}
-    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div>
-      <label class="field-label">Zones de livraison</label>
-      <p style="font-size:11.5px;color:var(--ink-faint);margin:-4px 0 10px;">Ajoutez des quartiers/zones et définissez le coût. 0 FCFA = livraison gratuite.</p>
-      <div class="card" style="padding:12px 14px;margin-bottom:10px;">
-        ${enabledDeliveryZones().map((z,i)=>`<div class="flex items-center gap-2" style="padding:8px 0;border-top:${i?'1px solid var(--cream-line)':'0'};">
-          <input class="field-input" style="flex:1;" value="${escapeAttr(z.name)}" oninput="updateDeliveryZone(${i},'name',this.value)">
-          <input class="field-input" style="width:125px;" type="number" min="0" value="${Number(z.fee)||0}" oninput="updateDeliveryZone(${i},'fee',this.value)" placeholder="FCFA">
-          <button class="btn btn-outline btn-sm" onclick="removeDeliveryZone(${i})" title="Supprimer">${ic('trash',13)}</button>
-        </div>`).join('') || `<p style="font-size:12px;color:var(--ink-faint);">Aucune zone active.</p>`}
-      </div>
-      <div class="flex gap-2">
-        <input class="field-input" id="newDeliveryZoneName" placeholder="Ex. Parcelles, Plateau, Malika" style="flex:1;">
-        <input class="field-input" id="newDeliveryZoneFee" type="number" min="0" placeholder="FCFA" style="width:125px;">
-        <button class="btn btn-outline btn-sm" onclick="addDeliveryZone()">${ic('plus',13)} Ajouter</button>
-      </div>
-    </div>`}`
+    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
     :`<p style="font-size:12.5px;color:var(--ink-faint);">La livraison n'apparaîtra plus dans le parcours de commande de vos clients.</p>`}`;
 
   if(settingsTab==='Réseaux & carte'){
@@ -7784,35 +7653,6 @@ function settingsBodyHtml(){
   return '';
 }
 
-function addDeliveryZone(){
-  const name=(document.getElementById('newDeliveryZoneName')?.value||'').trim();
-  const fee=Math.max(0,Number(document.getElementById('newDeliveryZoneFee')?.value)||0);
-  if(!name){toast('Indiquez le nom de la zone de livraison.');return;}
-  if(!Array.isArray(RESTAURANT.delivery.zones)) RESTAURANT.delivery.zones=[];
-  RESTAURANT.delivery.zones.push({id:'zone-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name,fee,enabled:true});
-  renderDashSection('settings');
-  persistRestaurant();
-}
-let deliveryZoneSaveTimer=null;
-function updateDeliveryZone(index,key,value){
-  const z=enabledDeliveryZones()[index];
-  if(!z) return;
-  if(key==='name') z.name=String(value||'').trim();
-  if(key==='fee') z.fee=Math.max(0,Number(value)||0);
-  clearTimeout(deliveryZoneSaveTimer);
-  deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
-}
-function removeDeliveryZone(index){
-  const z=enabledDeliveryZones()[index];
-  if(!z) return;
-  if(!confirm(`Supprimer la zone « ${z.name} » ?`)) return;
-  const all=Array.isArray(RESTAURANT.delivery.zones)?RESTAURANT.delivery.zones:[];
-  const realIndex=all.indexOf(z);
-  if(realIndex>=0) all.splice(realIndex,1);
-  renderDashSection('settings');
-  persistRestaurant();
-}
-
 async function requestOrderNotificationEmailChange(){
   if(!RESTAURANT.id) return;
   const input = document.getElementById('orderNotifyEmail');
@@ -7852,7 +7692,6 @@ async function saveSettings(){
   const heroTitleEl = document.getElementById('setHeroTitle'); if(heroTitleEl) RESTAURANT.heroTitle = heroTitleEl.value.trim();
   const heroSubtitleEl = document.getElementById('setHeroSubtitle'); if(heroSubtitleEl) RESTAURANT.heroSubtitle = heroSubtitleEl.value.trim();
   const feeEl = document.getElementById('setDeliveryFee'); if(feeEl) RESTAURANT.delivery.fee = Number(feeEl.value)||0;
-  if(Array.isArray(RESTAURANT.delivery.zones) && RESTAURANT.delivery.zones.length===1 && RESTAURANT.delivery.zones[0].id==='zone-general'){ RESTAURANT.delivery.zones[0].fee=RESTAURANT.delivery.fee; }
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
@@ -7897,7 +7736,7 @@ function dashAbonnement(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
     <div class="flex justify-between items-center">
       <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
@@ -7998,7 +7837,7 @@ async function startPayTechCheckout(plan){
     body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
-    toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
     if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
     return;
   }
@@ -8011,7 +7850,7 @@ async function cancelSubscription(){
   // n'est plus modifiable par une simple mise à jour de paramètres
   // (voir "VERROU CRITIQUE" dans supabase_schema.sql).
   const {data, error} = await supabaseClient.rpc('cancel_my_subscription');
-  if(error){ toast("Impossible de résilier : " + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
+  if(error){ toast("Impossible de résilier : " + error.message); return; }
   const row = Array.isArray(data) ? data[0] : data;
   if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
@@ -8024,7 +7863,7 @@ async function reactivateSubscription(){
   // terminée ; ne peut jamais activer Premium depuis un état
   // trialing/expired (ça, c'est le rôle exclusif du webhook PayTech).
   const {data, error} = await supabaseClient.rpc('reactivate_my_subscription');
-  if(error){ toast("Impossible de réactiver : " + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
+  if(error){ toast("Impossible de réactiver : " + error.message); return; }
   const row = Array.isArray(data) ? data[0] : data;
   if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
@@ -8182,7 +8021,6 @@ document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
    change ailleurs (autre onglet, expiration de session, etc.). */
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if(event === 'SIGNED_OUT'){ currentUser = null; }
-  if(event === 'PASSWORD_RECOVERY' && session){ showPasswordRecoveryFormFromSession(session); return; }
   // Filet de sécurité event-driven pour la confirmation d'e-mail : le
   // client Supabase détecte et établit automatiquement la session à
   // partir de l'URL de retour du lien de confirmation (comportement
