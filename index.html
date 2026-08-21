@@ -932,6 +932,11 @@ button,a,input,select,textarea{font-family:inherit;}
 #view-dashboard .nav-item:not(.active):hover{ background:rgba(255,255,255,.055); }
 #view-dashboard .nav-item.active{ background:var(--amber-deep); color:#fff; }
 #view-dashboard .icon-btn:hover{ background:rgba(255,255,255,.07); }
+/* Une fois dans l'espace privé, le header public TerangaResto (logo,
+   Connexion, Créer) ne doit plus être visible : le dashboard possède
+   sa propre barre de navigation. */
+body.dashboard-active #platformHeader{display:none !important;}
+body.dashboard-active #view-dashboard{min-height:100vh;}
 #view-dashboard .mbn-item.active{ background:rgba(232,135,30,.14); }
 #view-dashboard .more-tile{ background:var(--cream); }
 #view-dashboard .empty-state{ background:rgba(255,255,255,.02); border-color:var(--cream-line); }
@@ -2786,7 +2791,8 @@ function isRestaurantLiveClientSide(){
   const status = computeEffectiveSubscriptionStatus();
   if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
   if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
-  return false; // 'pending_payment', 'expired', ou toute autre valeur : jamais en ligne, comme côté serveur
+  if(status === 'pending_payment') return true; // le site public reste accessible pendant la finalisation du paiement
+  return false; // 'expired' ou toute autre valeur : indisponible
 }
 function isStorefrontGated(){
   if(!RESTAURANT.created || viewerIsStaff) return false;
@@ -2839,7 +2845,7 @@ async function loadRestaurantPublicFast(restaurantId){
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
       'notifications_enabled,order_notification_email,order_notification_email_verified,' +
-      'order_notification_email_pending,is_published,hero_title,hero_subtitle,' +
+      'order_notification_email_pending,is_published,hero_title,hero_subtitle,logo_data_url,' +
       'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
       'plan,payment_toggles'
     ).eq('id', restaurantId).single(),
@@ -2857,7 +2863,9 @@ async function loadRestaurantPublicFast(restaurantId){
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  RESTAURANT.logoDataUrl = '';
+  // Le logo fait partie des données critiques du premier affichage : il
+  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  RESTAURANT.logoDataUrl = r.logo_data_url || '';
   RESTAURANT.coverDataUrl = '';
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
@@ -2905,7 +2913,8 @@ async function loadRestaurantPublicFast(restaurantId){
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  // Images are deliberately non-blocking.
+  // Seules la couverture et les photos produits restent différées ; le logo
+  // est déjà disponible pour le premier rendu.
   loadRestaurantPublicImagesFast(restaurantId);
   return true;
 }
@@ -3580,6 +3589,21 @@ function triggerImagePicker(onSelected){
 function hydrateIcons(root){
   (root||document).querySelectorAll('[data-icon]').forEach(el=>{
     const name = el.dataset.icon, size = Number(el.dataset.size)||18, color = el.dataset.color||'currentColor';
+    // Ne jamais remplacer un bouton/lien portant data-icon : le remplacement
+    // détruisait son onclick (croix du panier, retour checkout, menu mobile...).
+    // On injecte l'icône dans l'élément en conservant son comportement.
+    if(el.tagName === 'BUTTON' || el.tagName === 'A'){
+      const span = document.createElement('span');
+      span.innerHTML = ic(name, size, {stroke:color});
+      span.style.display='inline-flex';
+      span.style.alignItems='center';
+      span.setAttribute('aria-hidden','true');
+      el.removeAttribute('data-icon');
+      el.removeAttribute('data-size');
+      el.removeAttribute('data-color');
+      el.appendChild(span);
+      return;
+    }
     const span = document.createElement('span');
     span.style.cssText = el.getAttribute('style')||'';
     span.className = el.className||'';
@@ -4146,6 +4170,7 @@ function setView(view){
   // comme pour le propriétaire qui prévisualise, qui retrouve son
   // tableau de bord via le petit bouton flottant dédié, pas ici.
   document.body.classList.toggle('storefront-active', view==='storefront');
+  document.body.classList.toggle('dashboard-active', view==='dashboard' && !!viewerIsStaff);
   document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
   if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -4404,19 +4429,18 @@ function generateUniqueSlug(name){
    y compris un restaurant encore en brouillon que RLS ne nous montre
    pas directement (voir is_slug_available dans supabase_schema.sql). */
 async function resolveUniqueSlugForCreation(name){
-  const base = slugify(name) || 'mon-restaurant';
-  let candidate = base;
-  let n = 2;
-  for(let tries=0; tries<50; tries++){
-    try{
-      const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
-      if(error) return candidate; // fonction indisponible (schéma pas encore appliqué) — on tente quand même, l'insert le rattrapera
-      if(available) return candidate;
-    }catch(e){ return candidate; }
-    candidate = `${base}-${n}`;
-    n++;
+  const candidate = slugify(name) || 'mon-restaurant';
+  try{
+    const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
+    if(error){
+      console.error('is_slug_available:', error);
+      return null;
+    }
+    return available ? candidate : null;
+  }catch(e){
+    console.error('is_slug_available:', e);
+    return null;
   }
-  return `${base}-${Date.now()}`; // filet de sécurité si 50 variantes sont toutes prises
 }
 
 const obState = {
@@ -4513,7 +4537,7 @@ async function tryResumePendingOnboarding(){
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('overview');
-    toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
+    toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
     resumingOnboarding = false;
   }
   return true;
@@ -4563,6 +4587,17 @@ async function obNext(){
     }
     if(!available){
       toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
+      return;
+    }
+    const candidateSlug = slugify(name) || 'mon-restaurant';
+    const {data:slugAvailable, error:slugErr} = await supabaseClient.rpc('is_slug_available', {p_slug:candidateSlug});
+    if(slugErr){
+      console.error('is_slug_available:', slugErr);
+      toast('Impossible de vérifier le lien public pour le moment.');
+      return;
+    }
+    if(!slugAvailable){
+      toast('Ce lien public est déjà utilisé. Choisissez un autre nom de restaurant.');
       return;
     }
   }
@@ -4628,6 +4663,10 @@ async function createRestaurantFromOnboarding(){
   // seulement contre la petite liste locale utilisée pour l'aperçu
   // pendant la saisie (voir resolveUniqueSlugForCreation).
   RESTAURANT.slug = await resolveUniqueSlugForCreation(obState.restoName);
+  if(!RESTAURANT.slug){
+    toast('Ce nom est déjà utilisé pour un lien public. Choisissez un autre nom.');
+    return null;
+  }
   RESTAURANT.name = obState.restoName;
   applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
@@ -4675,8 +4714,10 @@ async function createRestaurantFromOnboarding(){
       p_current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
     }));
     if(!error) break;
-    if(error.code === '23505' && /slug/i.test(error.message||'')){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
-    break; // toute autre erreur (y compris "déjà un restaurant" ou RLS) : on arrête et on l'affiche, pas de nouvelle tentative aveugle
+    if(error.code === '23505' && /slug/i.test(error.message||'')){
+      toast('Ce nom est déjà utilisé. Choisissez un autre nom de restaurant.');
+    }
+    break; // aucune variante automatique : un restaurant = un nom/lien choisi explicitement
   }
   // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
   // on gère aussi le cas où PostgREST le renverrait dans un tableau
@@ -4705,8 +4746,10 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
   RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
   RESTAURANT.orderNotificationEmailPending = '';
+  // Un restaurant nouvellement créé doit être accessible immédiatement
+  // depuis son lien public et son QR Code.
+  RESTAURANT.isPublished = true;
   await persistRestaurant();
-  RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
   subscribeToReviewsRealtime(RESTAURANT.id);
@@ -4761,7 +4804,7 @@ async function finishOnboarding(){
   clearPendingOnboarding();
   setView('dashboard');
   setDashSection('overview');
-  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
+  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
 }
 
 /* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
@@ -4800,7 +4843,7 @@ async function createRestaurantAndPay(){
     body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
-    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé en brouillon, forfait en attente de paiement — vous pouvez réessayer depuis Abonnement dans votre tableau de bord.");
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('abonnement');
@@ -4966,7 +5009,7 @@ function obStepHtml(){
     <div class="text-center">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
       <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est prêt à être créé</h2>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site public est activé automatiquement dès la création.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
         <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
@@ -4975,7 +5018,7 @@ function obStepHtml(){
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
         <p style="font-size:12.5px;margin-top:6px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ajouter vos catégories et produits</p>
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
-        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Publier votre site public</p>
+        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ouvrir votre site public</p>
       </div>
       <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Créer mon restaurant ${ic('arrowRight',16)}</button>
     </div>`;
@@ -5010,7 +5053,7 @@ function renderStorefrontHero(){
   // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
   // icône générique. Nom du restaurant à côté, comme le thème d'origine.
   const logoHtml = (RESTAURANT.logoDataUrl
-    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
     : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
   document.getElementById('tgLogo').innerHTML = logoHtml;
   document.getElementById('tgMobileLogo').innerHTML = logoHtml;
@@ -5708,12 +5751,38 @@ function openMoreSheet(){
 }
 function closeMoreSheet(){ document.getElementById('moreSheetOverlay').classList.add('hidden'); }
 
+function closeNotifPanel(){
+  const el = document.getElementById('notifPanelOverlay');
+  if(el) el.remove();
+}
 function toggleNotifPanel(){
   if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
-  const newOrders = DEMO_ORDERS.filter(o=>o.status==='new');
-  if(newOrders.length===0){ toast(ic('bell',14)+' Aucune nouvelle commande.', true); return; }
-  const latest = newOrders[0];
-  toast(ic('bell',14)+` ${newOrders.length} nouvelle${newOrders.length>1?'s':''} commande${newOrders.length>1?'s':''} — #${latest.num} (${fmt(latest.total)})`, true);
+  const existing = document.getElementById('notifPanelOverlay');
+  if(existing){ existing.remove(); return; }
+  const latest = [...DEMO_ORDERS]
+    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+    .slice(0,10);
+  const overlay = document.createElement('div');
+  overlay.id = 'notifPanelOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:1250;background:rgba(0,0,0,.28);display:flex;align-items:flex-start;justify-content:flex-end;padding:76px 18px 18px;';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeNotifPanel(); };
+  overlay.innerHTML = `
+    <div style="width:min(390px,calc(100vw - 24px));max-height:min(72vh,620px);overflow:auto;background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10);border-radius:18px;box-shadow:0 18px 55px rgba(0,0,0,.35);">
+      <div style="position:sticky;top:0;z-index:2;background:#131C30;border-bottom:1px solid rgba(255,255,255,.09);padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div><p style="font-size:15px;font-weight:700;">Notifications</p><p style="font-size:11px;color:rgba(255,255,255,.58);margin-top:2px;">Les 10 dernières commandes</p></div>
+        <button type="button" onclick="closeNotifPanel()" aria-label="Fermer" style="width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',17)}</button>
+      </div>
+      <div style="padding:8px;">
+        ${latest.length ? latest.map((o,i)=>`
+          <button type="button" onclick="closeNotifPanel();setDashSection('orders')" style="width:100%;text-align:left;padding:12px 10px;border-radius:12px;display:flex;gap:10px;align-items:flex-start;color:#fff;background:${i===0?'rgba(232,135,30,.10)':'transparent'};">
+            <span style="width:32px;height:32px;border-radius:10px;background:rgba(232,135,30,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F5B24E;">${ic('receipt',16)}</span>
+            <span style="min-width:0;flex:1;"><strong style="font-size:12.5px;display:block;">Commande #${String(o.num||'').replace(/</g,'&lt;')}</strong><span style="font-size:11.5px;color:rgba(255,255,255,.72);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${String(o.client||'Client').replace(/</g,'&lt;')} · ${fmt(Number(o.total)||0)}</span><span style="font-size:10.5px;color:rgba(255,255,255,.45);display:block;margin-top:3px;">${timeAgo(new Date(o.createdAt||Date.now()))}</span></span>
+            <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="flex-shrink:0;">${ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle'}</span>
+          </button>`).join('') : `<div style="padding:28px 14px;text-align:center;color:rgba(255,255,255,.55);font-size:12.5px;">Aucune commande pour le moment.</div>`}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  hydrateIcons(overlay);
   markNotifsSeen();
 }
 function refreshNotifDot(){
