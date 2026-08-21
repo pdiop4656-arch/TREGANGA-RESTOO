@@ -5884,22 +5884,23 @@ async function submitOrder(){
 async function submitOrderInternal(){
   const c = state.checkout;
 
-  // Sécurisation UNIQUEMENT du parcours Livraison :
-  // on envoie toujours l'ID réel de la zone et un mode valide.
+  // Livraison : la sélection du client reste locale et libre.
+  // On utilise uniquement les données déjà chargées pour afficher la zone,
+  // calculer le supplément et transmettre les informations saisies.
+  // Aucun contrôle supplémentaire côté interface ne bloque la commande.
   if(c.orderType==='delivery'){
     const modes = enabledDeliveryModes();
     const zones = enabledDeliveryZones();
-    if(!modes.length){
-      toast("Aucun mode de livraison n'est disponible.");
-      return;
-    }
-    if(!c.deliveryMode || !modes.includes(c.deliveryMode)) c.deliveryMode = modes[0];
+    if(modes.length && (!c.deliveryMode || !modes.includes(c.deliveryMode))) c.deliveryMode = modes[0];
     if(zones.length===1 && !c.deliveryZone) c.deliveryZone = String(zones[0].id);
-    if(!c.deliveryZone || !deliveryZoneById(c.deliveryZone)){
-      toast("Sélectionnez une zone de livraison valide.");
+    const selectedZone = deliveryZoneById(c.deliveryZone);
+    if(!selectedZone){
+      toast("Sélectionnez une zone de livraison.");
       return;
     }
-    c.deliveryZone = String(deliveryZoneById(c.deliveryZone).id);
+    // Toujours transmettre l'identifiant de la zone sélectionnée, jamais le
+    // texte saisi dans l'adresse. L'adresse reste totalement libre.
+    c.deliveryZone = String(selectedZone.id);
   }
 
   // Commande RÉELLE — créée via la RPC create_order() (voir
