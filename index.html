@@ -2749,54 +2749,137 @@ function setLoginVerifying(on, btnId, label){
   }
 }
 
+/* Authentification par code OTP — uniquement la logique d'authentification.
+   L'apparence existante du site reste inchangée. */
+let pendingOtpEmail = '';
+let pendingOtpPurpose = '';
+let otpBusy = false;
+
+function authMessage(error, fallback){
+  const msg = String(error?.message || fallback || '').toLowerCase();
+  if(msg.includes('invalid login credentials')) return 'E-mail ou mot de passe incorrect.';
+  if(msg.includes('email not confirmed')) return 'Votre adresse e-mail n’est pas encore confirmée.';
+  if(msg.includes('user already registered') || msg.includes('already registered')) return 'Cette adresse e-mail est déjà utilisée.';
+  if(msg.includes('password should be at least')) return 'Le mot de passe est trop faible. Utilisez au moins 10 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.';
+  if(msg.includes('password')) return 'Le mot de passe ne respecte pas les règles de sécurité.';
+  if(msg.includes('rate limit') || msg.includes('too many')) return 'Trop de tentatives. Veuillez patienter un instant avant de réessayer.';
+  if(msg.includes('otp') && msg.includes('expired')) return 'Ce code a expiré. Demandez un nouveau code.';
+  if(msg.includes('invalid') && msg.includes('token')) return 'Code incorrect ou expiré.';
+  if(msg.includes('network')) return 'Connexion réseau impossible. Vérifiez votre connexion puis réessayez.';
+  return fallback || 'Une erreur est survenue. Veuillez réessayer.';
+}
+
+function isStrongPassword(pw){
+  return typeof pw === 'string' && pw.length >= 10 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+}
+
+function renderOtpStep(email, purpose){
+  pendingOtpEmail = email;
+  pendingOtpPurpose = purpose;
+  const body = document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML = `
+    <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Un code de vérification a été envoyé à <strong>${escapeAttr(email)}</strong>.</p>
+    <label class="field-label">Code de vérification</label>
+    <input class="field-input" id="authOtpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="••••••••" style="text-align:center;font-size:22px;letter-spacing:.28em;margin-bottom:12px;">
+    <p id="authOtpStatus" style="font-size:11px;color:var(--ink-faint);text-align:center;min-height:17px;">Le code sera vérifié automatiquement dès qu’il est complet.</p>
+    <button type="button" id="authOtpResendBtn" class="btn btn-ghost btn-sm w-full" onclick="resendAuthOtp()">Renvoyer le code</button>`;
+  hydrateIcons(body);
+  const input = document.getElementById('authOtpInput');
+  if(input){
+    input.focus();
+    input.addEventListener('input', ()=>{
+      input.value = input.value.replace(/\D/g,'').slice(0,8);
+      /* Supabase peut fournir 6 ou 8 chiffres selon le flux/configuration.
+         On déclenche automatiquement sur saisie complète; pour 8 chiffres,
+         le contrôle attend bien les 8 chiffres. */
+      if(input.value.length === 8){ verifyAuthOtp(); }
+      else if(input.value.length === 6){
+        setTimeout(()=>{ if(input.value.length===6) verifyAuthOtp(); }, 120);
+      }
+    });
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') verifyAuthOtp(); });
+  }
+}
+
+async function verifyAuthOtp(){
+  const input = document.getElementById('authOtpInput');
+  if(!input || otpBusy) return;
+  const token = input.value.trim();
+  if(!/^\d{6,8}$/.test(token)) return;
+  otpBusy = true;
+  const status = document.getElementById('authOtpStatus');
+  if(status) status.textContent = 'Vérification du code…';
+  const type = pendingOtpPurpose === 'recovery' ? 'recovery' : 'email';
+  const {data, error} = await supabaseClient.auth.verifyOtp({ email: pendingOtpEmail, token, type });
+  if(error){
+    otpBusy = false;
+    if(status) status.textContent = authMessage(error, 'Code incorrect ou expiré.');
+    input.select();
+    return;
+  }
+  otpBusy = false;
+  if(pendingOtpPurpose === 'recovery'){
+    renderNewPasswordStep();
+    return;
+  }
+  currentUser = data.user;
+  closeLogin();
+  startOnboarding();
+  obState.accountName = obState.pendingAccountName || obState.accountName || '';
+  obState.accountEmail = pendingOtpEmail;
+  renderOnboarding();
+  toast('Adresse e-mail confirmée. Votre compte est prêt.');
+}
+
+function renderNewPasswordStep(){
+  const body = document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML = `
+    <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Code vérifié. Choisissez votre nouveau mot de passe.</p>
+    <label class="field-label">Nouveau mot de passe</label>
+    <div style="position:relative;">
+      <input class="field-input" id="recoveryPassword" type="password" placeholder="10 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
+      <button type="button" onclick="togglePasswordVisibility('recoveryPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+    </div>
+    <div id="recoveryPwStrength" style="margin-bottom:10px;"></div>
+    <label class="field-label">Confirmer le mot de passe</label>
+    <input class="field-input" id="recoveryPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
+    <button type="button" id="recoverySaveBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>`;
+  hydrateIcons(body);
+}
+
+async function saveRecoveredPassword(){
+  const p1 = document.getElementById('recoveryPassword')?.value || '';
+  const p2 = document.getElementById('recoveryPassword2')?.value || '';
+  if(!isStrongPassword(p1)){
+    toast('Le mot de passe est trop faible. Utilisez au moins 10 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.');
+    return;
+  }
+  if(p1 !== p2){ toast('Les mots de passe ne correspondent pas.'); return; }
+  setLoginVerifying(true,'recoverySaveBtn','Enregistrement…');
+  const {error} = await supabaseClient.auth.updateUser({password:p1});
+  if(error){ setLoginVerifying(false,'recoverySaveBtn'); toast(authMessage(error,'Impossible de modifier le mot de passe.')); return; }
+  setLoginVerifying(false,'recoverySaveBtn');
+  closeLogin();
+  toast('Mot de passe modifié avec succès. Vous pouvez maintenant vous connecter.');
+}
+
+async function resendAuthOtp(){
+  if(!pendingOtpEmail) return;
+  const btn = document.getElementById('authOtpResendBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
+  let error = null;
+  if(pendingOtpPurpose === 'recovery'){
+    ({error} = await supabaseClient.auth.resetPasswordForEmail(pendingOtpEmail,{redirectTo:location.origin}));
+  } else {
+    ({error} = await supabaseClient.auth.resend({type:'signup',email:pendingOtpEmail,options:{emailRedirectTo:location.origin}}));
+  }
+  if(btn){ btn.disabled=false; btn.textContent='Renvoyer le code'; }
+  if(error) toast(authMessage(error,'Impossible de renvoyer le code.')); else toast('Nouveau code envoyé.');
+}
+
 let loginTab = 'login';
-let signupOtpEmail = '';
-let signupOtpName = '';
-let signupOtpPassword = '';
-let signupOtpContext = 'modal';
-let signupOtpTimer = null;
-let passwordRecoveryEmail = '';
-let passwordRecoveryOtpTimer = null;
-let authAutoVerifyBusy = false;
-let suppressPendingOnboardingResume = false;
-
-function friendlyAuthError(error, fallback='Une erreur est survenue.'){ 
-  const raw = String(error?.message || error || '').trim();
-  const m = raw.toLowerCase();
-  if(!raw) return fallback;
-  if(m.includes('invalid login credentials')) return 'E-mail ou mot de passe incorrect.';
-  if(m.includes('email not confirmed')) return 'Votre adresse e-mail n’est pas encore confirmée.';
-  if(m.includes('user already registered')) return 'Cette adresse e-mail est déjà utilisée. Connectez-vous ou utilisez « Mot de passe oublié ? ».';
-  if(m.includes('password should be at least') || m.includes('password is too weak') || m.includes('weak password')) return 'Mot de passe trop faible. Utilisez au moins 8 caractères avec une majuscule, une minuscule et un chiffre.';
-  if(m.includes('new password should be different')) return 'Le nouveau mot de passe doit être différent de l’ancien.';
-  if(m.includes('token has expired') || m.includes('invalid token') || m.includes('otp') && m.includes('invalid')) return 'Code incorrect ou expiré. Demandez un nouveau code puis réessayez.';
-  if(m.includes('email rate limit') || m.includes('rate limit') || m.includes('too many requests')) return 'Trop de tentatives. Veuillez patienter quelques instants avant de réessayer.';
-  if(m.includes('user not found')) return 'Aucun compte ne correspond à cette adresse e-mail.';
-  if(m.includes('signup is disabled')) return 'La création de compte est temporairement indisponible.';
-  if(m.includes('network') || m.includes('fetch')) return 'Connexion au serveur impossible. Vérifiez votre connexion puis réessayez.';
-  return fallback;
-}
-
-function strongPasswordMessage(pw){
-  if((pw||'').length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
-  if(!/[a-z]/.test(pw)) return 'Le mot de passe doit contenir au moins une minuscule.';
-  if(!/[A-Z]/.test(pw)) return 'Le mot de passe doit contenir au moins une majuscule.';
-  if(!/[0-9]/.test(pw)) return 'Le mot de passe doit contenir au moins un chiffre.';
-  return '';
-}
-
-function scheduleOtpAutoVerify(inputId, verifyFnName){
-  const input=document.getElementById(inputId);
-  if(!input) return;
-  clearTimeout(input._otpTimer);
-  const digits=input.value.replace(/\D/g,'').slice(0,8);
-  input.value=digits;
-  if(digits.length < 8) return;
-  input._otpTimer=setTimeout(()=>{
-    if(authAutoVerifyBusy) return;
-    window[verifyFnName]();
-  }, 650);
-}
 function setLoginTab(tab){
   loginTab = tab;
   ['login','signup','invite'].forEach(t=>{
@@ -2831,8 +2914,8 @@ function setLoginTab(tab){
       <div id="signupPwStrength" style="margin-bottom:10px;"></div>
       <label class="field-label">Confirmer le mot de passe</label>
       <input class="field-input" id="signupPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
-      <button id="signupSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Un code de confirmation sera envoyé par e-mail. Aucun lien à cliquer.</p>`;
+      <button class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Une fois le compte créé, vous continuez vers la création de votre restaurant.</p>`;
   } else {
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Vous avez été invité(e) à rejoindre un restaurant sur TerangaResto.</p>
@@ -2852,70 +2935,6 @@ function setLoginTab(tab){
   hydrateIcons(body);
 }
 
-function renderSignupOtpScreen(){
-  const body=document.getElementById('loginTabBody');
-  if(!body) return;
-  body.innerHTML=`
-    <div style="text-align:center;margin-bottom:18px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:10px;">${ic('mail',30)}</div>
-      <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Confirmez votre adresse e-mail</h2>
-      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 auto;max-width:360px;">Un code de confirmation a été envoyé à <strong>${escapeAttr(signupOtpEmail)}</strong>. Saisissez-le ci-dessous.</p>
-    </div>
-    <label class="field-label">Code de confirmation</label>
-    <input class="field-input" id="signupOtpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="12345678" style="margin-bottom:10px;letter-spacing:.22em;text-align:center;font-weight:800;font-size:20px;">
-    <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin:0 0 14px;">La vérification se fait automatiquement dès que le code est complet.</p>
-    <button id="signupResendBtn" class="btn btn-outline btn-sm w-full" onclick="resendSignupOtp()">Renvoyer le code</button>
-    <button class="btn btn-ghost btn-sm w-full" onclick="setLoginTab('signup')" style="margin-top:8px;">Modifier l'adresse e-mail</button>`;
-  const input=document.getElementById('signupOtpInput');
-  input?.addEventListener('input',()=>scheduleOtpAutoVerify('signupOtpInput','verifySignupOtp'));
-  setTimeout(()=>input?.focus(),50);
-  hydrateIcons(body);
-}
-
-async function verifySignupOtp(){
-  if(authAutoVerifyBusy) return;
-  const input=document.getElementById('signupOtpInput');
-  const token=(input?.value||'').replace(/\D/g,'');
-  if(token.length<8) return;
-  authAutoVerifyBusy=true;
-  if(input){ input.disabled=true; input.style.opacity='.65'; }
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:signupOtpEmail, token, type:'signup'});
-  if(error){
-    authAutoVerifyBusy=false;
-    if(input){ input.disabled=false; input.style.opacity=''; input.select(); }
-    toast(friendlyAuthError(error,'Code de confirmation incorrect ou expiré.'));
-    return;
-  }
-  currentUser=data.user;
-  authAutoVerifyBusy=false;
-  if(signupOtpContext==='onboarding'){
-    obState.emailConfirmationPending=false;
-    obState.pendingEmail='';
-    renderOnboarding();
-    toast('Adresse e-mail confirmée. Vous pouvez continuer.',true);
-  }else{
-    closeLogin();
-    startOnboarding();
-    obState.accountName=signupOtpName;
-    obState.accountEmail=signupOtpEmail;
-    obState.accountPassword=signupOtpPassword;
-    renderOnboarding();
-    toast('Compte confirmé — continuons avec votre restaurant.',true);
-  }
-  signupOtpEmail=''; signupOtpName=''; signupOtpPassword='';
-}
-
-async function resendSignupOtp(){
-  const email=signupOtpEmail || obState.pendingEmail || obState.accountEmail;
-  if(!email){ toast('Adresse e-mail introuvable.'); return; }
-  const btn=document.getElementById('signupResendBtn');
-  if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
-  const {error}=await supabaseClient.auth.resend({type:'signup',email,options:{emailRedirectTo:window.location.origin}});
-  if(btn){ btn.disabled=false; btn.textContent='Renvoyer le code'; }
-  if(error){ toast(friendlyAuthError(error,'Impossible de renvoyer le code.')); return; }
-  toast('Nouveau code envoyé.');
-}
-
 async function submitLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -2931,7 +2950,7 @@ async function submitLogin(){
   // avant setView('dashboard'), jamais avant.
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(friendlyAuthError(error,'Connexion impossible.')); return; }
+  if(error){ setLoginVerifying(false); toast(authMessage(error,'Connexion impossible.')); return; }
   currentUser = data.user;
   simulatedRole = null;
   const rid = await findMyRestaurantId(data.user.id);
@@ -2956,30 +2975,33 @@ async function submitLogin(){
 
 async function submitSignup(){
   const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const email = document.getElementById('signupEmail').value.trim();
   const pw = document.getElementById('signupPassword').value;
   const pw2 = document.getElementById('signupPassword2').value;
   if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
-  const pwError=strongPasswordMessage(pw);
-  if(pwError){ toast(pwError); return; }
+  if(!isStrongPassword(pw)){ toast('Le mot de passe est trop faible. Utilisez au moins 10 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.'); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
-  setLoginVerifying(true,'signupSubmitBtn','Création du compte…');
-  const {data,error}=await supabaseClient.auth.signUp({email,password:pw,options:{data:{name}}});
-  setLoginVerifying(false,'signupSubmitBtn');
-  if(error){ toast(friendlyAuthError(error,'Impossible de créer ce compte.')); return; }
+  // L'unicité de l'e-mail est vérifiée par Supabase Auth lui-même
+  // (contrainte réelle, persistante entre tous les utilisateurs) —
+  // plus besoin d'une liste en mémoire côté client.
+  const {data, error} = await supabaseClient.auth.signUp({
+    email, password: pw, options:{data:{name}},
+  });
+  if(error){ toast(authMessage(error,'Impossible de créer ce compte.')); return; }
   if(!data.session){
-    signupOtpEmail=email; signupOtpName=name; signupOtpPassword=pw; signupOtpContext='modal';
-    renderSignupOtpScreen();
-    toast('Compte créé. Un code de confirmation vient d’être envoyé.');
+    obState.pendingAccountName = name;
+    obState.accountName = name;
+    obState.accountEmail = email;
+    renderOtpStep(email,'signup');
+    toast('Code de confirmation envoyé à votre adresse e-mail.');
     return;
   }
-  currentUser=data.user;
+  currentUser = data.user;
   closeLogin();
   startOnboarding();
-  obState.accountName=name;
-  obState.accountEmail=email;
-  obState.accountPassword=pw;
+  obState.accountName = name;
+  obState.accountEmail = email;
   renderOnboarding();
   toast('Compte créé — continuons avec votre restaurant.');
 }
@@ -2989,8 +3011,6 @@ async function submitInviteAccept(){
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
   const password = document.getElementById('invitePasswordInput').value;
   if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
-  const invitePwError=strongPasswordMessage(password);
-  if(invitePwError){ toast(invitePwError); return; }
 
   setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
 
@@ -3008,7 +3028,7 @@ async function submitInviteAccept(){
   let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
   if(signErr){
     const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(friendlyAuthError(inErr,'Mot de passe incorrect pour ce compte existant.')); return; }
+    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
     signData = inData;
   }
   currentUser = signData.user;
@@ -3811,119 +3831,16 @@ function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElemen
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
 async function sendPasswordReset(){
-  const email=document.getElementById('loginEmail')?.value.trim().toLowerCase();
+  const email = document.getElementById('loginEmail').value.trim();
   if(!email || !/^\S+@\S+\.\S+$/.test(email)){
     toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».');
     return;
   }
-  const btn=document.getElementById('loginSubmitBtn');
-  if(btn){ btn.disabled=true; btn.style.opacity='.7'; btn.innerHTML=`${ic('loader',15,{className:'spin'})} Envoi du code…`; hydrateIcons(btn); }
-  const {error}=await supabaseClient.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
-  if(error){
-    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.innerHTML='Se connecter'; }
-    toast(friendlyAuthError(error,'Impossible d’envoyer le code de récupération.'));
-    return;
-  }
-  passwordRecoveryEmail=email;
-  renderPasswordRecoveryOtp();
+  const {error} = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
+  if(error){ toast(authMessage(error,"Impossible d'envoyer le code de réinitialisation.")); return; }
+  renderOtpStep(email,'recovery');
+  toast('Code de réinitialisation envoyé à votre adresse e-mail.');
 }
-
-function renderPasswordRecoveryOtp(){
-  const body=document.getElementById('loginTabBody');
-  if(!body) return;
-  body.innerHTML=`
-    <div style="text-align:center;margin-bottom:18px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:10px;">${ic('mail',30)}</div>
-      <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Vérifiez votre e-mail</h2>
-      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 auto;max-width:360px;">Un code de récupération a été envoyé à <strong>${escapeAttr(passwordRecoveryEmail)}</strong>.</p>
-    </div>
-    <label class="field-label">Code de récupération</label>
-    <input class="field-input" id="passwordRecoveryOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="12345678" style="margin-bottom:10px;letter-spacing:.22em;text-align:center;font-weight:800;font-size:20px;">
-    <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin:0 0 14px;">La vérification se fait automatiquement.</p>
-    <button class="btn btn-outline btn-sm w-full" onclick="resendPasswordRecoveryOtp()">Renvoyer le code</button>
-    <button class="btn btn-ghost btn-sm w-full" onclick="setLoginTab('login')" style="margin-top:8px;">Retour à la connexion</button>`;
-  const input=document.getElementById('passwordRecoveryOtp');
-  input?.addEventListener('input',()=>scheduleOtpAutoVerify('passwordRecoveryOtp','verifyPasswordRecoveryOtp'));
-  setTimeout(()=>input?.focus(),50);
-  hydrateIcons(body);
-}
-
-async function verifyPasswordRecoveryOtp(){
-  if(authAutoVerifyBusy) return;
-  const input=document.getElementById('passwordRecoveryOtp');
-  const token=(input?.value||'').replace(/\D/g,'');
-  if(token.length<8) return;
-  authAutoVerifyBusy=true;
-  if(input){ input.disabled=true; input.style.opacity='.65'; }
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'email'});
-  if(error){
-    authAutoVerifyBusy=false;
-    if(input){ input.disabled=false; input.style.opacity=''; input.select(); }
-    toast(friendlyAuthError(error,'Code de récupération incorrect ou expiré.'));
-    return;
-  }
-  currentUser=data.user;
-  authAutoVerifyBusy=false;
-  renderPasswordRecoveryNewPassword();
-}
-
-function renderPasswordRecoveryNewPassword(){
-  const body=document.getElementById('loginTabBody');
-  if(!body) return;
-  body.innerHTML=`
-    <div style="text-align:center;margin-bottom:18px;">
-      <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Nouveau mot de passe</h2>
-      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 auto;max-width:360px;">Votre code est accepté. Choisissez maintenant un nouveau mot de passe sécurisé.</p>
-    </div>
-    <label class="field-label">Nouveau mot de passe</label>
-    <div style="position:relative;">
-      <input class="field-input" id="recoveryNewPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
-      <button type="button" onclick="togglePasswordVisibility('recoveryNewPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
-    </div>
-    <div id="recoveryPwStrength" style="margin-bottom:10px;"></div>
-    <label class="field-label">Confirmer le nouveau mot de passe</label>
-    <input class="field-input" id="recoveryNewPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
-    <button id="recoverySaveBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>`;
-  hydrateIcons(body);
-}
-
-async function saveRecoveredPassword(){
-  const pw=document.getElementById('recoveryNewPassword')?.value||'';
-  const pw2=document.getElementById('recoveryNewPassword2')?.value||'';
-  const err=strongPasswordMessage(pw);
-  if(err){ toast(err); return; }
-  if(pw!==pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
-  const btn=document.getElementById('recoverySaveBtn');
-  if(btn){ btn.disabled=true; btn.style.opacity='.7'; btn.innerHTML=`${ic('loader',15,{className:'spin'})} Enregistrement…`; hydrateIcons(btn); }
-  const {error}=await supabaseClient.auth.updateUser({password:pw});
-  if(error){
-    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.innerHTML='Enregistrer le nouveau mot de passe'; }
-    toast(friendlyAuthError(error,'Impossible de modifier le mot de passe.'));
-    return;
-  }
-  const rid=await findMyRestaurantId(currentUser?.id);
-  if(rid){
-    await loadRestaurantCore(rid);
-    viewerIsStaff=true;
-    closeLogin();
-    setView('dashboard');
-    setDashSection('overview');
-    toast('Mot de passe modifié avec succès. Vous êtes connecté.');
-    loadRestaurantSecondaryData(rid);
-  }else{
-    closeLogin();
-    startOnboarding();
-    toast('Mot de passe modifié avec succès.');
-  }
-}
-
-async function resendPasswordRecoveryOtp(){
-  if(!passwordRecoveryEmail){ toast('Adresse e-mail introuvable.'); return; }
-  const {error}=await supabaseClient.auth.signInWithOtp({email:passwordRecoveryEmail,options:{shouldCreateUser:false}});
-  if(error){ toast(friendlyAuthError(error,'Impossible de renvoyer le code.')); return; }
-  toast('Nouveau code envoyé.');
-}
-
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
   if(!input) return;
@@ -3935,8 +3852,8 @@ function togglePasswordVisibility(inputId, btn){
 function passwordStrength(pw){
   if(!pw) return {score:0, label:'', color:'var(--cream-line)'};
   let score = 0;
-  if(pw.length >= 8) score++;
-  if(pw.length >= 12) score++;
+  if(pw.length >= 10) score++;
+  if(pw.length >= 14) score++;
   if(/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
   if(/[0-9]/.test(pw)) score++;
   if(/[^a-zA-Z0-9]/.test(pw)) score++;
@@ -3948,7 +3865,7 @@ function passwordStrength(pw){
     {label:'Très fort', color:'var(--forest)'},
   ];
   const idx = Math.min(score, 4);
-  return {score: idx, label: pw.length < 8 ? 'Trop court' : levels[idx].label, color: pw.length < 8 ? 'var(--terracotta)' : levels[idx].color};
+  return {score: idx, label: pw.length < 10 ? 'Trop court' : levels[idx].label, color: pw.length < 10 ? 'var(--terracotta)' : levels[idx].color};
 }
 function renderPasswordStrength(pw, barId){
   const el = document.getElementById(barId);
@@ -4172,7 +4089,7 @@ const obState = {
    obNext()) — tout ce qui a été saisi est simplement recopié ici, pour
    que restoreSession() puisse retrouver EXACTEMENT ces informations et
    terminer automatiquement la création du restaurant dès qu'une vraie
-   session apparaît (après la saisie du code reçu par e-mail) — sans
+   session apparaît (après le clic sur le lien reçu par e-mail) — sans
    jamais redemander quoi que ce soit à la personne. */
 const PENDING_ONBOARDING_KEY = 'tg_pending_onboarding';
 let resumingOnboarding = false;
@@ -4200,7 +4117,6 @@ function clearPendingOnboarding(){
    choisi) — sans jamais repasser par "Connexion". */
 async function tryResumePendingOnboarding(){
   if(!currentUser) return false;
-  if(suppressPendingOnboardingResume) return false;
   if(resumingOnboarding) return true; // déjà en cours (voir garde-fou ci-dessous) — ne jamais tenter une deuxième création en parallèle
   const saved = loadPendingOnboarding();
   if(!saved) return false;
@@ -4273,32 +4189,59 @@ async function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
   if(o.step===0 && !currentUser){
-    if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
-    const pwError=strongPasswordMessage(o.accountPassword);
-    if(pwError){ toast(pwError); return; }
+    // Compte pas encore créé (arrivée directe sur l'onboarding, sans
+    // passer par le formulaire d'inscription de la modale) — on le crée
+    // maintenant, réellement, dans Supabase Auth.
+    if(!isStrongPassword(o.accountPassword)){ toast('Le mot de passe est trop faible. Utilisez au moins 10 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.'); return; }
+    // signUp() est un vrai appel réseau vers Supabase — son temps de
+    // réponse n'est jamais artificiel et ne peut pas être supprimé par
+    // ce code. Ce qui EST corrigé ici : auparavant, le bouton ne
+    // donnait AUCUN signe de vie pendant cet appel (aucun changement
+    // visuel du tout), ce qui faisait paraître un délai réseau normal
+    // comme un blocage. Un retour visuel immédiat, dès le clic,
+    // règle ce problème de perception sans rien accélérer
+    // artificiellement.
     setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
-    const {data,error}=await supabaseClient.auth.signUp({
-      email:o.accountEmail.trim().toLowerCase(),
-      password:o.accountPassword,
-      options:{data:{name:o.accountName.trim()}}
+    const {data, error} = await supabaseClient.auth.signUp({
+      email:o.accountEmail.trim(), password:o.accountPassword, options:{
+        data:{name:o.accountName.trim()},
+        // CORRECTION DU LIEN "localhost" : sans ce paramètre, Supabase
+        // utilise l'URL "Site URL" configurée dans le tableau de bord
+        // du projet — qui reste très souvent une valeur de
+        // développement (localhost) tant que personne ne l'a changée
+        // manuellement. En la précisant explicitement ici, avec
+        // l'origine RÉELLE de la page actuellement ouverte (jamais une
+        // valeur codée en dur), le lien de confirmation pointe
+        // toujours vers le bon domaine, en développement comme en
+        // production, sans configuration supplémentaire dans le code.
+        // ATTENTION : Supabase n'autorise que les URLs explicitement
+        // ajoutées à la liste "Redirect URLs" (Authentication → URL
+        // Configuration) — voir le rapport final pour l'action
+        // nécessaire de votre côté.
+        emailRedirectTo: window.location.origin,
+      },
     });
-    setLoginVerifying(false,'obNextBtn');
-    if(error){ toast(friendlyAuthError(error,'Impossible de créer ce compte.')); return; }
+    setLoginVerifying(false, 'obNextBtn');
+    if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
     if(!data.session){
-      o.emailConfirmationPending=true;
-      o.pendingEmail=o.accountEmail.trim().toLowerCase();
+      // Confirmation e-mail exigée par la configuration du projet —
+      // AUCUNE session tant que le lien n'est pas cliqué. Mais rien
+      // n'empêche de continuer le parcours pour autant : les étapes
+      // suivantes ne font QUE remplir obState localement, aucune
+      // n'écrit encore dans Supabase avant la toute dernière ("Créer
+      // mon restaurant"/paiement). On mémorise donc simplement que la
+      // confirmation reste en attente, et on sauvegarde une copie de
+      // tout ce qui a déjà été saisi pour pouvoir le retrouver
+      // automatiquement une fois l'e-mail confirmé — jamais besoin de
+      // tout ressaisir, jamais de reconnexion manuelle demandée ici.
+      o.emailConfirmationPending = true;
+      o.pendingEmail = o.accountEmail.trim();
       savePendingOnboarding();
-      signupOtpEmail=o.pendingEmail;
-      signupOtpName=o.accountName;
-      signupOtpPassword=o.accountPassword;
-      signupOtpContext='onboarding';
-      renderOnboardingEmailPendingScreen();
-      return;
+    } else {
+      currentUser = data.user;
+      o.emailConfirmationPending = false;
     }
-    currentUser=data.user;
-    o.emailConfirmationPending=false;
   }
-
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
   if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
@@ -4462,58 +4405,19 @@ function renderOnboardingEmailPendingScreen(){
     <div class="text-center" style="padding:20px 10px;">
       <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',36)}</div>
       <h2 class="font-display" style="font-size:19px;margin-bottom:8px;">Confirmez votre e-mail</h2>
-      <p style="font-size:13px;color:var(--ink-soft);max-width:360px;margin:0 auto 12px;">Un code de confirmation a été envoyé à <strong>${escapeAttr(obState.pendingEmail)}</strong>.</p>
-      <label class="field-label" style="text-align:left;display:block;max-width:360px;margin:0 auto 6px;">Code de confirmation</label>
-      <input class="field-input" id="onboardingSignupOtpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="12345678" style="max-width:360px;margin:0 auto 10px;letter-spacing:.22em;text-align:center;font-weight:800;font-size:20px;">
-      <p style="font-size:11px;color:var(--ink-faint);max-width:360px;margin:0 auto 14px;">La vérification se fait automatiquement dès que le code est complet.</p>
-      <button id="signupResendBtn" class="btn btn-outline" onclick="resendOnboardingConfirmationEmail()">${ic('refreshCw',14)} Renvoyer le code</button>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:360px;margin:0 auto 6px;">Nous avons envoyé un lien de confirmation à <strong>${escapeAttr(obState.pendingEmail)}</strong>.</p>
+      <p style="font-size:12.5px;color:var(--ink-faint);max-width:360px;margin:0 auto 20px;">Toutes vos informations sont déjà enregistrées — dès que vous cliquez sur le lien reçu, votre restaurant ${escapeAttr(obState.restoName)||''} est créé automatiquement et vous arrivez directement dans votre tableau de bord. Aucune reconnexion manuelle n'est nécessaire.</p>
+      <button class="btn btn-outline" onclick="resendOnboardingConfirmationEmail()">${ic('refreshCw',14)} Renvoyer l'e-mail</button>
     </div>`;
-  const input=document.getElementById('onboardingSignupOtpInput');
-  input?.addEventListener('input',()=>{
-    clearTimeout(input._otpTimer);
-    input.value=input.value.replace(/\D/g,'').slice(0,8);
-    if(input.value.length>=8) input._otpTimer=setTimeout(()=>verifyOnboardingSignupOtp(),650);
-  });
-  setTimeout(()=>input?.focus(),50);
   hydrateIcons(document.getElementById('obCard'));
 }
-async function verifyOnboardingSignupOtp(){
-  if(authAutoVerifyBusy) return;
-  const input=document.getElementById('onboardingSignupOtpInput');
-  const token=(input?.value||'').replace(/\D/g,'');
-  if(token.length<8) return;
-  signupOtpEmail=obState.pendingEmail;
-  signupOtpContext='onboarding';
-  suppressPendingOnboardingResume=true;
-  authAutoVerifyBusy=true;
-  if(input){ input.disabled=true; input.style.opacity='.65'; }
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:signupOtpEmail,token,type:'signup'});
-  if(error){
-    authAutoVerifyBusy=false;
-    if(input){ input.disabled=false; input.style.opacity=''; input.select(); }
-    toast(friendlyAuthError(error,'Code de confirmation incorrect ou expiré.'));
-    suppressPendingOnboardingResume=false;
-    return;
-  }
-  currentUser=data.user;
-  obState.emailConfirmationPending=false;
-  obState.pendingEmail='';
-  clearPendingOnboarding();
-  suppressPendingOnboardingResume=false;
-  authAutoVerifyBusy=false;
-  renderOnboarding();
-  toast('Adresse e-mail confirmée. Vous pouvez continuer.');
-}
 async function resendOnboardingConfirmationEmail(){
-  const email=obState.pendingEmail || obState.accountEmail;
-  if(!email){ toast('Adresse e-mail introuvable.'); return; }
-  const btn=document.getElementById('signupResendBtn');
-  if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
-  const {error}=await supabaseClient.auth.resend({type:'signup',email,options:{emailRedirectTo:window.location.origin}});
-  if(btn){ btn.disabled=false; btn.textContent='Renvoyer le code'; }
-  toast(error ? friendlyAuthError(error,'Impossible de renvoyer le code.') : 'Nouveau code envoyé.');
+  const {error} = await supabaseClient.auth.resend({
+    type:'signup', email: obState.pendingEmail,
+    options:{ emailRedirectTo: window.location.origin },
+  });
+  toast(error ? ("Impossible de renvoyer l'e-mail : " + error.message) : "E-mail de confirmation renvoyé.");
 }
-
 /* Échappement minimal pour du texte inséré dans un attribut/contenu
    HTML généré ici — évite qu'un nom de restaurant ou un e-mail
    contenant des caractères spéciaux ne casse le balisage. */
