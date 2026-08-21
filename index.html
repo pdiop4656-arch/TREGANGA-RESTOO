@@ -4254,24 +4254,40 @@ function renderPasswordRecoveryCodeScreen(){
       <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
       <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Réinitialiser le mot de passe</h2>
       <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Un code de réinitialisation a été envoyé à <strong>${escapeHtml(passwordRecoveryEmail)}</strong>.</p>
-      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez le code reçu. Aucun lien n’est nécessaire si votre modèle e-mail utilise <code>{{ .Token }}</code>.</p>
-      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
+      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez d’abord le code reçu par e-mail. Vous pourrez choisir votre nouveau mot de passe uniquement après vérification du code.</p>
+      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter') verifyPasswordRecoveryOtp()">
       <button id="verifyRecoveryOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
-      <div style="margin-top:12px;">
-        <label class="field-label" style="text-align:left;">Nouveau mot de passe</label>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
+    </div>`;
+  hydrateIcons(body);
+  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
+}
+function renderRecoveredPasswordScreen(){
+  const body=document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML=`
+    <div class="text-center" style="padding:10px 0 4px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Nouveau mot de passe</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 18px;">Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.</p>
+
+      <div style="text-align:left;">
+        <label class="field-label">Nouveau mot de passe</label>
         <div style="position:relative;margin-bottom:6px;">
           <input id="recoveryPassword" class="field-input" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
           <button type="button" onclick="togglePasswordVisibility('recoveryPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
         </div>
         <div id="recoveryPwStrength" style="margin-bottom:8px;"></div>
-        <label class="field-label" style="text-align:left;">Confirmer le mot de passe</label>
-        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;">
+
+        <label class="field-label">Confirmer le mot de passe</label>
+        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter') saveRecoveredPassword()">
       </div>
+
       <button id="saveRecoveryBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>
       <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
     </div>`;
   hydrateIcons(body);
-  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
+  setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50);
 }
 async function verifyPasswordRecoveryOtp(){
   const token=(document.getElementById('recoveryOtpInput')?.value||'').trim();
@@ -4284,8 +4300,8 @@ async function verifyPasswordRecoveryOtp(){
     toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
   }
   currentUser=data.user||currentUser;
-  if(btn){btn.disabled=true;btn.style.opacity='';btn.textContent='Code vérifié';}
-  toast('Code vérifié. Choisissez votre nouveau mot de passe.');
+  toast('Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.',true);
+  renderRecoveredPasswordScreen();
 }
 async function saveRecoveredPassword(){
   const pw=document.getElementById('recoveryPassword')?.value||'';
@@ -4308,7 +4324,7 @@ function showPasswordRecoveryFormFromSession(session){
   currentUser=session.user||currentUser;
   passwordRecoveryEmail=session.user?.email||passwordRecoveryEmail||'';
   if(document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('hidden');
-  renderPasswordRecoveryCodeScreen();
+  renderRecoveredPasswordScreen();
 }
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
