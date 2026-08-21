@@ -7719,10 +7719,8 @@ async function saveSettings(){
       RESTAURANT.slug = nextSlug;
       RESTAURANT.social = nextSocial;
 
-if (nextSlug !== previousSlug) {
-  window.location.replace(publicRestaurantUrl(nextSlug));
-  return;
-}
+// Le changement de sous-domaine ne quitte plus le tableau de bord.
+// Le nouveau lien public est simplement mis à jour dans le tableau de bord.
     }
     RESTAURANT.name = requestedName;
   }
@@ -7738,7 +7736,12 @@ if (nextSlug !== previousSlug) {
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
   const saved = await persistRestaurant();
-  if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
+  if(saved){
+    // Rafraîchit uniquement la section des paramètres afin que le nouveau
+    // sous-domaine apparaisse immédiatement, sans ouvrir le site public.
+    renderDashSection('settings');
+    toast('Modifications enregistrées — visibles sur votre site public.');
+  }
 }
 function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
