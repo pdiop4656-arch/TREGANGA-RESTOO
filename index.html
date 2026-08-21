@@ -2047,6 +2047,11 @@ async function loadRestaurantCore(restaurantId){
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
   RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  // Les anciens sous-domaines expirés ne sont plus actifs. On les nettoie
+  // localement ; la prochaine sauvegarde du propriétaire persistera ce nettoyage.
+  if(Array.isArray(RESTAURANT.social.slug_redirects)){
+    RESTAURANT.social.slug_redirects = normalizeSlugRedirects(RESTAURANT.social);
+  }
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2949,17 +2954,84 @@ async function loadRestaurantPublicImagesFast(restaurantId){
   }
 }
 
+/*
+ * Sous-domaines renommables — ancien lien conservé 48 h.
+ *
+ * Les alias sont stockés dans la colonne JSONB `social`, déjà présente dans
+ * la table restaurants : aucune nouvelle colonne ni nouvelle table n'est
+ * nécessaire. Un alias actif ressemble à :
+ *   { slug, target_slug, expires_at }
+ *
+ * Important : l'ancien sous-domaine n'est jamais considéré comme le nom
+ * actuel du restaurant. Il sert uniquement de redirection temporaire.
+ */
+const SLUG_REDIRECT_TTL_MS = 48 * 60 * 60 * 1000;
+
+function normalizeSlugRedirects(social){
+  const list = Array.isArray(social?.slug_redirects) ? social.slug_redirects : [];
+  const now = Date.now();
+  return list.filter(a =>
+    a && typeof a.slug === 'string' && typeof a.target_slug === 'string' &&
+    a.slug && a.target_slug && Number.isFinite(new Date(a.expires_at).getTime()) &&
+    new Date(a.expires_at).getTime() > now
+  );
+}
+
+function activeSlugRedirectExists(list, candidate){
+  const c = String(candidate || '').trim().toLowerCase();
+  return normalizeSlugRedirects({slug_redirects:list}).some(a => String(a.slug).toLowerCase() === c);
+}
+
+async function findActiveSlugRedirect(slug){
+  const candidate = String(slug || '').trim().toLowerCase();
+  if(!candidate) return null;
+
+  // Le slug actuel reste prioritaire : un alias expiré ne peut jamais
+  // masquer un restaurant qui a légitimement repris ce nom après expiration.
+  const {data:rows, error} = await supabaseClient
+    .from('restaurants')
+    .select('id,slug,social')
+    .eq('is_published', true);
+
+  if(error){
+    console.warn('TerangaResto — vérification des anciens sous-domaines:', error.message);
+    return null;
+  }
+
+  for(const row of (rows || [])){
+    const redirects = normalizeSlugRedirects(row.social || {});
+    const hit = redirects.find(a => String(a.slug).toLowerCase() === candidate);
+    if(hit && String(row.slug || '').toLowerCase() !== candidate){
+      return { id:row.id, targetSlug:row.slug, redirect:hit };
+    }
+  }
+  return null;
+}
+
 async function loadRestaurantBySlug(slug){
+  const cleanSlug = String(slug || '').trim().toLowerCase();
+  if(!cleanSlug) return false;
+
   const {data} = await supabaseClient
     .from('restaurants')
     .select('id')
-    .eq('slug', slug)
+    .eq('slug', cleanSlug)
     .eq('is_published', true)
     .maybeSingle();
 
   if(data){
     return await loadRestaurantPublicFast(data.id);
   }
+
+  // L'ancien lien reste fonctionnel pendant exactement 48 h après un
+  // changement de nom, puis devient automatiquement invalide.
+  const redirect = await findActiveSlugRedirect(cleanSlug);
+  if(redirect?.targetSlug){
+    const targetUrl = publicRestaurantUrl(redirect.targetSlug);
+    window.location.replace(targetUrl);
+    return true;
+  }
+
   return false;
 }
 
@@ -7562,8 +7634,9 @@ async function saveSettings(){
   const nameEl = document.getElementById('setName');
   const requestedName = nameEl ? nameEl.value.trim() : previousName;
 
-  // Le nom est aussi l'identifiant public : le slug est dérivé automatiquement
-  // du nom, avec une vérification serveur avant toute modification.
+  // Le nom est aussi l'identifiant public. Lorsqu'il change, le nouveau
+  // sous-domaine devient immédiatement canonique et l'ancien est conservé
+  // comme alias temporaire pendant 48 h, puis il expire automatiquement.
   if(requestedName && requestedName !== previousName){
     const nextSlug = slugify(requestedName) || 'mon-restaurant';
     if(nextSlug !== previousSlug){
@@ -7578,11 +7651,55 @@ async function saveSettings(){
         return;
       }
 
-      // Mise à jour séparée du slug : les autres réglages restent fonctionnels
-      // même si une ancienne politique RLS refuse encore la colonne slug.
+      // Les anciens alias encore actifs restent réservés pendant leur délai,
+      // afin qu'un autre restaurant ne puisse pas récupérer immédiatement
+      // l'ancien sous-domaine pendant que des clients l'utilisent encore.
+      const {data:publishedRows, error:redirectCheckError} = await supabaseClient
+        .from('restaurants')
+        .select('id,slug,social')
+        .eq('is_published', true);
+      if(redirectCheckError){
+        console.error('TerangaResto — vérification des alias:', redirectCheckError);
+        toast('Impossible de vérifier ce nom pour le moment.');
+        return;
+      }
+      const takenByRedirect = (publishedRows || []).some(row =>
+        String(row.id) !== String(RESTAURANT.id) &&
+        activeSlugRedirectExists(row.social?.slug_redirects, nextSlug)
+      );
+      if(takenByRedirect){
+        toast('Ce nom est encore temporairement réservé. Choisissez un autre nom.');
+        return;
+      }
+
+      const now = Date.now();
+      const existingRedirects = normalizeSlugRedirects(RESTAURANT.social || {});
+      const newRedirect = previousSlug ? {
+        slug: previousSlug,
+        target_slug: nextSlug,
+        created_at: new Date(now).toISOString(),
+        expires_at: new Date(now + SLUG_REDIRECT_TTL_MS).toISOString()
+      } : null;
+
+      // Toutes les redirections encore actives pointent directement vers le
+      // nouveau nom : même après plusieurs renommages, il n'y a pas de chaîne
+      // old -> old -> new. Le délai de chaque ancien lien reste indépendant.
+      const refreshedRedirects = existingRedirects
+        .filter(a => String(a.slug).toLowerCase() !== String(nextSlug).toLowerCase())
+        .map(a => ({...a, target_slug: nextSlug}));
+      if(newRedirect && String(previousSlug).toLowerCase() !== String(nextSlug).toLowerCase()){
+        refreshedRedirects.push(newRedirect);
+      }
+
+      const nextSocial = Object.assign({}, RESTAURANT.social || {}, {
+        slug_redirects: refreshedRedirects
+      });
+
+      // Écriture atomique des deux éléments essentiels : le nouveau slug
+      // et la liste des anciens liens encore actifs.
       const {error:slugUpdateError} = await supabaseClient
         .from('restaurants')
-        .update({slug:nextSlug})
+        .update({slug:nextSlug, social:nextSocial})
         .eq('id', RESTAURANT.id);
       if(slugUpdateError){
         console.error('TerangaResto — changement de sous-domaine:', slugUpdateError);
@@ -7592,6 +7709,7 @@ async function saveSettings(){
         return;
       }
       RESTAURANT.slug = nextSlug;
+      RESTAURANT.social = nextSocial;
     }
     RESTAURANT.name = requestedName;
   }
