@@ -2042,7 +2042,7 @@ async function loadRestaurantCore(restaurantId){
   // defaultSocial() renvoient toujours un objet neuf, jamais partagé.
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2617,6 +2617,22 @@ function setRestaurantSaveState(state){
 async function persistRestaurant(){
   if(!RESTAURANT.id) return false;
 
+  // Le sous-domaine suit automatiquement le nom du restaurant.
+  // Un ancien sous-domaine est conservé 48 h comme redirection.
+  if(RESTAURANT.name){
+    const expectedSlug = slugify(RESTAURANT.name) || 'mon-restaurant';
+    if(expectedSlug !== RESTAURANT.slug){
+      const previousSlug = RESTAURANT.slug;
+      const nextSlug = await resolveUniqueSlugForRename(RESTAURANT.name, previousSlug);
+      if(nextSlug && nextSlug !== previousSlug){
+        rememberPreviousSlug(previousSlug, nextSlug);
+        RESTAURANT.slug = nextSlug;
+      }
+    }
+  }
+
+  RESTAURANT.social = cleanSlugRedirects(RESTAURANT.social);
+
   // Si une sauvegarde est déjà en cours, on mémorise seulement la dernière
   // modification. Elle sera envoyée juste après la requête courante.
   if(restaurantSaveInFlight){
@@ -2630,7 +2646,7 @@ async function persistRestaurant(){
     // Supabase. Les champs d'e-mail de notification et les champs hero sont
     // gérés par leurs mécanismes dédiés / le patch SQL associé.
     const payload = {
-      name:RESTAURANT.name, type:RESTAURANT.type,
+      name:RESTAURANT.name, slug:RESTAURANT.slug, type:RESTAURANT.type,
       logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
       primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
       address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
@@ -2871,7 +2887,7 @@ async function loadRestaurantPublicFast(restaurantId){
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2945,18 +2961,6 @@ async function loadRestaurantPublicImagesFast(restaurantId){
   }
 }
 
-async function loadRestaurantBySlug(slug){
-  const {data} = await supabaseClient
-    .from('restaurants')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle();
-
-  if(data){
-    return await loadRestaurantPublicFast(data.id);
-  }
-  return false;
-}
 
 /* Lien de restaurant qui ne correspond à rien de réel (mauvais slug,
    restaurant supprimé...). Remplace tout — y compris l'en-tête
@@ -4467,6 +4471,109 @@ function generateUniqueSlug(name){
     n++;
   }
   return { base, slug: candidate, wasTaken: candidate !== base };
+}
+
+/* ---------------- CHANGEMENT AUTOMATIQUE DU SOUS-DOMAINE ----------------
+   Le sous-domaine suit toujours le nom du restaurant.
+   L'ancien slug reste une adresse de redirection pendant 48 h, puis
+   est retiré de l'historique. Les redirections sont conservées dans
+   la colonne JSON `social` déjà existante : aucune nouvelle colonne
+   Supabase n'est nécessaire. */
+const SLUG_REDIRECT_TTL_MS = 48 * 60 * 60 * 1000;
+
+function cleanSlugRedirects(social){
+  const source = (social && typeof social === 'object') ? social : {};
+  const redirects = Array.isArray(source.slug_redirects) ? source.slug_redirects : [];
+  const now = Date.now();
+  const valid = redirects.filter(r =>
+    r && r.slug && r.to_slug && Number(r.expires_at) > now
+  );
+  return {...source, slug_redirects: valid};
+}
+
+async function resolveUniqueSlugForRename(name, currentSlug){
+  const base = slugify(name) || 'mon-restaurant';
+  let candidate = base;
+  for(let n=2; n<=1000; n++){
+    if(candidate !== currentSlug){
+      try{
+        const {data:available, error} = await supabaseClient.rpc(
+          'is_slug_available',
+          {p_slug:candidate}
+        );
+        if(!error && available) return candidate;
+      }catch(e){
+        console.warn('Vérification du sous-domaine:', e);
+      }
+    }else{
+      return candidate;
+    }
+    candidate = `${base}-${n}`;
+  }
+  return `${base}-${Date.now()}`;
+}
+
+function rememberPreviousSlug(previousSlug, nextSlug){
+  if(!previousSlug || !nextSlug || previousSlug === nextSlug) return;
+  const social = cleanSlugRedirects(RESTAURANT.social);
+  const redirects = Array.isArray(social.slug_redirects) ? social.slug_redirects : [];
+  const now = Date.now();
+  const kept = redirects.filter(r => r.slug !== previousSlug);
+  kept.push({
+    slug: previousSlug,
+    to_slug: nextSlug,
+    created_at: now,
+    expires_at: now + SLUG_REDIRECT_TTL_MS
+  });
+  RESTAURANT.social = {...social, slug_redirects: kept};
+}
+
+/* Recherche d'un ancien sous-domaine pendant sa fenêtre de 48 h.
+   Après expiration, il n'est plus reconnu et devient introuvable. */
+async function loadRestaurantBySlug(slug){
+  const clean = slugify(slug);
+  if(!clean) return false;
+
+  const {data} = await supabaseClient
+    .from('restaurants')
+    .select('id')
+    .eq('slug', clean)
+    .maybeSingle();
+
+  if(data){
+    return await loadRestaurantPublicFast(data.id);
+  }
+
+  try{
+    const {data:redirectRows} = await supabaseClient
+      .from('restaurants')
+      .select('id,social')
+      .contains('social', {slug_redirects:[{slug:clean}]});
+
+    const now = Date.now();
+    const row = (redirectRows || []).find(r => {
+      const redirects = Array.isArray(r.social?.slug_redirects) ? r.social.slug_redirects : [];
+      return redirects.some(x =>
+        x && x.slug === clean &&
+        x.to_slug &&
+        Number(x.expires_at) > now
+      );
+    });
+
+    if(row){
+      const redirect = row.social.slug_redirects.find(x =>
+        x && x.slug === clean && x.to_slug && Number(x.expires_at) > now
+      );
+      if(redirect){
+        window.location.replace(publicRestaurantUrl(redirect.to_slug));
+        return true;
+      }
+    }
+  }catch(e){
+    console.warn('Redirection ancien sous-domaine:', e);
+  }
+
+  return false;
 }
 
 /* Vérification RÉELLE contre Supabase (pas seulement la petite liste
@@ -7446,27 +7553,6 @@ function settingsBodyHtml(){
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div class="card" style="padding:14px 16px;margin-top:18px;margin-bottom:14px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
-        <div>
-          <p style="font-size:13.5px;font-weight:700;">E-mail de réception des commandes</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
-        </div>
-        ${RESTAURANT.orderNotificationEmailVerified ? `<span class="pill pill-forest">Vérifié</span>` : `<span class="pill pill-terracotta">Non vérifié</span>`}
-      </div>
-      <label class="field-label">Adresse e-mail</label>
-      <input class="field-input" id="orderNotifyEmail" type="email" placeholder="commandes@votrerestaurant.com" value="${RESTAURANT.orderNotificationEmail || ''}" style="margin-bottom:10px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="requestOrderNotificationEmailChange()">${ic('send',13)} ${RESTAURANT.orderNotificationEmailVerified ? 'Changer l’adresse' : 'Définir l’adresse'}</button>
-        ${RESTAURANT.orderNotificationEmailPending ? `<button class="btn btn-outline btn-sm" onclick="verifyOrderNotificationEmail()">${ic('check',13)} Vérifier le code</button>` : ''}
-      </div>
-      ${RESTAURANT.orderNotificationEmailPending ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
-        <label class="field-label">Code de vérification à 8 chiffres</label>
-        <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:.22em;text-align:center;font-weight:800;font-size:18px;max-width:240px;">
-        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Nous avons envoyé ce code à <strong>${RESTAURANT.orderNotificationEmailPending}</strong>.</p>
-      </div>` : ''}
-    </div>
-
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
