@@ -4007,7 +4007,10 @@ function deliveryFeeFor(modeKey, zoneId){
   if(zone) return Math.max(0,Number(zone.fee)||0);
   return Number(RESTAURANT.delivery.fee)||0;
 }
-function deliveryZoneById(id){ return enabledDeliveryZones().find(z=>z.id===id)||null; }
+function deliveryZoneById(id){
+  const wanted = String(id ?? '').trim();
+  return enabledDeliveryZones().find(z=>String(z.id ?? '').trim()===wanted)||null;
+}
 function deliveryModeAllowsCashOnDelivery(modeKey){
   if(modeKey==='express') return false; // structurel : un coursier tiers n'encaisse pas pour le restaurant
   return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
@@ -5745,22 +5748,10 @@ function ckNext(){
   const c = state.checkout;
   if(state.checkoutStep===0 && (!c.firstName||!c.lastName||!c.phone)){ toast('Complétez vos informations.'); return; }
   if(state.checkoutStep===1 && c.orderType==='dine_in' && !c.table){ toast('Indiquez le numéro de table.'); return; }
-  if(state.checkoutStep===1 && c.orderType==='delivery'){
-    const deliveryZones = enabledDeliveryZones();
-    // Une seule zone : elle est sélectionnée automatiquement.
-    // Plusieurs zones : le client doit choisir.
-    // Aucune zone : on conserve le tarif de livraison général du restaurant.
-    if(deliveryZones.length===1) c.deliveryZone = deliveryZones[0].id;
-    if(deliveryZones.length>1 && !c.deliveryZone){ toast('Sélectionnez votre zone de livraison.'); return; }
-  }
+  if(state.checkoutStep===1 && c.orderType==='delivery' && !c.deliveryZone){ toast('Sélectionnez votre zone de livraison.'); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && !c.address){ toast("Indiquez l'adresse de livraison."); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && cartSubtotal() < Number(RESTAURANT.delivery.min)){ toast(`Commande minimum pour la livraison : ${fmt(RESTAURANT.delivery.min)}.`); return; }
-  if(state.checkoutStep===2 && !c.payment){
-    const methods = availablePaymentMethods();
-    // Un seul moyen de paiement : sélection automatique, sans bloquer le passage à la confirmation.
-    if(methods.length===1) c.payment = methods[0];
-    else { toast(methods.length===0 ? "Aucun moyen de paiement n'est configuré." : 'Choisissez un moyen de paiement.'); return; }
-  }
+  if(state.checkoutStep===2 && !c.payment){ toast('Choisissez un moyen de paiement.'); return; }
   state.checkoutStep++;
   renderCheckout();
 }
@@ -5788,10 +5779,8 @@ function renderCheckout(){
     const modes = enabledDeliveryModes();
     const deliveryZones = enabledDeliveryZones();
     if(c.orderType==='delivery' && !c.deliveryMode && modes.length>0) c.deliveryMode = modes[0];
-    // Si le restaurateur n'a qu'une seule zone active, elle est choisie automatiquement.
-    if(c.orderType==='delivery' && deliveryZones.length===1) c.deliveryZone = deliveryZones[0].id;
-    // Si une ancienne zone n'existe plus et qu'il y en a plusieurs, on force un nouveau choix.
-    if(c.orderType==='delivery' && deliveryZones.length>1 && c.deliveryZone && !deliveryZones.some(z=>z.id===c.deliveryZone)) c.deliveryZone = null;
+    if(c.orderType==='delivery' && deliveryZones.length===1) c.deliveryZone = String(deliveryZones[0].id);
+    if(c.orderType==='delivery' && c.deliveryZone && !deliveryZoneById(c.deliveryZone)) c.deliveryZone = null;
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Mode de commande</h1>
       <div class="grid" style="grid-template-columns:repeat(${opts.length},1fr);gap:8px;margin-bottom:16px;">
         ${opts.map(([key,icon,label])=>`<button onclick="ckField('orderType','${key}');renderCheckout();" style="border:2px solid ${c.orderType===key?'var(--amber-deep)':'var(--cream-line)'};${c.orderType===key?'background:rgba(232,135,30,.06);':''}border-radius:16px;padding:16px 8px;text-align:center;">
@@ -5809,10 +5798,9 @@ function renderCheckout(){
           </button>`).join('')}
         </div>`:''}
         <label class="field-label">Zone de livraison</label>
-        <select class="field-input" onchange="ckField('deliveryZone',this.value);renderCheckout();" style="margin-bottom:12px;" ${deliveryZones.length===1?'disabled':''}>
-          ${deliveryZones.length===1
-            ? deliveryZones.map(z=>`<option value="${escapeAttr(z.id)}" selected>${escapeHtml(z.name)} — ${Number(z.fee)===0?'Gratuit':fmt(Number(z.fee))}</option>`).join('')
-            : `<option value="">Sélectionnez votre zone</option>${deliveryZones.map(z=>`<option value="${escapeAttr(z.id)}" ${c.deliveryZone===z.id?'selected':''}>${escapeHtml(z.name)} — ${Number(z.fee)===0?'Gratuit':fmt(Number(z.fee))}</option>`).join('')}`}
+        <select class="field-input" onchange="ckField('deliveryZone',this.value);renderCheckout();" style="margin-bottom:12px;">
+          <option value="">Sélectionnez votre zone</option>
+          ${enabledDeliveryZones().map(z=>`<option value="${escapeAttr(z.id)}" ${c.deliveryZone===z.id?'selected':''}>${escapeHtml(z.name)} — ${Number(z.fee)===0?'Gratuit':fmt(Number(z.fee))}</option>`).join('')}
         </select>
         <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${escapeHtml(c.address)}</textarea>
         ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${deliveryFeeFor(c.deliveryMode,c.deliveryZone)===0?'Gratuit':fmt(deliveryFeeFor(c.deliveryMode,c.deliveryZone))}</p>`:''}`:''}`;
@@ -5896,6 +5884,24 @@ async function submitOrder(){
 async function submitOrderInternal(){
   const c = state.checkout;
 
+  // Sécurisation UNIQUEMENT du parcours Livraison :
+  // on envoie toujours l'ID réel de la zone et un mode valide.
+  if(c.orderType==='delivery'){
+    const modes = enabledDeliveryModes();
+    const zones = enabledDeliveryZones();
+    if(!modes.length){
+      toast("Aucun mode de livraison n'est disponible.");
+      return;
+    }
+    if(!c.deliveryMode || !modes.includes(c.deliveryMode)) c.deliveryMode = modes[0];
+    if(zones.length===1 && !c.deliveryZone) c.deliveryZone = String(zones[0].id);
+    if(!c.deliveryZone || !deliveryZoneById(c.deliveryZone)){
+      toast("Sélectionnez une zone de livraison valide.");
+      return;
+    }
+    c.deliveryZone = String(deliveryZoneById(c.deliveryZone).id);
+  }
+
   // Commande RÉELLE — créée via la RPC create_order() (voir
   // supabase_schema.sql), qui recalcule elle-même le prix de chaque
   // produit/variante et le frais de livraison à partir des vraies
@@ -5911,7 +5917,7 @@ async function submitOrderInternal(){
     p_order_type: c.orderType,
     p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
     p_delivery_mode: c.orderType==='delivery' ? c.deliveryMode : null,
-    p_delivery_zone: c.orderType==='delivery' ? c.deliveryZone : null,
+    p_delivery_zone: c.orderType==='delivery' ? String(c.deliveryZone) : null,
     p_items: state.cart.map(l => ({
       product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
     })),
