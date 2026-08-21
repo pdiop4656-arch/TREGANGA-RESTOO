@@ -3198,7 +3198,7 @@ function setLoginTab(tab){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Pour les restaurateurs qui ont déjà un compte.</p>
       <label class="field-label">E-mail</label>
-      <input class="field-input" id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <input class="field-input" id="loginEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
       <label class="field-label">Mot de passe</label>
       <div style="position:relative;margin-bottom:8px;">
         <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="padding-right:40px;">
@@ -3212,7 +3212,7 @@ function setLoginTab(tab){
       <label class="field-label">Nom complet</label>
       <input class="field-input" id="signupName" placeholder="Fatou Diop" style="margin-bottom:12px;">
       <label class="field-label">E-mail</label>
-      <input class="field-input" id="signupEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <input class="field-input" id="signupEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
       <label class="field-label">Mot de passe</label>
       <div style="position:relative;">
         <input class="field-input" id="signupPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'signupPwStrength')">
@@ -3227,7 +3227,7 @@ function setLoginTab(tab){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Vous avez été invité(e) à rejoindre un restaurant sur TerangaResto.</p>
       <label class="field-label">Adresse e-mail invitée</label>
-      <input class="field-input" id="inviteEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@exemple.com" style="margin-bottom:12px;">
+      <input class="field-input" id="inviteEmail" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
       <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
       <label class="field-label">Choisissez un mot de passe</label>
@@ -4230,57 +4230,6 @@ function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElemen
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
 let passwordRecoveryEmail = '';
-let passwordRecoveryResendTimer = 0;
-let passwordRecoveryResendInterval = null;
-function startPasswordRecoveryResendCountdown(seconds=30){
-  passwordRecoveryResendTimer = Math.max(0, Number(seconds)||0);
-  if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
-  const update = () => {
-    const btn = document.getElementById('resendRecoveryOtpBtn');
-    const label = document.getElementById('resendRecoveryOtpLabel');
-    if(btn){
-      btn.disabled = passwordRecoveryResendTimer > 0;
-      btn.style.opacity = passwordRecoveryResendTimer > 0 ? '.65' : '';
-      btn.style.cursor = passwordRecoveryResendTimer > 0 ? 'not-allowed' : '';
-    }
-    if(label){
-      label.textContent = passwordRecoveryResendTimer > 0 ? `Renvoyer le code (${passwordRecoveryResendTimer}s)` : 'Renvoyer le code';
-    }
-    if(passwordRecoveryResendTimer <= 0){
-      if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
-      passwordRecoveryResendInterval = null;
-      return;
-    }
-    passwordRecoveryResendTimer--;
-  };
-  update();
-  passwordRecoveryResendInterval = setInterval(update,1000);
-}
-async function resendPasswordRecoveryOtp(){
-  if(passwordRecoveryResendTimer > 0){
-    toast(`Veuillez attendre ${passwordRecoveryResendTimer} seconde(s) avant de renvoyer le code.`);
-    return;
-  }
-  const btn=document.getElementById('resendRecoveryOtpBtn');
-  if(btn){btn.disabled=true;btn.style.opacity='.7';}
-  /* Réinitialisation par OTP Supabase : on renvoie un vrai OTP e-mail,
-     sans lien de récupération susceptible d'être ouvert/préchargé par
-     Gmail ou un outil de sécurité. Le compte doit déjà exister. */
-  const {error}=await supabaseClient.auth.signInWithOtp({
-    email: passwordRecoveryEmail,
-    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
-  });
-  if(error){
-    if(btn){btn.disabled=false;btn.style.opacity='';}
-    toast(supabaseErrorFr(error,'Impossible de renvoyer le code de réinitialisation.'));
-    return;
-  }
-  toast('Nouveau code de réinitialisation envoyé.');
-  const input=document.getElementById('recoveryOtpInput');
-  if(input) input.value='';
-  startPasswordRecoveryResendCountdown(30);
-  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
-}
 async function sendPasswordReset(){
   const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
   if(!email || !/^\S+@\S+\.\S+$/.test(email)){
@@ -4288,19 +4237,13 @@ async function sendPasswordReset(){
     return;
   }
   setLoginVerifying(true, 'loginSubmitBtn', 'Envoi du code…');
-  /* Pour éviter le problème de code immédiatement expiré lié aux liens de
-     récupération, le flux « Mot de passe oublié » utilise ici le vrai OTP
-     e-mail Supabase. Le code reçu est ensuite vérifié avant d'autoriser le
-     changement de mot de passe. Aucun nouveau compte n'est créé. */
-  const {error} = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+  const {error} = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: getPublicSiteOrigin()
   });
   setLoginVerifying(false, 'loginSubmitBtn');
   if(error){ toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.')); return; }
   passwordRecoveryEmail = email;
   renderPasswordRecoveryCodeScreen();
-  startPasswordRecoveryResendCountdown(30);
   toast('Un code de réinitialisation a été envoyé à votre adresse e-mail.');
 }
 function renderPasswordRecoveryCodeScreen(){
@@ -4311,58 +4254,38 @@ function renderPasswordRecoveryCodeScreen(){
       <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
       <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Réinitialiser le mot de passe</h2>
       <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Un code de réinitialisation a été envoyé à <strong>${escapeHtml(passwordRecoveryEmail)}</strong>.</p>
-      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez d’abord le code reçu par e-mail. Vous pourrez choisir votre nouveau mot de passe uniquement après vérification du code.</p>
-      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter') verifyPasswordRecoveryOtp()">
+      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez le code reçu. Aucun lien n’est nécessaire si votre modèle e-mail utilise <code>{{ .Token }}</code>.</p>
+      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
       <button id="verifyRecoveryOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
-      <button id="resendRecoveryOtpBtn" class="btn btn-ghost w-full" style="margin-top:6px;" onclick="resendPasswordRecoveryOtp()"><span id="resendRecoveryOtpLabel">Renvoyer le code</span></button>
-      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
-    </div>`;
-  hydrateIcons(body);
-  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
-}
-function renderRecoveredPasswordScreen(){
-  const body=document.getElementById('loginTabBody');
-  if(!body) return;
-  body.innerHTML=`
-    <div class="text-center" style="padding:10px 0 4px;">
-      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Nouveau mot de passe</h2>
-      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 18px;">Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.</p>
-
-      <div style="text-align:left;">
-        <label class="field-label">Nouveau mot de passe</label>
+      <div style="margin-top:12px;">
+        <label class="field-label" style="text-align:left;">Nouveau mot de passe</label>
         <div style="position:relative;margin-bottom:6px;">
           <input id="recoveryPassword" class="field-input" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
           <button type="button" onclick="togglePasswordVisibility('recoveryPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
         </div>
         <div id="recoveryPwStrength" style="margin-bottom:8px;"></div>
-
-        <label class="field-label">Confirmer le mot de passe</label>
-        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter') saveRecoveredPassword()">
+        <label class="field-label" style="text-align:left;">Confirmer le mot de passe</label>
+        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;">
       </div>
-
       <button id="saveRecoveryBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>
       <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
     </div>`;
   hydrateIcons(body);
-  setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50);
+  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
 }
 async function verifyPasswordRecoveryOtp(){
   const token=(document.getElementById('recoveryOtpInput')?.value||'').trim();
   if(!/^\d{6,8}$/.test(token)){ toast('Entrez le code reçu par e-mail.'); return; }
   const btn=document.getElementById('verifyRecoveryOtpBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'email'});
+  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'recovery'});
   if(error){
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
     toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
   }
   currentUser=data.user||currentUser;
-  if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
-  passwordRecoveryResendInterval=null;
-  passwordRecoveryResendTimer=0;
-  toast('Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.',true);
-  renderRecoveredPasswordScreen();
+  if(btn){btn.disabled=true;btn.style.opacity='';btn.textContent='Code vérifié';}
+  toast('Code vérifié. Choisissez votre nouveau mot de passe.');
 }
 async function saveRecoveredPassword(){
   const pw=document.getElementById('recoveryPassword')?.value||'';
@@ -4385,7 +4308,7 @@ function showPasswordRecoveryFormFromSession(session){
   currentUser=session.user||currentUser;
   passwordRecoveryEmail=session.user?.email||passwordRecoveryEmail||'';
   if(document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('hidden');
-  renderRecoveredPasswordScreen();
+  renderPasswordRecoveryCodeScreen();
 }
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
@@ -5215,7 +5138,7 @@ function obStepHtml(){
     <label class="field-label">Nom complet</label>
     <input class="field-input" style="margin-bottom:12px;" placeholder="Fatou Diop" value="${o.accountName}" oninput="obField('accountName',this.value)">
     <label class="field-label">E-mail</label>
-    <input class="field-input" style="margin-bottom:12px;" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
+    <input class="field-input" style="margin-bottom:12px;" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
     <label class="field-label">Mot de passe</label>
     <div style="position:relative;">
       <input class="field-input" id="obAccountPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" value="${o.accountPassword}" oninput="obField('accountPassword',this.value);renderPasswordStrength(this.value,'obPwStrength')">
@@ -5236,7 +5159,7 @@ function obStepHtml(){
     </select>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;">
       <div><label class="field-label">Ville</label><input class="field-input" value="${o.city}" oninput="obField('city',this.value)"></div>
-      <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${o.phone}" oninput="this.value=this.value.replace(/\D/g,'');obField('phone',this.value)"></div>
+      <div><label class="field-label">Téléphone</label><input class="field-input" placeholder="+221 77 000 00 00" value="${o.phone}" oninput="obField('phone',this.value)"></div>
     </div>
     ${obNav(true)}`;
 
@@ -5722,12 +5645,11 @@ function ckField(key,val){
     if(!availablePaymentMethods().includes(state.checkout.payment)) state.checkout.payment = null;
   }
 }
-function ckTableInput(input){
-  if(!input) return;
-  const digitsOnly = input.value.replace(/\D/g,'');
-  if(input.value !== digitsOnly) input.value = digitsOnly;
+function ckTableInput(val){
+  const digitsOnly = val.replace(/\D/g,'');
   state.checkout.table = digitsOnly;
-  state.checkout.tableError = '';
+  state.checkout.tableError = (val!==digitsOnly) ? 'Chiffres uniquement, par exemple 1, 2, 10 ou 25.' : '';
+  renderCheckout();
 }
 /* Téléphone client : chiffres 0-9 uniquement — lettres, espaces, "+" et
    symboles sont retirés au fur et à mesure de la saisie. oninput se
@@ -5769,7 +5691,7 @@ function renderCheckout(){
         <div><label class="field-label">Prénom</label><input class="field-input" value="${c.firstName}" oninput="ckField('firstName',this.value)"></div>
         <div><label class="field-label">Nom</label><input class="field-input" value="${c.lastName}" oninput="ckField('lastName',this.value)"></div>
       </div>
-      <label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)">`;
+      <label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)">`;
   } else if(step===1){
     const opts = [['dine_in','utensils','Sur place'],['takeaway','package','À emporter']];
     if(RESTAURANT.delivery.enabled && enabledDeliveryModes().length>0) opts.push(['delivery','bike','Livraison']);
@@ -5781,7 +5703,7 @@ function renderCheckout(){
           <div style="display:flex;justify-content:center;color:${c.orderType===key?'var(--amber-deep)':'var(--ink-soft)'};">${ic(icon,22)}</div><div style="font-size:11.5px;font-weight:600;margin-top:6px;">${label}</div></button>`).join('')}
       </div>
       ${c.orderType==='dine_in'?`<label class="field-label">Numéro de table</label>
-        <input class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this)" style="${c.tableError?'border-color:var(--terracotta);':''}">
+        <input class="field-input" inputmode="numeric" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this.value)" style="${c.tableError?'border-color:var(--terracotta);':''}">
         ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${c.tableError}</p>`:''}`:''}
       ${c.orderType==='delivery'?`
         ${modes.length>1?`<label class="field-label">Type de livraison</label>
@@ -7302,7 +7224,7 @@ function dashStaff(){
   <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
     <p style="font-size:13px;font-weight:600;margin-bottom:10px;">${ic('plus',14)} Inviter une personne</p>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <input class="field-input" id="staffEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="email@exemple.com">
+      <input class="field-input" id="staffEmail" placeholder="email@exemple.com">
       <select class="field-input" id="staffRole" onchange="inviteRole=this.value;invitePermissions=ROLE_SECTIONS[this.value];renderDashSection('staff');">
         ${STAFF_ROLES.map(r=>`<option ${inviteRole===r?'selected':''}>${r}</option>`).join('')}
       </select>
