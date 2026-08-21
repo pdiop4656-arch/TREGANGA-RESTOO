@@ -7640,13 +7640,21 @@ async function saveSettings(){
   if(requestedName && requestedName !== previousName){
     const nextSlug = slugify(requestedName) || 'mon-restaurant';
     if(nextSlug !== previousSlug){
+      // Un restaurant peut renommer son sous-domaine autant de fois qu'il le souhaite.
+      // Si le nouveau slug correspond à un ancien alias encore actif de CE restaurant,
+      // il reste réutilisable par son propriétaire (mais reste réservé aux autres).
+      const ownActiveRedirects = normalizeSlugRedirects(RESTAURANT.social || {});
+      const isOwnActiveAlias = ownActiveRedirects.some(a =>
+        String(a.slug).trim().toLowerCase() === String(nextSlug).trim().toLowerCase()
+      );
+
       const {data:available, error:slugErr} = await supabaseClient.rpc('is_slug_available', {p_slug:nextSlug});
       if(slugErr){
         console.error('is_slug_available:', slugErr);
         toast('Impossible de vérifier ce nom pour le moment.');
         return;
       }
-      if(!available){
+      if(!available && !isOwnActiveAlias){
         toast('Ce nom est déjà utilisé. Choisissez un autre nom.');
         return;
       }
