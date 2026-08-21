@@ -1,1 +1,7957 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerangaResto — Aperçu</title>
+<link rel="icon" type="image/png" id="faviconLink" href="">
+<link rel="apple-touch-icon" id="appleTouchIconLink" href="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Le thème public "Classic" utilise des icônes FontAwesome (fa-solid,
+     fa-regular) dans ses boutons (panier, "+", localisation, menu...) —
+     cette feuille de style n'était jamais chargée, ce qui rendait ces
+     icônes invisibles (élément vide) sans casser la mise en page. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --ink:#2b1810; --ink-soft:#6b4f3f; --ink-faint:#a68a72;
+  --amber:#e8871e; --amber-deep:#b85c0f; --amber-ink:#b85c0f; --gold:#f5a623;
+  --cream:#fbf3e4; --cream-deep:#f1e2c4; --cream-line:#e6d3ac;
+  --forest:#1f6b45; --forest-soft:#e7f2ec;
+  --terracotta:#c1440e; --terracotta-soft:#fbe7dd;
+  --white:#ffffff; --surface:#ffffff;
+  --brand-secondary:#1f6b45; --brand-secondary-deep:#183a2c;
+  --font-display:'Fraunces',ui-serif,Georgia,serif;
+  --font-body:'Manrope',ui-sans-serif,system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth; overflow-x:hidden;}
+body{
+  font-family:var(--font-body); background:var(--cream); color:var(--ink);
+  -webkit-font-smoothing:antialiased; line-height:1.5;
+  overflow-x:hidden; max-width:100vw;
+}
+h1,h2,h3,h4,.font-display{font-family:var(--font-display);}
+.font-tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+a{color:inherit; text-decoration:none;}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+input,textarea,select{font-family:inherit; font-size:14px;}
+img{max-width:100%; display:block;}
+::selection{background:var(--amber); color:#fff;}
 
+/* Layout helpers */
+.wrap{max-width:1120px; margin:0 auto; padding:0 24px;}
+.wrap-sm{max-width:720px; margin:0 auto; padding:0 24px;}
+.flex{display:flex;}
+.flex-col{display:flex; flex-direction:column;}
+.items-center{align-items:center;}
+.justify-between{justify-content:space-between;}
+.justify-center{justify-content:center;}
+.gap-1{gap:4px;} .gap-2{gap:8px;} .gap-3{gap:12px;} .gap-4{gap:16px;} .gap-5{gap:20px;} .gap-6{gap:24px;}
+.grid{display:grid;}
+.hidden{display:none !important;}
+.relative{position:relative;} .sticky{position:sticky;} .fixed{position:fixed;}
+.text-center{text-align:center;}
+.w-full{width:100%;}
+.rounded{border-radius:12px;} .rounded-lg{border-radius:16px;} .rounded-xl{border-radius:20px;} .rounded-full{border-radius:999px;}
+.shrink-0{flex-shrink:0;}
+.overflow-x-auto{overflow-x:auto;}
+.overflow-y-auto{overflow-y:auto;}
+
+/* Buttons */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:600; font-size:14px; padding:11px 22px; border-radius:14px; transition:all .15s ease; white-space:nowrap;}
+.btn-lg{padding:14px 28px; font-size:15px; border-radius:16px;}
+.btn-sm{padding:7px 14px; font-size:12.5px; border-radius:10px;}
+.btn-primary{background:var(--ink); color:var(--cream);}
+.btn-primary:hover{background:#3d2717;}
+.btn-secondary{background:var(--amber); color:#fff; box-shadow:0 2px 10px rgba(184,92,15,.25);}
+.btn-secondary:hover{background:var(--amber-deep);}
+.btn-outline{background:transparent; border:1.5px solid rgba(43,24,16,.18); color:var(--ink);}
+.btn-outline:hover{background:rgba(43,24,16,.05);}
+.btn-ghost{background:transparent; color:var(--ink-soft);}
+.btn-ghost:hover{background:rgba(43,24,16,.05); color:var(--ink);}
+
+/* Cards / surfaces */
+.card{background:var(--surface); border:1px solid var(--cream-line); border-radius:20px;}
+.stat-card{background:var(--surface); border:1px solid var(--cream-line); border-radius:20px; padding:18px;}
+.pill{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 12px; border-radius:999px; white-space:nowrap;}
+
+/* Onglets de catégories du site public (base manquante, restaurée) */
+.cat-tab{ flex-shrink:0; font-size:13px; font-weight:600; padding:8px 16px; border-radius:999px; border:1.5px solid var(--cream-line); color:var(--ink-soft); background:var(--surface); }
+.cat-tab.active{ background:var(--amber); border-color:var(--amber); color:#fff; }
+
+/* Boutons secondaires du site public — utilisent la couleur secondaire
+   choisie par le restaurateur, distincte de la couleur principale. */
+#view-storefront .btn-outline{ border-color:var(--brand-secondary); color:var(--brand-secondary-deep); }
+#view-storefront .btn-outline:hover{ background:rgba(0,0,0,.035); }
+.pill-amber{background:rgba(232,135,30,.14); color:var(--amber-deep);}
+.pill-forest{background:var(--forest-soft); color:var(--forest);}
+.pill-terracotta{background:var(--terracotta-soft); color:var(--terracotta);}
+.pill-neutral{background:rgba(43,24,16,.06); color:var(--ink-soft);}
+.pill-ink{background:var(--ink); color:var(--cream);}
+
+.icon-badge{display:inline-flex; align-items:center; justify-content:center; border-radius:14px; flex-shrink:0;}
+
+/* Formulaires — labels, champs, cases à cocher (base manquante, restaurée) */
+.field-label{display:block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:6px;}
+.field-input{width:100%; border:1px solid var(--cream-line); border-radius:14px; padding:10px 14px; font-size:13.5px; background:var(--surface); color:var(--ink); font-family:inherit;}
+.field-input:focus{outline:none; border-color:var(--amber-deep);}
+.field-input::placeholder{color:var(--ink-faint);}
+select.field-input{cursor:pointer;}
+textarea.field-input{resize:vertical; font-family:inherit;}
+
+/* Interrupteur ON/OFF (base manquante, restaurée) */
+.toggle{position:relative; width:44px; height:24px; border-radius:999px; background:rgba(43,24,16,.15); flex-shrink:0; transition:background .15s; cursor:pointer;}
+.toggle.on{background:var(--forest);}
+.toggle .dot{position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:999px; transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.2);}
+.toggle.on .dot{transform:translateX(20px);}
+
+/* État vide (base manquante, restaurée) */
+.empty-state{text-align:center; padding:52px 24px; border:1.5px dashed var(--cream-line); border-radius:20px; background:rgba(255,255,255,.5);}
+
+/* Notification toast (base manquante, restaurée) */
+.toast{position:fixed; bottom:24px; right:24px; left:auto; max-width:calc(100vw - 32px); background:var(--ink); color:var(--cream); padding:12px 20px; border-radius:14px; font-size:13.5px; font-weight:500; z-index:200; box-shadow:0 10px 30px rgba(0,0,0,.2);}
+
+/* Tableaux de données (base manquante, restaurée) */
+table.data-table{width:100%; border-collapse:collapse; font-size:13.5px;}
+table.data-table thead{background:rgba(241,226,196,.5); color:var(--ink-faint); font-size:11px; text-transform:uppercase; letter-spacing:.03em;}
+table.data-table th, table.data-table td{text-align:left; padding:11px 16px;}
+table.data-table tbody tr{border-top:1px solid var(--cream-line);}
+table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;}
+
+/* Top demo banner */
+
+
+/* Global nav */
+.gnav{position:sticky; top:0; z-index:50; background:rgba(251,243,228,.9); backdrop-filter:blur(10px); border-bottom:1px solid var(--cream-line);}
+.gnav-inner{max-width:1120px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;}
+.gnav-tabs{display:flex; gap:4px; background:var(--cream-deep); padding:4px; border-radius:14px;}
+.gnav-tab{padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600; color:var(--ink-soft);}
+.gnav-tab.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(43,24,16,.1);}
+.logo-word{font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--ink);}
+.logo-word em{font-style:normal; color:var(--amber-deep);}
+
+/* Views */
+.view{display:none;}
+.view.active{display:block;}
+
+.cta-short{ display:none; }
+
+/* Bouton "Connexion" visible directement dans l'en-tête compact mobile,
+   juste à côté de "Créer" — plus besoin de passer par le menu hamburger
+   (qui reste disponible pour Accueil/Tarifs/FAQ/Comment ça marche).
+   Masqué sur desktop, où "Connexion" est déjà dans .gnav-tabs. */
+.mobile-login-btn{ display:none; }
+
+@media (max-width:820px){
+  .gnav-tabs{display:none;}
+  .gnav-tabs.mobile-open{display:flex; position:fixed; top:56px; left:12px; right:12px; z-index:55; flex-direction:column; box-shadow:0 10px 30px rgba(43,24,16,.15);}
+  #mobileMenuBtn{ display:flex !important; }
+  .mobile-login-btn{ display:inline-flex; }
+}
+@media (max-width:420px){
+  .cta-full{ display:none; }
+  .cta-short{ display:inline; }
+  .logo-word{ display:none; }
+}
+/* Site public d'un restaurant : totalement indépendant de la
+   plateforme — aucun en-tête TerangaResto visible, ni pour un client
+   ni pour le propriétaire qui prévisualise (il retrouve son tableau de
+   bord via le petit bouton flottant dédié, pas depuis cet en-tête). */
+body.storefront-active .gnav{ display:none; }
+</style>
+<style>
+.tg-save-spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;margin-right:5px;animation:tgSaveSpin .55s linear infinite}
+@keyframes tgSaveSpin{to{transform:rotate(360deg)}}
+</style>
+
+
+<style>
+/* ===== OTP 8 chiffres + responsive renforcé ===== */
+#signupOtpInput{
+  width:min(100%,320px);
+  box-sizing:border-box;
+  text-align:center !important;
+  letter-spacing:.28em !important;
+  padding-left:.38em !important;
+  font-variant-numeric:tabular-nums;
+}
+@media (max-width:420px){
+  #signupOtpInput{font-size:22px !important; letter-spacing:.20em !important; padding-left:.20em !important;}
+}
+
+/* ===== Site public restaurant : aucune coupe horizontale sur mobile ===== */
+.tg-classic, .tg-classic .header, .tg-classic .header-container, .tg-classic .header-actions,
+.tg-classic .hero, .tg-classic .container, .tg-classic .section, .tg-classic section{max-width:100%;}
+.tg-classic .header-container{width:100%; min-width:0; padding-left:16px; padding-right:16px;}
+.tg-classic .logo{min-width:0; flex:1 1 auto; overflow:hidden; white-space:nowrap;}
+.tg-classic .logo > *{min-width:0;}
+@media (max-width:768px){
+  .tg-classic .header-container{height:64px; gap:8px;}
+  .tg-classic .logo{font-size:1.02rem; gap:.45rem;}
+  .tg-classic .header-actions{flex:0 0 auto; gap:.35rem;}
+  .tg-classic .cart-icon-btn{width:40px;height:40px;flex:0 0 40px;}
+  .tg-classic .hamburger{width:40px;height:40px;flex:0 0 40px;}
+  .tg-classic .hero{margin-top:64px; min-height:420px; height:68vh;}
+  .tg-classic .hero-content{max-width:calc(100vw - 32px); padding:0 16px;}
+  .tg-classic .hero-content h1{font-size:2rem; line-height:1.15;}
+  .tg-classic .hero-content p{font-size:.95rem;}
+  .tg-classic .section-title{padding-left:4px;padding-right:4px;}
+  .tg-classic .products-grid{width:100%; grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+  .tg-classic .product-card{min-width:0; overflow:hidden;}
+  .tg-classic .product-content{min-width:0;}
+  .tg-classic .product-title, .tg-classic .product-price{overflow-wrap:anywhere;}
+  .tg-classic .info-grid{width:100%;}
+  .tg-classic .location-card, .tg-classic .hours-card{min-width:0;}
+  .tg-classic img{max-width:100%;height:auto;}
+}
+@media (max-width:390px){
+  .tg-classic .header-container{padding-left:10px;padding-right:10px;}
+  .tg-classic .logo{font-size:.94rem;}
+  .tg-classic .hero-content h1{font-size:1.75rem;}
+  .tg-classic .products-grid{gap:.65rem !important;}
+  .tg-classic .product-img-wrapper{height:120px !important;}
+}
+</style>
+
+<style id="mobile-polish-v3">
+/* Mobile public-site navigation: no clipped labels, full visible drawer. */
+@media (max-width: 768px){
+  .tg-classic .mobile-menu{
+    left:0 !important;
+    width:min(88vw,360px) !important;
+    max-width:none !important;
+    padding:20px 18px 24px !important;
+    transform:translateX(-105%);
+    box-sizing:border-box !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  .tg-classic .mobile-menu.open{
+    transform:translateX(0) !important;
+  }
+  .tg-classic .mobile-menu-header{
+    min-height:52px;
+    padding-bottom:14px !important;
+  }
+  .tg-classic .mobile-nav-links{
+    gap:14px !important;
+    padding:0 2px !important;
+  }
+  .tg-classic .mobile-nav-links li{
+    width:100%;
+  }
+  .tg-classic .mobile-nav-links a{
+    width:100%;
+    min-height:48px;
+    display:flex !important;
+    align-items:center;
+    gap:8px;
+    padding:12px 6px !important;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.35 !important;
+  }
+  .dashboard-home-return{
+    margin:0 0 16px !important;
+    position:sticky;
+    top:0;
+    z-index:20;
+    padding:6px 0 10px;
+    background:linear-gradient(#0B1220 78%, rgba(11,18,32,0));
+  }
+  #view-dashboard .dashboard-home-return .btn{
+    width:100% !important;
+    min-height:46px !important;
+    justify-content:flex-start !important;
+    padding:0 16px !important;
+    background:#ffffff !important;
+    color:#0F1830 !important;
+    border:1px solid rgba(255,255,255,.18) !important;
+    box-shadow:0 8px 18px rgba(0,0,0,.16);
+    font-weight:700 !important;
+  }
+}
+</style>
+
+<style id="teranga-final-responsive">
+/* TERANGA RESTO — couche finale responsive / lisibilité mobile */
+html,body{max-width:100%;overflow-x:hidden;}
+button,a,input,select,textarea{font-family:inherit;}
+#view-dashboard .nav-label{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2;}
+#view-dashboard .mbn-item{width:100%;min-width:0;box-sizing:border-box;white-space:nowrap;overflow:visible;}
+#view-dashboard #mobileBottomNav{grid-template-columns:repeat(5,minmax(0,1fr));}
+#view-dashboard .mobile-more-card{min-height:64px;box-sizing:border-box;}
+#view-dashboard .mobile-more-card *{min-width:0;}
+#view-dashboard .dashboard-home-return{width:100%;}
+#view-dashboard .dashboard-home-return .btn{width:100%;justify-content:center;box-sizing:border-box;}
+#view-storefront .cat-tab{white-space:nowrap;flex:0 0 auto;}
+#view-storefront .wrap{min-width:0;}
+#view-storefront img{max-width:100%;}
+@media (max-width:900px){
+  #dashContent{min-width:0;width:100%;box-sizing:border-box;}
+  #dashContent .card,#dashContent .stat-card{min-width:0;box-sizing:border-box;}
+  #view-storefront .sticky{top:0 !important;}
+  #view-storefront .wrap{padding-left:16px !important;padding-right:16px !important;}
+  #sfProductSections{overflow:visible;}
+}
+@media (max-width:560px){
+  #view-dashboard .mbn-item{font-size:9.5px;padding:6px 1px;}
+  #view-dashboard .mbn-item .mbn-icon{width:20px;height:20px;}
+  #view-dashboard .dashboard-home-return{margin-bottom:12px !important;}
+  #view-dashboard .dashboard-home-return .btn{min-height:42px;font-size:13px;}
+  #view-storefront #sfCover{height:170px !important;}
+  #view-storefront #sfLogo{width:78px !important;height:78px !important;border-radius:16px !important;margin-left:0;}
+  #view-storefront .resto-name{overflow-wrap:anywhere;word-break:break-word;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     ÉCRAN DE CHARGEMENT — uniquement pour un lien direct vers un
+     restaurant (?resto=slug), jamais pour la page d'accueil générale
+     TerangaResto. Le petit script juste en dessous s'exécute de façon
+     SYNCHRONE, avant tout le reste de l'application — sans ça, la page
+     d'accueil (active par défaut dans le HTML) serait visible une
+     fraction de seconde avant que ce script ne la masque, exactement
+     le "passage" que cette modification doit supprimer.
+     ============================================================ -->
+<style>
+/* Chargeur public : aucun logo/image/réseau. Tout est inline et affichable
+   immédiatement, afin de ne pas ajouter de délai au chargement réel. */
+@keyframes tgLoaderSpin{to{transform:rotate(360deg)}}
+@keyframes tgLoaderPulse{0%,100%{opacity:.35;transform:scale(.82)}50%{opacity:1;transform:scale(1)}}
+@keyframes tgLoaderBar{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+#restoSplash{
+  position:fixed;inset:0;z-index:99999;background:#FBF3E4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;text-align:center;
+}
+#restoSplash.hidden{display:none}
+#tgFastLoaderIcon{
+  width:42px;height:42px;border:3px solid rgba(43,24,16,.10);
+  border-top-color:#c96a12;border-radius:50%;
+  animation:tgLoaderSpin .62s linear infinite;
+}
+#tgFastLoaderPlate{
+  position:absolute;width:12px;height:12px;border:2px solid #c96a12;
+  border-radius:50%;opacity:.9;
+}
+#tgFastLoaderText{
+  margin-top:17px;font-family:'Manrope',sans-serif;font-size:12.5px;
+  color:#8a7466;letter-spacing:.01em;
+}
+#tgFastLoaderTrack{
+  width:150px;height:3px;margin-top:14px;border-radius:999px;
+  background:rgba(43,24,16,.08);overflow:hidden;
+}
+#tgFastLoaderBar{
+  width:42%;height:100%;border-radius:999px;background:#c96a12;
+  animation:tgLoaderBar .72s ease-in-out infinite;
+  will-change:transform;
+}
+#tgFastLoaderDots{display:flex;gap:4px;margin-top:11px}
+#tgFastLoaderDots span{
+  width:4px;height:4px;border-radius:50%;background:#c96a12;
+  animation:tgLoaderPulse .72s ease-in-out infinite;
+}
+#tgFastLoaderDots span:nth-child(2){animation-delay:.12s}
+#tgFastLoaderDots span:nth-child(3){animation-delay:.24s}
+@media(prefers-reduced-motion:reduce){
+  #tgFastLoaderIcon,#tgFastLoaderBar,#tgFastLoaderDots span{animation:none}
+}
+</style>
+<div id="restoSplash" class="hidden" aria-live="polite" aria-label="Chargement de la boutique">
+  <div style="position:relative;width:42px;height:42px;display:flex;align-items:center;justify-content:center;">
+    <div id="tgFastLoaderIcon"></div>
+    <div id="tgFastLoaderPlate"></div>
+  </div>
+  <div id="tgFastLoaderText">Chargement de la boutique…</div>
+  <div id="tgFastLoaderTrack"><div id="tgFastLoaderBar"></div></div>
+  <div id="tgFastLoaderDots" aria-hidden="true"><span></span><span></span><span></span></div>
+</div>
+
+<!-- Écran de vérification neutre — affiché UNIQUEMENT si cet appareil a
+     déjà atteint un tableau de bord auparavant (voir tg_returning_user),
+     pendant que restoreSession() revalide la vraie session. Sans lui,
+     la page d'accueil publique (active par défaut dans le HTML tant que
+     rien ne dit le contraire) serait révélée une fraction de seconde à
+     chaque actualisation d'un utilisateur déjà connecté. -->
+<div id="authCheckSplash" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+  <div style="width:32px;height:32px;border:3px solid rgba(43,24,16,.12);border-top-color:#c96a12;border-radius:999px;animation:icSpin 0.8s linear infinite;"></div>
+  <p style="font-family:'Manrope',sans-serif;font-size:12.5px;color:#8a7466;margin-top:16px;">Vérification de votre session…</p>
+</div>
+<script>
+  // Doit rester la toute première chose exécutée dans <body> : décide,
+  // AVANT que la page d'accueil générale n'ait la moindre chance d'être
+  // peinte à l'écran, laquelle des deux situations s'applique — jamais
+  // les deux en même temps. Reflète exactement l'ordre de priorité
+  // réel utilisé par restoreSession() (session existante d'abord, lien
+  // direct vers un restaurant ensuite).
+  if(localStorage.getItem('tg_returning_user')){
+    document.getElementById('authCheckSplash').classList.remove('hidden');
+  } else if(/[?&]resto=/.test(location.search) ||
+            (location.hostname.endsWith('.terangaresto.com') &&
+             location.hostname !== 'www.terangaresto.com')){
+    document.getElementById('restoSplash').classList.remove('hidden');
+  }
+</script>
+
+<header class="gnav" id="platformHeader">
+  <div class="gnav-inner">
+    <a href="#" class="flex items-center gap-2" onclick="setView('landing');return false;">
+      <img class="logo-asset" src="" alt="TerangaResto" style="width:34px;height:34px;object-fit:contain;">
+      <span class="logo-word">Teranga<em>Resto</em></span>
+    </a>
+    <nav class="gnav-tabs" id="gnavTabs">
+      <button class="gnav-tab" data-view="landing" onclick="setView('landing');closeMobileNav();">Accueil</button>
+      <button class="gnav-tab" data-view="pricing" onclick="setView('pricing');closeMobileNav();">Tarifs</button>
+      <button class="gnav-tab" onclick="goToAnchor('faq');closeMobileNav();">FAQ</button>
+      <button class="gnav-tab" onclick="goToAnchor('comment');closeMobileNav();">Comment ça marche</button>
+      <button class="gnav-tab" onclick="openLogin();closeMobileNav();">Connexion</button>
+    </nav>
+    <div class="flex items-center gap-2" style="flex-shrink:0;">
+      <button class="btn btn-outline btn-sm mobile-login-btn" onclick="openLogin('login');closeMobileNav();">Connexion</button>
+      <button class="btn btn-secondary btn-sm" onclick="startOnboarding();closeMobileNav();" id="gnavCta"><span class="cta-full">Créer mon restaurant</span><span class="cta-short">Créer</span></button>
+      <button id="mobileMenuBtn" class="hidden" onclick="document.getElementById('gnavTabs').classList.toggle('mobile-open')" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--cream-line);background:#fff;align-items:center;justify-content:center;flex-shrink:0;" data-icon="menu" data-size="17"></button>
+    </div>
+  </div>
+</header>
+
+<!-- Connexion (démo — aucune authentification réelle, voir note dans le code) -->
+<div id="loginOverlay" class="hidden" style="position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.45);" onclick="closeLogin()"></div>
+  <div class="card" style="position:relative;width:100%;max-width:380px;padding:28px;max-height:90vh;overflow-y:auto;">
+    <div class="flex justify-center" style="margin-bottom:16px;">
+      <img class="logo-asset" src="" style="width:40px;height:40px;object-fit:contain;">
+    </div>
+    <div class="flex gap-1" style="background:var(--cream-deep);border-radius:12px;padding:3px;margin-bottom:18px;">
+      <button id="loginTabLogin" class="btn btn-sm" style="flex:1;background:#fff;" onclick="setLoginTab('login')">Connexion</button>
+      <button id="loginTabSignup" class="btn btn-sm btn-ghost" style="flex:1;" onclick="setLoginTab('signup')">Créer un compte</button>
+      <button id="loginTabInvite" class="btn btn-sm btn-ghost" style="flex:1;" onclick="setLoginTab('invite')">Invitation</button>
+    </div>
+    <div id="loginTabBody"></div>
+  </div>
+</div>
+
+<main id="app">
+<!-- ============ LANDING VIEW ============ -->
+<section class="view active" id="view-landing">
+
+  <!-- HERO -->
+  <div class="wrap" style="padding-top:64px;padding-bottom:88px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;">
+    <div>
+      <span class="pill pill-forest" style="margin-bottom:22px;">Essai Gratuit 10 jours · Starter et Premium sans engagement</span>
+      <h1 class="font-display" style="font-size:44px;line-height:1.08;color:var(--ink);margin-bottom:22px;">
+        Votre restaurant. Votre menu.<br><em style="font-style:italic;color:var(--amber-deep);">Vos commandes.</em><br>
+        <span style="font-size:26px;">Créez votre restaurant en 5 minutes.</span>
+      </h1>
+      <p style="font-size:17px;color:var(--ink-soft);max-width:420px;margin-bottom:30px;">
+        Tout au même endroit. TerangaResto donne à votre restaurant un menu numérique, un QR Code,
+        des commandes en ligne et un vrai tableau de bord — sans complexité.
+      </p>
+      <div class="flex gap-3" style="flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-lg" onclick="startOnboarding()">Créer mon restaurant <span data-icon="arrowRight" data-size="16"></span></button>
+        <button class="btn btn-outline btn-lg" onclick="scrollToId('comment')">Voir comment ça marche</button>
+      </div>
+    </div>
+    <div class="flex justify-center">
+      <div class="card" style="padding:38px;display:flex;flex-direction:column;align-items:center;box-shadow:0 20px 60px rgba(43,24,16,.08);border-radius:32px;">
+        <img class="logo-asset" src="" alt="TerangaResto" style="width:190px;height:190px;object-fit:contain;">
+        <p class="font-display" style="font-style:italic;color:var(--ink-soft);margin-top:10px;">"La teranga dans votre assiette"</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="wrap" id="fonctionnalites" style="padding:60px 24px;">
+    <p class="pill pill-amber" style="margin-bottom:14px;">Fonctionnalités</p>
+    <h2 class="font-display" style="font-size:30px;max-width:560px;margin-bottom:36px;">Tout ce qu'il faut pour faire tourner votre restaurant en ligne</h2>
+    <div class="grid" id="featuresGrid" style="grid-template-columns:repeat(3,1fr);gap:18px;"></div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div style="background:var(--cream-deep);border-top:1px solid var(--cream-line);border-bottom:1px solid var(--cream-line);" id="comment">
+    <div class="wrap" style="padding:60px 24px;">
+      <p class="pill pill-amber" style="margin-bottom:14px;">Comment ça marche</p>
+      <h2 class="font-display" style="font-size:30px;max-width:560px;margin-bottom:36px;">De l'inscription à la première commande</h2>
+      <div class="grid" id="stepsGrid" style="grid-template-columns:repeat(4,1fr);gap:24px;"></div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="wrap" id="faq" style="padding:64px 24px;">
+    <p class="pill pill-amber" style="margin-bottom:14px;">FAQ</p>
+    <h2 class="font-display" style="font-size:30px;max-width:560px;margin-bottom:36px;">Questions fréquentes</h2>
+    <div id="faqAccordion" style="max-width:720px;"></div>
+  </div>
+
+  <!-- PRICING TEASER -->
+  <div class="wrap" style="padding:64px 24px;">
+    <div style="background:var(--ink);color:var(--cream);border-radius:28px;padding:52px 56px;display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;">
+      <div style="max-width:420px;">
+        <h2 class="font-display" style="font-size:27px;margin-bottom:12px;">Des tarifs simples, pensés pour le Sénégal</h2>
+        <p style="color:rgba(251,243,228,.7);">Gratuit pour commencer. À partir de 3 000 FCFA/mois pour aller plus loin, sans engagement.</p>
+      </div>
+      <button class="btn btn-secondary btn-lg" onclick="setView('pricing')">Voir les tarifs <span data-icon="arrowRight" data-size="16"></span></button>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer style="border-top:1px solid var(--cream-line);background:rgba(241,226,196,.4);margin-top:20px;">
+    <div class="wrap" style="padding:48px 24px;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:36px;">
+      <div>
+        <div class="flex items-center gap-2">
+          <img class="logo-asset" src="" style="width:26px;height:26px;object-fit:contain;">
+          <span class="logo-word" style="font-size:16px;">Teranga<em>Resto</em></span>
+        </div>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin-top:14px;max-width:280px;">
+          La plateforme qui donne à chaque restaurant sénégalais son menu numérique, ses commandes et sa caisse — au même endroit.
+        </p>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:10px;">Plateforme</p>
+        <div class="flex-col gap-2" style="font-size:13.5px;color:var(--ink-soft);">
+          <a href="#" onclick="setView('pricing');return false;">Tarifs</a>
+          <a href="#" onclick="scrollToId('fonctionnalites');return false;">Fonctionnalités</a>
+          <a href="#" onclick="startOnboarding();return false;">Créer mon restaurant</a>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:10px;">Compte</p>
+        <div class="flex-col gap-2" style="font-size:13.5px;color:var(--ink-soft);">
+          <a href="#" onclick="setView('dashboard');return false;">Connexion restaurateur</a>
+          <span style="color:var(--ink-faint);">Espace administrateur</span>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--cream-line);padding:16px 24px;text-align:center;font-size:12px;color:var(--ink-faint);">
+      © 2026 TerangaResto. Fait avec teranga 🇸🇳 · Sénégal — FCFA (XOF)
+    </div>
+  </footer>
+</section>
+
+<!-- ============ PRICING VIEW ============ -->
+<section class="view" id="view-pricing">
+  <div class="wrap" style="padding:64px 24px;">
+    <div class="text-center" style="max-width:520px;margin:0 auto 48px;">
+      <p class="pill pill-amber" style="margin-bottom:14px;">Tarifs</p>
+      <h1 class="font-display" style="font-size:34px;margin-bottom:12px;">Un tarif simple, adapté à votre restaurant</h1>
+      <p style="color:var(--ink-soft);">Gratuit pendant 10 jours pour essayer. Starter et Premium se paient immédiatement par PayTech, sans période d'essai.</p>
+    </div>
+
+    <div class="flex items-center justify-center gap-3" style="margin-bottom:44px;">
+      <span id="periodLabelM" style="font-size:14px;font-weight:600;">Mensuel</span>
+      <button id="periodToggle" onclick="togglePeriod()" style="position:relative;width:52px;height:28px;border-radius:999px;background:var(--ink);">
+        <span id="periodDot" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;"></span>
+      </button>
+      <span id="periodLabelY" style="font-size:14px;font-weight:600;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
+    </div>
+
+    <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
+    <p class="text-center" style="font-size:13px;color:var(--ink-faint);margin-top:36px;">Aucune carte bancaire requise pour l'essai. Annulez à tout moment.</p>
+  </div>
+</section>
+
+<!-- ============ ONBOARDING VIEW (création de compte + restaurant, espace distinct du tableau de bord) ============ -->
+<section class="view" id="view-onboarding">
+  <div style="min-height:100vh;background:var(--cream);padding:40px 20px;">
+    <div class="wrap-sm" style="max-width:520px;">
+      <div class="flex justify-center" style="margin-bottom:28px;">
+        <img class="logo-asset" src="" style="width:52px;height:52px;object-fit:contain;">
+      </div>
+
+      <div class="ob-progress-wrap" style="margin-bottom:32px;"><div class="flex items-center ob-progress" id="obProgress"></div></div>
+
+      <div class="card" style="padding:32px;" id="obCard"></div>
+
+      <p class="text-center" style="font-size:11.5px;color:var(--ink-faint);margin-top:18px;">
+        Espace de création — distinct du tableau de bord privé et du site public du restaurant.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STOREFRONT VIEW ============ -->
+<section class="view tg-classic" id="view-storefront">
+
+  <!-- En-tête du thème (scopé .tg-classic — voir feuille de style dédiée) -->
+  <header class="header" id="tgHeader">
+    <div class="container header-container">
+      <button class="hamburger" id="tgHamburgerBtn" onclick="openTgMobileMenu()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+      <a href="#tgAccueil" class="logo" id="tgLogo"></a>
+      <nav>
+        <ul class="nav-desktop">
+          <li><a href="#tgAccueil" class="nav-link active">Accueil</a></li>
+          <li><a href="#tgMenu" class="nav-link">Menu</a></li>
+          <li><a href="#tgHoraires" class="nav-link">Horaires & Carte</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-icon-btn" onclick="openCart()" aria-label="Panier">
+          <i class="fa-solid fa-bag-shopping"></i>
+          <span class="cart-badge" id="tgCartBadge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <aside class="mobile-menu" id="tgMobileMenu">
+    <div class="mobile-menu-header">
+      <div class="logo" id="tgMobileLogo"></div>
+      <button id="tgCloseMobileMenu" onclick="closeTgMobileMenu()" style="font-size:1.35rem;padding:0.5rem;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <ul class="mobile-nav-links">
+      <li><a href="#tgAccueil" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-house" style="margin-right:0.5rem;color:var(--primary);"></i> Accueil</a></li>
+      <li><a href="#tgMenu" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-utensils" style="margin-right:0.5rem;color:var(--primary);"></i> Notre Menu</a></li>
+      <li><a href="#tgHoraires" class="mobile-link" onclick="closeTgMobileMenu()"><i class="fa-solid fa-clock" style="margin-right:0.5rem;color:var(--primary);"></i> Horaires & Accès</a></li>
+    </ul>
+  </aside>
+  <div class="overlay" id="tgOverlay" onclick="closeTgMobileMenu()"></div>
+
+  <!-- HERO — une seule image par défaut (voir résumé : le gestionnaire
+       de plusieurs slides n'est pas encore construit) -->
+  <section class="hero" id="tgAccueil">
+    <div class="slide active" id="tgHeroSlide">
+      <div class="slide-bg" id="tgHeroBg"></div>
+      <div class="container" style="height:100%;display:flex;align-items:center;">
+        <div class="hero-content">
+          <h1 id="tgHeroTitle"></h1>
+          <p id="tgHeroSubtitle"></p>
+          <a href="#tgMenu" class="btn btn-primary"><i class="fa-solid fa-utensils"></i> Découvrir le menu</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATALOGUES visibles sur l'accueil (choisis par le restaurateur) -->
+  <section class="categories-section" id="tgCategoriesSection">
+    <div class="container">
+      <div class="categories-wrapper" id="tgCategories"></div>
+    </div>
+  </section>
+
+  <!-- MENU / PRODUITS -->
+  <section class="menu-section" id="tgMenu">
+    <div class="container">
+      <div class="section-title"><span>Notre carte</span><h2 class="resto-name" id="tgMenuTitle">Le menu</h2></div>
+      <div class="search-bar-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="tgSearchInput" class="search-input" placeholder="Rechercher un plat…" oninput="tgSearchProducts(this.value)">
+      </div>
+      <div class="products-grid" id="sfProductSections"></div>
+    </div>
+  </section>
+
+  <!-- MEILLEURES VENTES — calculées à partir des vraies commandes,
+       masqué s'il n'y a pas encore assez de données réelles -->
+  <section class="menu-section" style="background:#FFF;" id="tgBestSellersSection">
+    <div class="container">
+      <div class="section-title"><span>Incontournables</span><h2>Meilleures ventes</h2></div>
+      <div class="products-grid" id="tgBestSellers"></div>
+    </div>
+  </section>
+
+  <!-- HORAIRES & LOCALISATION -->
+  <section class="info-section" id="tgHoraires">
+    <div class="container">
+      <div class="info-grid">
+        <div class="hours-card">
+          <div class="section-title" style="text-align:left;margin-bottom:1.25rem;"><span>Planifiez votre visite</span><h3>Nos horaires</h3></div>
+          <div id="tgOpenStatus"></div>
+          <ul class="hours-list" id="tgHoursList"></ul>
+        </div>
+        <div class="location-card">
+          <div class="section-title" style="text-align:left;margin-bottom:1.25rem;"><span>Rendez-nous visite</span><h3>Où nous trouver ?</h3></div>
+          <div id="sfFooterInfo"></div>
+          <div id="sfMapContainer" style="margin-top:14px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="tg-footer" style="border-top:1px solid rgba(0,0,0,.06);padding:32px 0;text-align:center;">
+    <div class="flex gap-3" id="sfSocialIcons" style="justify-content:center;margin-bottom:12px;"></div>
+    <p class="resto-name" style="font-family:'Playfair Display',serif;font-size:15px;"></p>
+  </footer>
+
+  <!-- Retour au tableau de bord — visible uniquement pour le restaurateur
+       propriétaire de CE restaurant (session en cours), jamais pour un
+       client normal consultant le site public. Petite icône flottante
+       discrète (pas une bannière) : le header plateforme est masqué sur
+       le site public, donc positionnée en haut, mais sans texte ni
+       largeur excessive — ne gêne jamais le contenu du restaurant. -->
+  <button id="ownerBackBtn" class="hidden" onclick="setView('dashboard')" title="Retour au tableau de bord" aria-label="Retour au tableau de bord" style="position:fixed;top:14px;right:14px;z-index:1050;width:38px;height:38px;background:rgba(43,24,16,.72);backdrop-filter:blur(6px);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(43,24,16,.28);">
+    <span data-icon="arrowLeft" data-size="16"></span>
+  </button>
+
+  <!-- Floating cart button -->
+  <button id="floatingCartBtn" class="hidden" onclick="openCart()" style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1050;background:var(--amber);color:#fff;border-radius:999px;padding:14px 22px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 30px rgba(43,24,16,.25);font-weight:600;font-size:14px;">
+    <span style="position:relative;display:flex;">
+      <span data-icon="bag" data-size="18"></span>
+      <span id="cartCountBadge" style="position:absolute;top:-8px;right:-10px;background:#fff;color:var(--amber-deep);font-size:10px;font-weight:800;border-radius:999px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">0</span>
+    </span>
+    Voir le panier <span id="cartTotalBadge" class="font-tabular"></span>
+  </button>
+
+  <!-- Suivre ma commande — petit bouton flottant compact, jamais un
+       grand bandeau. Visible uniquement si CE navigateur a déjà passé
+       au moins une commande sur CE restaurant (voir getMyOrders()). -->
+  <button id="trackOrderBtn" class="hidden" onclick="openTrackOrderModal()" title="Suivre ma commande" aria-label="Suivre ma commande" style="position:fixed;bottom:22px;left:14px;z-index:1050;width:44px;height:44px;background:var(--ink);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(43,24,16,.28);">
+    <span data-icon="receipt" data-size="18"></span>
+  </button>
+</section>
+
+<!-- Suivi de commande — statut réel toujours redemandé à Supabase,
+     jamais lu depuis localStorage (qui ne sert qu'à savoir QUELLES
+     commandes proposer sur ce navigateur). -->
+<div id="trackOrderOverlay" class="hidden" style="position:fixed;inset:0;z-index:1104;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeTrackOrderModal()"></div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:80vh;overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+      <h2 class="font-display" style="font-size:17px;">Suivre ma commande</h2>
+      <button onclick="closeTrackOrderModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
+    </div>
+    <div style="padding:16px 20px;" id="trackOrderBody"></div>
+  </div>
+</div>
+
+<!-- Avis client — note 1 à 5 étoiles + commentaire, lié à la commande
+     depuis laquelle il a été ouvert quand elle est connue. -->
+<div id="reviewOverlay" class="hidden" style="position:fixed;inset:0;z-index:1105;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeReviewModal()"></div>
+  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(400px,92vw);background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
+    <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+      <h2 class="font-display" style="font-size:17px;">Votre avis compte</h2>
+      <button onclick="closeReviewModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
+    </div>
+    <div style="padding:20px;" id="reviewBody"></div>
+  </div>
+</div>
+
+<!-- Cart drawer overlay -->
+<div id="cartDrawerOverlay" class="hidden" style="position:fixed;inset:0;z-index:1100;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeCart()"></div>
+  <div style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:#fff;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(0,0,0,.15);">
+    <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid var(--cream-line);">
+      <h2 class="font-display" style="font-size:19px;">Votre panier</h2>
+      <button onclick="closeCart()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
+    </div>
+    <div id="cartLines" class="overflow-y-auto" style="flex:1;padding:18px 22px;"></div>
+    <div id="cartFooter" style="border-top:1px solid var(--cream-line);padding:18px 22px;"></div>
+  </div>
+</div>
+
+<!-- Product detail modal -->
+<div id="productModalOverlay" class="hidden" style="position:fixed;inset:0;z-index:1101;display:flex;align-items:flex-end;justify-content:center;">
+  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeProductModal()"></div>
+  <div id="productModalBody" class="card" style="position:relative;width:100%;max-width:440px;border-radius:28px 28px 0 0;max-height:90vh;overflow-y:auto;"></div>
+</div>
+
+<!-- Checkout overlay -->
+<div id="checkoutOverlay" class="hidden" style="position:fixed;inset:0;z-index:1102;background:var(--cream);overflow-y:auto;">
+  <div style="border-bottom:1px solid var(--cream-line);background:#fff;">
+    <div class="wrap-sm flex items-center gap-3" style="padding:16px 24px;">
+      <button onclick="closeCheckout()" style="font-size:18px;display:flex;" data-icon="arrowLeft" data-size="18"></button>
+      <img class="logo-asset" src="" style="width:22px;height:22px;object-fit:contain;">
+      <span style="font-size:14px;font-weight:600;">Commande — <span class="resto-name">Votre restaurant</span></span>
+    </div>
+  </div>
+  <div class="wrap-sm" style="padding:24px;max-width:520px;" id="checkoutBody"></div>
+</div>
+
+<!-- Order confirmation overlay -->
+<div id="confirmationOverlay" class="hidden" style="position:fixed;inset:0;z-index:1103;background:var(--cream);overflow-y:auto;">
+  <div style="border-bottom:1px solid var(--cream-line);background:#fff;">
+    <div class="wrap-sm" style="padding:16px 24px;">
+      <img class="logo-asset" src="" style="width:26px;height:26px;object-fit:contain;">
+    </div>
+  </div>
+  <div class="wrap-sm" style="padding:40px 24px;max-width:480px;" id="confirmationBody"></div>
+</div>
+
+<!-- ============ DASHBOARD VIEW ============ -->
+<section class="view" id="view-dashboard">
+  <div style="display:flex;min-height:calc(100vh - 90px);">
+
+    <!-- Sidebar (desktop / tablet) -->
+    <aside id="dashSidebar" style="width:250px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--cream-line);">
+      <div class="flex items-center gap-2.5" style="padding:18px 20px;border-bottom:1px solid var(--cream-line);">
+        <span id="sbLogoBadge" style="width:34px;height:34px;border-radius:10px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(232,135,30,.14);"></span>
+        <div style="min-width:0;">
+          <p style="font-size:13.5px;font-weight:600;line-height:1.3;" class="resto-name">Votre restaurant</p>
+          <a href="#" onclick="setView('storefront');return false;" style="font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:3px;">Voir mon site <span data-icon="externalLink" data-size="10"></span></a>
+        </div>
+      </div>
+      <nav id="dashNav" style="padding:10px;display:flex;flex-direction:column;gap:2px;"></nav>
+    </aside>
+
+    <!-- Content -->
+    <div style="flex:1;min-width:0;">
+      <div class="dash-topbar">
+        <div style="min-width:0;">
+          <p style="font-size:11px;color:var(--ink-faint);">Espace privé restaurateur</p>
+          <div class="flex items-center gap-2" style="margin-top:1px;">
+            <p style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" class="resto-name">Votre restaurant</p>
+            <span id="planBadgeTop" style="flex-shrink:0;"></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2" style="flex-shrink:0;">
+          <button id="quickAddBtn" class="btn btn-secondary btn-sm" onclick="setDashSection('products');openProductForm();" style="display:none !important;">
+            <span data-icon="plus" data-size="14"></span><span class="hide-sm">Produit</span>
+          </button>
+          <button class="icon-btn" onclick="toggleNotifPanel()" aria-label="Notifications">
+            <span data-icon="bell" data-size="18"></span>
+            <span class="notif-dot" id="notifDot" style="display:none;"></span>
+          </button>
+          <button class="icon-btn" onclick="setDashSection('settings')" aria-label="Paramètres">
+            <span data-icon="settings" data-size="18"></span>
+          </button>
+          <button class="icon-btn" onclick="logoutDashboard()" aria-label="Déconnexion">
+            <span data-icon="logout" data-size="17"></span>
+          </button>
+        </div>
+      </div>
+      <div id="planBanner"></div>
+      <div id="roleSimBanner"></div>
+
+      <div style="padding:20px 18px 88px;max-width:100%;overflow-x:hidden;" id="dashContent"></div>
+    </div>
+  </div>
+
+  <!-- Mobile bottom navigation (application mobile, pas une sidebar réduite) —
+       exactement 5 éléments réels, jamais un 6e bouton "Plus" : les
+       autres sections (Analyses, Comptabilité, Catégories, Variantes,
+       Paiements, Personnel, Inventaire) ainsi que Paramètres et
+       Déconnexion restent accessibles depuis Accueil (voir
+       dashOverview()), jamais depuis cette barre. -->
+  <nav id="mobileBottomNav" class="hidden">
+    <button class="mbn-item active" data-key="overview" onclick="setDashSection('overview')"><span class="mbn-icon" data-icon="dashboard" data-size="19"></span><span>Accueil</span></button>
+    <button class="mbn-item" data-key="orders" onclick="setDashSection('orders')"><span class="mbn-icon" data-icon="receipt" data-size="19"></span><span>Commandes</span></button>
+    <button class="mbn-item" data-key="products" onclick="setDashSection('products')"><span class="mbn-icon" data-icon="utensils" data-size="19"></span><span>Produits</span></button>
+    <button class="mbn-item" data-key="customers" onclick="setDashSection('customers')"><span class="mbn-icon" data-icon="users" data-size="19"></span><span>Clients</span></button>
+    <button class="mbn-item" data-key="qrcode" onclick="setDashSection('qrcode')"><span class="mbn-icon" data-icon="qrcode" data-size="19"></span><span>QR Code</span></button>
+  </nav>
+
+  <!-- "Plus" bottom sheet -->
+  <div id="moreSheetOverlay" class="hidden" style="position:fixed;inset:0;z-index:120;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeMoreSheet()"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 14px 26px;max-height:75vh;overflow-y:auto;">
+      <div style="width:36px;height:4px;background:var(--cream-line);border-radius:999px;margin:6px auto 14px;"></div>
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);padding:0 6px 10px;">Plus de sections</p>
+      <div id="moreSheetGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* ---- Barre du haut : jamais de bouton coupé, jamais de débordement ---- */
+.dash-topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:14px 18px; border-bottom:1px solid var(--cream-line); background:var(--surface);
+}
+.icon-btn{ position:relative; width:40px; height:40px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0; }
+.icon-btn:hover{ background:rgba(43,24,16,.05); }
+.notif-dot{
+  position:absolute; top:3px; right:3px; width:14px; height:14px; background:var(--terracotta); color:#fff;
+  font-size:9px; font-weight:700; border-radius:999px; display:flex; align-items:center; justify-content:center;
+}
+
+/* ---- Menu latéral : grille parfaitement alignée ---- */
+#dashNav .nav-item{
+  display:flex; align-items:center; gap:12px; height:40px; padding:0 12px; border-radius:12px;
+  font-size:13.5px; font-weight:500; color:var(--ink-soft); width:100%; text-align:left; box-sizing:border-box;
+}
+#dashNav .nav-item .nav-icon{ width:20px; height:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#dashNav .nav-item .nav-label{ line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#dashNav .nav-item.active{ background:var(--ink); color:var(--cream); }
+#dashNav .nav-item:not(.active):hover{ background:rgba(43,24,16,.05); }
+
+.hide-sm{ }
+
+/* ---- Navigation mobile ---- */
+#mobileBottomNav{
+  position:fixed; left:0; right:0; bottom:0; z-index:60; background:var(--surface); border-top:1px solid var(--cream-line);
+  display:none; grid-template-columns:repeat(5,1fr); padding:6px 2px calc(6px + env(safe-area-inset-bottom));
+  box-shadow:0 -4px 16px rgba(43,24,16,.06);
+}
+#mobileBottomNav.active-grid{ display:grid; }
+.mbn-item{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; border-radius:12px; color:var(--ink-faint); font-size:10px; font-weight:600; }
+.mbn-item .mbn-icon{ height:19px; display:flex; align-items:center; justify-content:center; }
+.mbn-item.active{ color:var(--amber-ink); background:rgba(232,135,30,.08); }
+.more-tile{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 6px; border-radius:16px; background:var(--cream); font-size:11px; font-weight:600; color:var(--ink-soft); text-align:center; }
+.more-tile.locked{ opacity:.55; }
+
+.mobile-add-product-card{width:100%;}
+@media (max-width: 900px){
+  .mobile-add-product-card{display:flex;min-height:62px;}
+  #dashSidebar{ display:none !important; }
+  #mobileBottomNav.active-grid{ display:grid; }
+  #dashContent{ padding-bottom:96px !important; }
+  #quickAddBtn, #quickAddBtn .hide-sm{ display:none !important; }
+  .dash-topbar{ padding:12px 14px; }
+  .mobile-tablet-only{ display:flex !important; }
+}
+/* Masqué par défaut (ordinateur) — jamais affiché en dehors de
+   téléphone/tablette, jamais de changement visuel du desktop. Toujours
+   en display:flex quand visible (avec flex-direction:column si besoin
+   d'un empilement) — jamais display:block, pour que gap/align-items
+   fonctionnent directement sans style supplémentaire à chaque usage. */
+.mobile-tablet-only{ display:none; }
+
+/* =====================================================================
+   THÈME "DARK PREMIUM" — exclusif au tableau de bord restaurateur.
+   Le site public, la vitrine TerangaResto et la création de compte
+   gardent l'identité claire/crème existante ; seul #view-dashboard
+   bascule vers ce thème sombre, via une redéfinition scopée des
+   variables de couleur (héritée par tous les descendants) plus quelques
+   overrides ciblés pour les rares valeurs qui n'étaient pas basées sur
+   une variable.
+   ===================================================================== */
+#view-dashboard{
+  --ink:#FFFFFF; --ink-soft:#FFFFFF; --ink-faint:#FFFFFF;
+  color: var(--ink);
+  color-scheme: dark;
+  --amber-ink:#F5B24E;
+  --cream:#0F1830; --cream-deep:#16203A; --cream-line:rgba(255,255,255,.09);
+  --surface:#131C30;
+  --forest:#34D399; --forest-soft:rgba(52,211,153,.16);
+  --terracotta:#F0653A; --terracotta-soft:rgba(240,101,58,.18);
+  background:#0B1220;
+  min-height:100vh;
+}
+#view-dashboard .dash-topbar{ background:var(--surface); }
+#view-dashboard #dashSidebar{ background:#0A1120; border-right-color:var(--cream-line); }
+#view-dashboard #mobileBottomNav{ background:#0A1120; }
+#view-dashboard .nav-item:not(.active):hover{ background:rgba(255,255,255,.055); }
+#view-dashboard .nav-item.active{ background:var(--amber-deep); color:#fff; }
+#view-dashboard .icon-btn:hover{ background:rgba(255,255,255,.07); }
+/* Une fois dans l'espace privé, le header public TerangaResto (logo,
+   Connexion, Créer) ne doit plus être visible : le dashboard possède
+   sa propre barre de navigation. */
+body.dashboard-active #platformHeader{display:none !important;}
+body.dashboard-active #view-dashboard{min-height:100vh;}
+#view-dashboard .mbn-item.active{ background:rgba(232,135,30,.14); }
+#view-dashboard .more-tile{ background:var(--cream); }
+#view-dashboard .empty-state{ background:rgba(255,255,255,.02); border-color:var(--cream-line); }
+#view-dashboard .toggle{ background:rgba(255,255,255,.14); }
+#view-dashboard .pill-neutral{ background:rgba(255,255,255,.08); }
+#view-dashboard table.data-table thead{ background:rgba(255,255,255,.04); }
+#view-dashboard table.data-table tbody tr:hover{ background:rgba(255,255,255,.035); }
+#view-dashboard .btn-outline{ border-color:rgba(255,255,255,.16); color:var(--ink); }
+#view-dashboard .btn-outline:hover{ background:rgba(255,255,255,.06); }
+#view-dashboard .btn-ghost:hover{ background:rgba(255,255,255,.06); }
+#view-dashboard .field-input{ background:#0F1830; }
+#view-dashboard .field-input::placeholder{ opacity:.4; }
+#view-dashboard ::selection{ background:var(--amber); color:#fff; }
+#view-dashboard .card,
+#view-dashboard .stat-card,
+#view-dashboard .lib-card,
+#view-dashboard .social-card{
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+</style>
+
+<!-- ============================================================
+     THÈME PUBLIC PAR DÉFAUT — "Classic" (fourni par le restaurateur,
+     intégré comme thème principal de TerangaResto). Entièrement
+     scopé sous .tg-classic pour ne jamais entrer en collision avec
+     le CSS du tableau de bord/de la plateforme (voir .btn/.dot/.toast
+     qui existaient déjà ailleurs sous ces mêmes noms). Les couleurs
+     ci-dessous (--primary, --secondary...) sont les valeurs PAR
+     DÉFAUT du thème — applyClassicThemeColors() les réécrit en
+     variables inline à partir des vraies couleurs choisies par
+     CHAQUE restaurateur (RESTAURANT.primary/secondary/textColor),
+     donc deux restaurants utilisant ce même thème peuvent avoir des
+     couleurs complètement différentes. -->
+<style id="tg-classic-theme-css">
+.tg-classic {
+            --primary: #E63946;
+            --primary-hover: #C5221F;
+            --primary-soft: rgba(230, 57, 70, 0.08);
+            --secondary: #D4A373;
+            --dark: #1A1A1A;
+            --dark-card: #242424;
+            --light-bg: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text-main: #2D3142;
+            --text-muted: #6C757D;
+            --border: #EAEAEA;
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.12);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-full: 9999px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic, .tg-classic * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }.tg-classic, .tg-classic {
+            overflow-x: hidden;
+            width: 100%;
+        }.tg-classic {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }.tg-classic {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-main);
+            line-height: 1.5;
+        }.tg-classic h1, .tg-classic h2, .tg-classic h3, .tg-classic h4, .tg-classic .font-heading {
+            font-family: 'Playfair Display', serif;
+        }.tg-classic a {
+            text-decoration: none;
+            color: inherit;
+        }.tg-classic button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+            background: none;
+            font-family: inherit;
+        }.tg-classic img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }.tg-classic .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+            width: 100%;
+        }.tg-classic .section-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }.tg-classic .section-title span {
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: block;
+            margin-bottom: 0.4rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }.tg-classic .section-title h2 {
+            font-size: 2.25rem;
+            color: var(--dark);
+        }.tg-classic .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.75rem;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            transition: var(--transition);
+            min-height: 48px;
+            touch-action: manipulation;
+        }.tg-classic .btn-primary {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 57, 70, 0.35);
+        }.tg-classic .btn-outline {
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }.tg-classic .btn-outline:hover {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }.tg-classic .badge-pop {
+            background-color: #FFF3EA;
+            color: #FF6B00;
+        }.tg-classic .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            transition: var(--transition);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }.tg-classic .header.scrolled {
+            box-shadow: var(--shadow-sm);
+        }.tg-classic .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }.tg-classic .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--dark);
+        }.tg-classic .logo-icon {
+            width: 38px;
+            height: 38px;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }.tg-classic .nav-desktop {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            list-style: none;
+        }.tg-classic .nav-link {
+            font-weight: 600;
+            color: var(--text-main);
+            transition: var(--transition);
+            position: relative;
+        }.tg-classic .nav-link:hover, .tg-classic .nav-link.active {
+            color: var(--primary);
+        }.tg-classic .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary);
+            border-radius: 2px;
+        }.tg-classic .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }.tg-classic .cart-icon-btn {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            background-color: var(--light-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: var(--dark);
+            transition: var(--transition);
+        }.tg-classic .cart-icon-btn:hover {
+            background-color: var(--primary-soft);
+            color: var(--primary);
+        }.tg-classic .cart-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background-color: var(--primary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 800;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #FFF;
+        }.tg-classic .hamburger {
+            display: none;
+            font-size: 1.35rem;
+            color: var(--dark);
+            width: 44px;
+            height: 44px;
+            align-items: center;
+            justify-content: center;
+        }.tg-classic .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 85%;
+            max-width: 320px;
+            height: 100vh;
+            background-color: #FFF;
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+            padding: 1.5rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic .mobile-menu.open {
+            transform: translateX(100%);
+        }.tg-classic .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }.tg-classic .mobile-nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }.tg-classic .mobile-nav-links a {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: block;
+            padding: 0.5rem 0;
+        }.tg-classic .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }.tg-classic .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }.tg-classic .hero {
+            position: relative;
+            height: 75vh;
+            min-height: 480px;
+            margin-top: 70px;
+            overflow: hidden;
+        }.tg-classic .hero-slider {
+            height: 100%;
+            position: relative;
+        }.tg-classic .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            display: flex;
+            align-items: center;
+        }.tg-classic .slide.active {
+            opacity: 1;
+        }.tg-classic .slide-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+        }.tg-classic .slide-bg::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.7) 100%);
+        }.tg-classic .hero-content {
+            position: relative;
+            z-index: 10;
+            color: #FFF;
+            max-width: 650px;
+        }.tg-classic .hero-content h1 {
+            font-size: 3.25rem;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }.tg-classic .hero-content p {
+            font-size: 1.15rem;
+            margin-bottom: 1.75rem;
+            opacity: 0.95;
+            line-height: 1.5;
+        }.tg-classic .slider-controls {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }.tg-classic .slider-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(5px);
+            color: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }.tg-classic .slider-btn:hover {
+            background: #FFF;
+            color: var(--dark);
+        }.tg-classic .slider-dots {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            gap: 0.5rem;
+        }.tg-classic .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            transition: var(--transition);
+        }.tg-classic .dot.active {
+            width: 26px;
+            border-radius: 12px;
+            background: var(--primary);
+        }.tg-classic .categories-section {
+            padding: 2rem 0;
+            background: #FFF;
+            border-bottom: 1px solid var(--border);
+        }.tg-classic .categories-wrapper {
+            display: flex;
+            gap: 1.25rem;
+            overflow-x: auto;
+            padding: 0.25rem 0.25rem 1rem 0.25rem;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x mandatory;
+        }.tg-classic .categories-wrapper::-webkit-scrollbar {
+            display: none;
+        }.tg-classic .category-item {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            cursor: pointer;
+            transition: var(--transition);
+            scroll-snap-align: start;
+            width: 80px;
+        }.tg-classic .category-img {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            padding: 3px;
+            background: #FFF;
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            flex-shrink: 0;
+        }.tg-classic .category-img img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }.tg-classic .category-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: center;
+            white-space: nowrap;
+        }.tg-classic .category-item:hover .category-img, .tg-classic .category-item.active .category-img {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.25);
+        }.tg-classic .category-item.active .category-name {
+            color: var(--primary);
+        }.tg-classic .menu-section {
+            padding: 3.5rem 0;
+        }.tg-classic .search-bar-container {
+            max-width: 480px;
+            margin: 0 auto 2.5rem auto;
+            position: relative;
+        }.tg-classic .search-input {
+            width: 100%;
+            padding: 0.85rem 1.25rem 0.85rem 2.8rem;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            background: #FFF;
+        }.tg-classic .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-soft);
+        }.tg-classic .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }.tg-classic .products-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }.tg-classic .product-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }.tg-classic .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }.tg-classic .product-img-wrapper {
+            position: relative;
+            height: 200px;
+            cursor: pointer;
+            overflow: hidden;
+            background: #f0f0f0;
+        }.tg-classic .product-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }.tg-classic .product-card:hover .product-img {
+            transform: scale(1.05);
+        }.tg-classic .product-badge {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            z-index: 5;
+        }.tg-classic .product-content {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }.tg-classic .product-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            color: var(--dark);
+            cursor: pointer;
+            line-height: 1.3;
+        }.tg-classic .product-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex-grow: 1;
+            line-height: 1.4;
+        }.tg-classic .product-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            gap: 0.5rem;
+        }.tg-classic .product-price {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--primary);
+            white-space: nowrap;
+        }.tg-classic .add-cart-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-soft);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: var(--transition);
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }.tg-classic .add-cart-btn:hover, .tg-classic .add-cart-btn:active {
+            background-color: var(--primary);
+            color: #FFF;
+        }.tg-classic .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }.tg-classic .promo-section {
+            padding: 2.5rem 0;
+        }.tg-classic .promo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }.tg-classic .promo-card {
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+            min-height: 230px;
+            display: flex;
+            align-items: center;
+            padding: 2rem;
+            color: white;
+            background-size: cover;
+            background-position: center;
+            box-shadow: var(--shadow-sm);
+        }.tg-classic .promo-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%);
+        }.tg-classic .promo-content {
+            position: relative;
+            z-index: 2;
+            max-width: 80%;
+        }.tg-classic .promo-content h3 {
+            font-size: 1.75rem;
+            margin-bottom: 0.4rem;
+            line-height: 1.2;
+        }.tg-classic .promo-content p {
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }.tg-classic .about-section {
+            padding: 4rem 0;
+            background: #FFF;
+        }.tg-classic .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }.tg-classic .about-img {
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }.tg-classic .about-img img {
+            border-radius: var(--radius-lg);
+            width: 100%;
+        }.tg-classic .about-content h2 {
+            font-size: 2.25rem;
+            margin-bottom: 1.25rem;
+            color: var(--dark);
+        }.tg-classic .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+            margin-top: 2.5rem;
+        }.tg-classic .feature-item {
+            text-align: center;
+            padding: 1.25rem 0.75rem;
+            background: var(--light-bg);
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+        }.tg-classic .feature-icon {
+            font-size: 1.75rem;
+            color: var(--primary);
+            margin-bottom: 0.6rem;
+        }.tg-classic .info-section {
+            padding: 4rem 0;
+        }.tg-classic .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+        }.tg-classic .hours-card, .tg-classic .location-card {
+            background: #FFF;
+            padding: 2rem;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }.tg-classic .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }.tg-classic .status-badge.open {
+            background-color: #E6F4EA;
+            color: #137333;
+        }.tg-classic .status-badge.closed {
+            background-color: #FCE8E6;
+            color: #C5221F;
+        }.tg-classic .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+        }.tg-classic .hours-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }.tg-classic .hours-item {
+            display: flex;
+            justify-content: space-between;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px dashed var(--border);
+            font-size: 0.95rem;
+        }.tg-classic .map-container {
+            height: 200px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-top: 1.25rem;
+            background-color: #e5e3df;
+            position: relative;
+        }.tg-classic .map-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80');
+            background-size: cover;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }.tg-classic .footer {
+            background-color: var(--dark);
+            color: #A0A0A0;
+            padding: 3.5rem 0 2rem 0;
+            margin-top: 2rem;
+        }.tg-classic .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1.5fr;
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
+        }.tg-classic .footer-brand .logo {
+            color: #FFF;
+            margin-bottom: 0.75rem;
+        }.tg-classic .footer-title {
+            color: #FFF;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }.tg-classic .footer-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }.tg-classic .footer-links a:hover {
+            color: var(--primary);
+        }.tg-classic .social-links {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }.tg-classic .social-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-size: 1.1rem;
+        }.tg-classic .social-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }.tg-classic .footer-bottom {
+            padding-top: 1.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+            font-size: 0.85rem;
+        }.tg-classic .cart-sidebar {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            max-width: 420px;
+            height: 100vh;
+            height: -webkit-fill-available;
+            background: #FFF;
+            box-shadow: var(--shadow-lg);
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }.tg-classic .cart-sidebar.open {
+            transform: translateX(-100%);
+        }.tg-classic .cart-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }.tg-classic .cart-items-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            -webkit-overflow-scrolling: touch;
+        }.tg-classic .cart-item {
+            display: flex;
+            gap: 0.85rem;
+            align-items: center;
+            padding-bottom: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }.tg-classic .cart-item-img {
+            width: 65px;
+            height: 65px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            flex-shrink: 0;
+        }.tg-classic .cart-item-details {
+            flex-grow: 1;
+        }.tg-classic .cart-item-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+            line-height: 1.2;
+        }.tg-classic .cart-item-price {
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 0.9rem;
+        }.tg-classic .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.4rem;
+        }.tg-classic .qty-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--light-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            touch-action: manipulation;
+        }.tg-classic .cart-footer {
+            padding: 1.25rem 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--light-bg);
+            padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+        }.tg-classic .cart-total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }.tg-classic .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }.tg-classic .modal.open {
+            opacity: 1;
+            visibility: visible;
+        }.tg-classic .modal-content {
+            background: #FFF;
+            width: 100%;
+            max-width: 750px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            position: relative;
+            max-height: 90vh;
+        }.tg-classic .modal-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 38px;
+            height: 38px;
+            background: #FFF;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+            font-size: 1.1rem;
+        }.tg-classic .modal-body {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }.tg-classic .floating-cart-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.25rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.85rem 1.25rem;
+            border-radius: var(--radius-full);
+            box-shadow: 0 8px 24px rgba(230, 57, 70, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 900;
+            font-weight: 800;
+            transition: var(--transition);
+            border: 2px solid #FFF;
+            touch-action: manipulation;
+        }.tg-classic .floating-cart-btn:active {
+            transform: scale(0.95);
+        }.tg-classic .floating-cart-badge {
+            background: #FFF;
+            color: var(--primary);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }.tg-classic .toast {
+            position: fixed;
+            bottom: 5.5rem;
+            left: 50%;
+            transform: translate(-50%, 100px);
+            background: var(--dark);
+            color: #FFF;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-full);
+            box-shadow: var(--shadow-lg);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            opacity: 0;
+            transition: var(--transition);
+            white-space: nowrap;
+            font-size: 0.9rem;
+            width: max-content;
+            max-width: 90vw;
+        }.tg-classic .toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        
+        @media (max-width: 992px) {.tg-classic .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }.tg-classic .about-grid, .tg-classic .info-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .promo-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .footer-grid {
+                grid-template-columns: 1fr 1fr;
+            }.tg-classic .modal-content {
+                grid-template-columns: 1fr;
+                max-height: 85vh;
+                overflow-y: auto;
+            }.tg-classic .modal-img-container {
+                height: 220px;
+            }
+        }
+
+        @media (max-width: 768px) {.tg-classic .nav-desktop {
+                display: none;
+            }.tg-classic .hamburger {
+                display: flex;
+            }.tg-classic .hero {
+                height: 65vh;
+                min-height: 420px;
+            }.tg-classic .hero-content h1 {
+                font-size: 2.25rem;
+            }.tg-classic .hero-content p {
+                font-size: 1rem;
+                margin-bottom: 1.25rem;
+            }.tg-classic .section-title h2 {
+                font-size: 1.75rem;
+            }.tg-classic .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.85rem;
+            }.tg-classic .product-card {
+                border-radius: 12px;
+            }.tg-classic .product-img-wrapper {
+                height: 135px;
+            }.tg-classic .product-content {
+                padding: 0.85rem;
+            }.tg-classic .product-title {
+                font-size: 0.95rem;
+                margin-bottom: 0.25rem;
+            }.tg-classic .product-desc {
+                font-size: 0.78rem;
+                margin-bottom: 0.6rem;
+                -webkit-line-clamp: 2;
+            }.tg-classic .product-price {
+                font-size: 0.95rem;
+            }.tg-classic .add-cart-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 0.85rem;
+            }.tg-classic .product-footer {
+                padding-top: 0.5rem;
+            }.tg-classic .features-grid {
+                grid-template-columns: 1fr;
+            }.tg-classic .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }.tg-classic .cart-sidebar {
+                max-width: 100%;
+            }.tg-classic .modal-body {
+                padding: 1.25rem;
+            }
+        }
+
+        @media (max-width: 390px) {.tg-classic .products-grid {
+                gap: 0.65rem;
+            }.tg-classic .product-content {
+                padding: 0.65rem;
+            }.tg-classic .product-img-wrapper {
+                height: 120px;
+            }.tg-classic .product-title {
+                font-size: 0.88rem;
+            }.tg-classic .product-price {
+                font-size: 0.88rem;
+            }
+        }
+
+</style>
+
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+/* ============================================================
+   SUPABASE — connexion au projet existant
+   Ce fichier est un HTML autonome (pas un projet Next.js), donc
+   `process` n'existe pas dans le navigateur : on utilise directement
+   les valeurs publiques fournies. Si ce fichier est un jour servi par
+   un build Next.js, les variables NEXT_PUBLIC_* prendront le dessus.
+   ============================================================ */
+const SUPABASE_URL =
+  (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_SUPABASE_URL)
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL
+    : "https://nkbvzfdnhsyyjrwwtjfc.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+    ? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    : "sb_publishable_l0CDdHRkWwB4diCv2w4nWQ_ATHWFi37";
+
+// Client global, utilisé par toutes les fonctions du fichier.
+// Clé PUBLISHABLE uniquement — jamais de clé service_role ici.
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Domaine public officiel TerangaResto. En production, tous les liens
+// restaurant, QR Codes et partages utilisent ce domaine; en local,
+// l'origine locale reste utilisable pour les tests.
+const PRODUCTION_SITE_ORIGIN = "https://www.terangaresto.com";
+const RESTAURANT_SUBDOMAIN_BASE = "https://terangaresto.com";
+function getPublicSiteOrigin(){
+  return /(^|\.)terangaresto\.com$/i.test(location.hostname) ? PRODUCTION_SITE_ORIGIN : location.origin;
+}
+function publicRestaurantUrl(slug){
+  const clean = String(slug || '').trim().toLowerCase();
+  if(!clean) return PRODUCTION_SITE_ORIGIN;
+  // URL publique canonique : un sous-domaine par restaurant.
+  // Requiert le wildcard *.terangaresto.com côté Vercel/DNS pour être joignable.
+  return `https://${clean}.terangaresto.com`;
+}
+
+// Support futur des liens par sous-domaine si *.terangaresto.com est
+// configuré dans Vercel/DNS. Tant que ce wildcard n'est pas configuré,
+// le lien canonique ?resto=slug reste utilisé pour garantir un lien
+// immédiatement fonctionnel.
+function restaurantSlugFromLocation(){
+  const host = location.hostname.toLowerCase();
+  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
+    const prefix = host.slice(0, -'.terangaresto.com'.length);
+    if(prefix && !prefix.includes('.')) return decodeURIComponent(prefix);
+  }
+  return new URLSearchParams(location.search).get('resto');
+}
+</script>
+
+<script>
+/* ============================================================
+   SUPABASE — état d'authentification + chargement des données
+   ============================================================
+   Principe : on garde EXACTEMENT les mêmes variables globales que la
+   démo d'origine (RESTAURANT, catsState, PRODUCTS, DEMO_ORDERS,
+   staffState, state.plan, state.toggles) — tout le reste du fichier
+   (rendu, formulaires, calculs d'analyses/comptabilité) continue de
+   fonctionner sans modification. Ces fonctions se contentent de les
+   remplir depuis Supabase au lieu de tableaux vides, et de pousser
+   chaque modification vers la base au moment où l'utilisateur agit.
+
+   Hypothèse : ce fichier HTML sert UN SEUL restaurant à la fois (pas
+   de routage multi-tenant par sous-domaine/slug dans l'URL). Le site
+   public affiche donc le restaurant Supabase le plus récemment créé. */
+let currentUser = null; // session Supabase courante, ou null si visiteur anonyme
+let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/personnel du restaurant chargé (autorise la prévisualisation même non publiée)
+
+/* CORRECTION ARCHITECTURALE (pas juste une re-vérification) :
+   auparavant, une seule fonction attendait TOUJOURS les 7 requêtes
+   (restaurant + catégories + produits + commandes + personnel +
+   paiements + avis) avant d'afficher quoi que ce soit — si UNE seule
+   traînait (typiquement "orders", qui accumule le plus de lignes au
+   fil des tests), tout le tableau de bord restait bloqué derrière
+   elle. Désormais séparé en deux phases : la phase "cœur" (rapide,
+   nécessaire pour afficher immédiatement l'espace) et la phase
+   "secondaire" (commandes/personnel/paiements/avis — chargée APRÈS
+   affichage du tableau de bord, en arrière-plan, jamais bloquante).
+   loadRestaurantIntoState() reste inchangée en apparence (toujours les
+   deux phases, toujours awaited) pour le site public (loadRestaurantBySlug),
+   qui n'a de toute façon jamais chargé la partie secondaire
+   (isLoggedIn=false). Les chemins de connexion appellent maintenant
+   directement les deux phases séparément. */
+async function loadRestaurantCore(restaurantId){
+  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+    supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
+    supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
+  ]);
+  if(!r) return false;
+
+  RESTAURANT.id = r.id;
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = new Date(r.created_at).getTime();
+  RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
+  RESTAURANT.logoDataUrl = r.logo_data_url; RESTAURANT.coverDataUrl = r.cover_data_url;
+  RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  // Le logo du restaurateur devient immédiatement l'icône de son site public.
+  if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+  RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
+  // Remplacement INCONDITIONNEL (jamais "seulement si non vide") : un
+  // restaurant qui a RÉELLEMENT des horaires/livraison/réseaux vides
+  // ne doit jamais hériter des valeurs encore en mémoire d'un AUTRE
+  // restaurant chargé plus tôt dans le même onglet (changement de
+  // compte sans recharger la page). defaultHours()/defaultDelivery()/
+  // defaultSocial() renvoient toujours un objet neuf, jamais partagé.
+  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
+  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
+  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
+  RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
+  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
+  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
+  RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.heroTitle = r.hero_title || '';
+  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
+  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
+  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
+  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
+  // Fait avancer trialing/active/cancelled → expired si la date est
+  // dépassée, et répercute ce changement dans Supabase — sans cron :
+  // c'est vérifié à chaque chargement, ce qui suffit pour un fichier
+  // HTML autonome. Passe par une fonction RPC dédiée, à sens unique
+  // vers l'expiration (jamais vers l'activation) — voir "VERROU
+  // CRITIQUE" dans supabase_schema.sql ; subscription_status n'est
+  // plus modifiable par une simple mise à jour de paramètres. Lancée
+  // SANS attendre (fire-and-forget) : ne doit jamais retarder
+  // l'affichage du tableau de bord pour une simple synchronisation de
+  // routine.
+  if(!!currentUser && computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')){
+    supabaseClient.rpc('sync_my_subscription_expiry').then(({error}) => {
+      if(error) console.error('sync_my_subscription_expiry:', error.message);
+    });
+  }
+  // r.plan ne devrait plus jamais être vide pour un restaurant créé via
+  // create_my_restaurant (qui l'exige) — 'free' n'est ici qu'un filet
+  // de sécurité pour d'éventuelles lignes plus anciennes, jamais un
+  // nouveau choix silencieux à la création.
+  state.plan = r.plan || 'free';
+  state.toggles = Object.assign({wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''}, r.payment_toggles || {});
+  applyRestaurantName(r.name);
+  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
+
+  // Remplacement inconditionnel également : un restaurant qui a
+  // réellement zéro catégorie (toutes supprimées, ou pas encore créées)
+  // ne doit jamais hériter de celles d'un restaurant précédent chargé
+  // plus tôt dans le même onglet.
+  catsState = {};
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
+
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
+    variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
+  }));
+
+  // Réinitialise les sélections d'écran qui pointaient peut-être vers
+  // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
+  // même onglet (changement de compte sans recharger la page).
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
+  return true;
+}
+
+/* Phase secondaire — commandes, personnel, paiements, avis. Toujours
+   appelée APRÈS que le tableau de bord soit déjà affiché avec les
+   données "cœur" ; redessine la section actuellement visible une fois
+   arrivée, pour que les vrais chiffres remplacent silencieusement les
+   listes vides initiales, sans jamais avoir bloqué l'accès au compte. */
+async function loadRestaurantSecondaryData(restaurantId){
+  const [ordersRes, staffRes, paymentsRes, reviewsRes] = await Promise.all([
+    supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
+    supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId),
+    supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10),
+    supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
+  ]);
+
+  DEMO_ORDERS.length = 0;
+  ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
+    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
+    createdAt:new Date(o.created_at),
+  }));
+
+  staffState.length = 0;
+  ((staffRes && staffRes.data)||[]).forEach(s => staffState.push({
+    id:s.id, name:s.name, email:s.email, role:s.role, permissions:s.permissions,
+    status:s.status, code:s.code, createdAt:new Date(s.invited_at).getTime(),
+    expiresAt:s.expires_at ? new Date(s.expires_at).getTime() : null, userId:s.user_id,
+  }));
+
+  // Historique des paiements PayTech (abonnement du restaurateur —
+  // jamais mélangé avec les commandes de ses propres clients).
+  paymentsHistory = (paymentsRes && paymentsRes.data) || [];
+  REVIEWS = (reviewsRes && reviewsRes.data) || [];
+
+  subscribeToOrdersRealtime(restaurantId);
+  subscribeToReviewsRealtime(restaurantId);
+
+  // Le tableau de bord était déjà affiché (avec des listes vides) avant
+  // que ces données n'arrivent — on redessine la section actuellement
+  // visible pour qu'elle reflète les vrais chiffres, exactement le
+  // même principe que le rafraîchissement déjà utilisé pour une
+  // nouvelle commande en temps réel.
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers','staff','payments'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+  refreshNotifDot();
+}
+
+async function loadRestaurantIntoState(restaurantId){
+  const ok = await loadRestaurantCore(restaurantId);
+  if(!ok) return false;
+  if(!!currentUser){
+    await loadRestaurantSecondaryData(restaurantId);
+  } else {
+    // Site public (visiteur anonyme) : jamais de commandes/personnel/
+    // paiements/avis à charger — comportement inchangé.
+    DEMO_ORDERS.length = 0; staffState.length = 0; paymentsHistory = []; REVIEWS = [];
+  }
+  return true;
+}
+
+/* ---------------- REALTIME — nouvelles commandes ----------------
+   Un seul canal actif à la fois (on se désabonne de l'ancien avant
+   d'en ouvrir un nouveau, pour ne jamais accumuler d'abonnements —
+   sinon une même commande déclencherait plusieurs alertes identiques
+   après plusieurs connexions/déconnexions dans la même page). */
+let ordersRealtimeChannel = null;
+function subscribeToOrdersRealtime(restaurantId){
+  if(ordersRealtimeChannel){ supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
+  ordersRealtimeChannel = supabaseClient
+    .channel('orders-restaurant-'+restaurantId)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'orders', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeNewOrder(payload.new);
+    })
+    // AJOUT (audit) : le canal n'écoutait auparavant que les nouvelles
+    // commandes (INSERT) — un changement de statut fait par un AUTRE
+    // membre du personnel (ou depuis un autre onglet/appareil) n'était
+    // donc jamais répercuté ailleurs sans un rechargement manuel de la
+    // page. RLS s'applique de la même façon aux deux types
+    // d'événements (le filtre restaurant_id=eq.${restaurantId}
+    // combiné à la policy orders_staff_read garantit qu'aucune session
+    // ne reçoit jamais les commandes d'un AUTRE restaurant).
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'orders', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeOrderUpdated(payload.new);
+    })
+    .subscribe();
+}
+function unsubscribeOrdersRealtime(){
+  if(ordersRealtimeChannel){ supabaseClient.removeChannel(ordersRealtimeChannel); ordersRealtimeChannel = null; }
+}
+/* Mêmes principes que les commandes en temps réel ci-dessus, appliqués
+   aux avis : le personnel passe déjà la policy RLS reviews_staff_read
+   (contrairement à un client anonyme sur son propre suivi de commande,
+   qui n'y a pas droit — c'est pour ça que ce dernier utilise un
+   sondage périodique plutôt que Realtime), donc Supabase Realtime
+   fonctionne ici directement, sans contournement. */
+let reviewsRealtimeChannel = null;
+function subscribeToReviewsRealtime(restaurantId){
+  if(reviewsRealtimeChannel){ supabaseClient.removeChannel(reviewsRealtimeChannel); reviewsRealtimeChannel = null; }
+  reviewsRealtimeChannel = supabaseClient
+    .channel('reviews-restaurant-'+restaurantId)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'reviews', filter:`restaurant_id=eq.${restaurantId}`}, (payload) => {
+      onRealtimeNewReview(payload.new);
+    })
+    .subscribe();
+}
+function unsubscribeReviewsRealtime(){
+  if(reviewsRealtimeChannel){ supabaseClient.removeChannel(reviewsRealtimeChannel); reviewsRealtimeChannel = null; }
+}
+function onRealtimeNewReview(row){
+  // Déduplication : si cet avis est déjà dans REVIEWS (par exemple
+  // parce que ce même onglet vient de le charger), ne le duplique pas.
+  if(REVIEWS.some(r => r.id === row.id)) return;
+  REVIEWS.unshift(row);
+  // Ne redessine QUE si la section "Avis clients" est actuellement
+  // affichée — jamais un rafraîchissement de toute la page, exactement
+  // comme le principe déjà utilisé pour les nouvelles commandes.
+  if(state.dashSection==='customers' && dashCustomersTab==='reviews'){
+    const body = document.getElementById('dashCustomersBody');
+    if(body){ body.innerHTML = dashReviewsHtml(); hydrateIcons(body); }
+  }
+}
+function onRealtimeNewOrder(row){
+  // Déduplication : si cette commande est déjà dans DEMO_ORDERS (par
+  // exemple parce que ce même onglet vient de la créer via submitOrder),
+  // ne déclenche pas une seconde alerte pour la même commande.
+  if(DEMO_ORDERS.some(o => o.id === row.id)) return;
+  const order = {
+    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+    total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+    createdAt:new Date(row.created_at),
+  };
+  DEMO_ORDERS.unshift(order);
+  refreshNotifDot();
+  if(RESTAURANT.notificationsEnabled){
+    toast(ic('bell',14)+` Nouvelle commande — #${order.num} (${fmt(order.total)})`, true);
+    playNotificationSound();
+    showBrowserNotification(order);
+  }
+  // Rafraîchit les vues du tableau de bord actuellement affichées, pour
+  // que la commande apparaisse immédiatement sans que l'utilisateur
+  // ait à changer de section.
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+}
+/* AJOUT (audit) : répercute un changement de commande fait ailleurs
+   (autre appareil, autre membre du personnel, autre onglet) — jamais
+   de nouvelle alerte sonore/notification ici, uniquement pour une
+   VRAIE nouvelle commande (onRealtimeNewOrder ci-dessus) ; une mise à
+   jour de statut doit rester silencieuse mais visible immédiatement. */
+function onRealtimeOrderUpdated(row){
+  const i = DEMO_ORDERS.findIndex(o => o.id === row.id);
+  if(i === -1){
+    // Commande pas encore connue de cet onglet (ex: créée sur cet
+    // appareil avant que la session ne soit ouverte) — on l'ajoute
+    // proprement plutôt que d'ignorer la mise à jour.
+    DEMO_ORDERS.push({
+      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+      total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+      createdAt:new Date(row.created_at),
+    });
+  } else {
+    Object.assign(DEMO_ORDERS[i], {
+      client:row.client, phone:row.phone, type:row.type, items:row.items,
+      total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
+    });
+  }
+  refreshNotifDot();
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
+    renderDashSection(state.dashSection);
+  }
+}
+
+/* ---------------- SON — nouvelle commande ----------------
+   Un AudioContext créé sans interaction préalable de la personne est
+   généralement bloqué ("politique autoplay") par les navigateurs — on
+   en crée donc UN SEUL, réutilisé à chaque alerte, et on le débloque
+   dès la toute première interaction (clic/tap) sur la page. Si le
+   navigateur bloque quand même l'audio, aucun son n'est simulé —
+   l'erreur est simplement absorbée, jamais annoncée comme un succès. */
+let sharedAudioCtx = null;
+let audioUnlocked = false;
+function unlockAudioOnce(){
+  if(audioUnlocked) return;
+  try{
+    sharedAudioCtx = sharedAudioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+    audioUnlocked = true;
+  }catch(e){ /* Web Audio indisponible dans ce navigateur */ }
+}
+document.addEventListener('click', unlockAudioOnce, {once:true});
+document.addEventListener('touchstart', unlockAudioOnce, {once:true});
+
+/* ---------------- SUIVI DE COMMANDE CLIENT ----------------
+   localStorage sert UNIQUEMENT à retenir QUELLES commandes proposer
+   dans "Suivre ma commande" sur CE navigateur — jamais comme source du
+   statut réel, qui est toujours redemandé à Supabase via track_order()
+   au moment d'ouvrir la fenêtre. Usage conforme : état pratique côté
+   client, jamais une donnée métier stockée à la place de Supabase. */
+const MY_ORDERS_KEY = 'tg_my_orders';
+function getMyOrders(){
+  if(!RESTAURANT.id) return [];
+  try{
+    const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
+    return all[RESTAURANT.id] || [];
+  }catch(e){ return []; }
+}
+function rememberMyOrder(num, phone){
+  if(!RESTAURANT.id || !num) return;
+  try{
+    const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
+    const list = all[RESTAURANT.id] || [];
+    if(!list.some(o=>o.num===num)) list.unshift({num, phone: phone||''});
+    all[RESTAURANT.id] = list.slice(0, 10); // garde les 10 dernières commandes sur ce restaurant
+    localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(all));
+  }catch(e){ /* localStorage indisponible (navigation privée stricte...) — pas bloquant */ }
+}
+function renderTrackOrderButton(){
+  const btn = document.getElementById('trackOrderBtn');
+  if(!btn) return;
+  btn.classList.toggle('hidden', viewerIsStaff || getMyOrders().length === 0);
+}
+async function openTrackOrderModal(){
+  unsubscribeFromOrderTracking(); // quitte le suivi d'une commande précise si on revient à la liste
+  const overlay = document.getElementById('trackOrderOverlay');
+  overlay.classList.remove('hidden');
+  const body = document.getElementById('trackOrderBody');
+  const myOrders = getMyOrders();
+  body.innerHTML = `<div class="text-center" style="padding:30px 0;">${ic('loader',26,{className:'spin', stroke:'var(--amber-deep)'})}</div>`;
+  hydrateIcons(body);
+
+  const results = await Promise.all(myOrders.map(async ref => {
+    const {data, error} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: ref.num, p_phone: ref.phone});
+    return {ref, row: Array.isArray(data) ? data[0] : data, error};
+  }));
+
+  body.innerHTML = results.map(({ref, row}) => {
+    if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p></div>`;
+    const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
+    return `<button onclick="openOrderTrackingDetail('${row.num}','${ref.phone}')" class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;">
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
+        <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+      </div>
+      <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
+      <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
+    </button>`;
+  }).join('') || `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune commande à afficher.</p>`;
+  hydrateIcons(body);
+}
+function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').classList.add('hidden'); unsubscribeFromOrderTracking(); }
+
+/* Suivi d'UNE commande précise — barre de progression visuelle basée
+   uniquement sur le vrai statut Supabase (jamais un statut fictif). Se
+   met à jour automatiquement via Realtime quand le restaurateur change
+   le statut depuis son tableau de bord — pas besoin d'actualiser. */
+/* Icône + titre + courte description par étape — matches exactement
+   les statuts déjà utilisés dans orders.status, aucun statut nouveau
+   ou incompatible introduit. */
+const STEP_INFO = {
+  new:        {icon:'bag',         label:'Commande reçue', desc:'Votre commande a été reçue par le restaurant.'},
+  preparing:  {icon:'flame',       label:'En préparation', desc:'Votre restaurant prépare votre commande.'},
+  ready:      {icon:'package',     label:'Prête',          desc:'Votre commande est prête.'},
+  delivering: {icon:'bike',        label:'En livraison',   desc:'Votre commande est en route.'},
+  completed:  {icon:'checkCircle', label:'Terminée',       desc:'Votre commande est terminée.'},
+};
+async function openOrderTrackingDetail(num, phone){
+  const overlay = document.getElementById('trackOrderOverlay');
+  overlay.classList.remove('hidden');
+  const body = document.getElementById('trackOrderBody');
+  body.innerHTML = `<div class="text-center" style="padding:30px 0;">${ic('loader',26,{className:'spin', stroke:'var(--amber-deep)'})}</div>`;
+  hydrateIcons(body);
+  rememberMyOrder(num, phone);
+  const {data, error} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: num, p_phone: phone});
+  const row = Array.isArray(data) ? data[0] : data;
+  if(!row){
+    body.innerHTML = `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Commande introuvable.</p>
+      <button class="btn btn-outline w-full" style="margin-top:14px;" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
+    hydrateIcons(body);
+    return;
+  }
+  renderOrderTrackingDetail(row, phone);
+  subscribeToOrderTracking(num, phone);
+  renderTrackOrderButton();
+}
+function renderOrderTrackingDetail(row, phone){
+  const body = document.getElementById('trackOrderBody');
+  const delivery = isDeliveryOrder(row.type);
+  const steps = ['new','preparing','ready','delivering','completed'].filter(s => s!=='delivering' || delivery);
+  const currentIdx = steps.indexOf(row.status);
+  const itemsLabel = (row.items||[]).map(orderItemNameQty);
+  body.innerHTML = `
+    <div class="text-center" style="margin-bottom:18px;">
+      <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
+      <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${RESTO_NAME}</p>
+    </div>
+    ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;">${ic('x',22,{stroke:'var(--terracotta)'})}<p style="font-size:13px;color:var(--terracotta);margin-top:6px;">Cette commande a été annulée.</p></div>` : `
+    <!-- Progression VERTICALE : icône + titre + description par étape,
+         ligne de connexion, étape actuelle mise en valeur — jamais un
+         simple texte. -->
+    <div style="margin-bottom:22px;">
+      ${steps.map((s,i)=>{
+        const info = STEP_INFO[s];
+        const done = i < currentIdx, active = i === currentIdx, upcoming = i > currentIdx;
+        return `<div style="display:flex;gap:14px;">
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s ease;background:${done||active?'var(--amber)':'var(--cream-line)'};color:${done||active?'#fff':'var(--ink-faint)'};${active?'box-shadow:0 0 0 5px rgba(232,135,30,.18);transform:scale(1.06);':''}">
+              ${done ? ic('check',16) : ic(info.icon,16)}
+            </div>
+            ${i<steps.length-1?`<div style="width:2px;flex:1;min-height:26px;background:${done?'var(--amber)':'var(--cream-line)'};margin:2px 0;transition:background .3s ease;"></div>`:''}
+          </div>
+          <div style="padding-bottom:22px;">
+            <p style="font-size:13.5px;font-weight:${active?'700':'600'};color:${upcoming?'var(--ink-faint)':'var(--ink)'};">${info.label}</p>
+            ${active ? `<p style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${info.desc}</p>` : ''}
+            ${active ? `<span class="pill pill-amber" style="margin-top:5px;font-size:10px;">Étape actuelle</span>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`}
+    <div class="card" style="padding:14px;margin-bottom:12px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Votre commande</p>
+      ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${q}× ${n}</p>`).join('')}
+      <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
+      ${delivery && row.address ? `<div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',13,{stroke:'var(--ink-faint)'})}</span><span style="font-size:12.5px;color:var(--ink-soft);">${escapeAttr(row.address)}</span></div>` : ''}
+    </div>
+    <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>`;
+  hydrateIcons(body);
+}
+// REMPLACE une tentative initiale par Supabase Realtime : postgres_changes
+// respecte les policies RLS de SELECT pour décider ce qu'une connexion
+// peut recevoir, et orders_staff_read réserve la lecture de `orders`
+// au propriétaire/personnel — un client anonyme ne recevrait donc
+// JAMAIS ces événements, même avec un filtre correct. Plutôt que de
+// laisser un "suivi en temps réel" qui semble actif mais ne se
+// déclenche jamais, on interroge simplement track_order() (RPC qui,
+// elle, autorise volontairement cet accès étroit) à intervalle
+// régulier tant que la fenêtre de suivi reste ouverte.
+let trackingPollTimer = null;
+function subscribeToOrderTracking(num, phone){
+  unsubscribeFromOrderTracking();
+  trackingPollTimer = setInterval(async () => {
+    if(!RESTAURANT.id) return;
+    const {data} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: num, p_phone: phone});
+    const row = Array.isArray(data) ? data[0] : data;
+    if(row) renderOrderTrackingDetail(row, phone);
+  }, 8000);
+}
+function unsubscribeFromOrderTracking(){
+  if(trackingPollTimer){ clearInterval(trackingPollTimer); trackingPollTimer = null; }
+}
+
+/* ---------------- AVIS CLIENT ---------------- */
+let reviewRating = 0;
+let reviewOrderNum = null;
+function openReviewModal(orderNum){
+  reviewRating = 0;
+  reviewOrderNum = orderNum || null;
+  document.getElementById('reviewOverlay').classList.remove('hidden');
+  renderReviewModal();
+}
+function closeReviewModal(){ document.getElementById('reviewOverlay').classList.add('hidden'); }
+function setReviewRating(n){ reviewRating = n; renderReviewModal(); }
+function renderReviewModal(){
+  document.getElementById('reviewBody').innerHTML = `
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${RESTO_NAME}</span> ?</p>
+    <div class="flex items-center justify-center gap-2" style="margin-bottom:18px;">
+      ${[1,2,3,4,5].map(n=>`<button onclick="setReviewRating(${n})" style="padding:2px;">${ic('star',30,{fill: n<=reviewRating?'var(--amber)':'none', stroke: n<=reviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}
+    </div>
+    <textarea class="field-input" id="reviewComment" rows="3" placeholder="Écrivez votre avis…" style="margin-bottom:16px;"></textarea>
+    <button class="btn btn-secondary btn-lg w-full" onclick="submitReview()">Envoyer mon avis</button>`;
+  hydrateIcons(document.getElementById('reviewBody'));
+}
+async function submitReview(){
+  if(reviewRating < 1 || reviewRating > 5){
+    toast('Choisissez une note de 1 à 5 étoiles avant d\'envoyer.');
+    return;
+  }
+  if(!RESTAURANT.id) return;
+  const comment = (document.getElementById('reviewComment').value || '').trim();
+  const btn = document.querySelector('#reviewBody .btn-secondary');
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
+
+  let orderId = null;
+  if(reviewOrderNum){
+    const found = DEMO_ORDERS.find(o=>o.num===reviewOrderNum);
+    if(found) orderId = found.id;
+  }
+
+  const { error } = await supabaseClient.from('reviews').insert({
+    restaurant_id: RESTAURANT.id,
+    order_id: orderId,
+    client: state.checkout.firstName ? `${state.checkout.firstName} ${state.checkout.lastName||''}`.trim() : null,
+    rating: reviewRating,
+    comment: comment || null,
+  });
+
+  if(error){
+    toast("Votre avis n'a pas pu être enregistré : " + error.message);
+    if(btn){ btn.disabled = false; btn.textContent = 'Envoyer mon avis'; }
+    return;
+  }
+
+  document.getElementById('reviewBody').innerHTML = `
+    <div class="text-center" style="padding:20px 0;">
+      <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',36)}</div>
+      <p class="font-display" style="font-size:17px;">Merci pour votre avis !</p>
+    </div>`;
+  hydrateIcons(document.getElementById('reviewBody'));
+  setTimeout(closeReviewModal, 1800);
+}
+
+function playNotificationSound(){
+  try{
+    if(!sharedAudioCtx) sharedAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+
+    const now = sharedAudioCtx.currentTime;
+
+    // Notification courte, élégante et clairement audible :
+    // deux notes ascendantes + une petite résonance finale.
+    const notes = [
+      { f: 987.77,  d: 0.00, len: 0.16, v: 0.16 },
+      { f: 1318.51, d: 0.09, len: 0.22, v: 0.20 },
+      { f: 1567.98, d: 0.19, len: 0.28, v: 0.10 }
+    ];
+
+    notes.forEach(({f,d,len,v})=>{
+      const start = now + d;
+      const osc = sharedAudioCtx.createOscillator();
+      const gain = sharedAudioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, start);
+
+      osc.connect(gain);
+      gain.connect(sharedAudioCtx.destination);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(v, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + len);
+
+      osc.start(start);
+      osc.stop(start + len + 0.025);
+    });
+  }catch(e){ /* audio non disponible dans ce navigateur */ }
+}
+
+/* ---------------- NOTIFICATIONS NAVIGATEUR — nouvelle commande ----------------
+   En plus du toast déjà affiché dans la page (visible seulement si
+   l'onglet est ouvert et visible), une vraie notification système du
+   navigateur — utile si l'onglet est en arrière-plan. Ne fonctionne QUE
+   si la permission a été explicitement accordée ; jamais présumée. */
+function requestNotificationPermission(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'default') Notification.requestPermission();
+}
+let notifPermissionAsked = false;
+function requestNotificationPermissionOnce(){
+  if(notifPermissionAsked) return;
+  notifPermissionAsked = true;
+  requestNotificationPermission();
+}
+function showBrowserNotification(order){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  if(!document.hidden) return; // onglet déjà au premier plan : le toast + le son suffisent
+  try{
+    new Notification(`Nouvelle commande #${order.num}`, { body: `${fmt(order.total)} — ${order.client}`, icon: LOGO_SRC });
+  }catch(e){ /* notifications système indisponibles dans ce contexte */ }
+}
+/* Bannière honnête si les notifications sont bloquées au niveau du
+   navigateur — une fois "denied", AUCUN site ne peut re-déclencher la
+   demande par JavaScript ; on ne prétend donc pas pouvoir "activer en
+   un clic", on explique où le faire réellement. */
+function notificationBlockedBannerHtml(){
+  if(!('Notification' in window) || Notification.permission !== 'denied') return '';
+  return `<div class="card" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;background:rgba(200,60,40,.06);">
+    ${ic('bellOff',15,{stroke:'var(--terracotta)'})}
+    <p style="font-size:12px;color:var(--ink-soft);">Les notifications sont bloquées par votre navigateur. Ouvrez les réglages du site (icône à gauche de l'adresse) pour les autoriser.</p>
+  </div>`;
+}
+
+/* Sauvegarde l'intégralité de l'objet RESTAURANT (+ plan/moyens de
+   paiement) courant dans Supabase. Appelée après chaque modification
+   commise dans Paramètres (nom, horaires, livraison, réseaux sociaux,
+   notifications, carte...). Échec silencieux avec toast — la personne
+   ne perd jamais sa saisie locale même si le réseau flanche. */
+let restaurantSaveInFlight = null;
+let restaurantSavePending = false;
+let restaurantSaveTimer = null;
+
+function setRestaurantSaveState(state){
+  const btn = document.getElementById('settingsSaveBtn');
+  const status = document.getElementById('settingsSaveStatus');
+  if(btn){
+    btn.disabled = state === 'saving';
+    btn.style.opacity = state === 'saving' ? '.72' : '1';
+    btn.style.pointerEvents = state === 'saving' ? 'none' : '';
+    btn.innerHTML = state === 'saving'
+      ? '<span class="tg-save-spinner" aria-hidden="true"></span> Enregistrement…'
+      : state === 'saved'
+        ? '<span style="font-size:16px;line-height:1">✓</span> Enregistré'
+        : 'Enregistrer';
+  }
+  if(status){
+    status.textContent = state === 'saving' ? 'Enregistrement en cours…'
+      : state === 'saved' ? 'Enregistré et synchronisé avec votre site public.'
+      : state === 'error' ? 'Impossible d’enregistrer pour le moment. Réessayez.' : '';
+    status.style.color = state === 'error' ? 'var(--terracotta)' : 'var(--ink-soft)';
+  }
+}
+
+async function persistRestaurant(){
+  if(!RESTAURANT.id) return false;
+
+  // Si une sauvegarde est déjà en cours, on mémorise seulement la dernière
+  // modification. Elle sera envoyée juste après la requête courante.
+  if(restaurantSaveInFlight){
+    restaurantSavePending = true;
+    return restaurantSaveInFlight;
+  }
+
+  setRestaurantSaveState('saving');
+  restaurantSaveInFlight = (async()=>{
+    // IMPORTANT : ne transmettre que les colonnes autorisées par le schéma
+    // Supabase. Les champs d'e-mail de notification et les champs hero sont
+    // gérés par leurs mécanismes dédiés / le patch SQL associé.
+    const payload = {
+      name:RESTAURANT.name, type:RESTAURANT.type,
+      logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
+      primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
+      address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
+      hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
+      payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
+      notifications_enabled:RESTAURANT.notificationsEnabled,
+      plan:state.plan, is_published:RESTAURANT.isPublished,
+      hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
+    };
+
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .update(payload)
+      .eq('id', RESTAURANT.id)
+      .select('id')
+      .maybeSingle();
+
+    if(error || !data){
+      console.error('TerangaResto — sauvegarde Supabase:', error);
+      setRestaurantSaveState('error');
+      return false;
+    }
+
+    setRestaurantSaveState('saved');
+    setTimeout(()=>{
+      if(!restaurantSaveInFlight) setRestaurantSaveState('');
+    },2200);
+    return true;
+  })();
+
+  try{
+    return await restaurantSaveInFlight;
+  }finally{
+    restaurantSaveInFlight = null;
+    if(restaurantSavePending){
+      restaurantSavePending = false;
+      // Une seule nouvelle écriture pour absorber plusieurs changements
+      // rapprochés (notamment les horaires).
+      clearTimeout(restaurantSaveTimer);
+      restaurantSaveTimer = setTimeout(()=>persistRestaurant(),120);
+    }
+  }
+}
+
+async function togglePublish(){
+  const previous = RESTAURANT.isPublished;
+  RESTAURANT.isPublished = !RESTAURANT.isPublished;
+  renderDashSection('settings');
+  const saved = await persistRestaurant();
+  if(saved){
+    toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  }else{
+    RESTAURANT.isPublished = previous;
+    renderDashSection('settings');
+  }
+}
+function copyPublicSiteLink(){
+  const link = publicRestaurantUrl(RESTAURANT.slug);
+  navigator.clipboard?.writeText(link).then(
+    () => toast('Lien copié.'),
+    () => toast(link)
+  );
+}
+
+/* Enregistre un produit (le rôle central du catalogue : nom, prix,
+   variantes, stock...) — insert si nouveau (id absent ou local), sinon
+   update. Après un insert, l'id local ('p_...') est remplacé par le
+   vrai id Supabase pour que les futures opérations le retrouvent. */
+async function persistProduct(p){
+  if(!RESTAURANT.id) return;
+  const payload = {
+    restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
+    prep:p.prep, active:p.active, available:p.available, photo:p.photo,
+    variants:p.variants||[], variants_required: !!p.variantsRequired, stock:p.stock, threshold:p.threshold,
+  };
+  const isNew = !p.id || String(p.id).startsWith('p_');
+  if(isNew){
+    const {data, error} = await supabaseClient.from('products').insert(payload).select().single();
+    if(error){ toast('Produit non enregistré dans Supabase : ' + error.message); return; }
+    p.id = data.id;
+  } else {
+    const {error} = await supabaseClient.from('products').update(payload).eq('id', p.id);
+    if(error) toast('Produit non mis à jour dans Supabase : ' + error.message);
+  }
+}
+async function deleteProductRow(id){
+  if(!RESTAURANT.id || String(id).startsWith('p_')) return;
+  const {error} = await supabaseClient.from('products').delete().eq('id', id);
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
+}
+
+/* Personnel — reflète chaque action de la section "Personnel" dans la
+   table staff. */
+async function persistStaffInsert(s){
+  if(!RESTAURANT.id) return;
+  const {data, error} = await supabaseClient.from('staff').insert({
+    restaurant_id: RESTAURANT.id, name:s.name, email:s.email, role:s.role,
+    permissions:s.permissions, status:s.status, code:s.code,
+    invited_at:new Date(s.createdAt).toISOString(), expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
+  }).select().single();
+  if(error){ toast('Invitation non enregistrée dans Supabase : ' + error.message); return; }
+  s.id = data.id;
+}
+async function persistStaffUpdate(s){
+  if(!RESTAURANT.id || !s.id) return;
+  const {error} = await supabaseClient.from('staff').update({
+    name:s.name, role:s.role, permissions:s.permissions, status:s.status,
+    code:s.code, expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
+  }).eq('id', s.id);
+  if(error) toast('Personnel non mis à jour dans Supabase : ' + error.message);
+}
+async function deleteStaffRow(id){
+  if(!RESTAURANT.id || !id) return;
+  const {error} = await supabaseClient.from('staff').delete().eq('id', id);
+  if(error) toast('Suppression Supabase impossible : ' + error.message);
+}
+
+/* La création de commande passe désormais exclusivement par la RPC
+   create_order() (voir submitOrderInternal), qui recalcule tout côté
+   serveur — plus d'INSERT direct ici. Seul le statut d'une commande
+   déjà créée est encore modifié directement (fonction suivante),
+   jamais son contenu financier. */
+async function persistOrderUpdate(o){
+  if(!RESTAURANT.id || !o.id) return;
+  const {error} = await supabaseClient.from('orders').update({
+    status:o.status, pay_status:o.payStatus,
+  }).eq('id', o.id);
+  if(error) toast('Commande non mise à jour dans Supabase : ' + error.message);
+}
+
+/* Charge un restaurant précis par son identifiant public (slug) —
+   c'est le lien que chaque restaurant partage à ses clients :
+   https://votre-site.vercel.app/?resto=SLUG-DU-RESTAURANT
+   (En attendant un vrai sous-domaine slug.terangaresto.com, configurable
+   séparément via une règle de rewrite Vercel — voir le résumé en fin
+   de réponse — ce paramètre d'URL joue le même rôle dans un fichier
+   HTML autonome.) */
+/* Brouillon vs publié : tant que le restaurant n'a pas cliqué sur
+   "Publier" dans Paramètres, sa boutique publique n'est pas visible
+   pour un client — seul le propriétaire/personnel peut la prévisualiser
+   (bouton "Voir mon site" dans le tableau de bord). Idem si l'essai
+   gratuit ou l'abonnement est expiré/annulé : la boutique publique
+   devient indisponible (mais reste visible en prévisualisation pour
+   le propriétaire/personnel, et aucune donnée n'est supprimée). */
+/* Reflet CÔTÉ CLIENT de is_restaurant_live() en base — DOIT rester
+   strictement synchronisé avec cette fonction SQL, sinon le client peut
+   croire la boutique accessible alors que Supabase refuse déjà les
+   insertions (RLS) — c'est exactement le bug corrigé ici : un
+   restaurant ayant choisi Starter/Premium mais pas encore payé a
+   subscription_status='pending_payment', que isAccessBlocked() (qui ne
+   testait que 'expired') laissait passer comme "accessible" côté
+   client, alors que is_restaurant_live() (serveur) refuse tout statut
+   qui n'est ni 'trialing' ni 'active'/'cancelled' — le client pouvait
+   donc parcourir tout le site et remplir son panier avant d'essuyer
+   l'échec RLS seulement à la validation finale. */
+function isRestaurantLiveClientSide(){
+  if(!RESTAURANT.isPublished) return false;
+  const status = computeEffectiveSubscriptionStatus();
+  if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
+  if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
+  if(status === 'pending_payment') return true; // le site public reste accessible pendant la finalisation du paiement
+  return false; // 'expired' ou toute autre valeur : indisponible
+}
+function isStorefrontGated(){
+  if(!RESTAURANT.created || viewerIsStaff) return false;
+  return !isRestaurantLiveClientSide();
+}
+function renderStorefrontGateOverlay(){
+  const container = document.getElementById('view-storefront');
+  if(!container) return;
+  let overlay = document.getElementById('storefrontGateOverlay');
+  if(isStorefrontGated()){
+    if(!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'storefrontGateOverlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+      container.appendChild(overlay);
+    }
+    const status = computeEffectiveSubscriptionStatus();
+    let iconName, title, text;
+    if(!RESTAURANT.isPublished){
+      iconName='lock'; title="Cette boutique n'est pas encore publiée";
+      text=`${RESTO_NAME} prépare encore son menu. Revenez bientôt !`;
+    } else if(status === 'pending_payment'){
+      iconName='clock'; title="Cette boutique n'est pas encore active";
+      text=`${RESTO_NAME} finalise l'activation de son abonnement. Revenez bientôt !`;
+    } else {
+      iconName='alertTriangle'; title="Cette boutique est actuellement indisponible";
+      text=`${RESTO_NAME} reviendra bientôt. Merci de votre patience.`;
+    }
+    overlay.innerHTML = `
+      <div style="max-width:360px;">
+        <div style="display:flex;justify-content:center;margin-bottom:14px;">${ic(iconName,34,{stroke: iconName==='alertTriangle'?'var(--terracotta)':'var(--amber-deep)'})}</div>
+        <h1 class="font-display" style="font-size:20px;margin-bottom:8px;">${title}</h1>
+        <p style="font-size:13.5px;color:var(--ink-soft);">${text}</p>
+      </div>`;
+    hydrateIcons(overlay);
+  } else if(overlay){
+    overlay.remove();
+  }
+}
+
+
+/* ---------------- CHARGEMENT PUBLIC ULTRA-RAPIDE ----------------
+   Le visiteur public n'a pas besoin des images pour entrer dans la boutique.
+   On charge d'abord uniquement les données nécessaires au premier affichage,
+   puis les images (logo/couverture/photos produits) en arrière-plan.
+   Le chemin propriétaire/dashboard reste inchangé. */
+async function loadRestaurantPublicFast(restaurantId){
+  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+    supabaseClient.from('restaurants').select(
+      'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
+      'address,city,phone,hours,delivery,social,show_map,maps_link,' +
+      'notifications_enabled,order_notification_email,order_notification_email_verified,' +
+      'order_notification_email_pending,is_published,hero_title,hero_subtitle,logo_data_url,' +
+      'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
+      'plan,payment_toggles'
+    ).eq('id', restaurantId).single(),
+    supabaseClient.from('categories').select(
+      'key,label,visible_on_home,sort_order'
+    ).eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select(
+      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
+    ).eq('restaurant_id', restaurantId).order('created_at')
+  ]);
+
+  if(!r) return false;
+
+  RESTAURANT.id = r.id;
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = new Date(r.created_at).getTime();
+  RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
+  // Le logo fait partie des données critiques du premier affichage : il
+  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  RESTAURANT.logoDataUrl = r.logo_data_url || '';
+  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
+  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
+  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
+  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
+  RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
+  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
+  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
+  RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.heroTitle = r.hero_title || '';
+  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
+  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
+  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
+  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
+
+  state.plan = r.plan || 'free';
+  state.toggles = Object.assign(
+    {wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
+    r.payment_toggles || {}
+  );
+
+  applyRestaurantName(r.name);
+  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
+
+  catsState = {};
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => {
+    catsState[c.key] = c.label;
+    catsHomeVisible[c.key] = c.visible_on_home !== false;
+  });
+
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:'', variants:p.variants||[],
+    variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
+  }));
+
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
+
+  // Seules la couverture et les photos produits restent différées ; le logo
+  // est déjà disponible pour le premier rendu.
+  loadRestaurantPublicImagesFast(restaurantId);
+  return true;
+}
+
+async function loadRestaurantPublicImagesFast(restaurantId){
+  try{
+    const [{data:r}, {data:photos}] = await Promise.all([
+      supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
+      supabaseClient.from('products').select('id,photo').eq('restaurant_id', restaurantId)
+    ]);
+
+    if(r){
+      RESTAURANT.logoDataUrl = r.logo_data_url || '';
+      RESTAURANT.coverDataUrl = r.cover_data_url || '';
+      if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+    }
+
+    const photoMap = new Map((photos||[]).map(p => [p.id, p.photo || '']));
+    PRODUCTS.forEach(p => { if(photoMap.has(p.id)) p.photo = photoMap.get(p.id); });
+
+    // Update only the storefront after the public page is already visible.
+    if(state.view === 'storefront'){
+      renderStorefrontHero();
+      renderProductSections();
+    }
+  }catch(e){
+    console.warn('Chargement différé des images du restaurant:', e);
+  }
+}
+
+async function loadRestaurantBySlug(slug){
+  const {data} = await supabaseClient
+    .from('restaurants')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if(data){
+    return await loadRestaurantPublicFast(data.id);
+  }
+  return false;
+}
+
+/* Lien de restaurant qui ne correspond à rien de réel (mauvais slug,
+   restaurant supprimé...). Remplace tout — y compris l'en-tête
+   plateforme, comme sur le vrai site public — par un message honnête
+   et propre, jamais la page d'accueil générale TerangaResto. */
+function renderRestaurantNotFound(){
+  document.body.classList.add('storefront-active'); // masque l'en-tête plateforme, même logique que le vrai site public
+  document.title = 'Restaurant introuvable';
+  let overlay = document.getElementById('restaurantNotFoundOverlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'restaurantNotFoundOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1201;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div style="max-width:360px;">
+      <div style="display:flex;justify-content:center;margin-bottom:14px;">${ic('search',34,{stroke:'var(--ink-faint)'})}</div>
+      <h1 class="font-display" style="font-size:20px;margin-bottom:8px;">Restaurant introuvable</h1>
+      <p style="font-size:13.5px;color:var(--ink-soft);">Ce lien ne correspond à aucun restaurant actuellement disponible. Vérifiez qu'il est correct, ou contactez directement le restaurant.</p>
+    </div>`;
+  hydrateIcons(overlay);
+}
+
+/* Retrouve le restaurant dont l'utilisateur connecté est propriétaire,
+   sinon celui où il est membre actif du personnel. Revalide toujours
+   la session EN DIRECT via getUser() plutôt que de faire confiance à
+   la variable globale `currentUser`, pour la même raison que dans
+   finishOnboarding() : après une connexion, un id local en retard sur
+   la vraie session ferait manquer le restaurant existant et relancerait
+   l'onboarding à tort. */
+/* p_knownUserId : optionnel — évite un aller-retour réseau
+   supplémentaire vers auth.getUser() quand l'appelant a DÉJÀ un
+   utilisateur fraîchement authentifié sous la main (ex: juste après
+   signInWithPassword(), qui vient LUI-MÊME de valider la session).
+   Sans paramètre, comportement inchangé pour tous les autres appels
+   (restoreSession, etc.) : revalidation en direct, nécessaire quand on
+   ne sait pas encore avec certitude si une session existe. */
+async function findMyRestaurantId(p_knownUserId){
+  let user;
+  if(p_knownUserId){
+    user = {id: p_knownUserId};
+  } else {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    user = userData ? userData.user : null;
+    if(user) currentUser = user;
+  }
+  if(!user) return null;
+  const {data:owned} = await supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle();
+  if(owned) return owned.id;
+  const {data:staffRow} = await supabaseClient.from('staff').select('restaurant_id').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle();
+  return staffRow ? staffRow.restaurant_id : null;
+}
+
+/* Empêche définitivement le bug "affiche le restaurant le plus
+   récemment créé" : SANS lien direct (?resto=slug) ET sans compte
+   connecté possédant un restaurant, la racine du site affiche la page
+   TerangaResto générique (celle déjà codée en dur comme vue par
+   défaut : "landing"), jamais les données d'un restaurant au hasard.
+   Chaque restaurant n'est chargé que par son propre lien ou par la
+   session de son propriétaire/personnel — jamais par défaut. */
+async function restoreSession(){
+  try{
+    const {data:{session}} = await supabaseClient.auth.getSession();
+    currentUser = session ? session.user : null;
+
+    // findMyRestaurantId() revalide lui-même la session en direct
+    // (auth.getUser()) — on ne conditionne donc plus cet appel à l'état
+    // de la variable locale `currentUser`, qui pourrait être en retard
+    // d'une frappe sur la vraie session.
+    const rid = await findMyRestaurantId();
+    if(rid){
+      hideRestoSplash(); // garde-fou : si un ?resto= était aussi présent dans l'URL, ne jamais laisser l'écran de chargement bloqué au-dessus du tableau de bord
+      hideAuthCheckSplash();
+      // Phase rapide seulement ici : affiche le tableau de bord dès que
+      // le restaurant/catégories/produits sont prêts. Commandes/
+      // personnel/paiements/avis se chargent APRÈS, en arrière-plan
+      // (voir loadRestaurantSecondaryData), sans retarder l'accès.
+      const ok = await loadRestaurantCore(rid);
+      if(!ok) return;
+      viewerIsStaff = true;
+      setView('dashboard');
+      setDashSection('overview');
+      loadRestaurantSecondaryData(rid);
+      // Retour depuis PayTech (success_url/cancel_url de paytech-checkout) —
+      // informe la personne de ce qui vient de se passer. Le forfait n'est
+      // considéré actif que si subscription_status l'est VRAIMENT (rechargé
+      // ci-dessus depuis Supabase) — jamais supposé actif simplement parce
+      // que le paramètre "paytech=success" est présent dans l'URL, qui
+      // pourrait tout aussi bien venir d'une confirmation encore en cours
+      // de traitement par le webhook.
+      const paytechParam = new URLSearchParams(location.search).get('paytech');
+      if(paytechParam === 'success'){
+        setDashSection('abonnement');
+        toast(isPaidPlanActive()
+          ? ic('checkCircle',14)+' Paiement confirmé — votre forfait est actif.'
+          : ic('clock',14)+' Paiement reçu par PayTech — confirmation en cours, actualisez dans quelques instants si votre forfait n\'apparaît pas encore actif.', true);
+      } else if(paytechParam === 'cancel'){
+        setDashSection('abonnement');
+        toast("Paiement annulé — votre restaurant reste enregistré, vous pouvez réessayer à tout moment depuis Abonnement.");
+      }
+      return;
+    }
+
+    const pendingOtp = loadPendingOnboarding();
+    if(pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
+      Object.assign(obState, pendingOtp);
+      otpPendingEmail = pendingOtp.pendingEmail;
+      otpPendingName = pendingOtp.accountName || '';
+      otpPendingSource = 'onboarding';
+      hideRestoSplash(); hideAuthCheckSplash();
+      setView('onboarding');
+      renderOnboardingOtpScreen();
+      return;
+    }
+
+    // Ici, rid est confirmé null : soit aucune session, soit une session
+    // qui ne correspond plus à un restaurant réel. AVANT de conclure
+    // "aucune session utile", on vérifie s'il s'agit en réalité d'une
+    // personne qui vient de confirmer son e-mail après avoir déjà
+    // rempli tout le parcours 1/7→7/7 — dans ce cas, on termine la
+    // création automatiquement à partir des données déjà sauvegardées,
+    // sans jamais rien redemander ni la renvoyer vers "Connexion".
+    if(await tryResumePendingOnboarding()) return;
+
+    // Ici, on sait qu'il n'y a ni restaurant existant ni onboarding en
+    // attente à reprendre. Le marqueur "utilisateur de retour" ne doit
+    // plus déclencher l'écran de vérification au PROCHAIN chargement —
+    // sinon la personne resterait bloquée dessus indéfiniment à chaque
+    // visite future, alors qu'elle n'a en réalité plus de session valide.
+    try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
+    hideAuthCheckSplash();
+
+    const restoSlug = restaurantSlugFromLocation();
+    if(restoSlug){
+      restoSplashProgress(45);
+      const found = await loadRestaurantBySlug(restoSlug);
+      viewerIsStaff = false;
+      if(found){
+        setView('storefront');
+        // Laisse un très bref instant voir le vrai logo/nom du
+        // restaurant affichés sur l'écran de chargement avant la
+        // transition — sinon la barre saute directement à 100% sans
+        // que personne n'ait eu le temps de la voir se remplir.
+        hideRestoSplash();
+        return;
+      }
+      // Un lien de restaurant qui ne correspond à rien ne doit jamais
+      // retomber sur la page d'accueil générale TerangaResto — ça
+      // laisserait croire au visiteur qu'il est "sur la plateforme"
+      // plutôt que sur un lien de restaurant cassé/expiré.
+      hideRestoSplash();
+      renderRestaurantNotFound();
+      return;
+    }
+    // Ni lien direct ni session propriétaire : on reste sur la page
+    // d'accueil TerangaResto par défaut (state.view==='landing').
+  }catch(e){
+    console.error('Supabase — échec du chargement initial', e);
+    hideRestoSplash(); // ne jamais laisser le client bloqué indéfiniment sur l'écran de chargement
+    hideAuthCheckSplash();
+  }
+}
+</script>
+
+<script>
+/* ---------------- ÉCRAN DE CHARGEMENT DU RESTAURANT ----------------
+   Le petit script juste après <body> se contente de l'AFFICHER
+   instantanément (avant que la page d'accueil générale n'ait pu
+   apparaître) ; tout le reste — logo/nom réels une fois chargés,
+   progression, disparition — est piloté ici, une fois l'application
+   réellement démarrée. */
+function restoSplashProgress(pct){
+  // Le nouveau chargeur est indéterminé : sa barre CSS tourne sans
+  // attendre des pourcentages artificiels qui pourraient ralentir l'entrée.
+}
+function hideRestoSplash(){
+  const el = document.getElementById('restoSplash');
+  if(!el || el.classList.contains('hidden')) return;
+  el.classList.add('hidden');
+}
+function hideAuthCheckSplash(){
+  const el = document.getElementById('authCheckSplash');
+  if(el) el.classList.add('hidden');
+}
+</script>
+
+<script>
+function goToAnchor(id){
+  setView('landing');
+  setTimeout(()=>{ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth'}); }, 60);
+}
+function closeMobileNav(){ document.getElementById('gnavTabs').classList.remove('mobile-open'); }
+function openLogin(tab){ document.getElementById('loginOverlay').classList.remove('hidden'); setLoginTab(tab||'login'); }
+function closeLogin(){ document.getElementById('loginOverlay').classList.add('hidden'); }
+/* État de vérification visible DANS la modale (jamais un délai
+   artificiel — dure exactement le temps des vraies requêtes réseau en
+   cours). Désactive le bouton pour empêcher un second clic pendant la
+   vérification. Réutilisable pour n'importe quel bouton de la modale
+   (connexion, acceptation d'invitation...). */
+function setLoginVerifying(on, btnId, label){
+  const btn = document.getElementById(btnId || 'loginSubmitBtn');
+  if(!btn) return;
+  if(on){
+    btn.dataset.originalLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '.7';
+    btn.innerHTML = `${ic('loader',15,{className:'spin'})} ${label || 'Vérification de vos informations…'}`;
+    hydrateIcons(btn);
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    if(btn.dataset.originalLabel) btn.innerHTML = btn.dataset.originalLabel;
+  }
+}
+
+let loginTab = 'login';
+function setLoginTab(tab){
+  loginTab = tab;
+  ['login','signup','invite'].forEach(t=>{
+    const btn = document.getElementById('loginTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn){ btn.className = t===tab ? 'btn btn-sm' : 'btn btn-sm btn-ghost'; btn.style.background = t===tab ? '#fff' : ''; }
+  });
+  const body = document.getElementById('loginTabBody');
+  if(tab==='login'){
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Pour les restaurateurs qui ont déjà un compte.</p>
+      <label class="field-label">E-mail</label>
+      <input class="field-input" id="loginEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <label class="field-label">Mot de passe</label>
+      <div style="position:relative;margin-bottom:8px;">
+        <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="padding-right:40px;">
+        <button type="button" onclick="togglePasswordVisibility('loginPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+      </div>
+      <a href="#" onclick="sendPasswordReset();return false;" style="font-size:11.5px;color:var(--amber-ink);">Mot de passe oublié ?</a>
+      <button id="loginSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitLogin()" style="margin-top:14px;">Se connecter</button>`;
+  } else if(tab==='signup'){
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Créez votre compte pour ensuite créer votre restaurant.</p>
+      <label class="field-label">Nom complet</label>
+      <input class="field-input" id="signupName" placeholder="Fatou Diop" style="margin-bottom:12px;">
+      <label class="field-label">E-mail</label>
+      <input class="field-input" id="signupEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <label class="field-label">Mot de passe</label>
+      <div style="position:relative;">
+        <input class="field-input" id="signupPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'signupPwStrength')">
+        <button type="button" onclick="togglePasswordVisibility('signupPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+      </div>
+      <div id="signupPwStrength" style="margin-bottom:10px;"></div>
+      <label class="field-label">Confirmer le mot de passe</label>
+      <input class="field-input" id="signupPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
+      <button class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Une fois le compte créé, vous continuez vers la création de votre restaurant.</p>`;
+  } else {
+    body.innerHTML = `
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Vous avez été invité(e) à rejoindre un restaurant sur TerangaResto.</p>
+      <label class="field-label">Adresse e-mail invitée</label>
+      <input class="field-input" id="inviteEmail" placeholder="vous@exemple.com" style="margin-bottom:12px;">
+      <label class="field-label">Code d'invitation</label>
+      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
+      <label class="field-label">Choisissez un mot de passe</label>
+      <div style="position:relative;">
+        <input class="field-input" id="invitePasswordInput" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'invitePwStrength')">
+        <button type="button" onclick="togglePasswordVisibility('invitePasswordInput',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+      </div>
+      <div id="invitePwStrength" style="margin-bottom:16px;"></div>
+      <button id="inviteSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Ce mot de passe crée votre compte TerangaResto (ou vous y connecte s'il existe déjà).</p>`;
+  }
+  hydrateIcons(body);
+}
+
+async function submitLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
+  // CORRECTION DE LA RÉGRESSION SIGNALÉE : closeLogin() se déclenchait
+  // ici, AVANT que findMyRestaurantId()/loadRestaurantCore() (tous deux
+  // asynchrones) ne soient terminés — la modale se fermait donc et
+  // révélait la page d'accueil publique DERRIÈRE elle pendant toute
+  // cette attente, avant que setView('dashboard') ne s'exécute enfin.
+  // C'est exactement "Connexion → Accueil → Dashboard". Corrigé : la
+  // modale reste ouverte, avec un état de vérification visible, tant
+  // qu'on ne sait pas encore où rediriger — elle ne se ferme QUE juste
+  // avant setView('dashboard'), jamais avant.
+  setLoginVerifying(true);
+  const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
+  if(error){ setLoginVerifying(false); toast(error.message || 'Connexion impossible.'); return; }
+  currentUser = data.user;
+  simulatedRole = null;
+  const rid = await findMyRestaurantId(data.user.id);
+  if(!rid){
+    // Pas de fausse entreprise pré-remplie : ce compte n'a encore aucun
+    // restaurant dans Supabase — on l'envoie créer le sien, comme le
+    // ferait une vraie application.
+    setLoginVerifying(false);
+    closeLogin();
+    toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
+    startOnboarding();
+    return;
+  }
+  await loadRestaurantCore(rid);
+  viewerIsStaff = true;
+  closeLogin(); // fermée seulement maintenant, juste avant le passage réel au tableau de bord — jamais avant
+  setView('dashboard');
+  setDashSection('overview');
+  toast('Connecté — bienvenue sur votre tableau de bord.');
+  loadRestaurantSecondaryData(rid); // commandes/personnel/paiements/avis : en arrière-plan, jamais avant d'afficher le compte
+}
+
+async function submitSignup(){
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const pw = document.getElementById('signupPassword').value;
+  const pw2 = document.getElementById('signupPassword2').value;
+  if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+  if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
+  setLoginVerifying(true);
+  const {data, error} = await supabaseClient.auth.signUp({
+    email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
+  });
+  setLoginVerifying(false);
+  if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
+  if(!data.session){
+    otpPendingEmail=email;
+    otpPendingName=name;
+    otpPendingSource='signupModal';
+    Object.assign(obState,{step:0,accountName:name,accountEmail:email,accountPassword:pw,emailConfirmationPending:true,pendingEmail:email});
+    savePendingOnboarding();
+    renderSignupOtpScreen();
+    return;
+  }
+  currentUser=data.user;
+  closeLogin();
+  startOnboarding();
+  obState.accountName=name;
+  obState.accountEmail=email;
+  obState.accountPassword=pw;
+  renderOnboarding();
+  toast('Compte créé — continuons avec votre restaurant.');
+}
+
+function startOtpResendCountdown(seconds=60){
+  otpResendTimer=seconds;
+  if(otpResendInterval) clearInterval(otpResendInterval);
+  const tick=()=>{
+    const el=document.getElementById('otpResendBtn');
+    if(el) el.textContent=otpResendTimer>0 ? `Renvoyer le code (${otpResendTimer}s)` : 'Renvoyer le code';
+    if(otpResendTimer<=0){clearInterval(otpResendInterval);otpResendInterval=null;}
+    otpResendTimer--;
+  };
+  tick();
+  otpResendInterval=setInterval(tick,1000);
+}
+
+function renderOtpCard(targetId,mode){
+  const target=document.getElementById(targetId); if(!target) return;
+  const email=escapeAttr(otpPendingEmail);
+  const title=mode==='modal'?'Vérifiez votre adresse e-mail':'Confirmez votre adresse e-mail';
+  target.innerHTML=`
+    <div class="text-center" style="padding:20px 8px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('mail',38)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">${title}</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Nous avons envoyé un code à 8 chiffres à <strong>${email}</strong>.</p>
+      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 18px;">Entrez le code reçu pour confirmer votre compte. Aucun lien à ouvrir.</p>
+      <input id="signupOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="00000000" style="text-align:center;letter-spacing:.38em;font-size:26px;font-weight:800;max-width:260px;margin:0 auto 14px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)">
+      <button id="verifySignupOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifySignupOtp()">Vérifier le code</button>
+      <button id="otpResendBtn" class="btn btn-outline w-full" style="margin-top:10px;" onclick="resendSignupOtp()">Renvoyer le code</button>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="changeOtpEmail()">Utiliser une autre adresse e-mail</button>
+    </div>`;
+  hydrateIcons(target);
+  startOtpResendCountdown(60);
+  setTimeout(()=>document.getElementById('signupOtpInput')?.focus(),50);
+}
+function renderSignupOtpScreen(){ renderOtpCard('loginTabBody','modal'); }
+function renderOnboardingOtpScreen(){ obState.emailConfirmationPending=true; obState.pendingEmail=otpPendingEmail||obState.pendingEmail||obState.accountEmail; savePendingOnboarding(); renderOtpCard('obCard','onboarding'); }
+async function verifySignupOtp(){
+  const token=(document.getElementById('signupOtpInput')?.value||'').trim();
+  if(!/^\d{8}$/.test(token)){toast('Entrez le code à 8 chiffres reçu par e-mail.');return;}
+  const btn=document.getElementById('verifySignupOtpBtn'); if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
+  const {data,error}=await supabaseClient.auth.verifyOtp({email:otpPendingEmail,token,type:'email'});
+  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(error.message||'Code invalide ou expiré.');return;}
+  currentUser=data.user||null;
+  obState.emailConfirmationPending=false; obState.pendingEmail=otpPendingEmail; obState.accountEmail=otpPendingEmail; obState.accountName=otpPendingName||obState.accountName; clearPendingOnboarding();
+  if(otpPendingSource==='signupModal'){
+    closeLogin(); startOnboarding(); obState.accountName=otpPendingName; obState.accountEmail=otpPendingEmail; obState.accountPassword=''; toast(ic('checkCircle',15)+' E-mail vérifié — vous pouvez créer votre restaurant.',true);
+  }else{
+    obState.step=Math.max(1,Number(obState.step)||1); hideAuthCheckSplash(); setView('onboarding'); renderOnboarding(); toast(ic('checkCircle',15)+' E-mail vérifié — poursuivons la création de votre restaurant.',true);
+  }
+  otpPendingEmail=''; otpPendingName='';
+}
+async function resendSignupOtp(){
+  if(otpResendTimer>0){toast(`Veuillez attendre ${otpResendTimer} seconde(s) avant de renvoyer le code.`);return;}
+  const {error}=await supabaseClient.auth.resend({type:'signup',email:otpPendingEmail,options:{emailRedirectTo:getPublicSiteOrigin()}});
+  if(error){toast('Impossible de renvoyer le code : '+error.message);return;}
+  toast('Nouveau code envoyé.'); startOtpResendCountdown(60);
+}
+function changeOtpEmail(){clearPendingOnboarding();otpPendingEmail='';otpPendingName='';if(otpPendingSource==='signupModal')setLoginTab('signup');else{obState.emailConfirmationPending=false;obState.pendingEmail='';renderOnboarding();}}
+
+async function submitInviteAccept(){
+  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
+  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
+  const password = document.getElementById('invitePasswordInput').value;
+  if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
+
+  setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
+
+  // Vérification e-mail + code via une fonction dédiée (RPC) : la
+  // personne n'a pas encore de compte, donc pas de session permettant
+  // à RLS de l'identifier — voir find_staff_invite dans supabase_schema.sql.
+  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
+  const match = (matchRows && matchRows[0]) || null;
+  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast("E-mail ou code d'invitation incorrect."); return; }
+  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
+  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
+
+  // Compte du membre du personnel : on tente une inscription, et si
+  // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
+  let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
+  if(signErr){
+    const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
+    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
+    signData = inData;
+  }
+  currentUser = signData.user;
+
+  // Acceptation réelle (RPC accept_staff_invite) : le statut passe à
+  // Actif (ce code ne pourra plus jamais être réutilisé) et le compte
+  // est lié à cette ligne "staff" — le rôle + les permissions EXACTES
+  // choisies par l'administrateur pour CETTE invitation sont conservés,
+  // jamais les permissions par défaut d'un autre rôle.
+  const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
+  const accepted = (acceptRows && acceptRows[0]) || match;
+  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
+
+  // CORRECTION DE LA MÊME RÉGRESSION QUE submitLogin() : closeLogin()
+  // se déclenchait ici AVANT loadRestaurantCore() (asynchrone) — la
+  // page d'accueil publique était donc révélée derrière la modale déjà
+  // fermée, pendant toute cette attente. Fermée seulement juste avant
+  // setView('dashboard') désormais, jamais avant.
+  await loadRestaurantCore(accepted.restaurant_id);
+  viewerIsStaff = true;
+  setLoginVerifying(false,'inviteSubmitBtn');
+  closeLogin();
+  setSimulatedRole(accepted.role, accepted.permissions);
+  setView('dashboard');
+  toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
+  loadRestaurantSecondaryData(accepted.restaurant_id); // en arrière-plan, jamais avant l'accès
+}
+
+async function signOutSupabase(){
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+}
+</script>
+
+<script>
+/* Source unique du logo — une seule occurrence du base64 dans tout le
+   fichier, référencée partout ailleurs (JS ou <img class="logo-asset">). */
+const LOGO_SRC = "data:image/png;base64,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";
+const WAVE_SRC = "data:image/jpeg;base64,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";
+const OM_SRC = "data:image/png;base64,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dTXOmekaFQT/UZ7zo4HtZmpZSunm5maOtsBn554E/sQYa/BER6ObTPD6KaUHDhw4cOBAPb/l6em5ZcsWcAqb3q5zQqgUkls03d6rlc83o/xCLDm641e/+WZ9CsIMyjnRpSAqJ9eVli8lliafAb9Z3FHjh2qN9PT06Ohou93u7e09duzYt99+W1VV6JQZYzBE9fzzz8PohhDi+++/d85RmqqCHHCvXr3mzZsH8WJqaurixYsvXryYnZ3dr1+/J5544tZ20eWvMFB17dq11q1bE0IiIyMh66Kqqt1u9/f3b9GiBVhxxlhJSYlpkl944YUjR47AtcFPAKvPOb927VqtvdD9K2izoddHl5xzu90eHh6empravn17IURjpCrr8H3FjVo7SgyiKIzqhr1HiPfyUc1CLJdFtabUUafBiKBSGpIoKi0mIeMTy9ecKVK4KoR+F42fEPL1119PnjwZUtGvv/56RkZGSkqK8xDdokWLOnfuDHH2pk2bjh07Zn7X2beGD08//TSY6itXrowZM6akpARsfGBgoNkt3Drx4uK1Hzp0KCoqStf1uLi4nj17grNOKZ09e7bNZoPxFzc3twsXLhQUFAQEBMBI/unTp52t1dChQw3DKC0tTUtL+41ZaOeOrD5qDgkJ2bhxY/v27R0OB0QYTYMgN/J1khDOpGboca18l43wClGzdceNGYF1PXlDEoXLAhY+bmVJyrkiRVGFocv6us03CVpRlHPnzr377rvvvPOOw+Fwd3dPTk5evnz5zp07S0tL27RpM2zYsOjoaE3TrFZrZWXljBkz6rKysF1VVVCtqqrgdRiGYbVaExIS7tRthf2//vrrl19+GY6cnJy8dOnSq1ev9unT5/HHHye/FnBbrdaqqqp169a99NJLDofjnXfeOXv27J49eyBN/vnnn8POX3311ebNm6GB/fYEfVs167reqlWrTZs2dejQAYYY7sWFMMaoQzdiQjy/Ab/ZYXDOiJSufrOkhBEmpCGJoshSFvLSqpKUc4UKZ8LQJbljNTtr+t133+3QocOf/vQnIYSmaQkJCQkJCeY+0NR1XR83btypU6egkAOoaTj27t07efJku90eEBCQnJy8bds2Smn//v1hfNGUqZTSPIKLA2AYBmyH4o0DBw689dZb8+fPh7zH5MmTYbfjx497enpCuAlHmDdvXt++fcPDw1u0aLFt27aDBw9WVVVFRUX5+fkRQn755ZeZM2fWPN19OrByF2oODg7eunVrp06dHA4HlCU0tZYJYZQ4dKNnK58VzzcPteTqusE4o1JSV7+ZCsoIoTohXKFlPPgviZXrzxSqnBnGfxWum0mAkSNHzpkzp6KiombDtlgsJ06c6Nev38qVK61WKwjCz89PURRFUXx8fJyjl+Tk5KSkJKvVyhjr1q3brFmz3nrrrcjIyJUrV8L+qqq2adMGnBDYAuN8Jr6+vs5HVhTl73//+5gxY6BKxOFw5Ofn//vf/37uuefsdrvpNxNCLl++PHDgwMOHD0OuMDY29sknnwQ1nz179o9//OPVq1ddap5+DxbatM2pqakPPfSQruu39jQar86JMiqk6NXqht9sVDsUVnu+mUlJqTAkURRaykLGr65Ye66Qc4suNPJfX5oZRr/zzjtJSUlDhw59/PHHAwMDVVWtqqo6f/78hg0bNm7cWFlZCUEkfOuLL76A6DAzM9O5nlPTtFGjRn3//feDBw/29/d3OBwnT55MSkratWvXsWPH3NzcOOelpaWGYcyZM8fd3V1RFHCLIWfHGFuyZMnWrVsJIefPnzf9+KVLly5duhSKk7KysnJzcz08PMy2VF1dDY7HmTNnYmNjhw8fPmjQIBgVv3bt2tatW1euXFlYWAjj3g37NO/xrG9Qc+vWrTdv3ty+ffvbDijeVs0QZe/duzc2NhYyA1Bt99duwe8NKTdKSzmjNYb3CCWylLV4dNH1Zu5q0gt+wUq2rhkKZUTKuvownVCFkQLeelxiacrZQkWxGIbWGDfnFn91DgRd6jNdMm413WUXz9Xln84Fki4WdPz48S+//DKltKioaODAgaBdQsgTTzyxbds2ONEjjzxy4sQJ8Kfr8o8bqdruXlpoKLsJDg7etGlT+/btdV2/rZoh2VlRUWEagwZq18Tu0J5q7f9qH0uw5ZLhEDdyGjdLX0hKGGVCCEkULkqV0FdWlabcGNnWGvz+mCkwcWPhmhvjIJDNdFYDJJFMw+yiIZhXa04fhnwwFDaZfYJzGsqsvYH9YTuc1263Z2Zmwhg4IWTDhg0fffRRXl5ep06d5s2bB73r1q1bT548afoSkGx2vtqa1/97sNBQId66deu0tLSHHnrotjMAzOGl8ePHx8fH9+vXr9b6w7uw0IQQQmW1btGIl5d6XTd0pbZJf5IQQRij0hBE4aSYBb+0ujLpTKGqcl0XDdvOa/7wu96tMTqNt99+e/bs2S5BKnw+depU//79s7OzG9w5vq+DQs65pmnBwcEpKSngN99WzZCTnzFjxhdffOHt7d3QqXLqxjUPtcgwdEWSWv1mSgijUgipKKRICXlxdVXSmUJFsYgGVTP8UmfqkkU9d2vg5KYQjLE5c+aMGjVq9+7dxcXFEKRWVFScPHny/fffj4uLy8rKatixkvvd5TCjwO+++65jx463zTdDD6goyuuvv/7hhx82VsWSJFSnlJPa65slIZQYkiiMFdOQMYmVG89cu6Oqo3pisVgg82V2oFlZWVVVVTU71j/84Q8wmxBuaW5ubmlpaWM/O9MJWbFixYoVK6AGmhBit9vz8/MrKysbzzm+TwVtqjktLS0iIqI+OQ0Y/QY1WywWh8PRKH0rJZTWUkQkCZWUMBg9YeK6EjYusXzj2UKuMB3yzQ3naUC1J8wRhB9utVonT568ZMkSqNg0d4uMjNyxY4cZ/FksloSEhKSkJHO3RgWeiBDi0qVLLm4k1FTey8DsXuU0IiIiIN9cH9s8ceJEUHMTPK0aaqaEEI0QrsgiHvqXlWXrzhaqiiKMRvFYKaXu7u7u7u4eHh6enp5Wq/W5555zTjVA2DBo0CAvLy83NzfYzWKxNFmNgKlpqDwzgZZ2z9dzYk2sZvA0YCywPp4G53zGjBmLFi1SVdV5mnHTQIlkQghBFMaKWavxiZVrzhUpXG3UdgWygAStEOLRRx91ntmh6zpjrF+/fuYQjLm/i72HaYjmB5fo3xQiZE5MUcLOtXYgLgeEZgbXaS5pUPOhm0f+XQnaWc31sc1wpzjn06ZNW7BgAUy3vAftXRKDUEWRZbzl2KSqtecKbRZFSp1RwhnhjHJGnP9jNzbSmzMp9I7GwZ1Xt4AZJf379ye/Lk4ghOjUqVOXLl3Ir7MBXGqaYTfDMDRN03Xd/OBc6WUOdMN2qMVz3tnlmJCldjmgmfA2D2UYhkuzcflTE9jvplvbLiws7I5ss6Iof/3rXz/66CNVVc3xsCbXM2GMXNVajll5ffOlEkJIlUO/+e+1fokQoiqMCmlIAtNo7zalSikhJD4+ftGiRZCRNAxjwIABsJ4GqVFbZy6H17Nnz/79+8M8kfz8/B9++GHDhg2lpaXgZNtstsGDB7u7uzPG0tLSCgoK/vKXv8TExHh5eWVnZ2/evHnTpk1mqTQcMyIiYtiwYR07dnR3d8/Kytq5c2dKSorD4fD09BwyZIiqqpzz8+fP796925wFoyjKM8884+XlRSnNzMzcvn17E8SLStOoOSQkBKqONE2rp98MUaD55O6doHlOtvZouFdcR29x0zq4teSqGSXXq7WTV/QdP5dd1+yccQnzDu/cMlFK9+3bFx0dTQjp1q1bRETEqVOnwCQPHDgQbuy+ffs6duwISUxzSMXPz+9f//rXs88+63y08ePHnzlz5tVXX92+fTu46Z999hlMqZo4ceLAgQOfeuopc+cJEyYsWLBgxowZZmw6d+7c6dOne3p6mvu8+uqrO3fuHD16dF5e3qRJk+A6s7KyOnToUFlZCQ+9Xbt2q1evhv2nTp2anp7eBMlppWlsc1paGowF1iffrCjK1KlTP/7443u+wCajVBh6ZFhR5IPuRBiEOU+9qrM8VBDfg1dbz92Yv+XidZVRIW+/tljN+0ApPXToUFBQUOvWrd3c3IYMGXLq1Cld19u3b9+1a1dCSFVV1ZYtW8xBO7DQ7u7u69ev79mzJ5jz7OzsyspKSPC1b99+8+bNTz311I4dOyilsJiBpmmzZ88ODAwsKSkxDAOKPaBvXL9+/YEDB6SUCxcunDRpEpwF1qYJDw/nnMfFxW3evLlbt24LFy5ctmyZw+Fo1apVbGxsWloaFAAOGTIEHJJr16598803pB4lxPe1Dw2/KjQ0FKr1b2ubwZlTFGXatGkff/wxVEje25BZEkkpJbouyq6LigqjvEovr9TLK43ySvMz/NNpeyUpy33U75ekF7wHhntrQjDGyZ0LmhCSmZm5Y8cO+Dxo0CBVVSmlffv2BYft+PHjBw8edHNzA5sH/vHkyZN79uxpt9ullG+++ebDDz/cuXPn3r17nz9/HhZJgyUNYDIi59xisQQGBs6aNSsqKqpr164LFiyAVJKUMj4+Xkr55JNPTpo0CVztqVOndu3aNTIycsiQIUVFRQ6Ho2PHjtOmTVu3bl1xcTFcVZ8+fUzhDhgwAOqwv/vuu6KiogZfRrlJBQ1jgZCh69ixY31Gts0oEPzmps9p1JblIFRKQinjlHHKGVUYVRiFyE9x+qfzdsaZUaV5ybx5gwL93SyakPSu3hRgGMaqVatgImqXLl3atm0rpRw8eDD8NTk5uaCgwFS/pmmc8zFjxgghrFbr2rVr33vvvaKiIk3Tdu/e/dprr0F3FxERERMTU1ZWBmkHxtj27dvnz59/4cKFixcvzp49Ozs7G1oOFMdNnDgRvOFPP/30448/vnr1alVVVVpa2syZMy0WixBi/PjxhmGsX78eCg0GDRpks9k0TYuIiIiKioJLXbNmDWnk9zc0rsth+s1QQ3dbNZu2GaJAi8VyP6j5v7HsnDNRpT8cWNa7rdfqnwoZ58ad+44eHh579+4tKCjw9/e3WCz9+/e/cuVKTEwM3LENGzaAEwxUV1e3aNEiPDwc9J2cnMwYA7vAOf/hhx+ys7NDQ0OllDExMenp6aa8YPFBuOe6rl+6dAlmbkP1UmRkJOwZHBw8c+ZMq9UKAZ+fnx/0ny1btgwNDV2yZMm4ceOklA8++GCPHj22b9/et29fWN3m3LlzO3fubLLB8IYXNNTQtWnTBmro6mmbwdOop23+LbyNQUpGmCzv1tpv9U+F5K4u2M3NraKiYvPmzaNHjyaEPPnkk6WlpbAOxokTJ06fPg39u2kUPDw8zEVHL126JISArl8I4XA4CgsLQ0NDKaVhYWHO62CUlpaKX3HOZwshfHx8oKpRSjls2LBhw4bVep0dO3bcuHHjqVOnOnToQAh5+umn09PTzcXEVq9eXV1d3TRDmA0saBg6MgzDeSbVbf1m6NHMDF19fvbdjIpRSiRt4lcFSiLcbiyqJ+/uflJKV61aNXr0aCllt27dQkNDYYRl3bp15NfCTpd2bk4ldOnizaENlxyoub1mntjUN0zah6kDMJICIzJCCIvFUlRURClduXLlvHnzCCG9e/du164dRKsOhwMutclQGtY2E0J8fHzWrVvXoUOH+lcdTZ48+ZNPPqlPTgMeUk5Ozi1mhkopMzMzya9lDzfC8ypdUg/CSkhTVcsKSjizXSpy1JHiq8cRhJBS7tmz5+LFi61bt/b29vb19ZVSOhyO1NRUcnPpvaIoRUVFVVVVUFPeuXPnXbt2gV0UQnh7e4eEhEALOX78OAyd3PrsqqrC2jGwzO6yZcsWL15c10ORUiYlJc2cOdNms7Vp02bKlCmwetgPP/xw9OhR5wfxWwoK4bqnTJnSpUsXiKnro+YZM2bACyvqn9NITk4G81CrRaGUrl+/njgt1UMI3ftLSXaZyjgxmuTF2zDT5brDc9vPVTXeuHJnuY6ysrLU1FQY3dA0jVKakZHhsnQB+CdFRUWgHinlqFGjrFZrdXW1pmmGYYwdO9bPzw8KTXft2gWu8G0FLYQwB0r+/Oc/g7cDREVFHT58+Pjx4zt27PD19aWU/vzzz7CEpM1mg2nhlFJ4eUNTLunWYGeCYNxmsw0fPvy262lAvplzPmXKlAULFtR/9ASy1GvWrNmxYwd42+ZsDpggbbFY0tPTk5OTTadNSMoZzSmr/niHnbi3YPJGQ5CkUf4ThAophZDcq/n//igz8q5zxu5I0GaRhrll/fr1zjNK1q5dazZ+55W1CCHvvfceIQSWmk9NTe3fv3/37t3nzp07e/Zsu92uKMr69etPnDjh5eWl63qtcwLMA0JrWbRokaZpUsouXbps2rRpwIAB3bt3nzp16rp16yIjIzt16nT48GHI2QkhVq5caQ5YwlTFzZs3N3FttNKAghZCBAUFtW3b9tZr7zlXhC5cuPBOwwUpJSw8vG7duu7duztfgMVi2bt3b0JCAjia5jUIKRlTF+3Pb+7V8o24YK4XEt1+Y0Ba3pylk3V8JnX/yfkzpZQIoliI2mzpEbc5Wy9zKqW8g6FvSNyCOkEcnPP9+/efP3++Xbt2sBajue4MjI07e9LJycn/+Mc//va3v4Eva64SDRw5cmTixIlgcc159S6+hzneDv9/+PDhCRMmfPHFF7UeMD09fdasWWYkumnTpvz8/AceeAC8zS1btuTm5jZZONhYWY5bL9lvehpTpkxZuHDhXWTowPzn5+f37dt3woQJo0aNeuCBBxhjOTk5iYmJn376aVVV1c1DrJIQuCb2t225+7P8x3Rr2SnQsLEq2tAOtSSkSrecLuWrjpQnHb1kp1whTNTPgzZDOpgODRP4oOuvrKxMTEwELaanp587dw48NMMwYIQPlnAGx2PmzJlnz56dPn16RESEqfXCwsLVq1fPmjWrqKgIzlJaWgq1+TB7wGz85eXlJSUlUkpYrUtV1S+//DI3N3f27NmdO3c2vY7i4uKkpKQ33nijuroamp/Var127VpKSsr48eNhnxUrVtx2DdXGkB9tqAPBEn0HDx6E9E1Nz8l5LBByGnc9FugcZ3h7e3POYToQqWPGBCOEEm5QJoWDEB6gKp5WQzT0S7cZJWXVrEjTCRGMUMqokJRJKeqdXlEUJTAwEKK38vLysrIy06MNCAgghJSUlFRWVkL/4+bmBqloWOXVfF8CpJCjoqKCgoI452VlZUeOHIFFSm+8d4ZzPz8/yFTAWcwUR0BAAHjPDocDbql5q6OiosLCwjjnlZWVR48ehQWk4UrM9vDVV1+NHTtWCJGZmdm5c+fy8vKmnsBCGw6wB7Nnz4ZIXN4MlB3CkKyZV/pvgMJc53IzRVGcKypv3luhVGVU4VxhjDsFD+aLKmhtA4W3GEOsazfGGFc444wSqqiEKZRTyur5o+p6Orfd6Ly91mV6nG/OLTRQ1wFrrXWGjZzzN954Y/r06f/85z+rq6vh0b///vtwUtr0NGDbgLRdWlpadHS0+eox4jQjH2yz86z6hjrv7Y52U79vroREG9rlILKm1Xfxwev1c1yGkOp6f725vea6t84rxpuh863Pcuvtzm83dJ6cIqW8cOFCeHg4IQTG0crLyzt16nTp0qV7MPe7YdsGKDgoKGjnzp0uFrqiouLVV19tENuM3FcQQs6ePWs+6MuXLw8aNOiemecG99nB5bJarc8880x8fHxERERpaenOnTuXLVt25syZhrXNyH1Cr169QkJCIPo8cuTIlStX7tXc70YJQp3f3GGz2cxZ+E2cwUGaTEMu2r2HD7qxsirgfkB9jLkUFb5m/feK8zjave2BGz1N2DRTIxHEzM82Lqhm5HclaARBQSMIChpBUNAIChpBUNAIgoJGEBQ0goJGEBQ0gqCgEQQFjSAoaAQFjSAoaARBQSMIChpBUNAIChpBUNAIgoJGEBQ0gqCgERQ0gqCgEQQFjSAoaARBQSMoaARBQSMIChpBUNAIgoJGUNAIgoJGEBQ0gqCgEQQFjaCgEQQFjSAoaARBQSMoaLwFCAoaQVDQCIKCRhAUNIKCRhAUNIKgoBEEBY0gKGgEBY0gKGgEQUEjCAoaQVDQCAoaQVDQCIKCRhAUNIKgoBEUNIKgoBEEBY0gKGgEQUEjKGgEQUEjCAoaQVDQCIKCRlDQCIKCRhAUNIKgoBEEBY2goBEEBY0gKGgEQUEjKGgEQUEjCAoaQVDQCIKCRlDQCIKCRhAUNIKgoBEEBY38/8b/A5m+YSdyJKQvAAAAAElFTkSuQmCC";
+
+/* ============================================================
+   SYSTÈME D'ICÔNES — famille unique, cohérente, sans emoji.
+   Icônes vectorielles (trait, 24x24, arrondi), taille et
+   couleur contrôlées à l'appel. Remplace tous les emojis.
+   ============================================================ */
+const ICON_PATHS = {
+  // Navigation dashboard
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  receipt:'<path d="M6 2h12v18l-2.5-1.5L13 20l-2.5-1.5L8 20l-2-1.5V2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12.5" y2="15"/>',
+  calculator:'<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10.5" x2="8" y2="10.6"/><line x1="12" y1="10.5" x2="12" y2="10.6"/><line x1="16" y1="10.5" x2="16" y2="10.6"/><line x1="8" y1="14.5" x2="8" y2="14.6"/><line x1="12" y1="14.5" x2="12" y2="14.6"/><line x1="16" y1="14.5" x2="16" y2="14.6"/><line x1="8" y1="18.5" x2="8" y2="18.6"/><line x1="12" y1="18.5" x2="12" y2="18.6"/><line x1="16" y1="18.5" x2="16" y2="18.6"/>',
+  chart:'<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="13" width="3.2" height="7"/><rect x="10.4" y="9" width="3.2" height="11"/><rect x="14.8" y="5" width="3.2" height="15"/>',
+  wallet:'<path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v3H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2V9"/><path d="M17 13a1.5 1.5 0 100 3 1.5 1.5 0 000-3z"/>',
+  grid:'<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+  sliders:'<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="var(--icon-fill,var(--cream))"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2" fill="var(--icon-fill,var(--cream))"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill="var(--icon-fill,var(--cream))"/>',
+  card:'<rect x="2.5" y="5" width="19" height="14" rx="2.2"/><line x1="2.5" y1="10" x2="21.5" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/>',
+  users:'<circle cx="9" cy="8" r="3.3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.2a3.3 3.3 0 010 6.4"/><path d="M18.5 14c2 .6 3.5 2.7 3.5 5.8"/>',
+  qrcode:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="5.3" y="5.3" width="2.4" height="2.4"/><rect x="16.3" y="5.3" width="2.4" height="2.4"/><rect x="5.3" y="16.3" width="2.4" height="2.4"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/>',
+  userGroup:'<circle cx="8" cy="7" r="3"/><circle cx="16" cy="7" r="3"/><path d="M2 20c0-3 2.5-5.5 6-5.5S14 17 14 20"/><path d="M10 20c0-3 2.5-5.5 6-5.5S22 17 22 20"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5.2-5.2a2 2 0 00-2.8 0L4 19"/>',
+  settings:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><line x1="12" y1="5" x2="12" y2="2.3"/><line x1="16.95" y1="7.05" x2="18.75" y2="5.25"/><line x1="19" y1="12" x2="21.7" y2="12"/><line x1="16.95" y1="16.95" x2="18.75" y2="18.75"/><line x1="12" y1="19" x2="12" y2="21.7"/><line x1="7.05" y1="16.95" x2="5.25" y2="18.75"/><line x1="5" y1="12" x2="2.3" y2="12"/><line x1="7.05" y1="7.05" x2="5.25" y2="5.25"/>',
+  bell:'<path d="M6 9a6 6 0 1112 0c0 5 1.6 6.6 1.6 6.6H4.4S6 14 6 9z"/><path d="M10 19a2 2 0 004 0"/>',
+  bellOff:'<path d="M3 3l18 18"/><path d="M6 9a6 6 0 019.8-4.6M18 9c0 3.3.7 5 1.2 5.9M6 9c0 5-1.6 6.6-1.6 6.6H15"/><path d="M10 19a2 2 0 004 0"/>',
+  lock:'<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V7.5a4 4 0 018 0V11"/>',
+  check:'<polyline points="4,12.5 9.5,18 20,6"/>',
+  checkCircle:'<circle cx="12" cy="12" r="9"/><polyline points="8,12.5 11,15.5 16,9"/>',
+  x:'<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  xCircle:'<circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>',
+  alertTriangle:'<path d="M12 3.5L2 20.5h20L12 3.5z"/><line x1="12" y1="10" x2="12" y2="14.5"/><line x1="12" y1="17" x2="12" y2="17.1"/>',
+  info:'<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="7.5" x2="12" y2="7.6"/>',
+  phone:'<path d="M6.5 3h3l1.3 4.5-2 1.6a13 13 0 006.1 6.1l1.6-2 4.5 1.3v3a2 2 0 01-2.2 2A17 17 0 014.5 5.2 2 2 0 016.5 3z"/>',
+  mapPin:'<path d="M12 21s7-6.6 7-11.5A7 7 0 105 9.5C5 14.4 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15.5,14"/>',
+  link:'<path d="M9.5 14.5l5-5"/><path d="M13 6.5l1.4-1.4a4 4 0 015.6 5.6L18.6 12"/><path d="M11 17.5l-1.4 1.4a4 4 0 01-5.6-5.6L5.4 12"/>',
+  externalLink:'<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+  tag:'<path d="M20.5 12.5L12.6 20.4a2 2 0 01-2.8 0l-6.2-6.2a2 2 0 010-2.8L11.5 3.5H19a1.5 1.5 0 011.5 1.5v7.5z"/><circle cx="15.3" cy="8.7" r="1.4"/>',
+  camera:'<path d="M4 8.5A1.5 1.5 0 015.5 7h2l1.2-2h6.6l1.2 2h2A1.5 1.5 0 0120 8.5v9A1.5 1.5 0 0118.5 19h-13A1.5 1.5 0 014 17.5v-9z"/><circle cx="12" cy="12.5" r="3.4"/>',
+  music:'<path d="M9 18a2.4 2.4 0 100-4.8 2.4 2.4 0 000 4.8z"/><path d="M17 16a2.4 2.4 0 100-4.8 2.4 2.4 0 000 4.8z"/><path d="M11.4 18V5.5L19.4 4v9.6"/>',
+  thumbsUp:'<path d="M7 11v9H4a1 1 0 01-1-1v-7a1 1 0 011-1h3z"/><path d="M7 11l3.2-7A2 2 0 0112 3v3.5h5.5A2 2 0 0119.4 9l-1.6 8.3a2 2 0 01-2 1.7H9a2 2 0 01-2-2V11z"/>',
+  messageCircle:'<path d="M21 11.5a8.5 8.5 0 01-12.5 7.4L3 20l1.2-5.3A8.5 8.5 0 1121 11.5z"/>',
+  map:'<polygon points="3,6 9,3.5 15,6 21,3.5 21,17.5 15,20 9,17.5 3,20"/><line x1="9" y1="3.5" x2="9" y2="17.5"/><line x1="15" y1="6" x2="15" y2="20"/>',
+  bag:'<path d="M6 8h12l1 12.5a1.5 1.5 0 01-1.5 1.5H6.5A1.5 1.5 0 015 20.5L6 8z"/><path d="M9 8V6.5a3 3 0 016 0V8"/>',
+  utensils:'<path d="M6 2v7a2 2 0 002 2 2 2 0 002-2V2M8 11v11"/><path d="M16 2c-1.5 0-2.5 2-2.5 4.5S14.5 11 16 11m0-9v20"/>',
+  flame:'<path d="M12 2s-5.5 5-5.5 10a5.5 5.5 0 0011 0c0-2-1-3.5-2-4.5.3 1.5-.5 2.5-1 2.5-.7 0-1-1-.7-2.3C14.2 6 12 4 12 2z"/>',
+  cake:'<circle cx="12" cy="13" r="8"/><path d="M12 13v-3M9.5 13v-2M14.5 13v-2"/><circle cx="12" cy="6.5" r="1"/>',
+  cup:'<path d="M5 3h11v10a5.5 5.5 0 01-11 0V3z"/><path d="M16 6h1.5a2.5 2.5 0 010 5H16"/><line x1="5" y1="21" x2="16" y2="21"/>',
+  chefHat:'<path d="M7 21h10v-6.3H7V21z"/><path d="M6.5 14.7a4 4 0 01-.5-7.9 3.5 3.5 0 016.4-2 3.5 3.5 0 016.1 2.4 4 4 0 01-.5 7.5z"/>',
+  bike:'<circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M6 17l4-8h4l3 8M10 9H8m5-4h3l2 4"/>',
+  package:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v9l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="22"/>',
+  banknote:'<rect x="2.5" y="6.5" width="19" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><line x1="6" y1="9.5" x2="6" y2="9.6"/><line x1="18" y1="14.5" x2="18" y2="14.6"/>',
+  star:'<polygon points="12,2.5 15,9.2 22,10 16.7,14.7 18.2,21.5 12,17.9 5.8,21.5 7.3,14.7 2,10 9,9.2"/>',
+  search:'<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/>',
+  trash:'<line x1="4" y1="7" x2="20" y2="7"/><path d="M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  pencil:'<path d="M4 20l.9-4L16.5 4.4a1.6 1.6 0 012.3 0l.8.8a1.6 1.6 0 010 2.3L8 19.1z"/><line x1="14.5" y1="6.5" x2="17.5" y2="9.5"/>',
+  printer:'<path d="M6 9V3.5h12V9"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><rect x="7" y="14" width="10" height="6.5"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/>',
+  download:'<path d="M12 3v12"/><polyline points="7,10.5 12,15.5 17,10.5"/><line x1="4" y1="20" x2="20" y2="20"/>',
+  upload:'<path d="M12 21V9"/><polyline points="7,13.5 12,8.5 17,13.5"/><line x1="4" y1="4" x2="20" y2="4"/>',
+  menu:'<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+  chevronDown:'<polyline points="5,8.5 12,15.5 19,8.5"/>',
+  chevronUp:'<polyline points="5,15.5 12,8.5 19,15.5"/>',
+  arrowRight:'<line x1="4" y1="12" x2="20" y2="12"/><polyline points="14,6 20,12 14,18"/>',
+  arrowLeft:'<line x1="20" y1="12" x2="4" y2="12"/><polyline points="10,6 4,12 10,18"/>',
+  arrowUp:'<line x1="12" y1="20" x2="12" y2="4"/><polyline points="6,10 12,4 18,10"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
+  loader:'<line x1="12" y1="2" x2="12" y2="6" opacity="1"/><line x1="12" y1="18" x2="12" y2="22" opacity=".25"/><line x1="4.9" y1="4.9" x2="7.8" y2="7.8" opacity=".9"/><line x1="16.2" y1="16.2" x2="19.1" y2="19.1" opacity=".35"/><line x1="2" y1="12" x2="6" y2="12" opacity=".8"/><line x1="18" y1="12" x2="22" y2="12" opacity=".45"/><line x1="4.9" y1="19.1" x2="7.8" y2="16.2" opacity=".6"/><line x1="16.2" y1="7.8" x2="19.1" y2="4.9" opacity=".2"/>',
+  building:'<rect x="4" y="3" width="16" height="18" rx="1"/><line x1="8" y1="7.5" x2="8" y2="7.6"/><line x1="12" y1="7.5" x2="12" y2="7.6"/><line x1="16" y1="7.5" x2="16" y2="7.6"/><line x1="8" y1="11.5" x2="8" y2="11.6"/><line x1="12" y1="11.5" x2="12" y2="11.6"/><line x1="16" y1="11.5" x2="16" y2="11.6"/><line x1="8" y1="15.5" x2="8" y2="15.6"/><line x1="16" y1="15.5" x2="16" y2="15.6"/><rect x="10" y="15.5" width="4" height="5.5"/>',
+  rotateCcw:'<polyline points="3,4 3,9 8,9"/><path d="M3.5 14.5A8.5 8.5 0 1010 4.2L3 9"/>',
+  eyeOff:'<path d="M3 3l18 18"/><path d="M10.6 5.2A9.9 9.9 0 0112 5c5.5 0 9 5 9.5 7-.3.5-1 1.5-2 2.6M6.6 6.6C4 8.4 2.6 11 2.5 12c.6 1 3 5.5 8 6.5.8.2 1.6.2 2.4 0M9.9 9.9a3 3 0 004.2 4.2"/>',
+  eye:'<path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/>',
+  gripVertical:'<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
+  send:'<line x1="21" y1="3" x2="10.5" y2="13.5"/><polygon points="21,3 14.5,21 10.5,13.5 3,9.5"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  refreshCw:'<path d="M3 12a9 9 0 0115.3-6.4L21 8"/><polyline points="21,3 21,8 16,8"/><path d="M21 12a9 9 0 01-15.3 6.4L3 16"/><polyline points="3,21 3,16 8,16"/>',
+  trendingUp:'<polyline points="3,17 9,11 13,15 21,6"/><polyline points="15,6 21,6 21,12"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3c2.5 2.5 3.7 5.8 3.7 9s-1.2 6.5-3.7 9c-2.5-2.5-3.7-5.8-3.7-9S9.5 5.5 12 3z"/>',
+  share:'<circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><line x1="8.2" y1="10.8" x2="15.8" y2="6.2"/><line x1="8.2" y1="13.2" x2="15.8" y2="17.8"/>',
+  layers:'<polygon points="12,3 21,8 12,13 3,8"/><polyline points="3,13.5 12,18.5 21,13.5"/><polyline points="3,18 12,23 21,18"/>',
+  save:'<path d="M5 3h11l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M8 3v6h8V3"/><path d="M7 21v-7h10v7"/>',
+  library:'<rect x="4" y="4" width="12" height="16" rx="2"/><line x1="8" y1="12" x2="12" y2="12"/><line x1="10" y1="10" x2="10" y2="14"/><path d="M18 8v10a2 2 0 01-2 2"/>',
+  home:'<path d="M4 11.5L12 4l8 7.5"/><path d="M6 10v10a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1V10"/>',
+  moreHorizontal:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  rocket:'<path d="M12 2c3 1.5 5 5 5 9 0 2-.7 3.7-1.4 4.8L12 19l-3.6-3.2C7.7 14.7 7 13 7 11c0-4 2-7.5 5-9z"/><circle cx="12" cy="10" r="1.6"/><path d="M8.5 15.5L6 18M15.5 15.5L18 18M9 19l-1.5 2M15 19l1.5 2"/>',
+  logout:'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+};
+
+/**
+ * ic(name, size, opts) → chaîne SVG inline.
+ * opts: {stroke, strokeWidth, fill, className, style}
+ */
+function ic(name, size, opts){
+  size = size || 18;
+  opts = opts || {};
+  const stroke = opts.stroke || 'currentColor';
+  const sw = opts.strokeWidth || 1.8;
+  const fill = opts.fill || 'none';
+  const inner = ICON_PATHS[name] || ICON_PATHS.info;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0;${opts.style||''}" class="${opts.className||''}">${inner}</svg>`;
+}
+/* Icône badge circulaire/carrée — remplace les pastilles emoji utilisées
+   dans les cartes statistiques, listes et en-têtes. */
+function icBadge(name, opts){
+  opts = opts || {};
+  const size = opts.size || 36;
+  const bg = opts.bg || 'rgba(232,135,30,.12)';
+  const color = opts.color || 'var(--amber-deep)';
+  const radius = opts.round ? '999px' : '12px';
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${radius};background:${bg};color:${color};flex-shrink:0;">${ic(name, Math.round(size*0.5), {stroke:color})}</span>`;
+}
+
+/* ---------------- LOGOS DE RÉSEAUX SOCIAUX (marques réelles, pas des
+   icônes génériques) — recréations simplifiées mais reconnaissables aux
+   couleurs de marque officielles, format carré, jamais déformées. */
+const SOCIAL_BRAND = {
+  whatsapp:{
+    bg:'#25D366',
+    svg:'<path d="M12 2.5a9.3 9.3 0 00-8 14l-1 4 4.1-1a9.3 9.3 0 004.9 1.4h0a9.3 9.3 0 100-18.4z" fill="#25D366"/><path d="M8.3 7.4c.2-.5.5-.5.7-.5h.6c.2 0 .4 0 .6.4.2.5.7 1.7.7 1.8.1.2.1.3 0 .5-.1.2-.2.3-.3.5l-.4.5c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l.6-.7c.2-.2.4-.2.6-.1l1.6.8c.2.1.4.2.4.4.1.2.1 1-.3 1.4-.4.5-1.7 1-2.3 1-.6 0-1.8-.1-3.6-1.4-2.1-1.6-3.4-3.9-3.5-4.1-.1-.2-.9-1.2-.9-2.3 0-1.1.6-1.6.8-1.8z" fill="#fff"/>',
+  },
+  instagram:{
+    bg:'linear-gradient(135deg,#F58529,#DD2A7B,#8134AF,#515BD4)',
+    svg:'<rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="4.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.15" fill="#fff"/>',
+  },
+  tiktok:{
+    bg:'#000000',
+    svg:'<path d="M14.5 3.5c.3 1.7 1.4 3 3.2 3.3v2.4a5.6 5.6 0 01-3.2-1v5.6a4.7 4.7 0 11-4-4.65v2.5a2.2 2.2 0 102.2 2.2V3.5h1.8z" fill="#fff"/><path d="M14.5 3.5c.3 1.7 1.4 3 3.2 3.3" stroke="#25F4EE" stroke-width=".5" fill="none" opacity=".7"/><path d="M10.5 14.15a2.2 2.2 0 102.2 2.2" stroke="#FE2C55" stroke-width=".5" fill="none" opacity=".7"/>',
+  },
+  facebook:{
+    bg:'#1877F2',
+    svg:'<path d="M14.5 8.4h1.9V5.7h-2.2c-2 0-3.4 1.4-3.4 3.5v1.7H8.7v2.8h2.1V19h2.9v-5.3h2.1l.4-2.8h-2.5V9.5c0-.7.3-1.1 1-1.1z" fill="#fff"/>',
+  },
+};
+function socialLogo(key, size){
+  size = size || 32;
+  const b = SOCIAL_BRAND[key];
+  if(!b) return icBadge('link',{size});
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${Math.round(size*0.28)}px;background:${b.bg};flex-shrink:0;overflow:hidden;"><svg width="${Math.round(size*0.62)}" height="${Math.round(size*0.62)}" viewBox="0 0 24 24">${b.svg}</svg></span>`;
+}
+
+/* Sélecteur de fichier RÉEL — ouvre la galerie du téléphone ou le
+   sélecteur de fichiers de l'ordinateur, lit l'image choisie et la
+   convertit en data URL pour un affichage immédiat, sans backend. */
+function triggerImagePicker(onSelected){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    document.body.removeChild(input);
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ toast("Le fichier doit être une image."); return; }
+    if(file.size > 8*1024*1024){ toast("L'image ne doit pas dépasser 8 Mo."); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => onSelected(e.target.result, file);
+    reader.onerror = () => toast("Impossible de lire ce fichier.");
+    reader.readAsDataURL(file);
+  }, { once:true });
+  input.click();
+}
+
+/* Hydrate les icônes déclarées dans du HTML statique via
+   <span data-icon="nom" data-size="18"></span> (les zones déjà rendues
+   par JS utilisent directement ic() dans leurs template strings). */
+function hydrateIcons(root){
+  (root||document).querySelectorAll('[data-icon]').forEach(el=>{
+    const name = el.dataset.icon, size = Number(el.dataset.size)||18, color = el.dataset.color||'currentColor';
+    // Ne jamais remplacer un bouton/lien portant data-icon : le remplacement
+    // détruisait son onclick (croix du panier, retour checkout, menu mobile...).
+    // On injecte l'icône dans l'élément en conservant son comportement.
+    if(el.tagName === 'BUTTON' || el.tagName === 'A'){
+      const span = document.createElement('span');
+      span.innerHTML = ic(name, size, {stroke:color});
+      span.style.display='inline-flex';
+      span.style.alignItems='center';
+      span.setAttribute('aria-hidden','true');
+      el.removeAttribute('data-icon');
+      el.removeAttribute('data-size');
+      el.removeAttribute('data-color');
+      el.appendChild(span);
+      return;
+    }
+    const span = document.createElement('span');
+    span.style.cssText = el.getAttribute('style')||'';
+    span.className = el.className||'';
+    span.innerHTML = ic(name, size, {stroke:color});
+    span.style.display='inline-flex';
+    span.style.alignItems='center';
+    el.replaceWith(span);
+  });
+}
+</script>
+
+<script>
+/* ============================================================
+   TERANGARESTO — DÉMO INTERACTIVE (données fictives, en mémoire)
+   ============================================================ */
+
+/* ---------------- FILTRE DE PÉRIODE — partagé par Vue d'ensemble,
+   Analyses, Caisse et Comptabilité. Change réellement les données
+   affichées ; jamais décoratif. ---------------- */
+/* ---------------- RÔLES ET PERMISSIONS ----------------
+   IMPORTANT — honnêteté sur la portée de cette démo : ce fichier est un
+   aperçu HTML autonome, sans backend ni base de données. Le filtrage de
+   menu ci-dessous est une VRAIE logique d'interface (le menu change
+   réellement selon le rôle simulé), mais ce n'est PAS une sécurité
+   réelle — n'importe qui avec les outils de développement du navigateur
+   pourrait la contourner. La sécurité réelle (comptes uniques, sessions,
+   e-mails d'invitation, isolation multi-restaurant au niveau base de
+   données) existe déjà dans la vraie application Next.js + Supabase
+   livrée séparément, où elle est appliquée par de vraies politiques RLS
+   côté serveur, pas par du JavaScript côté client. */
+const ROLE_SECTIONS = {
+  'Administrateur': ['overview','orders','products','inventory','pos','analytics','accounting','categories','variants','payments','customers','qrcode','staff','library','settings'],
+  'Gestionnaire': ['overview','orders','products','inventory','categories','variants','analytics','customers','library'],
+  'Caissier': ['pos','orders'],
+  'Cuisine': ['orders'],
+};
+let simulatedRole = null; // null = Administrateur (propriétaire), sinon un des STAFF_ROLES
+let simulatedPermissions = null; // liste de sections spécifique à LA personne (si personnalisée à l'invitation), sinon null = utilise les sections par défaut du rôle
+
+function canSeeSection(key){
+  if(!simulatedRole) return true;
+  if(simulatedPermissions) return simulatedPermissions.includes(key);
+  return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
+}
+function firstAllowedSection(){
+  if(!simulatedRole) return 'overview';
+  const list = simulatedPermissions || ROLE_SECTIONS[simulatedRole] || ['orders'];
+  return list[0];
+}
+function setSimulatedRole(role, permissions){
+  simulatedRole = role || null;
+  simulatedPermissions = role ? (permissions || null) : null;
+  toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
+  setView('dashboard');
+  setDashSection(firstAllowedSection());
+  renderDashNav();
+  renderRoleSimBanner();
+}
+function renderRoleSimBanner(){
+  const el = document.getElementById('roleSimBanner');
+  if(!el) return;
+  el.innerHTML = simulatedRole ? `<div style="background:rgba(232,135,30,.12);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    ${ic('userGroup',15)}Aperçu — vous visualisez le tableau de bord comme <b>${simulatedRole}</b>, avec ses permissions réelles.
+    <a href="#" onclick="setSimulatedRole(null);return false;" style="text-decoration:underline;font-weight:600;margin-left:auto;">Revenir à Administrateur</a>
+  </div>` : '';
+  hydrateIcons(el);
+}
+
+let dashPeriod = 'today';
+let dashPeriodFrom = '';
+let dashPeriodTo = '';
+
+function periodRange(key, customFrom, customTo){
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(startOfToday.getTime() + 86400000);
+  switch(key){
+    case 'today': return {from:startOfToday, to:endOfToday};
+    case 'yesterday': { const from = new Date(startOfToday.getTime()-86400000); return {from, to:startOfToday}; }
+    case '7d': { const from = new Date(startOfToday.getTime()-6*86400000); return {from, to:endOfToday}; }
+    case '30d': { const from = new Date(startOfToday.getTime()-29*86400000); return {from, to:endOfToday}; }
+    case 'custom': return {
+      from: customFrom ? new Date(customFrom) : startOfToday,
+      to: customTo ? new Date(new Date(customTo).getTime()+86400000) : endOfToday,
+    };
+    default: return {from:startOfToday, to:endOfToday};
+  }
+}
+function ordersForPeriod(){
+  const {from,to} = periodRange(dashPeriod, dashPeriodFrom, dashPeriodTo);
+  return DEMO_ORDERS.filter(o => o.createdAt >= from && o.createdAt < to);
+}
+function setDashPeriod(key){
+  dashPeriod = key;
+  renderDashSection(state.dashSection);
+}
+function setDashPeriodCustom(from, to){
+  dashPeriodFrom = from; dashPeriodTo = to; dashPeriod = 'custom';
+  renderDashSection(state.dashSection);
+}
+const PERIOD_LABELS_DASH = {today:"Aujourd'hui", yesterday:'Hier', '7d':'7 derniers jours', '30d':'30 derniers jours', custom:'Période personnalisée'};
+function periodPickerHtml(){
+  return `<div class="flex gap-2" style="flex-wrap:wrap;align-items:center;">
+    ${['today','yesterday','7d','30d'].map(k=>`<button onclick="setDashPeriod('${k}')" class="pill ${dashPeriod===k?'pill-ink':'pill-neutral'}" style="cursor:pointer;">${PERIOD_LABELS_DASH[k]}</button>`).join('')}
+    <button onclick="document.getElementById('customPeriodRow').classList.toggle('hidden')" class="pill ${dashPeriod==='custom'?'pill-ink':'pill-neutral'}" style="cursor:pointer;">${PERIOD_LABELS_DASH.custom}</button>
+    <div id="customPeriodRow" class="hidden flex items-center gap-2" style="width:100%;margin-top:4px;">
+      <input type="date" class="field-input" style="padding:6px 10px;width:auto;" value="${dashPeriodFrom}" onchange="dashPeriodFrom=this.value;">
+      <span style="color:var(--ink-soft);display:flex;">${ic('arrowRight',13)}</span>
+      <input type="date" class="field-input" style="padding:6px 10px;width:auto;" value="${dashPeriodTo}" onchange="dashPeriodTo=this.value;">
+      <button class="btn btn-secondary btn-sm" onclick="setDashPeriodCustom(dashPeriodFrom,dashPeriodTo)">Appliquer</button>
+    </div>
+  </div>`;
+}
+
+/* Catalogue vide au départ — un restaurant qui vient d'être créé n'a
+   réellement aucun produit tant que le restaurateur n'en ajoute pas,
+   que ce soit manuellement ou depuis la Plats prédéfinis
+   (LIBRARY_ITEMS, plus bas, reste un catalogue de référence à part :
+   ce n'est jamais la liste de produits du restaurant lui-même). */
+const PRODUCTS = [];
+
+/* Plats prédéfinis — importée depuis l'export produits fourni.
+   Ce sont des données de référence en LECTURE SEULE : ajouter un produit
+   depuis les plats prédéfinis crée une COPIE indépendante dans PRODUCTS ; modifier
+   ou supprimer cette copie ne touche jamais aux entrées ci-dessous. */
+const LIBRARY_ITEMS = [
+  {name:'amberger',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/435f51ca-e0be-4464-b3b4-38f2b7a10e41.jpg?v=1785949962'},
+  {name:'Attiéké Poisson',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/4ae03a0f-a1e6-485d-ab08-a4bf4f97ca80.jpg?v=1785952057'},
+  {name:'beignet dougoup',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/14cabf01-7be3-4563-9552-74412c5bbf24.jpg?v=1785949794'},
+  {name:'Beignets Farine',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/0b708fed-1018-457f-95b9-51204e48bef4.jpg?v=1785949031'},
+  {name:'Beignets Recipe',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/567fc517-c615-44dd-9126-47074e119bcb.jpg?v=1785949159'},
+  {name:'C\'est bon',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/04cc262e-3d12-4ecf-81cb-a7bbc3076d4e.jpg?v=1785947495'},
+  {name:'café touba',desc:'',price:500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/3d8dff86-995d-4cb4-93ff-a121bae2220f.jpg?v=1785948689'},
+  {name:'Canette Red Bull',desc:'',price:1500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/73f95f38-9c7b-4bee-95d2-19c7fa15bb85.jpg?v=1785972096'},
+  {name:'DIBI',desc:'',price:4000,cat:'grillades',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/e24aed35-d989-4852-aff1-ffb370273995.jpg?v=1785950116'},
+  {name:'domoda boulette',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/c07dbc75-7135-4fab-8ebd-86e54f350ad3.png?v=1785947839'},
+  {name:'fataya',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/52e7e906-c3ca-4f4f-942d-2b09c084cf75.jpg?v=1785949371'},
+  {name:'firire',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/e29161d4-1234-4cdf-a54e-00dee8437e67.jpg?v=1785953591'},
+  {name:'gâteau',desc:'',price:1500,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/816c9192-993b-4cb5-b285-79ce909e2b1c.jpg?v=1785951530'},
+  {name:'jus bouye',desc:'',price:600,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/f25b7482-eaf4-4b72-813a-68a7681ba6bc.jpg?v=1785946977'},
+  {name:'jus dakhar',desc:'',price:600,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/bc0f1ab6-c55b-40ce-a21a-4ca05762adeb.jpg?v=1785947032'},
+  {name:'jus ginger',desc:'',price:600,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/b2c633cc-e076-4aed-81e1-d051060e6249.jpg?v=1785947073'},
+  {name:'Jus Guitakh',desc:'',price:600,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/aff6cd91-2ac9-463d-b1ab-3c11592fd5af.jpg?v=1785946759'},
+  {name:'Jus limo',desc:'',price:600,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/2df19c0d-8bd3-4742-ba55-e188b28be7d3.jpg?v=1785946916'},
+  {name:'kouss kouss',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/f3bd619b-64e9-4509-b63b-51ee54aefb59.jpg?v=1785947987'},
+  {name:'LAKH',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/9e785dfc-b226-4bb0-b7f5-e0160b36a3d6.jpg?v=1785954246'},
+  {name:'Lakh Neuteuri',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/174d7330-8091-43c7-977e-4727f9d951bb.jpg?v=1785954393'},
+  {name:'Lakhou Bissap',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/abaf7744-3119-421d-88a1-f4b2a7ca5daa.jpg?v=1785954844'},
+  {name:'Latchiri',desc:'',price:800,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/1f0ea53f-8351-4c18-a209-0ebb8da6c5f8.jpg?v=1785960842'},
+  {name:'Macaroni',desc:'',price:2000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/8a44fb1f-e9f6-407a-a9b3-0f065b72d9e5.jpg?v=1785970932'},
+  {name:'Mafé',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/152663a3-d620-48d2-b683-e35180cb4932.jpg?v=1785947763'},
+  {name:'mbakhal',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/164913a4-fecd-4c14-8027-acb527711bd9.jpg?v=1785947656'},
+  {name:'Mborokhé',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/349bde99-9cf4-49b2-9b9b-cf92dcd30f6d.jpg?v=1785953198'},
+  {name:'Mojito',desc:'',price:3000,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/69e9c444-9deb-4115-9c2a-ab4931defd46.jpg?v=1785970053'},
+  {name:'ngalakh',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/17623045-2930-464a-bd81-326ce1e38bfc.jpg?v=1785948988'},
+  {name:'Sandwich Au Poulet',desc:'',price:2000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/dc5f0dd5-10eb-4614-801f-c3bb64de2e5a.jpg?v=1785950928'},
+  {name:'Souloukhou',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/6d20256d-15b7-49e5-93cf-e2bc2c184bf8.jpg?v=1785952372'},
+  {name:'soupe kandia',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/ccd489ea-4c3b-4415-a667-44bb63cacfbc.jpg?v=1785947925'},
+  {name:'Soupe YEL',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/7a2c0248-8bde-4a83-bde7-e2eacdb9bfa5.jpg?v=1785952757'},
+  {name:'Spaghetty',desc:'',price:2000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/3b958f9c-4f23-420f-b319-964453cf4dee.jpg?v=1785971414'},
+  {name:'Tacos',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/5cfbe3eb-8f05-46d7-9340-f580e6dcbc57.jpg?v=1785950240'},
+  {name:'Tacos de poulet',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/411ce9f4-de0a-4738-a57b-b26c3bb719bc.jpg?v=1785950533'},
+  {name:'thiakry',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/0fba0878-af51-4d6b-b4b6-6ef7c484de13.jpg?v=1785948941'},
+  {name:'thiebou dieune bou khonk',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/4fb4eb75-c0dc-4458-a741-684f5d4c81c3.png?v=1785947435'},
+  {name:'thiebou dieune bou wekh',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/2d5b3c8b-5f04-4b75-838d-e41fb3d5576a.jpg?v=1785947306'},
+  {name:'thiere',desc:'',price:500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/90b873d4-75f1-4c1e-9216-aaaaadc93e4f.jpg?v=1785948263'},
+  {name:'vermicelle Poulet',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/6adf4ad9-d3b3-4c37-82d4-1c6a86811fdb.jpg?v=1785970251'},
+  {name:'WASS',desc:'',price:500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/d377ade4-69d4-4e7e-8a64-58cc325b744b.jpg?v=1785951861'},
+  {name:'Yassa poulet',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/09a09680-d2ed-49ba-a2d8-133d55ab6f6a.png?v=1785947553'},
+];
+const CAT_LABELS = {plats:'Plats sénégalais',grillades:'Grillades',desserts:'Desserts',boissons:'Boissons'};
+
+/* Horodatage réel des commandes — calculé par rapport à "maintenant" pour
+   que la démo reste cohérente peu importe quand elle est ouverte. Toute
+   nouvelle commande passée depuis le site public (voir submitOrder) est
+   ajoutée à ce même tableau avec un vrai timestamp, ce qui la fait
+   immédiatement apparaître dans le tableau de bord — commandes, chiffre
+   d'affaires, clients, ventes par produit, tout provient de cette seule
+   source de données. */
+function timeAgo(date){
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs/60000);
+  if(mins < 1) return "à l'instant";
+  if(mins < 60) return `il y a ${mins} min`;
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return `il y a ${hrs} h`;
+  const days = Math.floor(hrs/24);
+  if(days === 1) return 'hier';
+  return `il y a ${days} j`;
+}
+
+/* Aucune donnée fictive de départ : commandes, personnel et avis
+   n'existent que lorsqu'une vraie action a lieu dans cette session
+   (commande passée sur le site public, invitation envoyée depuis
+   Personnel). Un restaurant qui vient d'être créé démarre à zéro,
+   exactement comme dans la vraie application. */
+const DEMO_ORDERS = [];
+
+const DEMO_STAFF = [];
+
+const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison'};
+const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
+const ORDER_STATUS_TONE = {new:'amber',preparing:'amber',ready:'forest',delivering:'forest',completed:'ink',cancelled:'terracotta'};
+/* Action suivante UNIQUE pour le restaurateur — jamais plusieurs
+   boutons de statut affichés en même temps. S'adapte automatiquement
+   au type de commande : une commande à emporter/sur place passe
+   directement de "Prête" à "Terminée" (pas d'étape "En livraison"),
+   une livraison passe par "En livraison" avant "Terminée". */
+function isDeliveryOrder(type){ return /livraison/i.test(type||''); }
+function nextStatusAction(o){
+  const delivery = isDeliveryOrder(o.type);
+  if(o.status==='new') return {next:'preparing', label:'Démarrer la préparation', icon:'flame'};
+  if(o.status==='preparing') return {next:'ready', label:'Marquer comme prête', icon:'package'};
+  if(o.status==='ready') return delivery ? {next:'delivering', label:'Passer en livraison', icon:'bike'} : {next:'completed', label:'Terminer la commande', icon:'checkCircle'};
+  if(o.status==='delivering') return {next:'completed', label:'Terminer la commande', icon:'checkCircle'};
+  return null; // completed/cancelled : plus aucune action de progression
+}
+const PAY_STATUS_LABELS = {paid:'Payé',pending:'En attente',failed:'Échoué'};
+const PAY_STATUS_TONE = {paid:'forest',pending:'amber',failed:'terracotta'};
+const CAT_ICON = {plats:'utensils',grillades:'flame',desserts:'cake',boissons:'cup'};
+/* Équivalent FontAwesome (utilisé dans le thème public .tg-classic, qui
+   charge FontAwesome, contrairement au reste du tableau de bord qui
+   utilise le jeu d'icônes SVG maison). */
+const CAT_FA_ICON = {plats:'fa-utensils',grillades:'fa-fire',desserts:'fa-ice-cream',boissons:'fa-mug-hot'};
+const DAY_LABELS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+/* Vignette produit — affiche la vraie photo si elle existe, sinon une
+   icône selon la catégorie (jamais un emoji). */
+function productThumb(p,size){
+  size = size||44;
+  if(p.photo){
+    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+  }
+  return icBadge(CAT_ICON[p.cat]||'utensils', {size, bg:'var(--cream-deep)', color:'var(--amber-deep)', round:false});
+}
+
+/* ---------------- RÉGLAGES DU RESTAURANT (source unique de vérité) ----------------
+   Tout ce que le restaurateur modifie dans Paramètres se lit ici, et le site
+   public (renderStorefrontHero) se ré-affiche à partir de cet objet — c'est
+   ce qui rend la synchronisation tableau de bord → site public réelle.
+   Les valeurs par défaut sont des FONCTIONS (jamais un objet/tableau
+   partagé) : chaque appel renvoie une copie neuve, pour qu'un restaurant
+   chargé plus tard dans le même onglet ne puisse jamais muter en place
+   les horaires/livraison/réseaux d'un restaurant chargé précédemment. */
+function defaultHours(){
+  return DAY_LABELS_FULL.map((d,i)=>({open:true, from: i>=5?'12:00':'11:00', to: i>=5?'23:00':'22:00'}));
+}
+function defaultDelivery(){
+  return {
+    enabled:true, fee:1000, min:2000,
+    modes:{
+      own:{enabled:true, allowCashOnDelivery:true},
+      express:{enabled:false, fee:1500},
+    },
+  };
+}
+function defaultSocial(){
+  return {
+    whatsapp:{enabled:false, value:''},
+    instagram:{enabled:false, value:''},
+    tiktok:{enabled:false, value:''},
+    facebook:{enabled:false, value:''},
+  };
+}
+const RESTAURANT = {
+  created:false, // devient true uniquement après une vraie création via l'onboarding
+  createdAt:null, // vraie date de création — sert de base réelle au compteur d'essai gratuit
+  name:'',
+  slug:'',
+  type:'',
+  logoDataUrl:null, coverDataUrl:null,
+  primary:'#E8871E', secondary:'#1F6B45', textColor:'#2B1810',
+  address:'', city:'', phone:'',
+  hours: defaultHours(),
+  delivery: defaultDelivery(),
+  social: defaultSocial(),
+  showMap:true,
+  mapsLink:'',
+  notificationsEnabled:true,
+  orderNotificationEmail:'',
+  orderNotificationEmailVerified:false,
+  orderNotificationEmailPending:'',
+  isPublished:false, // le site public n'est visible aux clients qu'une fois publié (bouton "Publier" dans Paramètres)
+  heroTitle:'', heroSubtitle:'', // vides = texte générique honnête utilisé côté client (voir renderStorefrontHero)
+  subscriptionStatus:'trialing', // 'trialing' | 'active' | 'cancelled' | 'expired' — jamais 'active' sans action explicite du restaurateur, jamais via un faux paiement
+  billingCycle:'monthly', // 'monthly' | 'annual'
+  trialEndsAt:null,
+  currentPeriodEnd:null,
+  lastRenewedAt:null,
+};
+
+/* ---------------- MODES DE LIVRAISON — le paiement à la livraison n'est
+   compatible qu'avec une remise physique réellement assurée par le
+   restaurant. Le mode Express (coursier tiers) ne permet structurellement
+   jamais l'encaissement à la remise ; seule la livraison assurée par le
+   restaurant lui-même peut l'autoriser, et seulement si le restaurateur
+   l'active explicitement. ---------------- */
+/* ---------------- ESSAI GRATUIT — limites réelles, pas seulement
+   affichées sur la page Tarifs. Le compteur se calcule à partir de la
+   vraie date de création du restaurant (RESTAURANT.createdAt), jamais
+   d'un nombre fictif. ---------------- */
+const FREE_TRIAL_DAYS = 10;
+const FREE_MAX_CATEGORIES = 5;
+const FREE_MAX_PRODUCTS = 10;
+const SUBSCRIPTION_PERIOD_DAYS = {monthly:30, annual:365};
+/* Source UNIQUE des tarifs des forfaits payants — utilisée PARTOUT dans
+   le fichier (page tarifs, onboarding, tableau de bord Abonnement,
+   appel à la fonction Edge paytech-checkout). Ne jamais dupliquer ces
+   valeurs ailleurs sous forme de nombre écrit en dur : c'est exactement
+   ce genre de duplication qui avait laissé un "7000" figé quelque part
+   pendant que Starter affichait 3000 ailleurs. */
+const STARTER_PRICE = 3000;
+const PREMIUM_PRICE = 7000;
+function priceForPlan(plan){ return plan==='pro' ? PREMIUM_PRICE : STARTER_PRICE; }
+
+/* ---------------- ABONNEMENT — machine à états réelle, persistée dans
+   Supabase (subscription_status / trial_ends_at / current_period_end).
+   Aucun paiement réel n'existe dans ce fichier : "active" signifie
+   uniquement "le restaurateur a choisi ce forfait", jamais "une somme
+   a été prélevée". Les transitions dues au temps qui passe (trial ou
+   période expirée) sont calculées à chaque chargement — pas de cron
+   dans un fichier HTML autonome, donc pas de transition en arrière-plan
+   pendant que personne n'a la page ouverte ; elle se met à jour dès que
+   quelqu'un revient. ---------------- */
+function computeEffectiveSubscriptionStatus(){
+  const now = Date.now();
+  if(RESTAURANT.subscriptionStatus==='trialing' && RESTAURANT.trialEndsAt && now > RESTAURANT.trialEndsAt){
+    RESTAURANT.subscriptionStatus = 'expired';
+  } else if((RESTAURANT.subscriptionStatus==='active' || RESTAURANT.subscriptionStatus==='cancelled') && RESTAURANT.currentPeriodEnd && now > RESTAURANT.currentPeriodEnd){
+    RESTAURANT.subscriptionStatus = 'expired';
+  }
+  return RESTAURANT.subscriptionStatus;
+}
+function isAccessBlocked(){
+  return computeEffectiveSubscriptionStatus()==='expired';
+}
+/* Les fonctionnalités réservées à Premium ne se débloquent QUE si le
+   paiement PayTech a été réellement confirmé (subscription_status
+   passé à 'active' par le webhook — jamais par le simple fait d'avoir
+   choisi "Premium" à l'inscription, qui met seulement plan='pro' en
+   attente de paiement). Choisir Premium sans payer garde l'accès du
+   forfait Gratuit jusqu'à confirmation réelle. */
+function isPremiumActive(){
+  return state.plan==='pro' && computeEffectiveSubscriptionStatus()==='active';
+}
+/* Même principe pour Starter : choisir Starter ne débloque rien tant
+   que le paiement PayTech n'est pas confirmé. Premium inclut tout ce
+   que Starter débloque, donc "actif sur un forfait payant" couvre les
+   deux plans dès que l'un des deux est réellement payé. */
+function isPaidPlanActive(){
+  return (state.plan==='starter' || state.plan==='pro') && computeEffectiveSubscriptionStatus()==='active';
+}
+function trialDaysRemaining(){
+  if(!RESTAURANT.trialEndsAt) return FREE_TRIAL_DAYS;
+  return Math.max(0, Math.ceil((RESTAURANT.trialEndsAt - Date.now()) / 86400000));
+}
+function periodDaysRemaining(){
+  if(!RESTAURANT.currentPeriodEnd) return 0;
+  return Math.max(0, Math.ceil((RESTAURANT.currentPeriodEnd - Date.now()) / 86400000));
+}
+function canAddCategory(){
+  return !(!isPaidPlanActive() && Object.keys(catsState).length >= FREE_MAX_CATEGORIES);
+}
+function canAddProduct(){
+  return !(!isPaidPlanActive() && PRODUCTS.length >= FREE_MAX_PRODUCTS);
+}
+function showUpgradeBlock(reason){
+  toast(ic('lock',14)+` ${reason} Passez à Starter ou Premium pour continuer.`, true);
+}
+
+function enabledDeliveryModes(){
+  if(!RESTAURANT.delivery.enabled) return [];
+  const m = RESTAURANT.delivery.modes;
+  return ['own','express'].filter(k => m[k] && m[k].enabled);
+}
+const DELIVERY_MODE_LABELS = {own:'Livraison du restaurant', express:'Livraison Express'};
+function deliveryFeeFor(modeKey){
+  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee);
+  return Number(RESTAURANT.delivery.fee);
+}
+function deliveryModeAllowsCashOnDelivery(modeKey){
+  if(modeKey==='express') return false; // structurel : un coursier tiers n'encaisse pas pour le restaurant
+  return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
+}
+/* Les moyens de paiement réellement proposés au client = moyens activés
+   par le restaurateur, filtrés par ce que le mode de commande / de
+   livraison en cours permet réellement — jamais une liste statique.
+   DISCONTINUED_PAYMENT_METHODS est une exclusion explicite, en plus de
+   ne plus jamais être écrit nulle part : même si cette clé apparaissait
+   un jour dans state.toggles par erreur, elle ne pourrait jamais être
+   proposée au client. */
+const DISCONTINUED_PAYMENT_METHODS = ['card'];
+function availablePaymentMethods(){
+  const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
+  return enabled.filter(m=>{
+    if(m !== 'on_delivery') return true;
+    if(state.checkout.orderType !== 'delivery') return false; // "à la livraison" n'a de sens que pour une livraison
+    return deliveryModeAllowsCashOnDelivery(state.checkout.deliveryMode);
+  });
+}
+
+function isOpenNow(){
+  const now = new Date();
+  const jsDay = now.getDay(); // 0=dimanche..6=samedi
+  const idx = jsDay===0 ? 6 : jsDay-1; // convertit vers DAY_LABELS_FULL (0=Lundi..6=Dimanche)
+  const h = RESTAURANT.hours[idx];
+  if(!h || !h.open) return false;
+  const cur = now.getHours()*60+now.getMinutes();
+  const [fh,fm] = h.from.split(':').map(Number);
+  const [th,tm] = h.to.split(':').map(Number);
+  const from = fh*60+fm, to = th*60+tm;
+  return to>from ? (cur>=from && cur<to) : (cur>=from || cur<to);
+}
+
+function whatsappLink(){
+  const digits = RESTAURANT.social.whatsapp.value.replace(/\D/g,'');
+  return digits ? `https://wa.me/221${digits}` : '#';
+}
+
+/* Applique les couleurs de thème choisies aux variables CSS globales —
+   c'est ce qui fait que changer de thème change RÉELLEMENT le site public,
+   pas seulement une case colorée dans les paramètres. */
+/* Couleurs du site public — choisies librement par le restaurateur
+   (plus de thèmes prédéfinis). Appliquées en SCOPANT les variables CSS
+   sur #view-storefront uniquement (jamais sur tout le document) : le
+   tableau de bord, l'assistant de création et le site TerangaResto
+   gardent leur propre identité, seule la boutique du restaurant change
+   de couleurs. Le panier, le checkout et la confirmation sont tous des
+   descendants DOM de #view-storefront, donc hérités automatiquement. */
+function applyThemeColors(primary, secondary, textColor){
+  RESTAURANT.primary = primary;
+  RESTAURANT.secondary = secondary;
+  if(textColor) RESTAURANT.textColor = textColor;
+  const sf = document.getElementById('view-storefront');
+  if(sf){
+    sf.style.setProperty('--amber', primary);
+    sf.style.setProperty('--amber-deep', shadeColor(primary,-18));
+    sf.style.setProperty('--brand-secondary', secondary);
+    sf.style.setProperty('--brand-secondary-deep', shadeColor(secondary,-15));
+    const tc = RESTAURANT.textColor || '#2B1810';
+    sf.style.setProperty('--ink', tc);
+    sf.style.setProperty('--ink-soft', shadeColor(tc,55));
+    sf.style.setProperty('--ink-faint', shadeColor(tc,78));
+  }
+  if(typeof renderStorefrontHero==='function') renderStorefrontHero();
+  if(typeof updateFloatingCartButton==='function') updateFloatingCartButton();
+}
+function shadeColor(hex, percent){
+  const f = parseInt(hex.slice(1),16), t = percent<0?0:255, p = Math.abs(percent)/100;
+  const R = f>>16, G = f>>8&0x00FF, B = f&0x0000FF;
+  const c = (v)=>Math.round((t-v)*p)+v;
+  return '#'+(0x1000000 + c(R)*0x10000 + c(G)*0x100 + c(B)).toString(16).slice(1);
+}
+
+function toneClass(t){ return {amber:'pill-amber',forest:'pill-forest',terracotta:'pill-terracotta',neutral:'pill-neutral',ink:'pill-ink'}[t] || 'pill-neutral'; }
+function fmt(n){ return new Intl.NumberFormat('fr-SN',{maximumFractionDigits:0}).format(Math.round(n)) + ' FCFA'; }
+
+function paymentMark(method,size){
+  size = size||26;
+  if(method==='wave') return `<img src="${WAVE_SRC}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:8px;">`;
+  if(method==='orange_money') return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:#000;border-radius:8px;padding:2px;"><img src="${OM_SRC}" style="width:100%;height:100%;object-fit:contain;"></span>`;
+  const map = {cash:'banknote',on_delivery:'bike'};
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:rgba(43,24,16,.06);border-radius:8px;color:var(--ink-soft);">${ic(map[method]||'card', Math.round(size*0.55))}</span>`;
+}
+
+/* ---------------- STATE ---------------- */
+let RESTO_NAME = 'Votre restaurant';
+
+const state = {
+  view:'landing',
+  cart:[], // {id,name,price,qty,variant,emoji}
+  activeCategory:'all',
+  storefrontSearch:'',
+  yearly:false,
+  dashSection:'overview',
+  checkoutStep:0,
+  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null},
+  lastOrder:null,
+  toggles:{wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
+  plan:'starter', // 'starter' | 'pro' — débloqué uniquement après confirmation de paiement (même simulée en démo)
+};
+
+const PRO_ONLY_METHODS = ['wave','orange_money'];
+const PRO_ONLY_LABEL = {wave:'Paiement Wave',orange_money:'Paiement Orange Money'};
+
+/* Bandeau/carte affiché à la place d'une fonctionnalité réservée au plan Premium. */
+function lockedNotice(label, compact){
+  return `<div style="background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);border-radius:${compact?'12px':'16px'};padding:${compact?'10px 14px':'16px 18px'};display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="display:flex;align-items:center;gap:8px;font-size:${compact?'12.5px':'13.5px'};color:var(--amber-ink);flex:1;min-width:180px;">${ic('lock',15)}<span><b>${label}</b> — Passez au forfait Premium pour débloquer cette fonctionnalité.</span></span>
+    <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer à Premium</button>
+  </div>`;
+}
+function goUpgrade(){ setView('dashboard'); setDashSection('abonnement'); }
+
+function applyRestaurantName(name){
+  RESTO_NAME = name || 'Votre restaurant';
+  document.querySelectorAll('.resto-name').forEach(el => el.textContent = RESTO_NAME);
+  // Le site public d'un restaurant est indépendant de la plateforme :
+  // l'onglet du navigateur affiche uniquement son nom, jamais
+  // "— TerangaResto" — cette mention ne reste que pour le tableau de
+  // bord et les pages de la plateforme elle-même.
+  document.title = state.view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
+}
+
+/* Affiche le vrai logo (image réellement sélectionnée par le
+   restaurateur) dans la sidebar, ou l'état "aucun logo" sinon. */
+function renderSidebarLogo(){
+  const el = document.getElementById('sbLogoBadge');
+  if(!el) return;
+  el.innerHTML = RESTAURANT.logoDataUrl
+    ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`
+    : ic('chefHat', 17, {stroke:'var(--amber-deep)'});
+}
+
+function trialDurationForPlan(plan){
+  return plan==='free' ? FREE_TRIAL_DAYS : 14;
+}
+function renderPlanBadgeAndBanner(){
+  const badge = document.getElementById('planBadgeTop');
+  const status = computeEffectiveSubscriptionStatus();
+  const daysLeft = trialDaysRemaining();
+  const periodLeft = periodDaysRemaining();
+  const planLabel = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  if(badge) badge.innerHTML =
+    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — en attente de paiement</span>`
+    : status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
+    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}</span>`
+    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j</span>`
+    : `<span class="pill pill-terracotta">Expiré</span>`;
+
+  const banner = document.getElementById('planBanner');
+  if(!banner) return;
+
+  if(status==='pending_payment'){
+    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Forfait ${planLabel} choisi mais pas encore payé — aucune fonctionnalité payante n'est débloquée. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Terminer le paiement PayTech</a></div>`;
+  } else if(status==='trialing'){
+    banner.innerHTML = `<div style="background:rgba(232,135,30,.1);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('clock',15)}Essai Gratuit — il vous reste ${daysLeft} jour${daysLeft>1?'s':''}, ${Object.keys(catsState).length}/${FREE_MAX_CATEGORIES} catalogues, ${PRODUCTS.length}/${FREE_MAX_PRODUCTS} produits. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Passer à Starter ou Premium</a></div>`;
+  } else if(status==='expired'){
+    banner.innerHTML = `<div style="background:var(--terracotta-soft);color:var(--terracotta);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('alertTriangle',15)}Accès restreint — votre ${RESTAURANT.trialEndsAt && !RESTAURANT.currentPeriodEnd ? "essai gratuit" : "abonnement"} est terminé. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Renouveler mon abonnement</a></div>`;
+  } else if(status==='cancelled'){
+    banner.innerHTML = `<div style="background:rgba(43,24,16,.06);color:var(--ink-soft);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('info',15)}Abonnement annulé — accès encore valide ${periodLeft} jour${periodLeft>1?'s':''}. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Réactiver</a></div>`;
+  } else {
+    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel}, confirmé par PayTech. Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''}.</div>`;
+  }
+}
+
+/* ---------------- VIEW SWITCHING ---------------- */
+function setView(view){
+  // Garde d'accès au tableau de bord : ne jamais rendre le vrai
+  // contenu du dashboard pour quelqu'un qui n'est pas authentifié comme
+  // propriétaire/personnel du restaurant actuellement chargé — sinon un
+  // visiteur qui a consulté un site public puis clique sur "Connexion
+  // restaurateur" sans se connecter verrait la coquille du tableau de
+  // bord (sections, nom du restaurant, thème) avant même de s'être
+  // authentifié. On l'oriente vers la connexion à la place.
+  if(view==='dashboard' && !viewerIsStaff){
+    openLogin('login');
+    return;
+  }
+  state.view = view;
+  // Site public du restaurant totalement indépendant de la plateforme :
+  // le header TerangaResto (logo, Connexion, Créer, navigation) est
+  // masqué dès qu'on est sur le site d'un restaurant — pour un client
+  // comme pour le propriétaire qui prévisualise, qui retrouve son
+  // tableau de bord via le petit bouton flottant dédié, pas ici.
+  document.body.classList.toggle('storefront-active', view==='storefront');
+  document.body.classList.toggle('dashboard-active', view==='dashboard' && !!viewerIsStaff);
+  document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
+  if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.querySelectorAll('.gnav-tab').forEach(t=>t.classList.toggle('active', t.dataset.view===view));
+  window.scrollTo({top:0,behavior:'instant' in window ? 'instant':'auto'});
+  document.getElementById('mobileBottomNav').classList.toggle('active-grid', view==='dashboard' && window.innerWidth<=900);
+  document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
+  if(view==='dashboard') {
+    renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); requestNotificationPermissionOnce();
+    // Marqueur local (jamais une donnée sensible, juste "cette
+    // personne a déjà atteint son tableau de bord sur cet appareil")
+    // — permet, au prochain chargement de page, de savoir s'il faut
+    // afficher un écran de vérification neutre plutôt que la page
+    // d'accueil publique pendant que la session est revalidée.
+    try{ localStorage.setItem('tg_returning_user','1'); }catch(e){}
+  }
+  if(view==='pricing') renderPricing();
+  if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); renderTrackOrderButton(); }
+  if(view==='onboarding') renderOnboarding();
+  hydrateIcons();
+}
+function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElementById(id).scrollIntoView({behavior:'smooth'}); }, 50); }
+
+/* Empile plusieurs toasts au lieu de les superposer exactement au même
+   endroit — sinon un second toast (ex. "Restaurant créé") peut cacher
+   complètement un premier toast d'erreur qui vient de s'afficher une
+   fraction de seconde avant lui, rendant l'erreur invisible alors
+   qu'elle a bien eu lieu. */
+let activeToasts = [];
+/* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
+async function sendPasswordReset(){
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email || !/^\S+@\S+\.\S+$/.test(email)){
+    toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur "Mot de passe oublié ?".');
+    return;
+  }
+
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
+  });
+
+  if(error){
+    toast("Impossible d'envoyer le code : " + (error.message || 'erreur inconnue.'));
+    return;
+  }
+
+  const token = (prompt('Entrez le code à 8 chiffres reçu par e-mail :') || '').trim();
+  if(!/^\d{8}$/.test(token)){
+    toast('Code invalide. Entrez les 8 chiffres reçus par e-mail.');
+    return;
+  }
+
+  const {error: verifyError} = await supabaseClient.auth.verifyOtp({
+    email,
+    token,
+    type: 'email'
+  });
+
+  if(verifyError){
+    toast('Code incorrect ou expiré : ' + (verifyError.message || 'réessayez.'));
+    return;
+  }
+
+  let newPassword = '';
+  while(true){
+    newPassword = prompt('Choisissez votre nouveau mot de passe (8 caractères minimum) :') || '';
+    if(newPassword.length < 8){
+      toast('Le mot de passe doit contenir au moins 8 caractères.');
+      continue;
+    }
+    if(!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)){
+      toast('Mot de passe trop faible. Utilisez au moins une majuscule, une minuscule et un chiffre.');
+      continue;
+    }
+    break;
+  }
+
+  const {error: updateError} = await supabaseClient.auth.updateUser({
+    password: newPassword
+  });
+
+  if(updateError){
+    toast('Impossible de modifier le mot de passe : ' + (updateError.message || 'réessayez.'));
+    return;
+  }
+
+  toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.', true);
+}
+function togglePasswordVisibility(inputId, btn){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = ic(showing?'eye':'eyeOff', 15);
+  hydrateIcons(btn);
+}
+function passwordStrength(pw){
+  if(!pw) return {score:0, label:'', color:'var(--cream-line)'};
+  let score = 0;
+  if(pw.length >= 8) score++;
+  if(pw.length >= 12) score++;
+  if(/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^a-zA-Z0-9]/.test(pw)) score++;
+  const levels = [
+    {label:'Trop court', color:'var(--terracotta)'},
+    {label:'Faible', color:'var(--terracotta)'},
+    {label:'Moyen', color:'var(--amber-deep)'},
+    {label:'Fort', color:'var(--forest)'},
+    {label:'Très fort', color:'var(--forest)'},
+  ];
+  const idx = Math.min(score, 4);
+  return {score: idx, label: pw.length < 8 ? 'Trop court' : levels[idx].label, color: pw.length < 8 ? 'var(--terracotta)' : levels[idx].color};
+}
+function renderPasswordStrength(pw, barId){
+  const el = document.getElementById(barId);
+  if(!el) return;
+  const s = passwordStrength(pw);
+  if(!pw){ el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div style="display:flex;gap:3px;margin-top:6px;margin-bottom:2px;">
+      ${[0,1,2,3].map(i=>`<div style="height:3px;flex:1;border-radius:2px;background:${i < s.score ? s.color : 'var(--cream-line)'};"></div>`).join('')}
+    </div>
+    <p style="font-size:11px;color:${s.color};font-weight:600;">${s.label}</p>`;
+}
+
+function toast(msg, isHtml){
+  const t = document.createElement('div');
+  t.className='toast';
+  if(isHtml){ t.style.display='flex'; t.style.alignItems='center'; t.style.gap='8px'; t.innerHTML=msg; }
+  else t.textContent=msg;
+  document.body.appendChild(t);
+  activeToasts.push(t);
+  repositionToasts();
+  setTimeout(()=>{
+    t.remove();
+    activeToasts = activeToasts.filter(x=>x!==t);
+    repositionToasts();
+  }, 3800);
+}
+function repositionToasts(){
+  let offset = 24;
+  // Le plus récent en bas (position habituelle), les précédents empilés au-dessus.
+  for(let i=activeToasts.length-1; i>=0; i--){
+    activeToasts[i].style.bottom = offset+'px';
+    offset += activeToasts[i].offsetHeight + 10;
+  }
+}
+</script>
+
+<script>
+/* ---------------- LANDING: features & steps ---------------- */
+const FEATURES = [
+  ['rocket','Création rapide',"Créez votre restaurant, ajoutez votre logo et publiez votre menu en quelques minutes."],
+  ['utensils','Menu numérique',"Un catalogue de produits organisé par catégories, avec photos, prix et variantes."],
+  ['qrcode','QR Code',"Chaque restaurant reçoit son propre QR Code, prêt à imprimer et à poser sur les tables."],
+  ['bag','Commandes',"Sur place, à emporter ou en livraison — recevez et suivez chaque commande en temps réel."],
+  ['card','Paiements',"Wave, Orange Money, espèces ou paiement à la livraison — vous choisissez."],
+  ['dashboard','Gestion complète',"Personnel, permissions, bibliothèque de médias, paramètres — tout depuis un seul tableau de bord."],
+];
+const STEPS = [
+  ['Créez votre restaurant',"Nom, type de restaurant, adresse — la base de votre espace en une minute."],
+  ['Personnalisez votre menu',"Choisissez un thème, vos couleurs, votre logo et votre couverture."],
+  ['Ajoutez vos produits',"Depuis zéro ou depuis les plats prédéfinis, en quelques clics."],
+  ['Configurez vos paiements',"Wave, Orange Money, espèces ou carte — activez ce que vous acceptez."],
+  ['Recevez votre QR Code',"Généré automatiquement, prêt à imprimer et à poser sur vos tables."],
+  ['Partagez votre site',"Votre lien public est prêt à être diffusé à vos clients."],
+  ['Recevez et gérez vos commandes',"Suivez chaque commande en temps réel depuis votre tableau de bord."],
+];
+
+const FAQ_ITEMS = [
+  ['Comment créer mon restaurant ?', "Cliquez sur « Créer mon restaurant », créez votre compte puis suivez l'assistant : informations du restaurant, thème, configuration et abonnement. Votre site est prêt en quelques minutes."],
+  ['Combien de temps faut-il pour créer mon site ?', "La plupart des restaurateurs terminent la configuration initiale — nom, thème, premiers produits — en moins de 10 minutes. Vous pourrez toujours l'enrichir ensuite."],
+  ['Puis-je utiliser un QR Code ?', "Oui. Chaque restaurant reçoit automatiquement son propre QR Code, généré dès la publication, pointant directement vers votre site public."],
+  ['Comment recevoir les commandes ?', "Les commandes arrivent en temps réel dans la section Commandes de votre tableau de bord, avec une notification à chaque nouvelle commande."],
+  ['Quels moyens de paiement sont disponibles ?', "Wave, Orange Money, carte bancaire, espèces et paiement à la livraison. Vous choisissez ceux que vous acceptez depuis Paramètres → Paiements."],
+  ['Puis-je modifier mon menu ?', "Oui, à tout moment. Ajoutez, modifiez, désactivez ou supprimez vos produits et catégories depuis la section Produits."],
+  ['Puis-je changer mon thème ?', "Oui. Depuis Paramètres → Thème, votre choix s'applique immédiatement à votre site public."],
+  ['Puis-je utiliser TerangaResto depuis mon téléphone ?', "Oui, le tableau de bord est pensé mobile en priorité : vous pouvez gérer commandes, produits et paramètres entièrement depuis votre smartphone."],
+  ['Quelle est la différence entre Starter et Premium ?', "Starter couvre l'essentiel (catalogue, QR Code, commandes). Premium débloque en plus Wave et Orange Money, la gestion du personnel et les analyses avancées."],
+];
+
+let faqOpenIndex = null;
+function renderFaq(){
+  document.getElementById('faqAccordion').innerHTML = FAQ_ITEMS.map(([q,a],i)=>{
+    const open = faqOpenIndex===i;
+    return `<div class="card" style="margin-bottom:10px;overflow:hidden;">
+      <button onclick="toggleFaq(${i})" class="flex items-center justify-between w-full" style="padding:16px 18px;text-align:left;">
+        <span style="font-size:13.5px;font-weight:600;padding-right:12px;">${q}</span>
+        <span style="color:var(--ink-faint);flex-shrink:0;">${ic(open?'chevronUp':'chevronDown',16)}</span>
+      </button>
+      ${open?`<div style="padding:0 18px 16px;font-size:13px;color:var(--ink-soft);line-height:1.6;">${a}</div>`:''}
+    </div>`;
+  }).join('');
+  hydrateIcons(document.getElementById('faqAccordion'));
+}
+function toggleFaq(i){ faqOpenIndex = faqOpenIndex===i ? null : i; renderFaq(); }
+renderFaq();
+
+document.getElementById('featuresGrid').innerHTML = FEATURES.map(([icon,title,text])=>`
+  <div class="card" style="padding:22px;">
+    ${icBadge(icon,{size:40,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}
+    <div style="margin-top:14px;"></div>
+    <h3 class="font-display" style="font-size:17px;margin-bottom:6px;">${title}</h3>
+    <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;">${text}</p>
+  </div>`).join('');
+
+document.getElementById('stepsGrid').innerHTML = STEPS.map(([title,text],i)=>`
+  <div>
+    <span class="font-display" style="font-size:34px;color:rgba(232,135,30,.4);">${String(i+1).padStart(2,'0')}</span>
+    <h3 class="font-display" style="font-size:17px;margin:8px 0 6px;">${title}</h3>
+    <p style="font-size:13.5px;color:var(--ink-soft);line-height:1.5;">${text}</p>
+  </div>`).join('');
+
+/* ---------------- PRICING ---------------- */
+const PLANS = [
+  {code:'free',name:'Gratuit',tagline:'Pour découvrir TerangaResto et publier votre premier menu.',monthly:0,yearly:0,duration:'10 jours',
+   features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
+  {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:STARTER_PRICE,yearly:Math.round(STARTER_PRICE*12*0.84),
+   features:['1 restaurant','Catalogue et commandes sans limite','QR Code personnalisé','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
+  {code:'pro',name:'Premium',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:PREMIUM_PRICE,yearly:Math.round(PREMIUM_PRICE*12*0.84),
+   features:['Tout Starter','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
+];
+
+function togglePeriod(){
+  state.yearly = !state.yearly;
+  document.getElementById('periodDot').style.transform = state.yearly ? 'translateX(24px)':'translateX(0)';
+  document.getElementById('periodToggle').style.background = state.yearly ? 'var(--amber-deep)':'var(--ink)';
+  document.getElementById('periodLabelM').style.color = state.yearly ? 'var(--ink-faint)':'var(--ink)';
+  document.getElementById('periodLabelY').style.color = state.yearly ? 'var(--ink)':'var(--ink-faint)';
+  renderPricing();
+}
+
+function renderPricing(){
+  document.getElementById('pricingCards').innerHTML = PLANS.map(p=>{
+    const isPro = p.code==='pro';
+    const isFree = p.code==='free';
+    const monthlyEq = state.yearly ? Math.round(p.yearly/12) : p.monthly;
+    const ctaLabel = isFree ? 'Commencer gratuitement' : `Choisir ${p.name} — ${fmt(p.monthly)}`;
+    return `
+    <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
+      ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
+      <h3 class="font-display" style="font-size:22px;margin-bottom:4px;">${p.name}</h3>
+      <p style="font-size:13px;margin-bottom:22px;color:${isPro?'rgba(251,243,228,.7)':'var(--ink-soft)'};min-height:36px;">${p.tagline}</p>
+      ${isFree ? `
+      <div class="font-tabular font-display" style="font-size:32px;">0 FCFA</div>
+      <p style="font-size:11.5px;margin:6px 0 20px;color:var(--amber-deep);font-weight:600;">Essai de ${p.duration}</p>` : `
+      <div class="font-tabular font-display" style="font-size:32px;">${fmt(monthlyEq)}<span style="font-size:13px;font-weight:400;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};"> / mois</span></div>
+      <p style="font-size:11.5px;margin:6px 0 20px;color:${isPro?'rgba(251,243,228,.6)':'var(--ink-faint)'};">${state.yearly?('Facturé '+fmt(p.yearly)+' / an'):'&nbsp;'}</p>`}
+      <div class="flex-col gap-2" style="margin-bottom:26px;flex:1;">
+        ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;flex-shrink:0;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
+      </div>
+      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')" style="margin-top:auto;">${ctaLabel}</button>
+      ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Paiement immédiat par PayTech — aucun essai gratuit sur ce forfait</p>`:''}
+    </div>`;
+  }).join('');
+}
+</script>
+
+<script>
+/* ============================================================
+   ONBOARDING — espace de création, séparé du tableau de bord.
+   Compte → Restaurant → Thème → Configuration → Abonnement → Paiement → Confirmation
+   ============================================================ */
+const OB_STEPS = ['Compte','Restaurant','Logo','Configuration','Abonnement','Paiement','Activé'];
+
+/* ---------------- SOUS-DOMAINE — génération automatique et unique ----------------
+   Reproduit ce que ferait le vrai backend à la création du restaurant :
+   nom → identifiant URL propre (accents supprimés, espaces gérés,
+   caractères problématiques retirés) → vérification de disponibilité →
+   variante -2, -3... si le sous-domaine existe déjà. */
+const TAKEN_SLUGS_DEMO = ['le-petit-dakar','restaurant-teranga','dibiterie-du-coin','saveurs-locales'];
+
+function slugify(name){
+  return (name||'')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g,'')
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-')
+    .replace(/^-+|-+$/g,'');
+}
+
+function generateUniqueSlug(name){
+  const base = slugify(name) || 'mon-restaurant';
+  let candidate = base;
+  let n = 2;
+  while(TAKEN_SLUGS_DEMO.includes(candidate)){
+    candidate = `${base}-${n}`;
+    n++;
+  }
+  return { base, slug: candidate, wasTaken: candidate !== base };
+}
+
+/* Vérification RÉELLE contre Supabase (pas seulement la petite liste
+   locale ci-dessus, qui ne sert qu'à l'aperçu instantané pendant la
+   saisie) — appelée juste avant la création effective du restaurant,
+   pour ne jamais tenter un slug déjà pris par un AUTRE restaurant,
+   y compris un restaurant encore en brouillon que RLS ne nous montre
+   pas directement (voir is_slug_available dans supabase_schema.sql). */
+async function resolveUniqueSlugForCreation(name){
+  const candidate = slugify(name) || 'mon-restaurant';
+  try{
+    const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
+    if(error){
+      console.error('is_slug_available:', error);
+      return null;
+    }
+    return available ? candidate : null;
+  }catch(e){
+    console.error('is_slug_available:', e);
+    return null;
+  }
+}
+
+const obState = {
+  step:0,
+  accountName:'', accountEmail:'', accountPassword:'',
+  restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
+  obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null,
+  address:'', deliveryEnabled:true,
+  paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
+  plan:null, billing:'monthly', paymentMethod:'wave', // plan:null — jamais de forfait présélectionné, le client doit cliquer
+  paying:false,
+  emailConfirmationPending:false, pendingEmail:'',
+};
+
+/* ---------------- ONBOARDING EN ATTENTE DE CONFIRMATION E-MAIL ----------------
+   Quand Supabase exige la confirmation de l'adresse avant d'ouvrir une
+   session, le parcours 1/7 → 7/7 continue quand même normalement (voir
+   obNext()) — tout ce qui a été saisi est simplement recopié ici, pour
+   que restoreSession() puisse retrouver EXACTEMENT ces informations et
+   terminer automatiquement la création du restaurant dès qu'une vraie
+   session apparaît (après le clic sur le lien reçu par e-mail) — sans
+   jamais redemander quoi que ce soit à la personne. */
+const PENDING_ONBOARDING_KEY = 'tg_pending_onboarding';
+let resumingOnboarding = false;
+let otpPendingEmail = '';
+let otpPendingName = '';
+let otpPendingSource = 'onboarding';
+let otpResendTimer = 0;
+let otpResendInterval = null;
+function savePendingOnboarding(){
+  try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
+}
+function savePendingOnboardingIfNeeded(){
+  if(obState.emailConfirmationPending) savePendingOnboarding();
+}
+function loadPendingOnboarding(){
+  try{
+    const raw = localStorage.getItem(PENDING_ONBOARDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function clearPendingOnboarding(){
+  try{ localStorage.removeItem(PENDING_ONBOARDING_KEY); }catch(e){ /* rien à nettoyer */ }
+}
+/* Reprise automatique après confirmation d'e-mail — appelée depuis
+   restoreSession() dès qu'une vraie session existe mais qu'aucun
+   restaurant n'y est encore associé. Restaure EXACTEMENT les données
+   déjà saisies pendant 1/7→7/7 (jamais un restaurant vide, jamais une
+   ressaisie demandée), termine la création, puis redirige directement
+   vers le tableau de bord (ou PayTech, si un forfait payant avait été
+   choisi) — sans jamais repasser par "Connexion". */
+async function tryResumePendingOnboarding(){
+  if(!currentUser) return false;
+  if(resumingOnboarding) return true; // déjà en cours (voir garde-fou ci-dessous) — ne jamais tenter une deuxième création en parallèle
+  const saved = loadPendingOnboarding();
+  if(!saved) return false;
+  // Vérification de cohérence : ne reprendre que si la session active
+  // correspond bien au compte pour lequel cet onboarding a été rempli
+  // — évite qu'un autre compte utilisé plus tard sur le même appareil
+  // ne se voie attribuer par erreur un onboarding abandonné par
+  // quelqu'un d'autre.
+  const savedEmail = (saved.pendingEmail || saved.accountEmail || '').toLowerCase();
+  const sessionEmail = (currentUser.email || '').toLowerCase();
+  if(savedEmail && sessionEmail && savedEmail !== sessionEmail){
+    return false;
+  }
+  resumingOnboarding = true;
+  Object.assign(obState, saved);
+  obState.emailConfirmationPending = false; // la session existe désormais, plus la peine d'attendre
+  hideRestoSplash(); hideAuthCheckSplash();
+  setView('onboarding'); // affiche l'onboarding pendant la finalisation ; createRestaurantFromOnboarding() peut y renvoyer un pas précis (ex: forfait manquant) si besoin
+  toast(ic('checkCircle',14)+' E-mail confirmé — finalisation de votre restaurant…', true);
+
+  if(obState.plan === 'starter' || obState.plan === 'pro'){
+    const row = await createRestaurantFromOnboarding();
+    if(!row){ resumingOnboarding = false; return true; } // l'erreur (ou l'étape manquante) a déjà été annoncée par createRestaurantFromOnboarding() — on autorise un nouveau clic pour réessayer
+    clearPendingOnboarding();
+    const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
+      body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
+    });
+    if(error || !data || !data.redirect_url){
+      toast("Restaurant créé — le paiement n'a pas pu démarrer automatiquement. Terminez-le depuis Abonnement.");
+      viewerIsStaff = true;
+      setView('dashboard');
+      setDashSection('abonnement');
+      resumingOnboarding = false;
+      return true;
+    }
+    window.location.href = data.redirect_url;
+  } else {
+    const row = await createRestaurantFromOnboarding();
+    if(!row){ resumingOnboarding = false; return true; }
+    clearPendingOnboarding();
+    viewerIsStaff = true;
+    setView('dashboard');
+    setDashSection('overview');
+    toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
+    resumingOnboarding = false;
+  }
+  return true;
+}
+
+function startOnboarding(presetPlan){
+  Object.assign(obState, {
+    step:0, accountName:'', accountEmail:'', accountPassword:'',
+    restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
+    obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, address:'', deliveryEnabled:true,
+    paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
+    // presetPlan reste honoré s'il vient d'un clic explicite sur une
+    // carte de tarif précise ("Commencer avec Premium" par exemple) —
+    // c'est encore un choix explicite du client, pas un défaut caché.
+    // Sans ce préréglage explicite, plan reste null.
+    plan: presetPlan || null, billing:'monthly', paymentMethod:'wave', paying:false,
+    emailConfirmationPending:false, pendingEmail:'',
+  });
+  setView('onboarding');
+}
+
+function obField(key,val){ obState[key]=val; }
+function obGoStep(i){ obState.step=i; renderOnboarding(); }
+
+async function obNext(){
+  const o = obState;
+  if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
+  if(o.step===0 && !currentUser){
+    if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
+    const email=o.accountEmail.trim().toLowerCase();
+    const name=o.accountName.trim();
+    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
+    setLoginVerifying(false,'obNextBtn');
+    if(error){toast(error.message||'Impossible de créer ce compte.');return;}
+    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
+    currentUser=data.user; o.emailConfirmationPending=false;
+  }
+  if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
+  if(o.step===1){
+    const name = o.restoName.trim();
+    const {data:available, error:nameErr} = await supabaseClient.rpc('is_restaurant_name_available', {p_name:name});
+    if(nameErr){
+      console.error('is_restaurant_name_available:', nameErr);
+      toast('Impossible de vérifier le nom du restaurant pour le moment.');
+      return;
+    }
+    if(!available){
+      toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
+      return;
+    }
+    const candidateSlug = slugify(name) || 'mon-restaurant';
+    const {data:slugAvailable, error:slugErr} = await supabaseClient.rpc('is_slug_available', {p_slug:candidateSlug});
+    if(slugErr){
+      console.error('is_slug_available:', slugErr);
+      toast('Impossible de vérifier le lien public pour le moment.');
+      return;
+    }
+    if(!slugAvailable){
+      toast('Ce lien public est déjà utilisé. Choisissez un autre nom de restaurant.');
+      return;
+    }
+  }
+  if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
+  if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
+  o.step++;
+  savePendingOnboardingIfNeeded();
+  renderOnboarding();
+}
+function obPrev(){
+  obState.step = (obState.step===6 && obState.plan==='free') ? 4 : obState.step-1;
+  renderOnboarding();
+}
+
+/* Logique de création partagée entre le chemin Gratuit (finishOnboarding,
+   pas de paiement) et les chemins Starter/Premium (createRestaurantAndPay,
+   paiement immédiat) — évite de dupliquer la validation de session, la
+   résolution de slug et l'appel RPC. Renvoie la ligne restaurant créée,
+   ou null si quelque chose a échoué (déjà annoncé via toast). */
+async function createRestaurantFromOnboarding(){
+  // Source de vérité pour owner_id : jamais la variable JS `currentUser`
+  // (qui peut être en retard d'une frappe sur la vraie session — c'est
+  // exactement ce qui provoquait "new row violates row-level security
+  // policy for table restaurants", car owner_id envoyé ne correspondait
+  // plus forcément à auth.uid() calculé côté serveur au moment de la
+  // requête). On revalide la session EN DIRECT auprès de Supabase juste
+  // avant l'INSERT, et on utilise exclusivement user.id — jamais un id
+  // de démonstration, jamais une valeur locale mise en cache.
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+  const user = userData ? userData.user : null;
+  if(userError || !user){
+    toast("Session invalide ou expirée — reconnectez-vous puis reprenez la création de votre restaurant.");
+    currentUser = null;
+    closeLogin(); setLoginTab('login'); setView('landing');
+    document.getElementById('loginOverlay')?.classList.remove('hidden');
+    return null;
+  }
+  currentUser = user; // resynchronise la variable globale sur la vraie session
+
+  // Le forfait n'est jamais choisi automatiquement à la place du
+  // client — s'il n'a explicitement rien sélectionné à l'étape
+  // "Abonnement", on l'y renvoie plutôt que de laisser passer une
+  // valeur par défaut silencieuse.
+  if(!obState.plan){
+    toast('Choisissez un forfait (Gratuit, Starter ou Premium) avant de continuer.');
+    obState.step = 4;
+    renderOnboarding();
+    return null;
+  }
+
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = Date.now();
+  state.plan = obState.plan;
+  Object.assign(state.toggles, obState.paymentToggles);
+  RESTAURANT.type = obState.restoType;
+  RESTAURANT.city = obState.city;
+  RESTAURANT.phone = obState.phone;
+  RESTAURANT.address = obState.address;
+  RESTAURANT.logoDataUrl = obState.logoPhoto;
+  RESTAURANT.coverDataUrl = obState.coverPhoto;
+  RESTAURANT.delivery.enabled = obState.deliveryEnabled;
+  // Vérifié contre la VRAIE base juste avant l'insertion — jamais
+  // seulement contre la petite liste locale utilisée pour l'aperçu
+  // pendant la saisie (voir resolveUniqueSlugForCreation).
+  RESTAURANT.slug = await resolveUniqueSlugForCreation(obState.restoName);
+  if(!RESTAURANT.slug){
+    toast('Ce nom est déjà utilisé pour un lien public. Choisissez un autre nom.');
+    return null;
+  }
+  RESTAURANT.name = obState.restoName;
+  applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
+  applyRestaurantName(obState.restoName);
+
+  // Machine à états de l'abonnement — réelle, pas décorative :
+  // 'plan' enregistre le CHOIX du client (Gratuit / Starter / Premium) ;
+  // mais un forfait payant ne devient réellement actif
+  // (subscription_status='active') qu'après confirmation RÉELLE du
+  // paiement PayTech (voir paytech-webhook) — jamais au moment de la
+  // simple sélection. En attendant cette confirmation, le statut est
+  // 'pending_payment', et isPremiumActive()/isPaidPlanActive() restent
+  // faux tant qu'il n'est pas passé à 'active'. Aucun essai gratuit
+  // n'est accordé sur Starter/Premium, conformément à la consigne.
+  RESTAURANT.billingCycle = 'monthly';
+  if(obState.plan === 'free'){
+    RESTAURANT.subscriptionStatus = 'trialing';
+    RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
+    RESTAURANT.currentPeriodEnd = null;
+  } else {
+    RESTAURANT.subscriptionStatus = 'pending_payment';
+    RESTAURANT.trialEndsAt = null;
+    RESTAURANT.currentPeriodEnd = null;
+  }
+
+  // Création réelle du restaurant via une fonction RPC côté serveur
+  // (voir create_my_restaurant dans supabase_schema.sql). Le client
+  // n'envoie JAMAIS owner_id — la fonction calcule elle-même auth.uid()
+  // à partir du token de LA REQUÊTE, ce qui rend structurellement
+  // impossible le décalage "id local ≠ id réellement authentifié" qui
+  // provoquait le rejet RLS "new row violates row-level security
+  // policy for table restaurants". RLS reste pleinement actif ; cette
+  // fonction est appelable avec la clé publishable normale, par un
+  // utilisateur connecté uniquement — aucune clé service_role.
+  let data, error;
+  for(let attempt=0; attempt<3; attempt++){
+    ({data, error} = await supabaseClient.rpc('create_my_restaurant', {
+      p_name:RESTAURANT.name, p_slug:RESTAURANT.slug, p_type:RESTAURANT.type,
+      p_logo_data_url:RESTAURANT.logoDataUrl, p_cover_data_url:RESTAURANT.coverDataUrl,
+      p_primary_color:RESTAURANT.primary, p_secondary_color:RESTAURANT.secondary, p_text_color:RESTAURANT.textColor,
+      p_address:RESTAURANT.address, p_city:RESTAURANT.city, p_phone:RESTAURANT.phone,
+      p_hours:RESTAURANT.hours, p_delivery:RESTAURANT.delivery, p_social:RESTAURANT.social,
+      p_payment_toggles:state.toggles, p_plan:state.plan,
+      p_subscription_status:RESTAURANT.subscriptionStatus, p_billing_cycle:RESTAURANT.billingCycle,
+      p_trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
+      p_current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
+    }));
+    if(!error) break;
+    if(error.code === '23505' && /slug/i.test(error.message||'')){
+      toast('Ce nom est déjà utilisé. Choisissez un autre nom de restaurant.');
+    }
+    break; // aucune variante automatique : un restaurant = un nom/lien choisi explicitement
+  }
+  // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
+  // on gère aussi le cas où PostgREST le renverrait dans un tableau
+  // d'un élément, selon la version.
+  const restaurantRow = Array.isArray(data) ? data[0] : data;
+
+  if(error || !restaurantRow){
+    // On ne prétend JAMAIS que la création a réussi si Supabase l'a
+    // refusée — pas de redirection vers le tableau de bord, pas de
+    // toast de succès qui écraserait visuellement ce message d'erreur.
+    // Le message affiché au client ne mentionne jamais "Supabase" —
+    // c'est un détail d'infrastructure interne, pas quelque chose que
+    // l'utilisateur a besoin de voir. Les fonctions RPC (comme
+    // create_my_restaurant) renvoient déjà des messages rédigés pour
+    // être lus directement par une personne (ex: "Ce compte a déjà un
+    // restaurant."), donc on les affiche tels quels plutôt que de les
+    // envelopper dans une phrase technique.
+    RESTAURANT.created = false;
+    toast(error ? error.message : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
+    return null;
+  }
+
+  RESTAURANT.id = restaurantRow.id;
+  // Par défaut, l'adresse de réception des commandes est celle du compte créateur.
+  // Elle devient ensuite indépendante et modifiable depuis Paramètres après vérification.
+  RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
+  RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
+  RESTAURANT.orderNotificationEmailPending = '';
+  // Un restaurant nouvellement créé doit être accessible immédiatement
+  // depuis son lien public et son QR Code.
+  RESTAURANT.isPublished = true;
+  await persistRestaurant();
+  viewerIsStaff = true;
+  subscribeToOrdersRealtime(RESTAURANT.id);
+  subscribeToReviewsRealtime(RESTAURANT.id);
+  // Catégories par défaut, créées une seule fois avec le restaurant.
+  const catRows = Object.entries(catsState).map(([key,label],i) => ({
+    restaurant_id: RESTAURANT.id, key, label, sort_order:i,
+  }));
+  if(catRows.length){
+    const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
+    if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
+  }
+
+  return restaurantRow;
+}
+
+/* Écran affiché à la toute dernière étape si l'e-mail n'est pas encore
+   confirmé — remplace la tentative de création (qui échouerait de
+   toute façon sans session) par une explication claire. Les données
+   sont déjà sauvegardées (voir savePendingOnboarding) : dès que la
+   personne clique sur le lien reçu par e-mail, restoreSession() les
+   retrouve automatiquement et termine la création sans rien
+   redemander. */
+function renderOnboardingEmailPendingScreen(){
+  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
+  otpPendingName=obState.accountName||'';
+  otpPendingSource='onboarding';
+  renderOnboardingOtpScreen();
+}
+async function resendOnboardingConfirmationEmail(){
+  otpPendingEmail=obState.pendingEmail||obState.accountEmail;
+  otpPendingName=obState.accountName||'';
+  otpPendingSource='onboarding';
+  return resendSignupOtp();
+}
+/* Échappement minimal pour du texte inséré dans un attribut/contenu
+   HTML généré ici — évite qu'un nom de restaurant ou un e-mail
+   contenant des caractères spéciaux ne casse le balisage. */
+function escapeAttr(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function finishOnboarding(){
+  if(obState.emailConfirmationPending){
+    savePendingOnboarding();
+    renderOnboardingEmailPendingScreen();
+    return;
+  }
+  const btn = document.getElementById('obFinishBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
+  const row = await createRestaurantFromOnboarding();
+  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
+  if(!row) return;
+
+  clearPendingOnboarding();
+  setView('dashboard');
+  setDashSection('overview');
+  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est maintenant accessible publiquement.`, true);
+}
+
+/* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
+   subscription_status='pending_payment' — jamais actif tout de suite),
+   puis lance IMMÉDIATEMENT PayTech pour ce restaurant. L'accès aux
+   fonctionnalités payantes reste bloqué (isPremiumActive/isPaidPlanActive)
+   tant que paytech-webhook n'a pas confirmé le paiement et fait passer
+   subscription_status à 'active' — jamais avant, jamais parce que ce
+   bouton a simplement été cliqué. Réutilise l'infrastructure PayTech
+   déjà déployée (fonction Edge "paytech-checkout"), sans la modifier. */
+async function createRestaurantAndPay(){
+  if(obState.emailConfirmationPending){
+    savePendingOnboarding();
+    renderOnboardingEmailPendingScreen();
+    return;
+  }
+  const planName = obState.plan==='pro' ? 'Premium' : 'Starter';
+  const price = priceForPlan(obState.plan);
+  const btn = document.getElementById('obPayBtn');
+  if(btn){ btn.disabled = true; btn.innerHTML = 'Création de votre restaurant…'; }
+
+  const row = await createRestaurantFromOnboarding();
+  if(!row){
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    return;
+  }
+  clearPendingOnboarding();
+
+  if(btn) btn.innerHTML = 'Redirection vers PayTech…';
+  // Le montant réellement facturé est déterminé côté serveur par
+  // paytech-checkout à partir de "plan" (le forfait explicitement
+  // choisi ici, jamais une valeur fixe côté client) — cette fonction
+  // Edge n'est pas modifiée depuis ce fichier, elle est seulement
+  // appelée avec le bon forfait.
+  const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
+    body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
+  });
+  if(error || !data || !data.redirect_url){
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
+    viewerIsStaff = true;
+    setView('dashboard');
+    setDashSection('abonnement');
+    return;
+  }
+  window.location.href = data.redirect_url;
+}
+
+function renderOnboarding(){
+  document.getElementById('obProgress').innerHTML = OB_STEPS.map((label,i)=>`
+    <div class="flex-col items-center" style="flex:1;min-width:74px;">
+      <div class="flex items-center w-full">
+        <span onclick="${i<obState.step?`obGoStep(${i})`:''}" style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${i<obState.step?'cursor:pointer;':''}
+          background:${i<obState.step?'var(--forest)':i===obState.step?'var(--amber-deep)':'#fff'};
+          color:${i<=obState.step?'#fff':'var(--ink-faint)'};
+          border:1px solid ${i<=obState.step?'transparent':'var(--cream-line)'};" title="${i<obState.step?'Revenir à cette étape':''}">${i<obState.step?ic('check',13,{stroke:'#fff'}):i+1}</span>
+        ${i<OB_STEPS.length-1?`<span style="height:1px;flex:1;background:${i<obState.step?'var(--forest)':'var(--cream-line)'};"></span>`:''}
+      </div>
+    </div>`).join('') + `<style>#obProgress > div:last-child span[style*="flex:1"]{display:none;}</style>`;
+
+  document.getElementById('obCard').innerHTML = obStepHtml();
+  hydrateIcons(document.getElementById('obCard'));
+  if(obState.step===1) updateSlugPreview();
+
+}
+
+function updateSlugPreview(){
+  const el = document.getElementById('obSlugPreview');
+  if(!el) return;
+  const name = obState.restoName.trim();
+  if(!name){
+    el.innerHTML = `<p style="font-size:11.5px;color:var(--ink-faint);">Votre adresse publique apparaîtra ici — générée automatiquement.</p>`;
+    return;
+  }
+  const { candidate, wasTaken } = (() => {
+    const r = generateUniqueSlug(name);
+    return { candidate: r.slug, wasTaken: r.wasTaken };
+  })();
+  obState.slug = candidate;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;">
+      ${ic('link',13,{stroke:'var(--forest)'})}
+      <span style="color:var(--ink-soft);">Votre sous-domaine, une fois publié :</span>
+      <span class="font-tabular" style="font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(candidate)}</span>
+    </div>
+    ${wasTaken ? `<p style="font-size:11px;color:var(--amber-deep);margin-top:4px;">« ${slugify(name)} » est déjà pris — nous avons généré cette variante disponible.</p>` : ''}`;
+  hydrateIcons(el);
+}
+
+function obStepHtml(){
+  const o = obState;
+  const step = o.step;
+
+  if(step===0) return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre compte</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Première étape — indépendante de la gestion de votre restaurant.</p>
+    <label class="field-label">Nom complet</label>
+    <input class="field-input" style="margin-bottom:12px;" placeholder="Fatou Diop" value="${o.accountName}" oninput="obField('accountName',this.value)">
+    <label class="field-label">E-mail</label>
+    <input class="field-input" style="margin-bottom:12px;" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
+    <label class="field-label">Mot de passe</label>
+    <div style="position:relative;">
+      <input class="field-input" id="obAccountPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" value="${o.accountPassword}" oninput="obField('accountPassword',this.value);renderPasswordStrength(this.value,'obPwStrength')">
+      <button type="button" onclick="togglePasswordVisibility('obAccountPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+    </div>
+    <div id="obPwStrength" style="margin-bottom:6px;"></div>
+    ${obNav(false)}`;
+
+  if(step===1) return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre restaurant</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Ces informations seront visibles sur votre page publique.</p>
+    <label class="field-label">Nom du restaurant</label>
+    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="TerangaResto.com" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
+    <div id="obSlugPreview" style="margin-bottom:14px;"></div>
+    <label class="field-label">Type de restaurant</label>
+    <select class="field-input" style="margin-bottom:12px;" onchange="obField('restoType',this.value)">
+      ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${o.restoType===t?'selected':''}>${t}</option>`).join('')}
+    </select>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+      <div><label class="field-label">Ville</label><input class="field-input" value="${o.city}" oninput="obField('city',this.value)"></div>
+      <div><label class="field-label">Téléphone</label><input class="field-input" placeholder="+221 77 000 00 00" value="${o.phone}" oninput="obField('phone',this.value)"></div>
+    </div>
+    ${obNav(true)}`;
+
+  if(step===2){
+    return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Logo et couverture</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Facultatif — vous pourrez les ajouter ou les modifier à tout moment depuis Paramètres.</p>
+
+    <p class="field-label">Logo et couverture (facultatif)</p>
+    <div class="flex gap-3">
+      <div style="position:relative;width:76px;height:76px;flex-shrink:0;">
+        <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">
+          ${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}
+        </button>
+        ${o.logoPhoto?`<button type="button" aria-label="Supprimer le logo" title="Supprimer le logo" onclick="obField('logoPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
+      </div>
+      <div style="position:relative;flex:1;height:76px;">
+        <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="width:100%;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">
+          ${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}
+        </button>
+        ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
+      </div>
+    </div>
+    ${obNav(true)}`;
+  }
+
+  if(step===3) return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Configuration</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Adresse, livraison et moyens de paiement acceptés.</p>
+    <label class="field-label">Adresse</label>
+    <input class="field-input" style="margin-bottom:14px;" placeholder="Rue 12, Point E" value="${o.address}" oninput="obField('address',this.value)">
+    <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
+      <span style="font-size:13px;font-weight:500;">Livraison activée</span>
+      <div class="toggle ${o.deliveryEnabled?'on':''}" onclick="obField('deliveryEnabled',!obState.deliveryEnabled);renderOnboarding();"><div class="dot"></div></div>
+    </div>
+    <p class="field-label">Moyens de paiement acceptés par vos clients</p>
+    <div class="flex-col gap-2">
+      ${['cash','on_delivery','wave','orange_money'].map(m=>`
+        <div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:12px;padding:9px 12px;">
+          ${paymentMark(m,26)}<span style="flex:1;font-size:13px;">${PAYMENT_LABELS[m]}</span>
+          <div class="toggle ${o.paymentToggles[m]?'on':''}" onclick='obTogglePayMethod("${m}")'><div class="dot"></div></div>
+        </div>`).join('')}
+    </div>
+    ${obNav(true)}`;
+
+  if(step===4){
+    const plans = [
+      {code:'free',name:'Gratuit',price:0,duration:'10 jours',features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
+      {code:'starter',name:'Starter',price:STARTER_PRICE,features:['Catalogue et commandes illimités','QR Code personnalisé','Paiement à la livraison & espèces','Gestion essentielle du restaurant']},
+      {code:'pro',name:'Premium',price:PREMIUM_PRICE,features:['Tout Starter','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
+    ];
+    return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Ce choix est le vôtre — rien n'est présélectionné. Gratuit est un essai limité à 10 jours. Starter et Premium se paient immédiatement par PayTech, à l'étape suivante — aucun essai gratuit sur ces forfaits.</p>
+    <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
+      ${plans.map(p=>`<button class="ob-plan-card" onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
+        <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
+        <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(p.price)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
+        ${p.duration?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:600;margin-bottom:8px;">${p.duration}</p>`:'<p style="margin-bottom:10px;"></p>'}
+        ${p.features.map(f=>`<p style="font-size:10.5px;color:var(--ink-soft);margin-bottom:3px;display:flex;align-items:center;gap:5px;">${ic('check',11,{stroke:'var(--forest)'})}${f}</p>`).join('')}
+      </button>`).join('')}
+    </div>
+    ${!o.plan ? `<p style="font-size:11px;color:var(--terracotta);margin-top:10px;">Choisissez un forfait pour continuer.</p>` : ''}
+    ${obNav(true)}`;
+  }
+
+  if(step===5){
+    const planName = o.plan==='pro' ? 'Premium' : 'Starter';
+    const price = priceForPlan(o.plan);
+    return `
+    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement — Forfait ${planName}</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — ${fmt(price)}/mois</p>
+    <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
+      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
+    </div>
+    <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
+    <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
+  }
+
+  if(step===6) return `
+    <div class="text-center">
+      <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est prêt à être créé</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site public est activé automatiquement dès la création.</p>
+      <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
+        ${ic('link',15,{stroke:'var(--forest)'})}
+        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
+      </div>
+      <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
+        <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
+        <p style="font-size:12.5px;margin-top:6px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ajouter vos catégories et produits</p>
+        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
+        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ouvrir votre site public</p>
+      </div>
+      <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Créer mon restaurant ${ic('arrowRight',16)}</button>
+    </div>`;
+
+  return '';
+}
+
+function obTogglePayMethod(m){ obState.paymentToggles[m] = !obState.paymentToggles[m]; renderOnboarding(); }
+
+function obNav(showBack){
+  return `<div class="flex gap-3" style="margin-top:22px;">
+    ${showBack?`<button class="btn btn-outline" onclick="obPrev()">${ic('arrowLeft',16)}</button>`:''}
+    <button class="btn btn-secondary" id="obNextBtn" style="flex:1;" onclick="obNext()">Continuer ${ic('arrowRight',16)}</button>
+  </div>`;
+}
+function obNavBackOnly(){ return `<button class="btn btn-outline w-full" onclick="obPrev()">${ic('arrowLeft',15)} Retour</button>`; }
+</script>
+
+<script>
+/* ---------------- HERO / FOOTER — rendus depuis RESTAURANT (synchronisation réelle) ---------------- */
+function renderStorefrontHero(){
+  // Bouton "Tableau de bord" — UNIQUEMENT si le visiteur actuel est
+  // réellement le propriétaire/personnel de CE restaurant (viewerIsStaff),
+  // jamais simplement parce qu'un restaurant est chargé en mémoire — un
+  // visiteur anonyme arrivant via le lien public/QR Code d'un restaurant
+  // PUBLIÉ ne doit JAMAIS voir ce bouton, même si RESTAURANT.created
+  // est vrai (ce qui est le cas pour n'importe quel restaurant chargé,
+  // y compris pour un visiteur public — voir loadRestaurantIntoState).
+  const ownerBtn = document.getElementById('ownerBackBtn');
+  if(ownerBtn) ownerBtn.classList.toggle('hidden', !viewerIsStaff);
+
+  // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
+  // icône générique. Nom du restaurant à côté, comme le thème d'origine.
+  const logoHtml = (RESTAURANT.logoDataUrl
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
+    : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
+  document.getElementById('tgLogo').innerHTML = logoHtml;
+  document.getElementById('tgMobileLogo').innerHTML = logoHtml;
+  document.querySelectorAll('#view-storefront .resto-name').forEach(el=>el.textContent = RESTO_NAME);
+
+  // Hero — une seule image par défaut (RESTAURANT.coverDataUrl), titre et
+  // sous-titre personnalisables (RESTAURANT.heroTitle/heroSubtitle),
+  // sinon un texte générique honnête plutôt qu'un faux storytelling.
+  document.getElementById('tgHeroBg').style.backgroundImage = RESTAURANT.coverDataUrl
+    ? `url('${RESTAURANT.coverDataUrl}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
+  document.getElementById('tgHeroTitle').textContent = RESTAURANT.heroTitle || `Bienvenue chez ${RESTO_NAME}`;
+  document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
+  document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
+
+  // Catalogues affichés sur l'accueil — uniquement ceux que le
+  // restaurateur a choisi de rendre visibles (catsHomeVisible), jamais
+  // la totalité automatiquement (voir Catégories dans le tableau de
+  // bord). Chaque carte utilise la photo du premier produit actif de
+  // cette catégorie comme couverture, à défaut d'une couverture dédiée
+  // par catalogue (fonctionnalité non encore construite — voir résumé).
+  const catsSection = document.getElementById('tgCategoriesSection');
+  const homeCats = Object.keys(catsState).filter(c => catsHomeVisible[c] !== false);
+  if(homeCats.length === 0){
+    catsSection.style.display = 'none';
+  } else {
+    catsSection.style.display = '';
+    document.getElementById('tgCategories').innerHTML =
+      `<div class="category-item ${state.activeCategory==='all'?'active':''}" onclick="setActiveCategory('all')">
+        <div class="category-img" style="display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid fa-border-all" style="color:var(--primary);font-size:1.3rem;"></i></div>
+        <span class="category-name">Tout</span>
+      </div>` +
+      homeCats.map(c=>{
+        const cover = (PRODUCTS.find(p=>p.cat===c && p.active && p.photo)||{}).photo;
+        return `<div class="category-item ${state.activeCategory===c?'active':''}" onclick="setActiveCategory('${c}')">
+          <div class="category-img">${cover?`<img src="${cover}" alt="${catsState[c]}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
+          <span class="category-name">${catsState[c]}</span>
+        </div>`;
+      }).join('');
+  }
+
+  // Horaires — vraies données (Paramètres → Horaires)
+  const openPill = document.getElementById('tgOpenStatus');
+  const open = isOpenNow();
+  openPill.innerHTML = `<span class="pill ${open?'pill-forest':'pill-terracotta'}" style="margin-bottom:1rem;">${open?'Ouvert maintenant':'Fermé actuellement'}</span>`;
+  document.getElementById('tgHoursList').innerHTML = RESTAURANT.hours.map((h,i)=>
+    `<li class="hours-item"><span>${DAY_LABELS_FULL[i]}</span><strong>${h.open ? h.from+' - '+h.to : 'Fermé'}</strong></li>`
+  ).join('');
+
+  // Contact — vraies données (Paramètres)
+  document.getElementById('sfFooterInfo').innerHTML = `
+    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
+    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${RESTAURANT.phone}</p>` : ''}`;
+
+  // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
+  // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
+  function normalizeUrl(v){
+    v = (v||'').trim();
+    if(!v) return '#';
+    return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+  }
+  const socialHrefMap = {
+    whatsapp: whatsappLink(),
+    instagram: normalizeUrl(RESTAURANT.social.instagram.value),
+    tiktok: normalizeUrl(RESTAURANT.social.tiktok.value),
+    facebook: normalizeUrl(RESTAURANT.social.facebook.value),
+  };
+  const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
+  document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
+    `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
+  ).join('');
+
+  // Localisation — vraie carte intégrée (iframe Google Maps sans clé
+  // API, construite à partir de l'adresse RÉELLEMENT enregistrée par le
+  // restaurateur — jamais une adresse inventée ni un lieu par défaut).
+  // Le lien "Voir sur Google Maps" utilise le lien explicite du
+  // restaurateur s'il existe, sinon une recherche construite sur la
+  // même adresse réelle, pour ne jamais afficher un lien mort.
+  const mapEl = document.getElementById('sfMapContainer');
+  const mapQuery = [RESTAURANT.name, RESTAURANT.address, RESTAURANT.city].filter(Boolean).join(', ').trim();
+  if(RESTAURANT.showMap && mapQuery){
+    const mapLinkHref = RESTAURANT.mapsLink.trim() ? normalizeUrl(RESTAURANT.mapsLink) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+    mapEl.innerHTML = `
+      <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);margin-top:0.75rem;">
+        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${RESTO_NAME}"></iframe>
+      </div>
+      <a href="${mapLinkHref}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Itinéraire sur Google Maps</a>`;
+  } else {
+    mapEl.innerHTML = '';
+  }
+
+  // Cadenas de brouillon/expiration — recalculé ici aussi, car ce
+  // header/hero peut se redessiner sans repasser par setView().
+  renderStorefrontGateOverlay();
+  hydrateIcons(document.getElementById('view-storefront'));
+}
+
+/* Menu mobile du thème public — indépendant du menu hamburger de la
+   plateforme (masqué sur le site public, voir body.storefront-active). */
+function openTgMobileMenu(){
+  document.getElementById('tgMobileMenu').classList.add('open');
+  document.getElementById('tgOverlay').classList.add('active');
+}
+function closeTgMobileMenu(){
+  document.getElementById('tgMobileMenu').classList.remove('open');
+  document.getElementById('tgOverlay').classList.remove('active');
+}
+
+/* ---------------- PRODUCTS ---------------- */
+function setActiveCategory(cat){
+  state.activeCategory = cat;
+  renderStorefrontHero(); // redessine la barre de catégories avec la bonne surbrillance
+  renderProductSections();
+  document.getElementById('tgMenu').scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* Barre de recherche réelle, sur les vrais produits du restaurant —
+   pas de re-rendu complet de l'input à chaque frappe (juste la grille
+   de résultats), pour ne jamais faire sauter le curseur pendant la
+   saisie. */
+function tgSearchProducts(q){
+  state.storefrontSearch = q;
+  renderProductSections();
+}
+
+function productCardHtml(p){
+  return `
+  <div class="product-card" style="${!p.available?'opacity:.6;':''}">
+    <div class="product-img-wrapper" onclick='openProductModal("${p.id}")'>
+      ${p.photo ? `<img src="${p.photo}" alt="${p.name}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
+      ${!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : ''}
+    </div>
+    <div class="product-content">
+      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${p.name}</h3>
+      <p class="product-desc">${p.desc||''}</p>
+      <div class="product-footer">
+        <span class="product-price">${fmt(p.price)}</span>
+        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderProductSections(){
+  const visible = PRODUCTS.filter(p=>p.active);
+  let items = state.activeCategory==='all' ? visible : visible.filter(p=>p.cat===state.activeCategory);
+  const q = (state.storefrontSearch||'').trim().toLowerCase();
+  if(q){
+    items = items.filter(p => p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q));
+  }
+  document.getElementById('sfProductSections').innerHTML = items.length ? items.map(productCardHtml).join('') : `
+    <div class="no-results" style="grid-column:1/-1;"><i class="fa-solid fa-utensils" style="font-size:2.5rem;margin-bottom:0.8rem;color:#CCC;"></i><h3>${q?'Aucun plat ne correspond à votre recherche.':'Aucun plat disponible pour le moment.'}</h3></div>`;
+
+  // Meilleures ventes — calculées à partir des VRAIES commandes déjà
+  // passées sur ce restaurant (jamais un badge "populaire" inventé).
+  // Section masquée tant qu'il n'y a pas encore assez de données réelles.
+  const tally = {};
+  DEMO_ORDERS.forEach(o=>(o.items||[]).forEach(it=>{
+    const [name, qty] = orderItemNameQty(it);
+    tally[name] = (tally[name]||0) + qty;
+  }));
+  const topNames = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([name])=>name);
+  const bestSellers = topNames.map(name => visible.find(p=>p.name===name)).filter(Boolean);
+  const bsSection = document.getElementById('tgBestSellersSection');
+  if(bestSellers.length === 0){
+    bsSection.style.display = 'none';
+  } else {
+    bsSection.style.display = '';
+    document.getElementById('tgBestSellers').innerHTML = bestSellers.map(productCardHtml).join('');
+  }
+
+  hydrateIcons();
+}
+
+
+/* ---------------- PRODUCT MODAL ---------------- */
+let modalProduct = null, modalVariant = null, modalQty = 1;
+
+function openProductModal(id){
+  modalProduct = PRODUCTS.find(p=>p.id===id);
+  if(!modalProduct.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
+  modalVariant = modalProduct.variantsRequired ? null : (modalProduct.variants[0] || null);
+  modalQty = 1;
+  renderProductModal();
+  document.getElementById('productModalOverlay').classList.remove('hidden');
+}
+function closeProductModal(){ document.getElementById('productModalOverlay').classList.add('hidden'); }
+function setModalVariant(idx){ modalVariant = idx===-1 ? null : modalProduct.variants[idx]; renderProductModal(); }
+function setModalQty(delta){ modalQty = Math.max(1, modalQty+delta); renderProductModal(); }
+
+function renderProductModal(){
+  const p = modalProduct;
+  const unit = p.price + (modalVariant?modalVariant.delta:0);
+  document.getElementById('productModalBody').innerHTML = `
+    <div style="position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;overflow:hidden;">
+      ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
+      <button onclick="closeProductModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;">${ic('x',16)}</button>
+    </div>
+    <div style="padding:22px;">
+      <h2 class="font-display" style="font-size:20px;">${p.name}</h2>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${p.desc || 'Aucune description pour le moment.'}</p>
+      <p style="font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">${ic('clock',13)}Préparation : ${p.prep} min</p>
+      ${p.variants.length ? `<p style="font-size:13.5px;font-weight:600;margin:16px 0 8px;">Options ${p.variantsRequired?'<span style="color:var(--terracotta);font-weight:500;font-size:11.5px;">· obligatoire</span>':'<span style="color:var(--ink-faint);font-weight:500;font-size:11.5px;">· facultatif</span>'}</p>
+        <div class="flex-col gap-2">
+          ${p.variants.map((v,i)=>`<button onclick="setModalVariant(${i})" style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:14px;border:2px solid ${modalVariant===v?'var(--amber-deep)':'var(--cream-line)'};${modalVariant===v?'background:rgba(232,135,30,.06);':''}">
+            <span style="font-size:13.5px;">${v.name}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
+        </div>
+        ${p.variantsRequired && !modalVariant ? `<p style="font-size:11.5px;color:var(--terracotta);margin-top:6px;">Choisissez une option pour continuer.</p>`:''}` : ''}
+      <div class="flex items-center justify-between" style="margin-top:18px;">
+        <span style="font-size:13.5px;font-weight:600;">Quantité</span>
+        <div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:999px;padding:4px 8px;">
+          <button onclick="setModalQty(-1)" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${ic('minus',14)}</button>
+          <span class="font-tabular" style="width:16px;text-align:center;">${modalQty}</span>
+          <button onclick="setModalQty(1)" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;">${ic('plus',14)}</button>
+        </div>
+      </div>
+    </div>
+    <div style="position:sticky;bottom:0;background:#fff;border-top:1px solid var(--cream-line);padding:16px 22px;">
+      <button class="btn btn-secondary btn-lg w-full" onclick="addToCartFromModal()" ${p.variantsRequired && !modalVariant ? 'style="opacity:.5;cursor:not-allowed;"' : ''}>Ajouter · ${fmt(unit*modalQty)}</button>
+    </div>`;
+  hydrateIcons(document.getElementById('productModalBody'));
+}
+
+/* Ajout rapide depuis la grille produits (bouton "+") — n'ouvre PLUS
+   systématiquement la fiche produit : ajoute directement au panier si
+   le produit n'a pas de variante ou si sa variante est facultative
+   (avec la configuration par défaut déjà prévue ailleurs dans le
+   projet — la première variante de la liste). N'ouvre l'interface de
+   sélection (la fiche produit elle-même, déjà légère) QUE si une
+   variante est réellement obligatoire, pour ne jamais ajouter un
+   article dont la configuration serait ambiguë. */
+function quickAddToCart(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!p) return;
+  if(!p.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
+  const hasVariants = p.variants && p.variants.length > 0;
+  if(hasVariants && p.variantsRequired){
+    openProductModal(id);
+    return;
+  }
+  const defaultVariant = hasVariants ? p.variants[0] : null;
+  const key = p.id + '::' + (defaultVariant ? defaultVariant.name : '');
+  const existing = state.cart.find(l=>l.key===key);
+  if(existing){ existing.qty += 1; }
+  else{ state.cart.push({key, id:p.id, name:p.name, price:p.price, variant:defaultVariant, qty:1, cat:p.cat, photo:p.photo}); }
+  updateFloatingCartButton();
+  toast(ic('checkCircle',14)+` ${p.name} ajouté au panier.`, true);
+}
+
+function addToCartFromModal(){
+  const p = modalProduct;
+  if(p.variants.length && p.variantsRequired && !modalVariant){
+    toast('Choisissez une option avant d\'ajouter au panier.');
+    return;
+  }
+  const key = p.id + '::' + (modalVariant?modalVariant.name:'');
+  const existing = state.cart.find(l=>l.key===key);
+  if(existing){ existing.qty += modalQty; }
+  else{ state.cart.push({key,id:p.id,name:p.name,price:p.price,variant:modalVariant,qty:modalQty,cat:p.cat,photo:p.photo}); }
+  closeProductModal();
+  updateFloatingCartButton();
+  openCart();
+}
+
+/* ---------------- CART ---------------- */
+function cartLineTotal(l){ return (l.price + (l.variant?l.variant.delta:0)) * l.qty; }
+function cartSubtotal(){ return state.cart.reduce((s,l)=>s+cartLineTotal(l),0); }
+function cartCount(){ return state.cart.reduce((s,l)=>s+l.qty,0); }
+
+function updateFloatingCartButton(){
+  const count = cartCount();
+  const btn = document.getElementById('floatingCartBtn');
+  if(!btn) return;
+  btn.classList.toggle('hidden', count===0);
+  document.getElementById('cartCountBadge').textContent = count;
+  document.getElementById('cartTotalBadge').textContent = fmt(cartSubtotal());
+}
+
+function openCart(){ renderCart(); document.getElementById('cartDrawerOverlay').classList.remove('hidden'); }
+function closeCart(){ document.getElementById('cartDrawerOverlay').classList.add('hidden'); }
+
+function changeLineQty(key, delta){
+  const line = state.cart.find(l=>l.key===key);
+  line.qty += delta;
+  if(line.qty<=0) state.cart = state.cart.filter(l=>l.key!==key);
+  renderCart(); updateFloatingCartButton();
+}
+function removeLine(key){ state.cart = state.cart.filter(l=>l.key!==key); renderCart(); updateFloatingCartButton(); }
+
+function renderCart(){
+  const linesEl = document.getElementById('cartLines');
+  const footerEl = document.getElementById('cartFooter');
+  if(state.cart.length===0){
+    linesEl.innerHTML = `<div class="empty-state">${ic('bag',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Votre panier est vide.</p></div>`;
+    footerEl.innerHTML = '';
+    hydrateIcons(linesEl);
+    return;
+  }
+  linesEl.innerHTML = state.cart.map(l=>`
+    <div class="flex gap-3" style="margin-bottom:16px;">
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${l.photo ? `<img src="${l.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[l.cat]||'utensils',22,{stroke:'var(--amber-deep)'})}</div>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13.5px;font-weight:600;">${l.name}</p>
+        ${l.variant?`<p style="font-size:11.5px;color:var(--ink-faint);">${l.variant.name}</p>`:''}
+        <div class="flex items-center justify-between" style="margin-top:6px;">
+          <div class="flex items-center gap-2" style="border:1px solid var(--cream-line);border-radius:999px;padding:2px 8px;">
+            <button onclick="changeLineQty('${l.key}',-1)" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('minus',12)}</button>
+            <span class="font-tabular" style="font-size:12px;width:14px;text-align:center;">${l.qty}</span>
+            <button onclick="changeLineQty('${l.key}',1)" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('plus',12)}</button>
+          </div>
+          <span class="font-tabular" style="font-size:13px;">${fmt(cartLineTotal(l))}</span>
+        </div>
+      </div>
+      <button onclick="removeLine('${l.key}')" style="color:var(--terracotta);height:fit-content;">${ic('trash',15)}</button>
+    </div>`).join('');
+
+  const sub = cartSubtotal();
+  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
+  footerEl.innerHTML = `
+    <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);margin-bottom:6px;"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
+    <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-bottom:14px;"><span>Total</span><span class="font-tabular">${fmt(sub+deliveryFee)}</span></div>
+    <button class="btn btn-secondary btn-lg w-full" onclick="closeCart();openCheckout();">Commander</button>`;
+  hydrateIcons(linesEl);
+}
+
+/* ---------------- CHECKOUT ---------------- */
+function openCheckout(){
+  if(state.cart.length===0){ toast('Votre panier est vide.'); return; }
+  state.checkoutStep = 0;
+  state.checkout.tableError = '';
+  renderCheckout();
+  document.getElementById('checkoutOverlay').classList.remove('hidden');
+}
+function closeCheckout(){ document.getElementById('checkoutOverlay').classList.add('hidden'); }
+
+function ckField(key,val){
+  state.checkout[key]=val;
+  // Si le mode de commande ou le mode de livraison change, un moyen de
+  // paiement déjà choisi peut devenir incompatible (ex: passage de
+  // "Livraison du restaurant" à "Express") — on l'efface pour forcer un
+  // nouveau choix parmi les options réellement valides, plutôt que de
+  // laisser passer une sélection devenue impossible.
+  if((key==='orderType' || key==='deliveryMode') && state.checkout.payment){
+    if(!availablePaymentMethods().includes(state.checkout.payment)) state.checkout.payment = null;
+  }
+}
+function ckTableInput(val){
+  const digitsOnly = val.replace(/\D/g,'');
+  state.checkout.table = digitsOnly;
+  state.checkout.tableError = (val!==digitsOnly) ? 'Chiffres uniquement, par exemple 1, 2, 10 ou 25.' : '';
+  renderCheckout();
+}
+/* Téléphone client : chiffres 0-9 uniquement — lettres, espaces, "+" et
+   symboles sont retirés au fur et à mesure de la saisie. oninput se
+   déclenche aussi après un collage, donc un numéro collé avec des
+   espaces ou un préfixe international est nettoyé de la même façon,
+   sans handler séparé. On modifie directement la valeur du champ (pas
+   de re-rendu complet) pour ne jamais faire sauter la position du
+   curseur pendant la frappe. */
+function ckPhoneInput(input){
+  const digitsOnly = input.value.replace(/\D/g,'');
+  if(input.value !== digitsOnly) input.value = digitsOnly;
+  state.checkout.phone = digitsOnly;
+}
+function ckNext(){
+  const c = state.checkout;
+  if(state.checkoutStep===0 && (!c.firstName||!c.lastName||!c.phone)){ toast('Complétez vos informations.'); return; }
+  if(state.checkoutStep===1 && c.orderType==='dine_in' && !c.table){ toast('Indiquez le numéro de table.'); return; }
+  if(state.checkoutStep===1 && c.orderType==='delivery' && !c.address){ toast("Indiquez l'adresse de livraison."); return; }
+  if(state.checkoutStep===1 && c.orderType==='delivery' && cartSubtotal() < Number(RESTAURANT.delivery.min)){ toast(`Commande minimum pour la livraison : ${fmt(RESTAURANT.delivery.min)}.`); return; }
+  if(state.checkoutStep===2 && !c.payment){ toast('Choisissez un moyen de paiement.'); return; }
+  state.checkoutStep++;
+  renderCheckout();
+}
+function ckPrev(){ state.checkoutStep--; renderCheckout(); }
+
+function renderCheckout(){
+  const c = state.checkout;
+  const step = state.checkoutStep;
+  const sub = cartSubtotal();
+  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
+
+  const progress = `<div class="flex gap-2" style="margin-bottom:24px;">${[0,1,2].map(i=>`<div style="height:4px;flex:1;border-radius:999px;background:${i<=step?'var(--amber-deep)':'var(--cream-line)'};"></div>`).join('')}</div>`;
+
+  let body = '';
+  if(step===0){
+    body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Vos informations</h1>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label class="field-label">Prénom</label><input class="field-input" value="${c.firstName}" oninput="ckField('firstName',this.value)"></div>
+        <div><label class="field-label">Nom</label><input class="field-input" value="${c.lastName}" oninput="ckField('lastName',this.value)"></div>
+      </div>
+      <label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)">`;
+  } else if(step===1){
+    const opts = [['dine_in','utensils','Sur place'],['takeaway','package','À emporter']];
+    if(RESTAURANT.delivery.enabled && enabledDeliveryModes().length>0) opts.push(['delivery','bike','Livraison']);
+    const modes = enabledDeliveryModes();
+    if(c.orderType==='delivery' && !c.deliveryMode && modes.length>0) c.deliveryMode = modes[0];
+    body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Mode de commande</h1>
+      <div class="grid" style="grid-template-columns:repeat(${opts.length},1fr);gap:8px;margin-bottom:16px;">
+        ${opts.map(([key,icon,label])=>`<button onclick="ckField('orderType','${key}');renderCheckout();" style="border:2px solid ${c.orderType===key?'var(--amber-deep)':'var(--cream-line)'};${c.orderType===key?'background:rgba(232,135,30,.06);':''}border-radius:16px;padding:16px 8px;text-align:center;">
+          <div style="display:flex;justify-content:center;color:${c.orderType===key?'var(--amber-deep)':'var(--ink-soft)'};">${ic(icon,22)}</div><div style="font-size:11.5px;font-weight:600;margin-top:6px;">${label}</div></button>`).join('')}
+      </div>
+      ${c.orderType==='dine_in'?`<label class="field-label">Numéro de table</label>
+        <input class="field-input" inputmode="numeric" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this.value)" style="${c.tableError?'border-color:var(--terracotta);':''}">
+        ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${c.tableError}</p>`:''}`:''}
+      ${c.orderType==='delivery'?`
+        ${modes.length>1?`<label class="field-label">Type de livraison</label>
+        <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
+          ${modes.map(mk=>`<button onclick="ckField('deliveryMode','${mk}');renderCheckout();" style="border:2px solid ${c.deliveryMode===mk?'var(--amber-deep)':'var(--cream-line)'};${c.deliveryMode===mk?'background:rgba(232,135,30,.06);':''}border-radius:14px;padding:10px 8px;text-align:center;">
+            <div style="font-size:12px;font-weight:600;">${DELIVERY_MODE_LABELS[mk]}</div>
+            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${fmt(deliveryFeeFor(mk))}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
+          </button>`).join('')}
+        </div>`:''}
+        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${c.address}</textarea>
+        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${fmt(deliveryFeeFor(c.deliveryMode))}</p>`:''}`:''}`;
+  } else if(step===2){
+    const methods = availablePaymentMethods();
+    // Cas 1 — un seul moyen réellement activé par le restaurateur (via
+    // ses vrais paramètres Supabase, jamais codé en dur) : sélectionné
+    // automatiquement, rien à choisir. Cas 2 — plusieurs moyens : le
+    // client choisit, comportement inchangé. Cas 3 — aucun : bloqué
+    // (déjà appliqué par ckNext(), qui refuse d'avancer sans c.payment).
+    if(methods.length === 1 && c.payment !== methods[0]) c.payment = methods[0];
+    body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Paiement</h1>
+      ${methods.length===0?`<div class="card" style="padding:16px;background:rgba(200,60,40,.06);"><p style="font-size:13px;color:var(--terracotta);">Aucun moyen de paiement n'est configuré pour ce type de commande. Le restaurateur doit activer au moins un moyen de paiement (Espèces, Wave, Orange Money…) dans ses paramètres avant de pouvoir recevoir des commandes.</p></div>`
+      : methods.length===1 ? `
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:12px;border:2px solid var(--amber-deep);background:rgba(232,135,30,.05);">
+        ${paymentMark(methods[0],32)}
+        <div style="flex:1;"><p style="font-size:13.5px;font-weight:600;">${PAYMENT_LABELS[methods[0]]}</p><p style="font-size:11.5px;color:var(--ink-faint);">Seul moyen de paiement disponible — sélectionné automatiquement.</p></div>
+        ${ic('checkCircle',20,{stroke:'var(--amber-deep)'})}
+      </div>` : `
+      <div class="flex-col gap-2.5">
+        ${methods.map(m=>`<button onclick="ckField('payment','${m}');renderCheckout();" class="flex items-center gap-3" style="border:2px solid ${c.payment===m?'var(--amber-deep)':'var(--cream-line)'};${c.payment===m?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:12px 16px;width:100%;">
+          ${paymentMark(m,32)}<span style="font-size:13.5px;font-weight:500;">${PAYMENT_LABELS[m]}</span>
+          ${c.payment===m?`<span style="margin-left:auto;">${ic('checkCircle',18,{stroke:'var(--amber-deep)'})}</span>`:''}
+        </button>`).join('')}
+      </div>`}`;
+  } else if(step===3){
+    body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Confirmez votre commande</h1>
+      <div class="card" style="padding:16px;margin-bottom:20px;">
+        ${state.cart.map(l=>`<div class="flex justify-between" style="font-size:13.5px;margin-bottom:8px;"><span style="color:var(--ink-soft);">${l.qty} × ${l.name}${l.variant?' ('+l.variant.name+')':''}</span><span class="font-tabular">${fmt(cartLineTotal(l))}</span></div>`).join('')}
+        <div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;">
+          <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
+          ${fee>0?`<div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);"><span>Livraison</span><span class="font-tabular">${fmt(fee)}</span></div>`:''}
+          <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-top:4px;"><span>Total</span><span class="font-tabular">${fmt(sub+fee)}</span></div>
+        </div>
+      </div>
+      <label class="field-label">Une précision pour le restaurant ? (facultatif)</label>
+      <textarea class="field-input" id="ckNotes" rows="2" placeholder="Ex : sans piment, sonnette cassée, livrer au portail..." style="margin-bottom:18px;" oninput="ckField('notes',this.value)">${c.notes||''}</textarea>
+      <button id="submitOrderBtn" class="btn btn-secondary btn-lg w-full" onclick="submitOrder()">${ic('check',16)} Confirmer la commande</button>`;
+  }
+
+  document.getElementById('checkoutBody').innerHTML = progress + body + `
+    <div class="flex gap-3" style="margin-top:28px;">
+      ${step>0?`<button class="btn btn-outline" onclick="ckPrev()">${ic('arrowLeft',16)}</button>`:''}
+      ${step<3?`<button class="btn btn-secondary" style="flex:1;" onclick="ckNext()">Continuer ${ic('arrowRight',16)}</button>`:''}
+    </div>`;
+  hydrateIcons(document.getElementById('checkoutBody'));
+}
+
+/* Anti-double-commande : un double-clic, un double-tap tactile ou un
+   retry réseau ne doivent jamais créer deux commandes. Le bouton est
+   désactivé dès le premier clic, et un verrou en mémoire ignore toute
+   tentative d'exécution concurrente de submitOrder() pendant qu'une
+   première est encore en cours. */
+let orderSubmitInFlight = false;
+async function submitOrder(){
+  if(orderSubmitInFlight) return;
+  orderSubmitInFlight = true;
+  const btn = document.getElementById('submitOrderBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = 'Envoi de la commande…'; }
+  try{
+    await submitOrderInternal();
+  } catch(e) {
+    // CORRECTION DE LA RÉGRESSION SIGNALÉE : ce bloc n'existait pas
+    // (try/finally seul, sans catch) — toute exception JavaScript
+    // survenant pendant l'envoi (pas seulement une erreur renvoyée par
+    // Supabase, mais une vraie exception) disparaissait en silence
+    // (rejet de promesse non intercepté), sans aucun message à
+    // l'écran. C'est exactement le symptôme "rien ne se passe, aucune
+    // erreur claire" — corrigé : toute défaillance affiche désormais un
+    // message visible, et le panier n'est jamais vidé avant succès réel.
+    console.error('submitOrder — erreur inattendue :', e);
+    toast("Une erreur inattendue a empêché l'envoi de la commande. Votre panier a été conservé — réessayez, et si le problème persiste, contactez le restaurant directement.");
+  } finally {
+    orderSubmitInFlight = false;
+    // Le bouton n'a pas besoin d'être ré-activé après un succès (le
+    // panier est vidé et l'écran de confirmation prend le relais) —
+    // seulement en cas d'échec, pour permettre de réessayer.
+    if(btn && state.cart.length){ btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = `${ic('check',16)} Confirmer la commande`; hydrateIcons(); }
+  }
+}
+async function submitOrderInternal(){
+  const c = state.checkout;
+
+  // Commande RÉELLE — créée via la RPC create_order() (voir
+  // supabase_schema.sql), qui recalcule elle-même le prix de chaque
+  // produit/variante et le frais de livraison à partir des vraies
+  // données en base. Le navigateur n'envoie plus jamais de prix ni de
+  // total : seulement quoi (product_id, nom de variante, quantité) —
+  // jamais combien. Si un prix a changé entre-temps, ou qu'une
+  // variante n'existe plus, c'est le serveur qui tranche, pas le panier
+  // affiché à l'écran.
+  const { data, error } = await supabaseClient.rpc('create_order', {
+    p_restaurant_id: RESTAURANT.id,
+    p_client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
+    p_phone: c.phone || '—',
+    p_order_type: c.orderType,
+    p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
+    p_delivery_mode: c.orderType==='delivery' ? c.deliveryMode : null,
+    p_items: state.cart.map(l => ({
+      product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
+    })),
+    p_pay: c.payment,
+    p_notes: c.notes || null,
+    // RÉTABLI (audit — régression détectée) : le champ "Adresse de
+    // livraison" du formulaire restait affiché mais n'était plus
+    // envoyé nulle part depuis une réinitialisation antérieure du
+    // fichier SQL — l'adresse saisie disparaissait silencieusement.
+    p_address: c.orderType==='delivery' ? (c.address || null) : null,
+  });
+
+  if(error){
+    console.error('create_order — erreur Supabase complète :', error);
+    // PGRST202 = PostgREST ne trouve aucune fonction create_order()
+    // correspondant EXACTEMENT aux paramètres envoyés par index.html —
+    // presque toujours le signe que le supabase_schema.sql actuellement
+    // exécuté sur ce projet Supabase est une version différente de
+    // celle-ci. Message spécifique pour diagnostiquer directement,
+    // plutôt que de laisser deviner.
+    if(error.code === 'PGRST202'){
+      toast("La fonction de commande installée sur Supabase ne correspond pas à cette version du site. Il faut ré-exécuter supabase_schema.sql dans Supabase → SQL Editor. Votre panier a été conservé.");
+    } else {
+      toast("Impossible d'envoyer la commande : " + error.message);
+    }
+    return;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(!row){
+    toast("La commande n'a pas pu être confirmée par le serveur.");
+    return;
+  }
+
+  const newOrder = {
+    id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
+    items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
+    status: row.status, notes: row.notes, address: row.address, createdAt: new Date(row.created_at),
+  };
+  DEMO_ORDERS.unshift(newOrder);
+  refreshNotifDot();
+
+  // Notification e-mail automatique : aucun secret Resend n'est exposé dans le navigateur.
+  // L'Edge Function retrouve l'adresse de réception vérifiée du restaurant côté serveur.
+  if(row.email_notify_token){
+    supabaseClient.functions.invoke('send-order-email', {
+      body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
+    }).then(({error:emailError})=>{
+      if(emailError) console.error('send-order-email:', emailError.message);
+    }).catch(err=>console.error('send-order-email:', err));
+  } else {
+    console.warn('Notification commande non envoyée : email_notify_token absent. Exécutez la migration SQL fournie.');
+  }
+
+  state.lastOrder = {
+    num: row.num, items: row.items, total: Number(row.total),
+    payment: c.payment, firstName: c.firstName, phone: c.phone,
+  };
+  // Reflet local immédiat du stock vendu, pour que l'interface de CE
+  // navigateur affiche tout de suite le produit en rupture s'il vient
+  // d'atteindre 0 — la déduction qui compte réellement (celle qui évite
+  // les doubles déductions si deux clients commandent en même temps)
+  // est faite côté base de données DIRECTEMENT dans create_order(), sous
+  // verrou de ligne ("for update"), jamais par une écriture séparée
+  // depuis ce navigateur.
+  state.cart.forEach(line => {
+    const p = PRODUCTS.find(x => x.id === line.id);
+    if(p && typeof p.stock === 'number'){
+      p.stock = Math.max(0, p.stock - line.qty);
+      if(p.stock === 0) p.available = false;
+    }
+  });
+  state.cart = [];
+  state.checkout.notes = ''; // spécifique à CETTE commande — ne doit pas préremplir la suivante
+  rememberMyOrder(row.num, c.phone);
+  updateFloatingCartButton();
+  closeCheckout();
+  renderConfirmation();
+  document.getElementById('confirmationOverlay').classList.remove('hidden');
+  renderProductSections();
+  renderTrackOrderButton();
+
+  // Redirection vers le lien Wave/Orange Money du RESTAURANT (jamais un
+  // lien inventé ou généré ici — uniquement celui que le restaurateur a
+  // lui-même renseigné dans Paramètres → Paiements, voir state.toggles.
+  // Nouvel onglet plutôt qu'une redirection complète : le client garde
+  // sa confirmation de commande et son suivi ouverts dans cet onglet,
+  // même s'il abandonne ou revient de l'app Wave/Orange Money.
+  if(c.payment === 'wave' && state.toggles.wave_link){
+    window.open(state.toggles.wave_link, '_blank', 'noopener');
+  } else if(c.payment === 'orange_money' && state.toggles.orange_money_link){
+    window.open(state.toggles.orange_money_link, '_blank', 'noopener');
+  }
+}
+
+function renderConfirmation(){
+  const o = state.lastOrder;
+  document.getElementById('confirmationBody').innerHTML = `
+    <div class="text-center" style="margin-bottom:28px;">
+      <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',40)}</div>
+      <h1 class="font-display" style="font-size:22px;">Commande envoyée</h1>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${RESTO_NAME}</span>.</p>
+    </div>
+    <div class="card" style="padding:18px;">
+      <div class="flex justify-between items-center" style="margin-bottom:12px;">
+        <span class="font-tabular font-display" style="font-size:16px;">#${o.num}</span>
+        <span class="pill pill-amber">Nouvelle</span>
+      </div>
+      ${o.items.map(orderItemLine).join('')}
+      <div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;">
+        <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
+      </div>
+      <div class="flex items-center gap-2" style="margin-top:12px;">
+        ${paymentMark(o.payment,24)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.payment]}</span><span class="pill pill-amber">En attente</span>
+      </div>
+    </div>
+    <button class="btn btn-ghost w-full" style="margin-top:20px;" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');">Retourner au menu</button>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <button class="btn" style="background:var(--ink);color:var(--cream);" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openOrderTrackingDetail('${o.num}','${o.phone||''}');">${ic('receipt',15)} Suivre ma commande</button>
+      <button class="btn btn-outline" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openReviewModal('${o.num}');">${ic('star',15)} Avis client</button>
+    </div>`;
+  hydrateIcons(document.getElementById('confirmationBody'));
+}
+</script>
+
+<script>
+/* ---------------- DASHBOARD NAV ---------------- */
+const NAV_ITEMS = [
+  ['overview','dashboard',"Vue d'ensemble"],
+  ['orders','receipt','Commandes'],
+  ['products','utensils','Produits'],
+  ['inventory','layers','Inventaire'],
+  ['pos','calculator','Caisse'],
+  ['analytics','chart','Analyses'],
+  ['accounting','wallet','Comptabilité'],
+  ['categories','grid','Catégories'],
+  ['variants','sliders','Variantes'],
+  ['payments','card','Paiements'],
+  ['customers','users','Clients'],
+  ['qrcode','qrcode','QR Code'],
+  ['staff','userGroup','Personnel'],
+  ['settings','settings','Paramètres'],
+];
+const MOBILE_PRIMARY = ['overview','orders','products','customers','qrcode'];
+
+function renderDashNav(){
+  document.getElementById('dashNav').innerHTML = NAV_ITEMS.filter(([key])=>canSeeSection(key)).map(([key,icon,label])=>
+    `<button class="nav-item ${key===state.dashSection?'active':''}" data-key="${key}" onclick="setDashSection('${key}')">
+      <span class="nav-icon">${ic(icon,18)}</span><span class="nav-label">${label}</span>
+    </button>`).join('');
+  hydrateIcons(document.getElementById('dashNav'));
+}
+renderDashNav();
+
+function setDashSection(key){
+  // Garde-fou de navigation : simule une vraie protection de page — si le
+  // rôle actuellement prévisualisé n'a pas accès à cette section, l'accès
+  // est refusé et l'utilisateur est renvoyé vers une section autorisée.
+  // (Rappel : ceci est une démonstration d'UX, pas une sécurité réelle —
+  // voir la note dans ROLE_SECTIONS.)
+  if(!canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${simulatedRole}.`, true);
+    key = firstAllowedSection();
+  }
+  state.dashSection = key;
+  document.querySelectorAll('#dashNav .nav-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key));
+  document.querySelectorAll('.mbn-item').forEach(n=>n.classList.toggle('active', n.dataset.key===key || (key==='more'&&n.dataset.key==='more')));
+  closeMoreSheet();
+  renderDashSection(key);
+  hydrateIcons();
+}
+
+function openMoreSheet(){
+  // "settings" est volontairement exclu ici : il a désormais son propre
+  // accès direct et bien visible depuis Accueil (bloc "Mon compte"),
+  // pas besoin de l'avoir aussi dans cette grille secondaire.
+  const rest = NAV_ITEMS.filter(([k])=>!MOBILE_PRIMARY.includes(k) && k!=='settings' && canSeeSection(k));
+  if(canSeeSection('settings')) rest.push(['abonnement','wallet','Abonnement']);
+  document.getElementById('moreSheetGrid').innerHTML = rest.map(([key,icon,label])=>{
+    const locked = (key==='staff' && !isPremiumActive());
+    return `<button class="more-tile ${locked?'locked':''}" onclick="setDashSection('${key}')">
+      <span style="position:relative;display:flex;">${ic(icon,22)}${locked?`<span style="position:absolute;top:-4px;right:-6px;">${ic('lock',11)}</span>`:''}</span>
+      ${label}
+    </button>`;
+  }).join('');
+  document.getElementById('moreSheetOverlay').classList.remove('hidden');
+  hydrateIcons(document.getElementById('moreSheetGrid'));
+}
+function closeMoreSheet(){ document.getElementById('moreSheetOverlay').classList.add('hidden'); }
+
+function closeNotifPanel(){
+  const el = document.getElementById('notifPanelOverlay');
+  if(el) el.remove();
+}
+function toggleNotifPanel(){
+  if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
+  const existing = document.getElementById('notifPanelOverlay');
+  if(existing){ existing.remove(); return; }
+  const latest = [...DEMO_ORDERS]
+    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+    .slice(0,10);
+  const overlay = document.createElement('div');
+  overlay.id = 'notifPanelOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:1250;background:rgba(0,0,0,.28);display:flex;align-items:flex-start;justify-content:flex-end;padding:76px 18px 18px;';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeNotifPanel(); };
+  overlay.innerHTML = `
+    <div style="width:min(390px,calc(100vw - 24px));max-height:min(72vh,620px);overflow:auto;background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10);border-radius:18px;box-shadow:0 18px 55px rgba(0,0,0,.35);">
+      <div style="position:sticky;top:0;z-index:2;background:#131C30;border-bottom:1px solid rgba(255,255,255,.09);padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div><p style="font-size:15px;font-weight:700;">Notifications</p><p style="font-size:11px;color:rgba(255,255,255,.58);margin-top:2px;">Les 10 dernières commandes</p></div>
+        <button type="button" onclick="closeNotifPanel()" aria-label="Fermer" style="width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',17)}</button>
+      </div>
+      <div style="padding:8px;">
+        ${latest.length ? latest.map((o,i)=>`
+          <button type="button" onclick="closeNotifPanel();setDashSection('orders')" style="width:100%;text-align:left;padding:12px 10px;border-radius:12px;display:flex;gap:10px;align-items:flex-start;color:#fff;background:${i===0?'rgba(232,135,30,.10)':'transparent'};">
+            <span style="width:32px;height:32px;border-radius:10px;background:rgba(232,135,30,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F5B24E;">${ic('receipt',16)}</span>
+            <span style="min-width:0;flex:1;"><strong style="font-size:12.5px;display:block;">Commande #${String(o.num||'').replace(/</g,'&lt;')}</strong><span style="font-size:11.5px;color:rgba(255,255,255,.72);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${String(o.client||'Client').replace(/</g,'&lt;')} · ${fmt(Number(o.total)||0)}</span><span style="font-size:10.5px;color:rgba(255,255,255,.45);display:block;margin-top:3px;">${timeAgo(new Date(o.createdAt||Date.now()))}</span></span>
+            <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="flex-shrink:0;">${ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle'}</span>
+          </button>`).join('') : `<div style="padding:28px 14px;text-align:center;color:rgba(255,255,255,.55);font-size:12.5px;">Aucune commande pour le moment.</div>`}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  hydrateIcons(overlay);
+  markNotifsSeen();
+}
+function refreshNotifDot(){
+  const dot = document.getElementById('notifDot');
+  if(!dot) return;
+  const count = RESTAURANT.notificationsEnabled ? DEMO_ORDERS.filter(o=>o.status==='new').length : 0;
+  if(count>0){ dot.style.display='flex'; dot.textContent = count>9?'9+':count; }
+  else { dot.style.display='none'; }
+}
+function markNotifsSeen(){
+  // Dans la démo, "vu" ne change pas le statut réel de la commande —
+  // seule l'action du restaurateur (Commandes → changer le statut) le fait.
+  refreshNotifDot();
+}
+async function logoutDashboard(){
+  simulatedRole = null;
+  await signOutSupabase();
+  unsubscribeOrdersRealtime();
+  unsubscribeReviewsRealtime();
+  viewerIsStaff = false;
+  try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
+  setView('landing');
+  toast('Déconnecté.');
+}
+
+function dashboardHomeButton(){
+  return `<div class="dashboard-home-return" style="margin:0 0 14px;">
+    <button type="button" class="btn btn-outline btn-sm" onclick="setDashSection('overview')" style="min-height:38px;">
+      ${ic('arrowLeft',15)} Retour à l'accueil
+    </button>
+  </div>`;
+}
+
+function renderDashSection(key){
+  const el = document.getElementById('dashContent');
+  // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
+  // abonnement expiré : seule la page Abonnement reste accessible pour
+  // permettre de renouveler — aucune autre section ne s'affiche tant
+  // que le restaurateur n'a pas réactivé son accès. Les données restent
+  // toutes intactes dans Supabase, rien n'est supprimé.
+  if(isAccessBlocked() && key!=='abonnement'){
+    el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">
+      ${ic('lock',30,{stroke:'var(--terracotta)'})}
+      <h2 class="font-display" style="font-size:18px;margin-top:14px;">${RESTAURANT.trialEndsAt && !RESTAURANT.lastRenewedAt ? "Votre essai gratuit est terminé" : "Votre abonnement est expiré"}</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:8px;">Vos ${PRODUCTS.length} produits, vos ${Object.keys(catsState).length} catalogues et toutes vos données restent conservés. Choisissez un forfait pour retrouver l'accès à votre tableau de bord.</p>
+      <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="setDashSection('abonnement')">${ic('arrowRight',15)} Choisir un forfait</button>
+    </div>`;
+    hydrateIcons();
+    return;
+  }
+  const renderers = {
+    overview: dashOverview, orders: dashOrders, products: dashProducts, inventory: dashInventory, pos: dashPos, analytics: dashAnalytics,
+    accounting: dashAccounting, categories: dashCategories, variants: dashVariants,
+    payments: dashPayments, customers: dashCustomers, qrcode: dashQrcode,
+    staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
+  };
+  const bodyHtml = (renderers[key]||dashOverview)();
+  el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
+  if(key==='qrcode'){}
+  if(key==='analytics') drawRevenueChart();
+  hydrateIcons();
+}
+
+/* ---------------- OVERVIEW ---------------- */
+function dashOverview(){
+  const periodOrders = ordersForPeriod();
+  const paidOrders = periodOrders.filter(o=>o.status!=='cancelled');
+  const revenue = paidOrders.reduce((s,o)=>s+o.total,0);
+  const avgBasket = paidOrders.length ? revenue/paidOrders.length : 0;
+  const pending = periodOrders.filter(o=>['new','preparing','ready','delivering'].includes(o.status)).length;
+  const completedCount = periodOrders.filter(o=>o.status==='completed').length;
+  const uniqueClients = new Set(periodOrders.map(o=>o.phone)).size;
+  const activeProducts = PRODUCTS.filter(p=>p.active).length;
+  const inactiveProducts = PRODUCTS.filter(p=>!p.active).length;
+
+  const tally = {};
+  periodOrders.forEach(o=>o.items.forEach(it=>{ const [name,qty]=orderItemNameQty(it); tally[name]=(tally[name]||0)+qty; }));
+  const popular = Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  return `
+  ${notificationBlockedBannerHtml()}
+  <div class="flex items-center justify-between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div><h1 class="font-display" style="font-size:22px;">Vue d'ensemble</h1><p style="font-size:13px;color:var(--ink-soft);">Suivez l'activité de <span class="resto-name">${RESTO_NAME}</span> en un coup d'œil.</p></div>
+  </div>
+  <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
+  ${periodOrders.length===0 ? `<div class="empty-state" style="margin-bottom:20px;">${ic('receipt',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune donnée pour cette période.</p></div>` : ''}
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">
+    <div class="stat-card">${icBadge('wallet',{size:36,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}<p class="font-tabular" style="font-size:21px;font-weight:700;margin-top:10px;">${fmt(revenue)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Chiffre d'affaires</p></div>
+    <div class="stat-card">${icBadge('bag',{size:36,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:21px;font-weight:700;margin-top:10px;">${periodOrders.length}</p><p style="font-size:11.5px;color:var(--ink-soft);">Commandes</p></div>
+    <div class="stat-card">${icBadge('receipt',{size:36,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}<p class="font-tabular" style="font-size:21px;font-weight:700;margin-top:10px;">${fmt(avgBasket)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Panier moyen</p></div>
+    <div class="stat-card">${icBadge('users',{size:36,bg:'var(--terracotta-soft)',color:'var(--terracotta)'})}<p class="font-tabular" style="font-size:21px;font-weight:700;margin-top:10px;">${uniqueClients}</p><p style="font-size:11.5px;color:var(--ink-soft);">Clients uniques</p></div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+    <div class="stat-card">${icBadge('clock',{size:32,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}<p class="font-tabular" style="font-size:18px;font-weight:700;margin-top:8px;">${pending}</p><p style="font-size:11px;color:var(--ink-soft);">Commandes en attente</p></div>
+    <div class="stat-card">${icBadge('checkCircle',{size:32,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:18px;font-weight:700;margin-top:8px;">${completedCount}</p><p style="font-size:11px;color:var(--ink-soft);">Commandes terminées</p></div>
+    <div class="stat-card">${icBadge('utensils',{size:32,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}<p class="font-tabular" style="font-size:18px;font-weight:700;margin-top:8px;">${activeProducts}</p><p style="font-size:11px;color:var(--ink-soft);">Produits actifs</p></div>
+    <div class="stat-card">${icBadge('eyeOff',{size:32,bg:'var(--terracotta-soft)',color:'var(--terracotta)'})}<p class="font-tabular" style="font-size:18px;font-weight:700;margin-top:8px;">${inactiveProducts}</p><p style="font-size:11px;color:var(--ink-soft);">Produits indisponibles</p></div>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:20px;">
+    <div class="card" style="padding:18px;">
+      <div class="flex justify-between items-center" style="margin-bottom:12px;"><h2 class="font-display" style="font-size:16px;">Commandes récentes</h2><a href="#" onclick="setDashSection('orders');return false;" style="font-size:12px;color:var(--amber-ink);font-weight:600;display:flex;align-items:center;gap:3px;">Tout voir ${ic('arrowRight',12)}</a></div>
+      ${periodOrders.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:20px 0;">Aucune commande sur cette période.</p>` : periodOrders.slice(0,5).map(o=>`<div class="flex items-center justify-between" style="padding:9px 0;border-top:1px solid var(--cream-line);">
+        <div><p class="font-tabular" style="font-size:13px;font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
+        <span class="font-tabular" style="font-size:13px;">${fmt(o.total)}</span>
+        <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span>
+      </div>`).join('')}
+    </div>
+    <div class="card" style="padding:18px;">
+      <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Produits populaires</h2>
+      ${popular.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:20px 0;">Aucun produit vendu pendant cette période.</p>` : popular.map(([name,qty],i)=>`<div class="flex items-center gap-3" style="padding:7px 0;">
+        <span class="font-display" style="color:rgba(245,178,78,.75);width:18px;">${i+1}</span>
+        <span style="flex:1;font-size:13px;">${name}</span>
+        <span class="font-tabular pill pill-neutral" style="font-size:11px;">${qty} vendus</span>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Action principale mobile : ajout d’un nouveau produit, volontairement
+       placée juste au-dessus du QR Code sur l’Accueil pour être immédiatement visible. -->
+  <div class="mobile-tablet-only" style="margin-top:18px;">
+    ${canAddProduct() ? `
+      <button onclick="setDashSection('products');openProductForm();" class="card" style="width:100%;padding:17px 18px;border:1.5px solid rgba(232,135,30,.45);background:linear-gradient(135deg,#fff,#fffaf2);color:#0F1830;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;box-shadow:0 10px 24px rgba(232,135,30,.14);border-radius:16px;">
+        <span style="width:40px;height:40px;border-radius:12px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;box-shadow:0 6px 14px rgba(232,135,30,.22);">${ic('plus',20,{stroke:'#fff'})}</span>
+        <span style="font-size:15px;font-weight:800;letter-spacing:-.01em;">Ajouter un nouveau plat</span>
+      </button>` : `
+      <div class="card" style="width:100%;padding:15px 16px;border:1.5px solid rgba(240,101,58,.25);background:#fff9f7;color:#0F1830;display:flex;align-items:center;gap:10px;text-align:left;border-radius:16px;">
+        <span style="width:40px;height:40px;border-radius:12px;background:rgba(240,101,58,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--terracotta);">${ic('lock',18,{stroke:'var(--terracotta)'})}</span>
+        <span style="flex:1;min-width:0;">
+          <span style="display:block;font-size:14px;font-weight:800;">Limite de produits atteinte</span>
+          <span style="display:block;font-size:11.5px;color:#5b4b45;margin-top:2px;">Passez à Starter ou Premium pour ajouter un nouveau produit.</span>
+        </span>
+      </div>`}
+  </div>
+
+  <!-- QR Code mobile : aperçu directement sur Accueil pour éviter de
+       devoir ouvrir un menu secondaire. Le même lien canonique est utilisé
+       partout dans le tableau de bord. -->
+  <div class="mobile-tablet-only" style="margin-top:18px;">
+    <div class="card mobile-qr-card" style="padding:16px;display:flex;align-items:center;gap:14px;">
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;">QR Code</p>
+        <p style="font-size:13.5px;font-weight:700;margin-bottom:4px;">Votre QR Code est prêt</p>
+        <p style="font-size:11.5px;color:var(--ink-soft);">Scannez-le ou partagez votre lien public.</p>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="setDashSection('qrcode')">${ic('qrcode',14)} Afficher le QR Code</button>
+      </div>
+      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${RESTO_NAME}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
+    </div>
+  </div>
+
+  <!-- Mobile/tablette : "Plus de fonctionnalités" en haut et en blanc,
+       puis "Mon compte" en bas. -->
+  <div class="mobile-tablet-only" style="flex-direction:column;gap:10px;margin-top:20px;">
+    <button onclick="openMoreSheet()" class="card mobile-more-card flex items-center gap-3" style="padding:16px;width:100%;text-align:left;background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);box-shadow:0 10px 26px rgba(15,24,48,.12);">
+      <span style="width:36px;height:36px;border-radius:11px;background:#0F1830;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;">${ic('grid',17,{stroke:'#fff'})}</span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:13.5px;font-weight:700;color:#0F1830;">Plus de fonctionnalités</span>
+        <span style="display:block;font-size:11px;color:#4b5563;">Analyses, comptabilité, catégories, variantes, paiements, personnel, inventaire</span>
+      </span>
+      ${ic('arrowRight',15,{stroke:'#0F1830'})}
+    </button>
+
+    <div class="card" style="padding:16px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px;">Mon compte</p>
+      <div class="flex-col gap-2">
+        <button onclick="setDashSection('settings')" class="flex items-center gap-3" style="width:100%;padding:10px 4px;text-align:left;">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--cream);display:flex;align-items:center;justify-content:center;flex-shrink:0;">${ic('settings',16)}</span>
+          <span style="flex:1;font-size:13.5px;font-weight:500;">Paramètres</span>
+          ${ic('arrowRight',14,{stroke:'var(--ink-faint)'})}
+        </button>
+        <button onclick="logoutDashboard()" class="flex items-center gap-3" style="width:100%;padding:10px 4px;text-align:left;">
+          <span style="width:34px;height:34px;border-radius:10px;background:var(--terracotta-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--terracotta);">${ic('logout',16)}</span>
+          <span style="flex:1;font-size:13.5px;font-weight:500;color:var(--terracotta);">Déconnexion</span>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- ORDERS ---------------- */
+let orderSearch = '';
+let orderStatusFilter = 'all';
+const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing','En préparation'],['ready','Prêtes'],['delivering','En livraison'],['completed','Terminées'],['cancelled','Annulées']];
+
+function dashOrders(){
+  return `
+  <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
+  ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
+  <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
+  <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
+    ${ORDER_STATUS_FILTERS.map(([key,label])=>`<button class="pill ${orderStatusFilter===key?'pill-ink':'pill-neutral'}" style="cursor:pointer;flex-shrink:0;" onclick="orderStatusFilter='${key}';renderDashSection('orders');">${label}</button>`).join('')}
+  </div>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead><tr><th>Commande</th><th>Client</th><th>Type</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead>
+      <tbody id="ordersTableBody">${ordersRowsHtml()}</tbody>
+    </table>
+  </div>`}
+  <div id="orderDetailOverlay" class="hidden" style="position:fixed;inset:0;z-index:100;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeOrderDetail()"></div>
+    <div id="orderDetailPanel" style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--surface);overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.15);"></div>
+  </div>`;
+}
+function filteredOrders(){
+  const q = orderSearch.trim().toLowerCase();
+  return DEMO_ORDERS.filter(o =>
+    (orderStatusFilter==='all' || o.status===orderStatusFilter) &&
+    (!q || o.client.toLowerCase().includes(q) || o.num.includes(q) || o.phone.includes(q))
+  );
+}
+function ordersRowsHtml(){
+  const list = filteredOrders();
+  if(list.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">Aucune commande ne correspond à ces critères.</td></tr>`;
+  return list.map((o)=>{
+    const i = DEMO_ORDERS.indexOf(o);
+    return `<tr onclick="openOrderDetail(${i})">
+      <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
+      <td style="color:var(--ink-soft);">${o.client}</td>
+      <td style="color:var(--ink-soft);">${o.type}</td>
+      <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
+      <td class="font-tabular">${fmt(o.total)}</td>
+      <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
+    </tr>`;
+  }).join('');
+}
+function openOrderDetail(i){
+  const o = DEMO_ORDERS[i];
+  const action = nextStatusAction(o);
+  const isTerminal = o.status==='completed' || o.status==='cancelled';
+  document.getElementById('orderDetailPanel').innerHTML = `
+    <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid var(--cream-line);">
+      <div><p class="font-tabular font-display" style="font-size:17px;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
+      <button onclick="closeOrderDetail()" style="font-size:18px;color:var(--ink-soft);">${ic('x',18)}</button>
+    </div>
+    <div style="padding:20px 22px;">
+      <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span>
+      <!-- Une seule action possible à la fois — jamais plusieurs
+           boutons contradictoires. La commande reste ouverte après le
+           clic (voir changeOrderStatus : ne rafraîchit plus que le
+           tableau en arrière-plan, jamais toute la section, qui
+           refermait ce panneau à chaque changement de statut). -->
+      ${action ? `<button onclick="changeOrderStatus(${i},'${action.next}')" class="btn btn-secondary btn-lg w-full" style="margin-top:14px;">${ic(action.icon,16)} ${action.label}</button>` : ''}
+      ${!isTerminal ? `<button onclick="if(confirm('Annuler cette commande ?'))changeOrderStatus(${i},'cancelled')" style="margin-top:10px;font-size:12px;color:var(--terracotta);text-align:center;width:100%;">Annuler la commande</button>` : ''}
+      <div class="flex flex-col gap-2" style="background:var(--cream);border-radius:16px;padding:14px;margin:16px 0;">
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);">Client</p>
+        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('users',14,{stroke:'var(--ink-faint)'})}${o.client}</p>
+        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('phone',14,{stroke:'var(--ink-faint)'})}${o.phone}</p>
+        <p style="font-size:13.5px;display:flex;align-items:center;gap:7px;">${ic('mapPin',14,{stroke:'var(--ink-faint)'})}${o.type}</p>
+        ${o.address ? `<p style="font-size:13.5px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',14,{stroke:'var(--ink-faint)'})}</span><span>${escapeAttr(o.address)}</span></p>` : ''}
+      </div>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Produits</p>
+      ${o.items.map(orderItemLine).join('')}
+      ${o.notes ? `<div style="background:rgba(232,135,30,.08);border-radius:12px;padding:10px 12px;margin-top:10px;">
+        <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--amber-ink);margin-bottom:3px;">Note du client</p>
+        <p style="font-size:13px;color:var(--ink-soft);">${o.notes}</p>
+      </div>` : ''}
+      <div style="border-top:1px solid var(--cream-line);margin-top:10px;padding-top:10px;">
+        <div class="flex justify-between" style="font-size:15px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
+        <div class="flex items-center gap-2" style="margin-top:8px;">${paymentMark(o.pay,22)}<span style="font-size:13px;color:var(--ink-soft);">${PAYMENT_LABELS[o.pay]}</span><span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div>
+      </div>
+    </div>`;
+  hydrateIcons(document.getElementById('orderDetailPanel'));
+  document.getElementById('orderDetailOverlay').classList.remove('hidden');
+}
+function closeOrderDetail(){ document.getElementById('orderDetailOverlay').classList.add('hidden'); }
+/* Seul véritable point d'écriture du statut d'une commande — la
+   fonction persistOrderUpdate() existait déjà mais n'était appelée par
+   AUCUNE action de l'interface (aucun contrôle de changement de statut
+   n'existait), ce qui rendait le suivi client → statut réel côté
+   restaurateur impossible à déclencher. Corrigé ici : met à jour l'état
+   local immédiatement (retour visuel instantané), puis persiste dans
+   Supabase — protégé par la policy RLS orders_staff_update, donc même
+   un appel direct par un rôle non autorisé échouerait côté serveur. */
+/* CORRECTION DE LA RÉGRESSION SIGNALÉE (le restaurateur était éjecté de
+   la commande à chaque changement de statut) : orderDetailOverlay/
+   orderDetailPanel font partie du HTML retourné par dashOrders()
+   elle-même — appeler renderDashSection(state.dashSection) juste après
+   avoir rouvert le panneau remplaçait TOUT #dashContent, y compris ce
+   panneau qu'on venait de rouvrir, qui repartait dans son état "hidden"
+   par défaut. Corrigé : on ne rafraîchit plus que le tableau en
+   arrière-plan (ordersTableBody), qui existe indépendamment du
+   panneau — jamais tout #dashContent. */
+function changeOrderStatus(i, newStatus){
+  const o = DEMO_ORDERS[i];
+  if(!o || o.status === newStatus) return;
+  o.status = newStatus;
+  openOrderDetail(i); // reste sur LA MÊME commande, panneau mis à jour
+  const tbody = document.getElementById('ordersTableBody');
+  if(tbody) tbody.innerHTML = ordersRowsHtml(); // rafraîchit la liste en arrière-plan sans toucher au panneau ouvert
+  refreshNotifDot();
+  persistOrderUpdate(o);
+}
+/* Une ligne de commande peut être soit l'ancien format hérité
+   [nom, quantité] (commandes créées avant l'ajout des variantes/ids
+   réels aux commandes), soit le nouveau format riche
+   {productId, name, variant, price, qty} — gère les deux sans erreur. */
+function orderItemLine(it){
+  const isLegacy = Array.isArray(it);
+  const name = isLegacy ? it[0] : it.name;
+  const qty = isLegacy ? it[1] : it.qty;
+  const variant = isLegacy ? null : it.variant;
+  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${name}${variant?` <span style="color:var(--ink-faint);">(${variant})</span>`:''}</span></div>`;
+}
+/* Même logique que orderItemLine, mais renvoie juste [nom, quantité] —
+   utilisé par les calculs (produits les plus vendus, etc.) qui n'ont
+   pas besoin d'affichage, seulement des valeurs. */
+function orderItemNameQty(it){
+  return Array.isArray(it) ? it : [it.name, it.qty];
+}
+
+/* ---------------- CAISSE (POS) ---------------- */
+function dashPos(){
+  const periodOrders = ordersForPeriod();
+  // CORRECTION : "Total encaissé" restait à 0 FCFA car il filtrait sur
+  // payStatus==='paid' — un champ qui n'est en réalité JAMAIS mis à
+  // jour nulle part dans le projet (aucun système de confirmation de
+  // paiement électronique n'existe pour les commandes clients ; Wave/
+  // Orange Money restent des moyens déclaratifs, encaissés en réalité
+  // à la livraison/au retrait, comme les espèces). Le signal réel et
+  // déjà disponible qu'un encaissement a effectivement eu lieu est le
+  // statut de la commande : une commande marquée "Terminée" a été
+  // réellement remise au client, donc réellement payée. Les commandes
+  // annulées restent explicitement exclues.
+  const paid = periodOrders.filter(o=>o.status==='completed');
+  const total = paid.reduce((s,o)=>s+o.total,0);
+  const byMethod = {};
+  paid.forEach(o=>{ byMethod[o.pay]=(byMethod[o.pay]||0)+o.total; });
+  const pending = periodOrders.filter(o=>['new','preparing','ready','delivering'].includes(o.status)).length;
+  const cancelled = periodOrders.filter(o=>o.status==='cancelled').length;
+
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Caisse</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${RESTO_NAME}.</p>
+  <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+    <div class="stat-card">${icBadge('wallet',{size:36,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:22px;font-weight:700;margin-top:10px;">${fmt(total)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Total encaissé · ${paid.length} commande${paid.length>1?'s':''}</p></div>
+    <div class="stat-card">${icBadge('clock',{size:36,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}<p class="font-tabular" style="font-size:22px;font-weight:700;margin-top:10px;">${pending}</p><p style="font-size:11.5px;color:var(--ink-soft);">Commandes en attente</p></div>
+    <div class="stat-card">${icBadge('rotateCcw',{size:36,bg:'var(--terracotta-soft)',color:'var(--terracotta)'})}<p class="font-tabular" style="font-size:22px;font-weight:700;margin-top:10px;">${cancelled}</p><p style="font-size:11.5px;color:var(--ink-soft);">Annulations</p></div>
+  </div>
+  <div class="card" style="padding:18px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:14px;">Ventilation par moyen de paiement</h2>
+    ${Object.keys(byMethod).length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:16px 0;">Aucun encaissement sur cette période.</p>` : Object.entries(byMethod).map(([m,amt])=>`
+      <div class="flex items-center gap-3" style="margin-bottom:14px;">
+        ${paymentMark(m,28)}
+        <div style="flex:1;">
+          <p style="font-size:13px;font-weight:500;">${PAYMENT_LABELS[m]}</p>
+          <div style="height:6px;border-radius:999px;background:var(--cream-deep);margin-top:4px;overflow:hidden;"><div style="height:100%;background:var(--amber-deep);width:${total?Math.round(amt/total*100):0}%;"></div></div>
+        </div>
+        <span class="font-tabular" style="font-size:13px;">${fmt(amt)}</span>
+      </div>`).join('')}
+  </div>
+  <div class="card" style="padding:18px;margin-top:16px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:4px;">Détail des commandes encaissées de la période</h2>
+    <p style="font-size:11.5px;color:var(--ink-faint);margin-bottom:14px;">Ce sont exactement les ${paid.length} commande${paid.length>1?'s':''} additionnées ci-dessus — chaque montant vient directement de la commande enregistrée dans Supabase, jamais recalculé séparément.</p>
+    ${paid.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:10px 0;">Aucune commande encaissée sur cette période.</p>` : `
+    <table class="data-table">
+      <thead><tr><th>Commande</th><th>Date</th><th>Paiement</th><th style="text-align:right;">Montant</th></tr></thead>
+      <tbody>
+        ${paid.map(o=>`<tr><td class="font-tabular">#${o.num}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${PAYMENT_LABELS[o.pay]||o.pay}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
+      </tbody>
+      <tfoot><tr style="font-weight:700;"><td colspan="3">Total</td><td class="font-tabular" style="text-align:right;">${fmt(total)}</td></tr></tfoot>
+    </table>`}
+  </div>`;
+}
+
+/* ---------------- ANALYTICS ---------------- */
+function dashAnalytics(){
+  const periodOrders = ordersForPeriod();
+  const validOrders = periodOrders.filter(o=>o.status!=='cancelled');
+  const revenue = validOrders.reduce((s,o)=>s+o.total,0);
+  const cancelledCount = periodOrders.filter(o=>o.status==='cancelled').length;
+
+  const tally = {};
+  validOrders.forEach(o=>o.items.forEach(it=>{ const [name,qty]=orderItemNameQty(it); tally[name]=(tally[name]||0)+qty; }));
+  const topProductEntry = Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];
+
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Analyses</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${RESTO_NAME}, calculée à partir des commandes réelles.</p>
+  <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
+    <div class="stat-card"><p class="font-tabular" style="font-size:19px;font-weight:700;">${fmt(revenue)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Chiffre d'affaires</p></div>
+    <div class="stat-card"><p class="font-tabular" style="font-size:19px;font-weight:700;">${periodOrders.length}</p><p style="font-size:11.5px;color:var(--ink-soft);">Commandes</p></div>
+    <div class="stat-card"><p style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${topProductEntry?topProductEntry[0]:'—'}</p><p style="font-size:11.5px;color:var(--ink-soft);">Produit le plus vendu</p></div>
+    <div class="stat-card"><p class="font-tabular" style="font-size:19px;font-weight:700;">${cancelledCount}</p><p style="font-size:11.5px;color:var(--ink-soft);">Commande${cancelledCount>1?'s':''} annulée${cancelledCount>1?'s':''}</p></div>
+  </div>
+  <div class="card" style="padding:18px;margin-bottom:16px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:14px;">Évolution du chiffre d'affaires (7 derniers jours)</h2>
+    <div id="revenueChart"></div>
+  </div>
+  ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
+  <div class="card" style="padding:18px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:10px;">Analyses avancées</h2>
+    <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Premium.</p>
+  </div>`}`;
+}
+function drawRevenueChart(){
+  const el = document.getElementById('revenueChart');
+  if(!el) return;
+  // Série réelle : somme du chiffre d'affaires (commandes non annulées)
+  // par jour calendaire, sur les 7 derniers jours — calculée à partir
+  // de DEMO_ORDERS, jamais une courbe inventée.
+  const days = [];
+  const labels = [];
+  for(let i=6; i>=0; i--){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
+    const next = new Date(d.getTime()+86400000);
+    const total = DEMO_ORDERS.filter(o=>o.status!=='cancelled' && o.createdAt>=d && o.createdAt<next).reduce((s,o)=>s+o.total,0);
+    days.push(total);
+    labels.push(d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','').slice(0,3));
+  }
+  const max = Math.max(...days, 1);
+  const w=560,h=180,pad=28;
+  const step = (w-pad*2)/(days.length-1);
+  const pts = days.map((v,i)=>[pad+i*step, h-pad-((v/max)*(h-pad*2))]);
+  const path = 'M'+pts.map(p=>p.join(',')).join(' L');
+  const area = path + ` L${pts[pts.length-1][0]},${h-pad} L${pts[0][0]},${h-pad} Z`;
+  if(days.every(v=>v===0)){
+    el.innerHTML = `<div class="empty-state">${ic('chart',22,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune vente sur les 7 derniers jours.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:200px;">
+    <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8871E" stop-opacity="0.35"/><stop offset="100%" stop-color="#E8871E" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#rg)"/>
+    <path d="${path}" fill="none" stroke="#F5B24E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#F5B24E"><title>${fmt(days[i])}</title></circle>`).join('')}
+    ${labels.map((d,i)=>`<text x="${pad+i*step}" y="${h-6}" font-size="10" fill="#CBD5E1" text-anchor="middle">${d}</text>`).join('')}
+  </svg>`;
+}
+</script>
+
+<script>
+/* ---------------- CATEGORIES (gestion des catégories uniquement — les
+   produits sont gérés dans la section Produits dédiée) ---------------- */
+let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
+/* Visibilité de chaque catalogue sur la page d'accueil du site public —
+   { [catKey]: boolean }. Absent d'une clé = considéré visible par
+   défaut (catsHomeVisible[c] !== false), pour que les catégories
+   existantes avant l'ajout de cette fonctionnalité restent visibles
+   sans surprise. Persisté par catégorie (categories.visible_on_home). */
+let catsHomeVisible = {};
+let expandedCat = 'plats';
+function dashCategories(){
+  const atLimit = !canAddCategory();
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Catégories</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Organisez votre menu dans l'ordre de votre choix — ${Object.keys(catsState).length} catégorie${Object.keys(catsState).length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_CATEGORIES} (forfait Gratuit)`:''}. La gestion des produits se fait dans la section Produits.</p>
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;max-width:640px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_CATEGORIES} catalogues atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Premium</a> pour continuer.</p></div>`:''}
+  <div class="flex gap-2" style="margin-bottom:18px;max-width:560px;">
+    <input class="field-input" id="newCatInput" placeholder="Nouvelle catégorie (ex : Menus)" ${atLimit?'disabled':''}>
+    <button class="btn btn-secondary" onclick="addCategory()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} Ajouter</button>
+  </div>
+  <div class="card" style="max-width:640px;" id="catList">${renderCatList()}</div>`;
+}
+function renderCatList(){
+  return Object.entries(catsState).map(([key,label])=>{
+    const items = PRODUCTS.filter(p=>p.cat===key);
+    const open = expandedCat===key;
+    return `<div style="border-top:1px solid var(--cream-line);">
+      <button onclick="toggleCat('${key}')" class="flex items-center justify-between w-full" style="padding:13px 16px;">
+        <span style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;">${ic(CAT_ICON[key]||'tag',15,{stroke:'var(--amber-deep)'})}${label} <span style="color:var(--ink-faint);font-weight:400;">(${items.length})</span></span>
+        <span style="color:var(--ink-faint);">${ic(open?'chevronUp':'chevronDown',15)}</span>
+      </button>
+      ${open?`<div style="background:var(--cream);padding:10px 16px 16px;">
+        <div class="flex items-center justify-between" style="padding:8px 0 12px;border-bottom:1px solid var(--cream-line);margin-bottom:10px;">
+          <div><p style="font-size:12.5px;font-weight:600;">Visible sur la page d'accueil du site public</p><p style="font-size:11px;color:var(--ink-faint);">Désactivez pour garder ce catalogue disponible sans l'afficher en vitrine.</p></div>
+          <div class="toggle ${catsHomeVisible[key]!==false?'on':''}" onclick="toggleCategoryHomeVisibility('${key}')"><div class="dot"></div></div>
+        </div>
+        ${items.length===0?`<p style="font-size:12px;color:var(--ink-faint);padding:6px 2px 12px;">Aucun produit dans cette catégorie.</p>`:
+        items.map(p=>`<div class="flex items-center gap-3" style="background:var(--surface);border:1px solid var(--cream-line);border-radius:12px;padding:8px 12px;margin-bottom:6px;">
+          ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${p.name}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
+          <span class="pill ${p.active?'pill-forest':'pill-neutral'}" style="font-size:10px;">${p.active?'Actif':'Inactif'}</span>
+        </div>`).join('')}
+        <button class="btn btn-outline btn-sm" onclick="setDashSection('products')">${ic('utensils',13)} Gérer les produits</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+function toggleCat(key){ expandedCat = expandedCat===key ? null : key; document.getElementById('catList').innerHTML = renderCatList(); hydrateIcons(); }
+async function toggleCategoryHomeVisibility(key){
+  catsHomeVisible[key] = catsHomeVisible[key] === false ? true : false;
+  document.getElementById('catList').innerHTML = renderCatList();
+  hydrateIcons();
+  if(!RESTAURANT.id) return;
+  const {error} = await supabaseClient.from('categories')
+    .update({visible_on_home: catsHomeVisible[key]})
+    .eq('restaurant_id', RESTAURANT.id).eq('key', key);
+  if(error){ console.error('TerangaResto — catégorie non enregistrée:', error); toast('Impossible d’enregistrer cette modification pour le moment.'); }
+}
+
+/* ---------------- PRODUITS (gestion centrale du catalogue) ---------------- */
+let productSearch = '';
+let productForm = null; // {id?, name, desc, price, cat, prep, active, available}
+let libraryOpen = false;
+
+function dashProducts(){
+  const atLimit = !canAddProduct();
+  return `
+  <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
+    <div class="flex gap-2">
+      <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('plus',15)} Plats prédéfinis</button>
+      <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
+    </div>
+  </div>
+  ${atLimit?`<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">${ic('alertTriangle',16,{stroke:'var(--amber-deep)'})}<p style="font-size:12.5px;color:var(--ink-soft);">Limite de ${FREE_MAX_PRODUCTS} produits atteinte avec le forfait Gratuit. <a href="#" onclick="setView('pricing');return false;" style="color:var(--amber-ink);font-weight:600;">Passer à Starter ou Premium</a> pour ajouter plus de produits.</p></div>`:''}
+  <div style="position:relative;max-width:320px;margin-bottom:16px;">
+    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',15)}</span>
+    <input class="field-input" style="padding-left:36px;" placeholder="Rechercher un produit..." value="${productSearch}" oninput="productSearch=this.value;document.getElementById('productsList').innerHTML=productsListHtml();hydrateIcons();">
+  </div>
+  <div id="productsList">${productsListHtml()}</div>
+  <div id="productFormModal"></div>
+  <div id="libraryModal"></div>`;
+}
+
+function productsListHtml(){
+  const q = productSearch.trim().toLowerCase();
+  const list = PRODUCTS.filter(p=>!q || p.name.toLowerCase().includes(q));
+
+  if(PRODUCTS.length===0){
+    return `<div class="empty-state">
+      ${ic('utensils',28,{stroke:'var(--amber-deep)'})}
+      <p style="margin-top:10px;font-size:14px;font-weight:600;">Aucun produit pour le moment</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin:4px 0 16px;max-width:340px;margin-left:auto;margin-right:auto;">Votre catalogue est vide. Ajoutez des plats depuis les plats prédéfinis ou créez-en un vous-même.</p>
+      <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openLibrary()">${ic('plus',14)} Ajouter depuis les plats prédéfinis</button>
+        <button class="btn btn-outline btn-sm" onclick="openProductForm()">${ic('plus',14)} Créer un produit</button>
+      </div>
+    </div>`;
+  }
+  if(list.length===0){
+    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${productSearch} ».</p></div>`;
+  }
+  return `<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch;">
+    ${list.map(p=>`
+    <div class="card" style="padding:14px;display:flex;flex-direction:column;${!p.active?'opacity:.65;':''}">
+      <div class="flex items-center gap-3" style="margin-bottom:10px;">
+        ${productThumb(p,44)}
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${catsState[p.cat]||'—'}</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between" style="margin-bottom:10px;">
+        <span class="font-tabular" style="font-size:14px;font-weight:700;">${fmt(p.price)}</span>
+        <span style="font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:4px;">${ic('clock',12)}${p.prep} min</span>
+      </div>
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <span style="font-size:11.5px;color:var(--ink-soft);">Actif (visible publiquement)</span>
+        <div class="toggle ${p.active?'on':''}" onclick="toggleProductActive('${p.id}')"><div class="dot"></div></div>
+      </div>
+      <div class="flex items-center justify-between" style="margin-bottom:10px;">
+        <span style="font-size:11.5px;color:var(--ink-soft);">Disponible</span>
+        <div class="toggle ${p.available?'on':''}" onclick="toggleProductAvailable('${p.id}')"><div class="dot"></div></div>
+      </div>
+      <div class="flex gap-2" style="margin-top:auto;">
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openProductForm('${p.id}')">${ic('pencil',13)} Modifier</button>
+        <button class="btn btn-outline btn-sm" onclick="deleteProduct('${p.id}')" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);">${ic('trash',13)}</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function toggleProductActive(id){
+  const p = PRODUCTS.find(x=>x.id===id); p.active = !p.active;
+  document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
+  if(state.view==='storefront') renderProductSections();
+  toast(p.active ? `${p.name} est de nouveau visible sur le site public.` : `${p.name} est masqué du site public.`);
+  persistProduct(p);
+}
+function toggleProductAvailable(id){
+  const p = PRODUCTS.find(x=>x.id===id); p.available = !p.available;
+  document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
+  if(state.view==='storefront') renderProductSections();
+  persistProduct(p);
+}
+function deleteProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(!confirm(`Supprimer « ${p.name} » ?`)) return;
+  const idx = PRODUCTS.indexOf(p); PRODUCTS.splice(idx,1);
+  document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
+  if(state.view==='storefront') renderProductSections();
+  toast('Produit supprimé.');
+  deleteProductRow(id);
+}
+
+function openProductForm(id){
+  if(!id && !canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
+  const existing = id ? PRODUCTS.find(p=>p.id===id) : null;
+  productForm = existing ? {...existing} : {id:null,name:'',desc:'',price:'',cat:Object.keys(catsState)[0],prep:15,active:true,available:true,variants:[],photo:null};
+  renderProductForm();
+}
+function closeProductForm(){ productForm=null; document.getElementById('productFormModal').innerHTML=''; }
+function pfField(key,val){ productForm[key]=val; }
+function pfPickPhoto(){
+  triggerImagePicker((dataUrl)=>{ productForm.photo = dataUrl; renderProductForm(); });
+}
+
+function renderProductForm(){
+  if(!productForm){ document.getElementById('productFormModal').innerHTML=''; return; }
+  const f = productForm;
+  document.getElementById('productFormModal').innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeProductForm()"></div>
+    <div class="card" style="position:relative;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;">
+      <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+        <h2 class="font-display" style="font-size:17px;">${f.id?'Modifier le produit':'Nouveau produit'}</h2>
+        <button onclick="closeProductForm()">${ic('x',17)}</button>
+      </div>
+      <div style="padding:18px 20px;">
+        <label class="field-label">Photo principale</label>
+        <div class="flex items-center gap-3" style="margin-bottom:16px;">
+          <div style="position:relative;width:72px;height:72px;flex-shrink:0;">
+            <button onclick="pfPickPhoto()" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px ${f.photo?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;background:var(--cream-deep);">
+              ${f.photo ? `<img src="${f.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[f.cat]||'utensils',26,{stroke:'var(--amber-deep)'})}
+            </button>
+            ${f.photo?`<button onclick="productForm.photo=null;renderProductForm();" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',11)}</button>`:''}
+          </div>
+          <div>
+            <button class="btn btn-outline btn-sm" onclick="pfPickPhoto()">${ic('upload',13)} ${f.photo?'Remplacer':'Ajouter une photo'}</button>
+            <p style="font-size:10.5px;color:var(--ink-faint);margin-top:5px;">${f.photo?'Photo importée depuis votre appareil.':"Icône par défaut tant qu'aucune photo n'est ajoutée."}</p>
+          </div>
+        </div>
+        <label class="field-label">Nom</label>
+        <input class="field-input" style="margin-bottom:12px;" value="${f.name}" oninput="pfField('name',this.value)" placeholder="Ex : Thiéboudienne">
+        <label class="field-label">Description</label>
+        <textarea class="field-input" rows="2" style="margin-bottom:12px;" oninput="pfField('desc',this.value)" placeholder="Facultatif">${f.desc}</textarea>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div><label class="field-label">Prix (FCFA)</label><input class="field-input" type="number" value="${f.price}" oninput="pfField('price',this.value)"></div>
+          <div><label class="field-label">Préparation (min)</label><input class="field-input" type="number" value="${f.prep}" oninput="pfField('prep',this.value)"></div>
+        </div>
+        <label class="field-label">Catégorie</label>
+        <select class="field-input" style="margin-bottom:14px;" onchange="pfField('cat',this.value);renderProductForm();">
+          ${Object.entries(catsState).map(([k,l])=>`<option value="${k}" ${f.cat===k?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <div class="flex gap-6">
+          <label class="flex items-center gap-2" style="font-size:13px;"><input type="checkbox" ${f.active?'checked':''} onchange="pfField('active',this.checked)"> Actif (visible publiquement)</label>
+          <label class="flex items-center gap-2" style="font-size:13px;"><input type="checkbox" ${f.available?'checked':''} onchange="pfField('available',this.checked)"> Disponible</label>
+        </div>
+      </div>
+      <div class="flex gap-3" style="padding:16px 20px;border-top:1px solid var(--cream-line);">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeProductForm()">Annuler</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="saveProductForm()">${ic('save',15)} Enregistrer</button>
+      </div>
+    </div>
+  </div>`;
+  hydrateIcons();
+}
+async function saveProductForm(){
+  const f = productForm;
+  if(!f.name.trim()){ toast('Le nom du produit est requis.'); return; }
+  if(!f.price || Number(f.price)<0){ toast('Indiquez un prix valide.'); return; }
+  const payload = {name:f.name.trim(), desc:f.desc, price:Number(f.price), cat:f.cat, prep:Number(f.prep)||15, active:f.active, available:f.available, variants:f.variants||[], photo:f.photo||null};
+  let p;
+  if(f.id){
+    p = PRODUCTS.find(x=>x.id===f.id);
+    Object.assign(p, payload);
+    toast('Produit mis à jour.');
+  } else {
+    p = {id:'p_'+Date.now(), stock:20, threshold:5, ...payload};
+    PRODUCTS.push(p);
+    toast('Produit ajouté à votre catalogue.');
+  }
+  closeProductForm();
+  document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
+  if(state.view==='storefront') renderProductSections();
+  await persistProduct(p);
+}
+
+/* ---------------- BIBLIOTHÈQUE TERANGARESTO (données de référence,
+   jamais modifiées — chaque "Ajouter" crée une copie indépendante) ---------------- */
+let libSearch = '';
+let libCatFilter = 'all';
+function isInMyProducts(item){
+  return PRODUCTS.some(p=>p.name.trim().toLowerCase()===item.name.trim().toLowerCase());
+}
+function openLibrary(){
+  libSearch = ''; libCatFilter = 'all';
+  document.getElementById('libraryModal').innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeLibrary()"></div>
+    <div class="card" style="position:relative;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;display:flex;flex-direction:column;">
+      <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
+        <div><h2 class="font-display" style="font-size:17px;">Plats prédéfinis</h2><p style="font-size:12px;color:var(--ink-soft);">${LIBRARY_ITEMS.length} plats prêts à l'emploi — ajoutez, puis personnalisez.</p></div>
+        <button onclick="closeLibrary()">${ic('x',17)}</button>
+      </div>
+      <div style="padding:12px 20px;border-bottom:1px solid var(--cream-line);flex-shrink:0;">
+        <div style="position:relative;margin-bottom:10px;">
+          <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span>
+          <input class="field-input" style="padding-left:32px;" placeholder="Rechercher..." oninput="libSearch=this.value;renderLibraryList();">
+        </div>
+        <div class="flex gap-2 overflow-x-auto" id="libCatTabs">
+          ${['all',...Object.keys(catsState)].map(c=>`<button class="btn ${libCatFilter===c?'btn-primary':'btn-outline'} btn-sm" onclick="libCatFilter='${c}';renderLibraryList();document.querySelectorAll('#libCatTabs button').forEach(b=>b.className='btn btn-outline btn-sm');this.className='btn btn-primary btn-sm';">${c==='all'?'Tout':catsState[c]}</button>`).join('')}
+        </div>
+      </div>
+      <div style="padding:8px 20px 20px;overflow-y:auto;" id="libraryListBody"></div>
+    </div>
+  </div>`;
+  renderLibraryList();
+  hydrateIcons();
+}
+function renderLibraryList(){
+  const q = libSearch.trim().toLowerCase();
+  const list = LIBRARY_ITEMS
+    .map((item,i)=>({item,i}))
+    .filter(({item}) => (libCatFilter==='all' || item.cat===libCatFilter) && (!q || item.name.toLowerCase().includes(q)));
+  const body = document.getElementById('libraryListBody');
+  if(!body) return;
+  body.innerHTML = list.length===0
+    ? `<p style="text-align:center;font-size:13px;color:var(--ink-faint);padding:24px 0;">Aucun résultat.</p>`
+    : list.map(({item,i})=>{
+        const added = isInMyProducts(item);
+        return `<div class="flex items-center gap-3" style="padding:9px 0;border-top:1px solid var(--cream-line);">
+          <span style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;">
+            ${item.photo ? `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : ic(CAT_ICON[item.cat]||'utensils',18,{stroke:'var(--amber-deep)'})}
+          </span>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</p>
+            <p style="font-size:11px;color:var(--ink-faint);">${catsState[item.cat]||item.cat} · ${fmt(item.price)}</p>
+          </div>
+          <button class="btn ${added?'btn-outline':'btn-secondary'} btn-sm" style="flex-shrink:0;" onclick="toggleLibraryItem(${i})">
+            ${added ? ic('check',14,{stroke:'var(--forest)'}) + ' Ajouté' : ic('plus',14) }
+          </button>
+        </div>`;
+      }).join('');
+  hydrateIcons(body);
+}
+function closeLibrary(){ document.getElementById('libraryModal').innerHTML=''; }
+function toggleLibraryItem(i){
+  const item = LIBRARY_ITEMS[i];
+  if(isInMyProducts(item)){
+    const p = PRODUCTS.find(x=>x.name.trim().toLowerCase()===item.name.trim().toLowerCase());
+    PRODUCTS.splice(PRODUCTS.indexOf(p),1);
+    toast(`${item.name} retiré de votre restaurant.`);
+    deleteProductRow(p.id);
+  } else {
+    if(!canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
+    const p = {id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5};
+    PRODUCTS.push(p);
+    toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
+    persistProduct(p);
+  }
+  renderLibraryList();
+  if(state.dashSection==='products'){ document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons(); }
+  if(state.dashSection==='library'){ document.getElementById('dashContent').innerHTML = dashLibrary(); hydrateIcons(); }
+  if(state.view==='storefront') renderProductSections();
+}
+async function addCategory(){
+  const input = document.getElementById('newCatInput');
+  if(!input.value.trim()) return;
+  if(!canAddCategory()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_CATEGORIES} catalogues.`); return; }
+  const key = 'cat_'+Date.now();
+  const label = input.value.trim();
+  catsState[key] = label;
+  input.value='';
+  document.getElementById('catList').innerHTML = renderCatList();
+  toast('Catégorie ajoutée');
+  if(RESTAURANT.id){
+    const {error} = await supabaseClient.from('categories').insert({
+      restaurant_id: RESTAURANT.id, key, label, sort_order: Object.keys(catsState).length-1,
+    });
+    if(error) toast('Catégorie non enregistrée dans Supabase : ' + error.message);
+  }
+}
+
+/* ---------------- INVENTAIRE — lié réellement aux produits et aux commandes ---------------- */
+function dashInventory(){
+  const rows = PRODUCTS.map(p=>{
+    const stock = typeof p.stock === 'number' ? p.stock : null;
+    let state_, tone;
+    if(stock===null){ state_='Non suivi'; tone='pill-neutral'; }
+    else if(stock===0){ state_='Rupture'; tone='pill-terracotta'; }
+    else if(stock<=p.threshold){ state_='Stock faible'; tone='pill-amber'; }
+    else { state_='OK'; tone='pill-forest'; }
+    return {p, stock, state_, tone};
+  });
+  const lowStock = rows.filter(r=>r.stock!==null && r.stock<=r.p.threshold).length;
+
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Inventaire</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Le stock diminue automatiquement à chaque commande validée sur votre site public.</p>
+  ${lowStock>0 ? `<div class="card" style="padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+    ${ic('alertTriangle',16,{stroke:'var(--terracotta)'})}
+    <p style="font-size:12.5px;color:var(--ink-soft);">${lowStock} produit${lowStock>1?'s':''} en stock faible ou en rupture — pensez à réapprovisionner.</p>
+  </div>` : ''}
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>Produit</th><th>Stock actuel</th><th>Seuil d'alerte</th><th>État</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${rows.map(({p,stock,state_,tone})=>`<tr>
+          <td><div class="flex items-center gap-2">${productThumb(p,30)}<span>${p.name}</span></div></td>
+          <td class="font-tabular">${stock===null?'—':stock+' unités'}</td>
+          <td class="font-tabular" style="color:var(--ink-soft);">${stock===null?'—':p.threshold}</td>
+          <td><span class="pill ${tone}">${state_}</span></td>
+          <td>
+            <div class="flex items-center gap-1">
+              <button onclick="adjustStock('${p.id}',-1)" class="btn btn-outline btn-sm" style="padding:5px 9px;">${ic('minus',12)}</button>
+              <span class="font-tabular" style="width:20px;text-align:center;font-size:12.5px;">${stock===null?'-':''}</span>
+              <button onclick="adjustStock('${p.id}',1)" class="btn btn-outline btn-sm" style="padding:5px 9px;">${ic('plus',12)}</button>
+              <button onclick="restockProduct('${p.id}')" class="btn btn-outline btn-sm">${ic('upload',12)} +20</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+function adjustStock(id, delta){
+  const p = PRODUCTS.find(x=>x.id===id);
+  if(typeof p.stock !== 'number') p.stock = 0;
+  p.stock = Math.max(0, p.stock + delta);
+  if(p.stock > 0 && !p.available) p.available = true;
+  if(p.stock === 0) p.available = false;
+  renderDashSection('inventory');
+  if(state.view==='storefront') renderProductSections();
+}
+function restockProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id);
+  p.stock = (p.stock||0) + 20;
+  p.available = true;
+  renderDashSection('inventory');
+  if(state.view==='storefront') renderProductSections();
+  toast(`${p.name} réapprovisionné : +20 unités.`);
+}
+
+/* ---------------- COMPTABILITÉ — revenus réels + historique des paiements d'abonnement ---------------- */
+function dashAccounting(){
+  const validOrders = ordersForPeriod().filter(o=>o.status!=='cancelled');
+  const grossRevenue = validOrders.reduce((s,o)=>s+o.total,0);
+  const byMethod = {};
+  validOrders.forEach(o=>{ byMethod[o.pay] = (byMethod[o.pay]||0) + o.total; });
+
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Comptabilité</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${RESTO_NAME}</span>, calculée à partir de vos commandes.</p>
+  <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;align-items:stretch;">
+    <div class="stat-card">${icBadge('wallet',{size:34,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(grossRevenue)}</p><p style="font-size:11px;color:var(--ink-soft);">Chiffre d'affaires brut</p></div>
+    <div class="stat-card">${icBadge('receipt',{size:34,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${validOrders.length}</p><p style="font-size:11px;color:var(--ink-soft);">Transactions</p></div>
+    <div class="stat-card">${icBadge('card',{size:34,bg:'rgba(232,135,30,.12)',color:'var(--amber-ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${state.plan==='pro'?fmt(PREMIUM_PRICE):'0 FCFA'}</p><p style="font-size:11px;color:var(--ink-soft);">Coût abonnement (${state.plan==='pro'?'Premium':'Gratuit'}) /mois</p></div>
+  </div>
+  <div class="card" style="padding:18px;margin-bottom:18px;">
+    <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Revenus par moyen de paiement</h2>
+    ${Object.keys(byMethod).length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:16px 0;">Aucun revenu sur cette période.</p>` : Object.entries(byMethod).map(([m,amt])=>`<div class="flex items-center gap-3" style="margin-bottom:10px;">
+      ${paymentMark(m,26)}<span style="flex:1;font-size:13px;">${PAYMENT_LABELS[m]}</span><span class="font-tabular" style="font-size:13px;">${fmt(amt)}</span>
+    </div>`).join('')}
+  </div>
+  <div class="flex gap-2">
+    <button class="btn btn-outline" onclick="toast('Export CSV non disponible dans cet aperçu — fonctionnalité de la version réelle.')">${ic('download',15)} Exporter (CSV)</button>
+  </div>`;
+}
+/* ---------------- VARIANTS ---------------- */
+let variantsSelectedProduct = null;
+function dashVariants(){
+  // Auto-correction : si le produit mémorisé n'existe plus (supprimé,
+  // ou "p2" resté d'un ancien état de démo, ou produit d'un AUTRE
+  // restaurant chargé plus tôt dans le même onglet), on retombe sur le
+  // premier produit réel du restaurant actuellement chargé — jamais un
+  // id qui ne correspond à rien, qui faisait planter tout l'écran.
+  if(!PRODUCTS.some(p=>p.id===variantsSelectedProduct)){
+    variantsSelectedProduct = PRODUCTS.length ? PRODUCTS[0].id : null;
+  }
+  if(!PRODUCTS.length){
+    return `
+    
+    <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
+    <div class="empty-state" style="max-width:460px;text-align:center;padding:30px 20px;">
+      ${ic('sliders',30,{stroke:'var(--ink-faint)'})}
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:12px;">Créez d'abord un produit dans la section Produits — vous pourrez ensuite lui ajouter des variantes ici.</p>
+      <button class="btn btn-secondary" style="margin-top:14px;" onclick="setDashSection('products');openProductForm();">${ic('plus',15)} Créer un produit</button>
+    </div>`;
+  }
+  return `
+  
+  <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Variantes</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Ajoutez des tailles, suppléments ou options à vos produits.</p>
+  <div style="max-width:480px;">
+    <label class="field-label">Produit</label>
+    <select class="field-input" style="margin-bottom:16px;" onchange="variantsSelectedProduct=this.value;renderVariantsCard();">
+      ${PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===variantsSelectedProduct?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <div class="card" style="padding:18px;" id="variantsCard">${variantsCardHtml()}</div>
+  </div>`;
+}
+function variantsCardHtml(){
+  const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Sélectionnez un produit.</p>`;
+  return `
+  <div class="flex items-center justify-between" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cream-line);">
+    <div><p style="font-size:13px;font-weight:600;">Sélection obligatoire</p><p style="font-size:11px;color:var(--ink-faint);">Le client doit choisir une option avant d'ajouter au panier.</p></div>
+    <div class="toggle ${p.variantsRequired?'on':''}" onclick="toggleVariantsRequired()"><div class="dot"></div></div>
+  </div>
+  <div class="flex gap-2" style="margin-bottom:14px;">
+    <input class="field-input" id="newVariantName" placeholder="Ex : Grand format">
+    <input class="field-input" id="newVariantDelta" placeholder="+ 500" style="width:90px;">
+    <button class="btn btn-secondary" onclick="addVariant()">+</button>
+  </div>
+  ${p.variants.length===0?`<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune variante pour ce produit.</p>`:
+    p.variants.map((v,i)=>`<div class="flex items-center gap-3" style="padding:8px 0;border-top:1px solid var(--cream-line);">
+      <span style="color:var(--amber);">${ic('star',14,{fill:'currentColor',stroke:'none'})}</span><span style="flex:1;font-size:13.5px;">${v.name}</span>
+      <span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>=0?'+':''}${fmt(v.delta)}</span>
+      <button onclick="removeVariant(${i})" style="color:var(--terracotta);">${ic('trash',14)}</button>
+    </div>`).join('')}`;
+}
+function renderVariantsCard(){ document.getElementById('variantsCard').innerHTML = variantsCardHtml(); hydrateIcons(); }
+function toggleVariantsRequired(){
+  const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
+  p.variantsRequired = !p.variantsRequired;
+  renderVariantsCard();
+  persistProduct(p);
+}
+function addVariant(){
+  const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
+  const name = document.getElementById('newVariantName').value.trim();
+  const delta = Number(document.getElementById('newVariantDelta').value)||0;
+  if(!name) return;
+  p.variants.push({name,delta});
+  renderVariantsCard();
+  toast('Variante ajoutée');
+  persistProduct(p);
+}
+function removeVariant(i){
+  const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
+  if(!p) return;
+  p.variants.splice(i,1);
+  renderVariantsCard();
+  persistProduct(p);
+}
+
+/* ---------------- PAYMENTS ---------------- */
+// CORRECTION : PAYMENT_DETAILS_FIELDS (numéro + nom de compte) a été
+// entièrement retiré — ces champs n'étaient de toute façon JAMAIS
+// enregistrés dans Supabase (simple objet JS en mémoire, perdu à
+// chaque actualisation), et le principe même (demander un numéro de
+// téléphone) ne correspond plus à ce qui est demandé : un lien de
+// paiement, réellement stocké dans payment_toggles (colonne déjà
+// existante et déjà couverte par les permissions actuelles — aucune
+// modification SQL nécessaire), donc disponible après actualisation,
+// reconnexion, ou changement d'appareil.
+const PAYMENT_LINK_FIELD = {
+  wave: {key:'wave_link', label:'Lien de paiement Wave'},
+  orange_money: {key:'orange_money_link', label:'Lien de paiement Orange Money'},
+};
+function dashPayments(){
+  const methods = ['cash','on_delivery','wave','orange_money'];
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Paiements</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Choisissez les moyens de paiement que vos clients peuvent utiliser.</p>
+  <div class="flex-col gap-3" style="max-width:560px;" id="paymentsList">${paymentsListHtml(methods)}</div>
+  <div style="background:var(--forest-soft);color:var(--forest);border-radius:16px;padding:14px 18px;margin-top:18px;max-width:560px;font-size:12.5px;">
+    <span style="display:inline-flex;align-items:center;gap:8px;">${ic('lock',15)}Les clés secrètes de paiement ne sont jamais stockées ni affichées ici. Une fois votre compte marchand Wave ou Orange Money prêt, vos identifiants sont configurés en variables d'environnement côté serveur.</span>
+  </div>`;
+}
+function paymentsListHtml(methods){
+  return methods.map(m=>{
+    const on = state.toggles[m];
+    const locked = PRO_ONLY_METHODS.includes(m) && !isPremiumActive();
+    const linkField = PAYMENT_LINK_FIELD[m];
+    const hasDetails = linkField && on && !locked;
+    return `<div class="card" style="padding:14px;${locked?'opacity:.85;':''}">
+      <div class="flex items-center gap-3">
+        ${paymentMark(m,36)}
+        <div style="flex:1;">
+          <p style="font-size:13.5px;font-weight:600;">${PAYMENT_LABELS[m]} ${locked?`<span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Premium</span>`:''}</p>
+        </div>
+        <div class="toggle ${on && !locked?'on':''}" style="${locked?'cursor:not-allowed;':''}" onclick="togglePayment('${m}')"><div class="dot"></div></div>
+      </div>
+      ${locked?`<div style="margin-top:10px;">${lockedNotice(PRO_ONLY_LABEL[m], true)}</div>`:''}
+      ${hasDetails?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
+        <label class="field-label" style="font-size:11px;">${linkField.label}</label>
+        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:5px;">Le client sera redirigé vers ce lien au moment de payer avec ${PAYMENT_LABELS[m]}.</p>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+function togglePayment(m){
+  if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
+  if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()){
+    toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Premium.", true);
+    return;
+  }
+  state.toggles[m] = !state.toggles[m];
+  document.getElementById('paymentsList').innerHTML = paymentsListHtml(['cash','on_delivery','wave','orange_money']);
+  hydrateIcons();
+}
+
+/* ---------------- CUSTOMERS ---------------- */
+let dashCustomersTab = 'clients';
+function dashCustomers(){
+  return `
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Clients</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <div class="flex gap-2" style="margin-bottom:18px;">
+    <button class="btn btn-sm ${dashCustomersTab==='clients'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('clients')">Clients</button>
+    <button class="btn btn-sm ${dashCustomersTab==='reviews'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('reviews')">${ic('star',13)} Avis clients${REVIEWS.length?` (${REVIEWS.length})`:''}</button>
+  </div>
+  <div id="dashCustomersBody">${dashCustomersTab==='clients' ? dashClientsListHtml() : dashReviewsHtml()}</div>`;
+}
+function setDashCustomersTab(tab){ dashCustomersTab = tab; renderDashSection('customers'); }
+function dashClientsListHtml(){
+  return `
+  <div style="position:relative;max-width:280px;margin-bottom:16px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" id="customerSearch" style="padding-left:34px;" placeholder="Rechercher un client..." oninput="document.getElementById('customersTableBody').innerHTML=customersRowsHtml(this.value)"></div>
+  <div class="card overflow-x-auto">
+    <table class="data-table">
+      <thead><tr><th>Nom</th><th>Téléphone</th><th>Commandes</th><th>Total dépensé</th><th>Dernière commande</th><th>En cours</th></tr></thead>
+      <tbody id="customersTableBody">${customersRowsHtml('')}</tbody>
+    </table>
+  </div>`;
+}
+function computeCustomersFromOrders(){
+  const byPhone = {};
+  DEMO_ORDERS.forEach(o=>{
+    if(!byPhone[o.phone]) byPhone[o.phone] = {name:o.client, phone:o.phone, orders:0, spent:0, lastOrder:o.createdAt};
+    const c = byPhone[o.phone];
+    if(o.status!=='cancelled'){ c.orders++; c.spent += o.total; }
+    if(o.createdAt > c.lastOrder) c.lastOrder = o.createdAt;
+  });
+  return Object.values(byPhone).sort((a,b)=>b.spent-a.spent);
+}
+function customersRowsHtml(query){
+  const q = (query||'').trim().toLowerCase();
+  const customers = computeCustomersFromOrders().filter(c=>!q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
+  if(customers.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">${q?'Aucun client ne correspond à votre recherche.':'Aucun client pour le moment.'}</td></tr>`;
+  return customers.map(c=>{
+    // "En cours" = ni terminée ni annulée — visible et cliquable
+    // directement depuis la fiche client, sans devoir la rechercher
+    // dans la liste générale des commandes.
+    const inProgress = DEMO_ORDERS.filter(o=>o.phone===c.phone && !['completed','cancelled'].includes(o.status));
+    return `<tr>
+      <td>${c.name}</td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
+      <td>${inProgress.length ? inProgress.map(o=>`<button onclick="openOrderDetailByNum('${o.num}')" class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="margin:2px;cursor:pointer;">#${o.num}</button>`).join('') : `<span style="color:var(--ink-faint);font-size:12px;">—</span>`}</td>
+    </tr>`;
+  }).join('');
+}
+function openOrderDetailByNum(num){
+  const i = DEMO_ORDERS.findIndex(o=>o.num===num);
+  if(i!==-1) openOrderDetail(i);
+}
+/* Moyenne et nombre d'avis calculés directement à partir de REVIEWS
+   (vraies lignes Supabase pour CE restaurant) — jamais un chiffre codé
+   en dur. */
+function dashReviewsHtml(){
+  if(REVIEWS.length===0){
+    return `<div class="empty-state">${ic('star',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après que des clients en laissent depuis la page de confirmation de commande.</p></div>`;
+  }
+  const avg = REVIEWS.reduce((s,r)=>s+r.rating,0) / REVIEWS.length;
+  return `
+  <div class="card" style="padding:18px;margin-bottom:16px;display:flex;align-items:center;gap:20px;max-width:400px;">
+    <div class="text-center">
+      <p class="font-display font-tabular" style="font-size:30px;">${avg.toFixed(1)}</p>
+      <div style="display:flex;gap:1px;justify-content:center;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=Math.round(avg)?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
+    </div>
+    <div style="border-left:1px solid var(--cream-line);padding-left:18px;">
+      <p style="font-size:22px;font-weight:700;">${REVIEWS.length}</p>
+      <p style="font-size:12px;color:var(--ink-faint);">avis reçu${REVIEWS.length>1?'s':''}</p>
+    </div>
+  </div>
+  <div class="flex-col gap-2" style="max-width:560px;">
+    ${REVIEWS.map(r=>`<div class="card" style="padding:14px;">
+      <div class="flex items-center justify-between" style="margin-bottom:6px;">
+        <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
+        <button onclick="deleteReview('${r.id}')" title="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
+      </div>
+      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${r.comment}</p>`:''}
+      <p style="font-size:11.5px;color:var(--ink-faint);">${r.client||'Client anonyme'} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
+    </div>`).join('')}
+  </div>`;
+}
+async function deleteReview(id){
+  if(!confirm('Supprimer cet avis ?')) return;
+  const {error} = await supabaseClient.from('reviews').delete().eq('id', id);
+  if(error){ toast('Suppression impossible : ' + error.message); return; }
+  REVIEWS = REVIEWS.filter(r=>r.id!==id);
+  document.getElementById('dashCustomersBody').innerHTML = dashReviewsHtml();
+  hydrateIcons();
+}
+
+/* ---------------- QR CODE ---------------- */
+function dashQrcode(){
+  const url = publicRestaurantUrl(RESTAURANT.slug);
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
+  return `
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
+  <div class="card text-center" style="padding:32px;max-width:340px;">
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${RESTO_NAME}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
+    <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
+    <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
+    <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
+    ${!RESTAURANT.isPublished ? `<p style="font-size:11px;color:var(--terracotta);margin-top:8px;">Votre site est encore en brouillon — publiez-le dans Paramètres avant de diffuser ce QR Code.</p>` : ''}
+  </div>
+  <div class="flex gap-2" style="margin-top:16px;flex-wrap:wrap;">
+    <a class="btn btn-secondary" href="${qrImgUrl}" target="_blank" rel="noreferrer">${ic('download',15)} Télécharger</a>
+    <button class="btn btn-outline" onclick="window.print()">${ic('printer',15)} Imprimer</button>
+    <button class="btn btn-outline" onclick="shareQr()">${ic('share',15)} Partager</button>
+    <button class="btn btn-outline" onclick="copyPublicSiteLink()">${ic('copy',15)} Copier le lien</button>
+    <button class="btn btn-ghost" onclick="setView('storefront')">${ic('externalLink',14)} Voir mon site</button>
+  </div>`;
+}
+function shareQr(){
+  const publicUrl = publicRestaurantUrl(RESTAURANT.slug);
+  if(navigator.share){
+    navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
+  } else {
+    copyPublicSiteLink();
+  }
+}
+/* drawQr() a été retiré : il dessinait un motif décoratif aléatoire
+   (pas un vrai QR Code scannable). Remplacé par une vraie image QR
+   générée via l'API publique api.qrserver.com dans dashQrcode(),
+   qui encode le vrai lien du site public. */
+</script>
+
+<script>
+/* ---------------- STAFF / PERSONNEL ---------------- */
+const STAFF_ROLES = ['Administrateur','Caissier','Cuisine','Gestionnaire'];
+const STAFF_ROLE_DESC = {
+  'Administrateur':'Accès complet à toutes les sections.',
+  'Caissier':'Accès à la caisse et aux commandes.',
+  'Cuisine':'Accès aux commandes et à leur préparation.',
+  'Gestionnaire':'Accès aux produits, à l\'inventaire, aux catégories et aux analyses.',
+};
+const SECTION_LABELS_MAP = Object.fromEntries(NAV_ITEMS.map(([k,,l])=>[k,l]));
+let staffState = JSON.parse(JSON.stringify(DEMO_STAFF));
+let inviteRole = 'Caissier';
+let invitePermissions = null; // null = suivre les permissions par défaut du rôle
+let editingStaffIndex = null;
+
+function genInviteCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'TR-';
+  for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+
+function dashStaff(){
+  if(!isPremiumActive()){
+    return `
+    
+    <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
+    <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Invitez des membres de votre équipe et définissez leurs permissions.</p>
+    <div class="card" style="padding:28px;max-width:560px;display:flex;align-items:flex-start;gap:14px;">
+      ${icBadge('lock',{size:42,bg:'rgba(232,135,30,.12)',color:'var(--amber-deep)'})}
+      <div>
+        <p style="font-size:14px;font-weight:600;margin-bottom:4px;">La gestion du personnel fait partie du plan Premium</p>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Passez au plan Premium pour inviter des administrateurs, caissiers, cuisine ou gestionnaires.</p>
+        <button class="btn btn-secondary btn-sm" onclick="goUpgrade()">Passer au plan Premium</button>
+      </div>
+    </div>`;
+  }
+  const active = staffState.filter(s=>s.status==='Actif');
+  const pending = staffState.filter(s=>s.status==='En attente');
+  invitePermissions = invitePermissions || ROLE_SECTIONS[inviteRole];
+
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Invitez des membres de votre équipe et définissez précisément ce qu'ils peuvent voir.</p>
+  <div class="card" style="padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    ${ic('info',14,{stroke:'var(--ink-faint)'})}
+    <span style="font-size:11.5px;color:var(--ink-faint);">Démo — aucun e-mail réel n'est envoyé ici. Aperçu par rôle :</span>
+    ${STAFF_ROLES.map(r=>`<button class="btn btn-outline btn-sm" onclick="setSimulatedRole('${r}')">${r}</button>`).join('')}
+  </div>
+
+  <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
+    <p style="font-size:13px;font-weight:600;margin-bottom:10px;">${ic('plus',14)} Inviter une personne</p>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <input class="field-input" id="staffEmail" placeholder="email@exemple.com">
+      <select class="field-input" id="staffRole" onchange="inviteRole=this.value;invitePermissions=ROLE_SECTIONS[this.value];renderDashSection('staff');">
+        ${STAFF_ROLES.map(r=>`<option ${inviteRole===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
+    <p style="font-size:11px;color:var(--ink-faint);margin-bottom:10px;">${STAFF_ROLE_DESC[inviteRole]}</p>
+    <p style="font-size:12px;font-weight:600;margin-bottom:8px;">Accès autorisés</p>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px;">
+      ${NAV_ITEMS.map(([key,,label])=>`<label class="flex items-center gap-2" style="font-size:12px;cursor:pointer;">
+        <input type="checkbox" ${invitePermissions.includes(key)?'checked':''} onchange="toggleInvitePermission('${key}',this.checked)"> ${label}
+      </label>`).join('')}
+    </div>
+    <button class="btn btn-secondary" onclick="inviteStaff()">${ic('send',15)} Envoyer l'invitation</button>
+  </div>
+
+  <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Membres (${active.length})</p>
+  <div class="card" style="max-width:680px;margin-bottom:22px;" id="staffActiveList">${staffActiveListHtml()}</div>
+
+  <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Invitations en attente (${pending.length})</p>
+  <div class="card" style="max-width:680px;" id="staffPendingList">${staffPendingListHtml()}</div>
+  <div id="staffEditModal"></div>`;
+}
+
+function toggleInvitePermission(key, checked){
+  invitePermissions = invitePermissions.slice();
+  if(checked && !invitePermissions.includes(key)) invitePermissions.push(key);
+  if(!checked) invitePermissions = invitePermissions.filter(k=>k!==key);
+}
+
+function staffActiveListHtml(){
+  const active = staffState.filter(s=>s.status==='Actif');
+  if(active.length===0) return `<div class="empty-state">${ic('userGroup',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun membre actif.</p></div>`;
+  return active.map((s)=>{
+    const i = staffState.indexOf(s);
+    const perms = s.permissions || ROLE_SECTIONS[s.role] || [];
+    return `<div style="padding:12px 16px;border-top:1px solid var(--cream-line);">
+      <div class="flex items-center gap-3">
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role}</p>
+        </div>
+        <span class="pill pill-forest">Actif</span>
+        <button class="btn btn-outline btn-sm" onclick="openStaffEdit(${i})">${ic('pencil',13)} Modifier</button>
+        <button class="btn btn-outline btn-sm" onclick="deactivateStaff(${i})" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);">${ic('x',13)} Désactiver</button>
+      </div>
+      <p style="font-size:10.5px;color:var(--ink-faint);margin-top:6px;">${perms.length} section${perms.length>1?'s':''} autorisée${perms.length>1?'s':''} : ${perms.map(k=>SECTION_LABELS_MAP[k]).join(', ')||'aucune'}</p>
+    </div>`;
+  }).join('');
+}
+function staffPendingListHtml(){
+  const pending = staffState.filter(s=>s.status==='En attente');
+  if(pending.length===0) return `<div class="empty-state">${ic('send',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune invitation en attente.</p></div>`;
+  return pending.map((s)=>{
+    const i = staffState.indexOf(s);
+    return `<div class="flex items-center gap-3" style="padding:12px 16px;border-top:1px solid var(--cream-line);">
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
+        <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role} · Code ${s.code}</p>
+      </div>
+      <span class="pill pill-amber">Invitation envoyée</span>
+      <button class="btn btn-outline btn-sm" onclick="resendInvite(${i})">${ic('send',13)} Renvoyer</button>
+      <button class="btn btn-outline btn-sm" onclick="cancelInvite(${i})" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);">${ic('trash',13)}</button>
+    </div>`;
+  }).join('');
+}
+
+function refreshStaffLists(){
+  const a = document.getElementById('staffActiveList'); if(a) a.innerHTML = staffActiveListHtml();
+  const p = document.getElementById('staffPendingList'); if(p) p.innerHTML = staffPendingListHtml();
+  hydrateIcons();
+}
+
+async function inviteStaff(){
+  const email = document.getElementById('staffEmail').value.trim();
+  if(!email){ toast('Entrez un e-mail.'); return; }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  if(staffState.some(s=>s.email.toLowerCase()===email.toLowerCase())){
+    toast('Cette adresse a déjà été invitée à ce restaurant.');
+    return;
+  }
+  // Une invitation est "personnalisée" si l'ensemble des accès choisis
+  // diffère RÉELLEMENT de la liste par défaut du rôle (comparaison du
+  // contenu, pas seulement de la longueur — deux listes de même taille
+  // peuvent contenir des sections différentes).
+  const defaults = ROLE_SECTIONS[inviteRole] || [];
+  const isCustomized = invitePermissions.length !== defaults.length
+    || invitePermissions.slice().sort().join(',') !== defaults.slice().sort().join(',');
+  const s = {
+    name: email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+    email, role: inviteRole, status:'En attente', code: genInviteCode(),
+    permissions: isCustomized ? invitePermissions.slice() : null,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 7*24*60*60*1000, // 7 jours, comme une vraie invitation par e-mail
+  };
+  const {error: inviteEmailError} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true }
+  });
+  if(inviteEmailError){
+    toast('Impossible d’envoyer l’e-mail d’invitation : ' + (inviteEmailError.message || 'réessayez.'));
+    return;
+  }
+
+  staffState.push(s);
+  document.getElementById('staffEmail').value = '';
+  refreshStaffLists();
+  renderDashSection('staff');
+  toast(`Invitation créée pour ${email} — code ${s.code}. Un e-mail de connexion a été envoyé.`);
+  await persistStaffInsert(s);
+}
+async function resendInvite(i){
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email: staffState[i].email,
+    options: { shouldCreateUser: true }
+  });
+  if(error){
+    toast('Impossible de renvoyer l’e-mail : ' + (error.message || 'réessayez.'));
+    return;
+  }
+  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
+  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours.`);
+  await persistStaffUpdate(staffState[i]);
+}
+async function cancelInvite(i){
+  if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
+  const id = staffState[i].id;
+  staffState.splice(i,1);
+  refreshStaffLists();
+  await deleteStaffRow(id);
+}
+async function deactivateStaff(i){
+  if(!confirm(`Désactiver l'accès de ${staffState[i].name} à ce restaurant ?`)) return;
+  staffState[i].status = 'En attente';
+  staffState[i].code = genInviteCode();
+  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
+  refreshStaffLists();
+  toast(`${staffState[i].name} n'a plus accès à ${RESTO_NAME}. Son compte TerangaResto reste actif.`);
+  await persistStaffUpdate(staffState[i]);
+}
+
+function openStaffEdit(i){
+  editingStaffIndex = i;
+  const s = staffState[i];
+  const perms = s.permissions || ROLE_SECTIONS[s.role] || [];
+  document.getElementById('staffEditModal').innerHTML = `
+  <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeStaffEdit()"></div>
+    <div class="card" style="position:relative;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;">
+      <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
+        <h2 class="font-display" style="font-size:16px;">${s.name}</h2>
+        <button onclick="closeStaffEdit()">${ic('x',17)}</button>
+      </div>
+      <div style="padding:16px 20px;">
+        <label class="field-label">Rôle</label>
+        <select class="field-input" id="editStaffRole" style="margin-bottom:14px;" onchange="staffState[${i}].role=this.value;staffState[${i}].permissions=null;openStaffEdit(${i});">
+          ${STAFF_ROLES.map(r=>`<option ${s.role===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+        <p style="font-size:12px;font-weight:600;margin-bottom:8px;">Accès autorisés</p>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:7px;">
+          ${NAV_ITEMS.map(([key,,label])=>`<label class="flex items-center gap-2" style="font-size:12px;cursor:pointer;">
+            <input type="checkbox" ${perms.includes(key)?'checked':''} onchange="editStaffPermission(${i},'${key}',this.checked)"> ${label}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div class="flex gap-3" style="padding:16px 20px;border-top:1px solid var(--cream-line);">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeStaffEdit()">Fermer</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="saveStaffEdit(${i})">${ic('save',15)} Enregistrer</button>
+      </div>
+    </div>
+  </div>`;
+  hydrateIcons();
+}
+function editStaffPermission(i,key,checked){
+  const s = staffState[i];
+  let perms = s.permissions || ROLE_SECTIONS[s.role].slice();
+  perms = checked ? [...new Set([...perms,key])] : perms.filter(k=>k!==key);
+  s.permissions = perms;
+}
+function saveStaffEdit(i){
+  closeStaffEdit();
+  refreshStaffLists();
+  toast(`Permissions de ${staffState[i].name} mises à jour.`);
+  persistStaffUpdate(staffState[i]);
+}
+function closeStaffEdit(){ editingStaffIndex=null; document.getElementById('staffEditModal').innerHTML=''; }
+
+/* ---------------- BIBLIOTHÈQUE (médias : logo, couverture, photos produits) ---------------- */
+let libraryTab = 'all';
+function dashLibrary(){
+  return `
+  <div class="lib-header">
+    <div>
+      <h1 class="font-display" style="font-size:22px;">Plats prédéfinis</h1>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${RESTO_NAME}</span>.</p>
+    </div>
+    <button class="btn btn-secondary btn-sm lib-add-btn" onclick="toast('Sélecteur de fichiers (démo)')">${ic('upload',14)}<span>Ajouter des images</span></button>
+  </div>
+  <div class="flex gap-2" style="margin:14px 0 16px;">
+    ${[['all','Tout'],['brand','Logo & couverture'],['products','Produits']].map(([key,label])=>
+      `<button class="btn ${libraryTab===key?'btn-primary':'btn-outline'} btn-sm" onclick="libraryTab='${key}';renderDashSection('library');">${label}</button>`).join('')}
+  </div>
+  <div class="lib-grid">${libraryCardsHtml()}</div>`;
+}
+
+function libCardShell({imageHtml, name, meta, actions}){
+  return `<div class="lib-card">
+    <div class="lib-thumb">${imageHtml}</div>
+    <div class="lib-card-body">
+      <p class="lib-card-name">${name}</p>
+      <p class="lib-card-meta">${meta}</p>
+      <div class="lib-card-actions">${actions}</div>
+    </div>
+  </div>`;
+}
+
+function libraryCardsHtml(){
+  const cards = [];
+
+  if(libraryTab!=='products'){
+    cards.push(libCardShell({
+      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      name:'Logo', meta: RESTAURANT.logoDataUrl ? 'Image active' : 'Aucune image',
+      actions: RESTAURANT.logoDataUrl
+        ? `<button onclick="pickLogo()">${ic('pencil',13)}</button><button onclick="RESTAURANT.logoDataUrl=null;renderDashSection('library');renderSidebarLogo();toast('Logo supprimé')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
+        : `<button onclick="pickLogo()" style="color:var(--amber-ink);">${ic('upload',13)}</button>`,
+    }));
+    cards.push(libCardShell({
+      imageHtml: RESTAURANT.coverDataUrl ? `<img src="${RESTAURANT.coverDataUrl}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      name:'Couverture', meta: RESTAURANT.coverDataUrl ? 'Image active' : 'Aucune image',
+      actions: RESTAURANT.coverDataUrl
+        ? `<button onclick="pickCover()">${ic('pencil',13)}</button><button onclick="RESTAURANT.coverDataUrl=null;renderDashSection('library');toast('Couverture supprimée')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
+        : `<button onclick="pickCover()" style="color:var(--amber-ink);">${ic('upload',13)}</button>`,
+    }));
+  }
+
+  if(libraryTab!=='brand'){
+    PRODUCTS.forEach(p=>{
+      cards.push(libCardShell({
+        imageHtml: p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
+        name: p.name, meta: (p.photo?'Photo produit':'Aucune image') + ' — ' + (catsState[p.cat]||''),
+        actions: `<button onclick="setDashSection('products');openProductForm('${p.id}')">${ic('pencil',13)}</button>`,
+      }));
+    });
+  }
+
+  if(cards.length===0) return `<div class="empty-state">${ic('plus',24,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun plat prédéfini dans cette catégorie.</p></div>`;
+  return cards.join('');
+}
+
+/* ---------------- PARAMÈTRES — entièrement branchés sur RESTAURANT ---------------- */
+let settingsTab = 'Général';
+
+/* ---------------- CARTES RÉSEAUX SOCIAUX (état clair, vrais logos) ---------------- */
+let socialEditingKey = null;
+let socialDraft = '';
+
+function socialCardHtml(key,label,fieldLabel,placeholder){
+  const net = RESTAURANT.social[key];
+  const configured = net.value.trim().length > 0;
+  const editing = socialEditingKey === key;
+
+  return `<div class="card social-card">
+    <div class="social-card-top">
+      ${socialLogo(key,38)}
+      <div class="social-card-info">
+        <p class="social-card-name">${label}</p>
+        ${!editing ? `<p class="social-card-status ${configured?'is-on':''}">${configured ? (net.enabled?'Connecté':'Configuré · masqué') : 'Non configuré'}</p>` : ''}
+      </div>
+      ${configured && !editing ? `<div class="toggle ${net.enabled?'on':''}" onclick="toggleSocialEnabled('${key}')" title="Afficher sur mon site"><div class="dot"></div></div>` : ''}
+    </div>
+
+    ${!editing && configured ? `
+      <div class="social-card-value">
+        <span class="social-card-value-label">${fieldLabel}</span>
+        <span class="social-card-value-text">${key==='whatsapp' ? formatWhatsappDisplay(net.value) : net.value}</span>
+      </div>
+      <div class="social-card-actions">
+        <button class="btn btn-outline btn-sm" onclick="openSocialEdit('${key}')">${ic('pencil',13)} Modifier</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--terracotta);border-color:rgba(193,68,14,.25);" onclick="removeSocial('${key}')">${ic('trash',13)} Retirer</button>
+      </div>
+    ` : ''}
+
+    ${!editing && !configured ? `
+      <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="openSocialEdit('${key}')">${ic('plus',13)} Ajouter</button>
+    ` : ''}
+
+    ${editing ? `
+      <div class="social-card-form">
+        <label class="field-label" style="font-size:11px;">${fieldLabel}${key==='whatsapp'?' (chiffres uniquement)':''}</label>
+        <input class="field-input" id="socialDraftInput" placeholder="${placeholder}"
+          value="${socialDraft}" ${key==='whatsapp'?'inputmode="numeric"':'type="text"'}
+          oninput="onSocialDraftInput('${key}', this)">
+        <div class="flex gap-2" style="margin-top:10px;">
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="closeSocialEdit()">Annuler</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="saveSocialEdit('${key}')">${ic('save',13)} Enregistrer</button>
+        </div>
+      </div>
+    ` : ''}
+  </div>`;
+}
+
+function formatWhatsappDisplay(digits){
+  return digits ? '+221 ' + digits : '';
+}
+function onSocialDraftInput(key, el){
+  if(key==='whatsapp'){
+    const digitsOnly = el.value.replace(/\D/g,'');
+    el.value = digitsOnly;
+    socialDraft = digitsOnly;
+  } else {
+    socialDraft = el.value;
+  }
+}
+function openSocialEdit(key){
+  socialEditingKey = key;
+  socialDraft = RESTAURANT.social[key].value;
+  refreshSocialCards();
+  setTimeout(()=>document.getElementById('socialDraftInput')?.focus(), 0);
+}
+function closeSocialEdit(){
+  socialEditingKey = null;
+  socialDraft = '';
+  refreshSocialCards();
+}
+async function saveSocialEdit(key){
+  if(!socialDraft.trim()){ toast('Ce champ ne peut pas être vide.'); return; }
+  RESTAURANT.social[key].value = socialDraft.trim();
+  RESTAURANT.social[key].enabled = true;
+  socialEditingKey = null;
+  socialDraft = '';
+  refreshSocialCards();
+  if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
+  toast('Réseau enregistré — visible sur votre site public.');
+}
+async function toggleSocialEnabled(key){
+  RESTAURANT.social[key].enabled = !RESTAURANT.social[key].enabled;
+  refreshSocialCards();
+  if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
+}
+async function removeSocial(key){
+  if(!confirm('Retirer ce réseau ? Ses informations seront supprimées (différent de le masquer).')) return;
+  RESTAURANT.social[key] = {enabled:false, value:''};
+  refreshSocialCards();
+  if(state.view==='storefront') renderStorefrontHero();
+  await persistRestaurant();
+  toast('Réseau retiré.');
+}
+function refreshSocialCards(){
+  if(document.getElementById('socialCards')) renderDashSection('settings');
+}
+
+/* Bouton "Retour à l'accueil" — identique partout où il apparaît,
+   uniquement visible sur téléphone/tablette (voir .mobile-tablet-only).
+   Centralisé ici pour que Paramètres et toutes ses sous-sections
+   (Inventaire, Caisse, Analyses, Comptabilité, Catégories, Variantes,
+   Paiements, Personnel, Abonnement) utilisent EXACTEMENT le même
+   système de navigation, comme demandé — plutôt que de répéter le même
+   balisage neuf fois avec un risque d'incohérence. */
+function backToHomeBtnHtml(){
+  return `<button class="mobile-tablet-only" onclick="setDashSection('overview')" style="align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:6px 2px;border:none;background:none;">${ic('arrowLeft',15)} Retour à l'accueil</button>`;
+}
+function dashSettings(){
+  return `
+  
+  <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div><h1 class="font-display" style="font-size:22px;">Paramètres</h1><p style="font-size:13px;color:var(--ink-soft);">Toute modification, une fois enregistrée, apparaît sur votre site public.</p></div>
+    <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
+  </div>
+  <div class="flex gap-2 overflow-x-auto" style="margin-bottom:16px;">
+    ${['Général','Horaires','Livraison','Réseaux & carte'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
+  </div>
+  <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
+}
+
+function settingsBodyHtml(){
+  if(settingsTab==='Général') return `
+    <div class="card" style="padding:14px 16px;margin-bottom:16px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.isPublished?'0':'12px'};">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${ic(RESTAURANT.isPublished?'globe':'lock',18,{stroke: RESTAURANT.isPublished?'var(--forest)':'var(--amber-deep)'})}
+          <div>
+            <p style="font-size:13.5px;font-weight:600;">${RESTAURANT.isPublished?'Site publié':'Site en brouillon'}</p>
+            <p style="font-size:11px;color:var(--ink-faint);">${RESTAURANT.isPublished?'Visible par vos clients.':'Invisible pour vos clients tant que non publié.'}</p>
+          </div>
+        </div>
+        <button class="btn ${RESTAURANT.isPublished?'btn-outline':'btn-secondary'} btn-sm" onclick="togglePublish()">${RESTAURANT.isPublished?'Dépublier':'Publier'}</button>
+      </div>
+      ${RESTAURANT.isPublished?`<div style="border-top:1px solid var(--cream-line);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
+        ${ic('link',16,{stroke:'var(--forest)'})}
+        <div style="flex:1;min-width:0;">
+          <p style="font-size:11px;color:var(--ink-faint);">Lien de votre site public</p>
+          <p class="font-tabular" style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(RESTAURANT.slug)}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
+      </div>`:''}
+    </div>
+    <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${RESTAURANT.name}" style="margin-bottom:14px;">
+    <label class="field-label">Type de restaurant</label>
+    <select class="field-input" id="setType" style="margin-bottom:14px;">
+      ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${RESTAURANT.type===t?'selected':''}>${t}</option>`).join('')}
+    </select>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div><label class="field-label">Téléphone</label><input class="field-input" id="setPhone" value="${RESTAURANT.phone}"></div>
+      <div><label class="field-label">Ville</label><input class="field-input" id="setCity" value="${RESTAURANT.city}"></div>
+    </div>
+    <label class="field-label">Adresse</label><input class="field-input" id="setAddress" value="${RESTAURANT.address}" style="margin-bottom:14px;">
+    <div class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--cream);">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Titre d'accueil (Hero)</p>
+      <label class="field-label">Titre principal</label>
+      <input class="field-input" id="setHeroTitle" placeholder="Bienvenue chez ${RESTAURANT.name||'votre restaurant'}" value="${RESTAURANT.heroTitle}" style="margin-bottom:10px;">
+      <label class="field-label">Sous-titre</label>
+      <input class="field-input" id="setHeroSubtitle" placeholder="${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}" value="${RESTAURANT.heroSubtitle}">
+      <p style="font-size:11px;color:var(--ink-faint);margin-top:8px;">Laissez vide pour utiliser un texte généré automatiquement à partir du nom, du type et de la ville.</p>
+    </div>
+    <div class="flex gap-3">
+      <div class="flex-col items-center" style="flex:1;max-width:120px;">
+        <label class="field-label w-full">Logo</label>
+        <div style="position:relative;width:100%;">
+          <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
+            ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
+          </button>
+          ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
+        </div>
+        ${RESTAURANT.logoDataUrl?`<button onclick="pickLogo()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:''}
+      </div>
+      <div class="flex-col items-center" style="flex:2;">
+        <label class="field-label w-full">Couverture</label>
+        <div style="position:relative;width:100%;">
+          <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
+            ${RESTAURANT.coverDataUrl?'':`${ic('upload',18,{stroke:'var(--ink-faint)'})}<span style="font-size:11px;color:var(--ink-faint);">Ajouter une couverture</span>`}
+          </button>
+          ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
+        </div>
+        ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
+      </div>
+    </div>
+    <div class="card" style="padding:14px 16px;margin-top:18px;margin-bottom:14px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <div>
+          <p style="font-size:13.5px;font-weight:700;">E-mail de réception des commandes</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
+        </div>
+        ${RESTAURANT.orderNotificationEmailVerified ? `<span class="pill pill-forest">Vérifié</span>` : `<span class="pill pill-terracotta">Non vérifié</span>`}
+      </div>
+      <label class="field-label">Adresse e-mail</label>
+      <input class="field-input" id="orderNotifyEmail" type="email" placeholder="commandes@votrerestaurant.com" value="${RESTAURANT.orderNotificationEmail || ''}" style="margin-bottom:10px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="requestOrderNotificationEmailChange()">${ic('send',13)} ${RESTAURANT.orderNotificationEmailVerified ? 'Changer l’adresse' : 'Définir l’adresse'}</button>
+        ${RESTAURANT.orderNotificationEmailPending ? `<button class="btn btn-outline btn-sm" onclick="verifyOrderNotificationEmail()">${ic('check',13)} Vérifier le code</button>` : ''}
+      </div>
+      ${RESTAURANT.orderNotificationEmailPending ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
+        <label class="field-label">Code de vérification à 8 chiffres</label>
+        <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:.22em;text-align:center;font-weight:800;font-size:18px;max-width:240px;">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Nous avons envoyé ce code à <strong>${RESTAURANT.orderNotificationEmailPending}</strong>.</p>
+      </div>` : ''}
+    </div>
+
+    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
+      <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
+      <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
+    </div>`;
+
+  if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
+    const h = RESTAURANT.hours[i];
+    return `<div class="flex items-center gap-3 flex-wrap" style="padding:9px 0;border-top:1px solid var(--cream-line);">
+      <span style="width:84px;font-size:13.5px;font-weight:500;">${d}</span>
+      <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value;persistRestaurant();">
+        <span style="color:var(--ink-faint);font-size:12px;">à</span>
+        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;persistRestaurant();">`
+        : `<span style="font-size:12px;color:var(--ink-faint);">Fermé</span>`}
+    </div>`;
+  }).join('');
+
+  if(settingsTab==='Livraison') return `
+    <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
+      <span style="font-size:13.5px;font-weight:500;">Livraison activée</span>
+      <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+    </div>
+    ${RESTAURANT.delivery.enabled?`
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+      <div><label class="field-label">Frais de livraison (FCFA)</label><input class="field-input" id="setDeliveryFee" type="number" value="${RESTAURANT.delivery.fee}"></div>
+      <div><label class="field-label">Commande minimum (FCFA)</label><input class="field-input" id="setDeliveryMin" type="number" value="${RESTAURANT.delivery.min}"></div>
+    </div>
+    <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Modes de livraison</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;max-width:480px;">Le paiement à la livraison n'a de sens que lorsqu'une vraie remise physique est assurée. Activez-le uniquement pour un mode qui le permet réellement.</p>
+
+    <div class="card" style="padding:14px 16px;margin-bottom:12px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.own.enabled?'12px':'0'};">
+        <div><p style="font-size:13.5px;font-weight:600;">Livraison du restaurant</p><p style="font-size:11.5px;color:var(--ink-faint);">Remise en main propre par votre propre livreur.</p></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      </div>
+      ${RESTAURANT.delivery.modes.own.enabled?`
+      <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <span style="font-size:12.5px;">${ic('card',13)} Autoriser le paiement à la livraison</span>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      </div>`:''}
+    </div>
+
+    <div class="card" style="padding:14px 16px;margin-bottom:14px;">
+      <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.express.enabled?'12px':'0'};">
+        <div><p style="font-size:13.5px;font-weight:600;">Livraison Express</p><p style="font-size:11.5px;color:var(--ink-faint);">Coursier tiers — ne peut pas encaisser pour votre compte.</p></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      </div>
+      ${RESTAURANT.delivery.modes.express.enabled?`
+      <div style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <label class="field-label">Frais Express (FCFA)</label>
+        <input class="field-input" id="setExpressFee" type="number" value="${RESTAURANT.delivery.modes.express.fee}">
+        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;display:flex;align-items:center;gap:5px;">${ic('info',12)}Le paiement à la livraison n'est jamais proposé pour ce mode.</p>
+      </div>`:''}
+    </div>
+    ${enabledDeliveryModes().length===0?`<p style="font-size:12px;color:var(--terracotta);margin-bottom:14px;">Aucun mode de livraison actif — la livraison n'apparaîtra pas au checkout tant qu'un mode n'est pas activé.</p>`:''}
+    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
+    :`<p style="font-size:12.5px;color:var(--ink-faint);">La livraison n'apparaîtra plus dans le parcours de commande de vos clients.</p>`}`;
+
+  if(settingsTab==='Réseaux & carte'){
+    const nets = [
+      ['whatsapp','WhatsApp','Numéro WhatsApp','77 XX XX XX XX','tel'],
+      ['instagram','Instagram','Lien du profil','https://instagram.com/votre-page','text'],
+      ['tiktok','TikTok','Lien du profil','https://tiktok.com/@votre-page','text'],
+      ['facebook','Facebook','Lien de la page','https://facebook.com/votre-page','text'],
+    ];
+    const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
+    return `
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Réseaux sociaux</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">WhatsApp : indiquez simplement votre numéro, le lien est généré automatiquement. Instagram, TikTok et Facebook : collez directement le lien complet de votre profil.</p>
+    <div class="flex-col gap-3" id="socialCards" style="margin-bottom:18px;">
+      ${nets.map(([key,label,fieldLabel,placeholder])=>socialCardHtml(key,label,fieldLabel,placeholder)).join('')}
+    </div>
+    <div class="card" style="padding:14px 16px;margin-bottom:24px;">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Aperçu sur votre site</p>
+      ${activeSocials.length===0
+        ? `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun réseau affiché pour le moment.</p>`
+        : `<div class="flex items-center gap-2">${activeSocials.map(k=>socialLogo(k,30)).join('')}<span style="font-size:12px;color:var(--ink-soft);margin-left:4px;">${activeSocials.map(k=>({whatsapp:'WhatsApp',instagram:'Instagram',tiktok:'TikTok',facebook:'Facebook'}[k])).join(' · ')}</span></div>`}
+    </div>
+
+    <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Localisation</p>
+    <div class="card" style="padding:14px 16px;">
+      <div class="flex items-center gap-3" style="margin-bottom:12px;">
+        ${icBadge('mapPin',{size:32,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}
+        <span style="flex:1;font-size:13.5px;font-weight:600;">Google Maps</span>
+      </div>
+      <label class="field-label" style="font-size:11px;">Lien Google Maps</label>
+      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${RESTAURANT.mapsLink}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;" onchange="persistRestaurant();">
+      <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
+        <span style="font-size:13.5px;font-weight:500;">Afficher la localisation sur le site public</span>
+        <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      </div>
+      ${!RESTAURANT.mapsLink.trim() && RESTAURANT.showMap ? `<p style="font-size:11.5px;color:var(--amber-ink);margin-top:8px;">Collez un lien Google Maps ci-dessus pour que la localisation s'affiche.</p>`:''}
+    </div>`;
+  }
+
+  return '';
+}
+
+async function requestOrderNotificationEmailChange(){
+  if(!RESTAURANT.id) return;
+  const input = document.getElementById('orderNotifyEmail');
+  const email = (input?.value || '').trim().toLowerCase();
+  if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
+  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
+    body:{ action:'request', restaurant_id:RESTAURANT.id, email }
+  });
+  if(error || data?.error){ toast(data?.error || error?.message || 'Impossible d’envoyer le code.'); return; }
+  RESTAURANT.orderNotificationEmailPending = email;
+  renderDashSection('settings');
+  toast('Code envoyé. Vérifiez cette adresse e-mail.');
+}
+
+async function verifyOrderNotificationEmail(){
+  if(!RESTAURANT.id || !RESTAURANT.orderNotificationEmailPending) return;
+  const code = (document.getElementById('orderNotifyCode')?.value || '').replace(/\D/g,'').slice(0,8);
+  if(code.length !== 8){ toast('Entrez le code à 8 chiffres.'); return; }
+  const {data,error} = await supabaseClient.functions.invoke('manage-order-email', {
+    body:{ action:'verify', restaurant_id:RESTAURANT.id, code }
+  });
+  if(error || data?.error){ toast(data?.error || error?.message || 'Code incorrect ou expiré.'); return; }
+  RESTAURANT.orderNotificationEmail = RESTAURANT.orderNotificationEmailPending;
+  RESTAURANT.orderNotificationEmailVerified = true;
+  RESTAURANT.orderNotificationEmailPending = '';
+  renderDashSection('settings');
+  toast('Adresse de réception vérifiée.');
+}
+
+async function saveSettings(){
+  const nameEl = document.getElementById('setName');
+  if(nameEl){ RESTAURANT.name = nameEl.value.trim() || RESTAURANT.name; applyRestaurantName(RESTAURANT.name); }
+  const typeEl = document.getElementById('setType'); if(typeEl) RESTAURANT.type = typeEl.value;
+  const phoneEl = document.getElementById('setPhone'); if(phoneEl) RESTAURANT.phone = phoneEl.value;
+  const cityEl = document.getElementById('setCity'); if(cityEl) RESTAURANT.city = cityEl.value;
+  const addrEl = document.getElementById('setAddress'); if(addrEl) RESTAURANT.address = addrEl.value;
+  const heroTitleEl = document.getElementById('setHeroTitle'); if(heroTitleEl) RESTAURANT.heroTitle = heroTitleEl.value.trim();
+  const heroSubtitleEl = document.getElementById('setHeroSubtitle'); if(heroSubtitleEl) RESTAURANT.heroSubtitle = heroSubtitleEl.value.trim();
+  const feeEl = document.getElementById('setDeliveryFee'); if(feeEl) RESTAURANT.delivery.fee = Number(feeEl.value)||0;
+  const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
+  const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
+  renderStorefrontHero();
+  const saved = await persistRestaurant();
+  if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
+}
+function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
+
+function pickLogo(){
+  triggerImagePicker((dataUrl)=>{
+    RESTAURANT.logoDataUrl = dataUrl;
+    applyRestaurantVisuals();
+    toast('Logo mis à jour.');
+  });
+}
+function pickCover(){
+  triggerImagePicker((dataUrl)=>{
+    RESTAURANT.coverDataUrl = dataUrl;
+    applyRestaurantVisuals();
+    toast('Couverture mise à jour.');
+  });
+}
+
+/* ---------------- ABONNEMENT — machine à états réelle ---------------- */
+let abonSelectedPlan = null;
+let abonSelectedCycle = null;
+
+const SUBSCRIPTION_STATUS_LABELS = {
+  trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré", pending_payment:"En attente de paiement",
+};
+const SUBSCRIPTION_STATUS_TONE = {
+  trialing:'pill-amber', active:'pill-forest', cancelled:'pill-neutral', expired:'pill-terracotta', pending_payment:'pill-amber',
+};
+
+function dashAbonnement(){
+  if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
+  if(abonSelectedCycle===null) abonSelectedCycle = 'monthly';
+  const status = computeEffectiveSubscriptionStatus();
+  const paidActive = isPaidPlanActive();
+  const planName = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  const planLabel = (state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} (en attente de paiement)` : planName;
+  return `
+  
+  <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
+    <div class="flex justify-between items-center">
+      <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
+      <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]||'pill-neutral'}">${SUBSCRIPTION_STATUS_LABELS[status]||status}</span>
+    </div>
+    <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
+      ${(state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} sélectionné mais pas encore payé — aucune fonctionnalité payante n'est débloquée. Terminez le paiement PayTech ci-dessous pour l'activer réellement.`
+        : status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
+        : status==='active' ? `Accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, confirmé par PayTech.`
+        : status==='cancelled' ? `Annulé — accès encore valide ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, puis passera automatiquement en Expiré.`
+        : `Votre accès complet est suspendu. Choisissez un forfait ci-dessous pour le rétablir.`}
+    </p>
+    ${paidActive ? `<button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="cancelSubscription()">Résilier mon abonnement</button>` : ''}
+    ${status==='cancelled' ? `<button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="reactivateSubscription()">Réactiver</button>` : ''}
+  </div>
+  <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;" id="abonCard">${abonCardHtml()}</div>
+  <div class="card" style="padding:18px;max-width:560px;" id="paymentsHistoryCard">${paymentsHistoryHtml()}</div>`;
+}
+
+function abonCardHtml(){
+  const price = priceForPlan(abonSelectedPlan);
+  return `
+  <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+    <button onclick="abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Gratuit</p><p style="font-size:11.5px;color:var(--ink-faint);">0 FCFA</p></button>
+    <button onclick="abonSelectedPlan='starter';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='starter'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='starter'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Starter</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(STARTER_PRICE)}/mois</p></button>
+    <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+      <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
+  </div>
+  ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
+  <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
+    <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
+  </div>
+  <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
+    <div><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)}/mois</p></div>
+    <button id="paytechBtn" class="btn btn-secondary btn-lg" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
+  </div>` : `
+  <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
+    <p style="font-size:12px;color:var(--ink-soft);">Aucun paiement requis pour le forfait Gratuit.</p>
+    <button class="btn btn-secondary" onclick="abonApplyPlan()" ${state.plan==='free'?'disabled':''}>${state.plan==='free'?'Forfait actuel':'Passer en Gratuit'}</button>
+  </div>`}`;
+}
+
+function paymentsHistoryHtml(){
+  if(!paymentsHistory.length){
+    return `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun paiement PayTech pour le moment.</p>`;
+  }
+  return `<p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Historique des paiements PayTech</p>` +
+    paymentsHistory.map(p=>`<div class="flex items-center justify-between" style="padding:8px 0;border-top:1px solid var(--cream-line);">
+      <div><p style="font-size:13px;">${fmt(p.amount)} — ${p.billing_cycle==='annual'?'Annuel':'Mensuel'}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(new Date(p.created_at))}</p></div>
+      <span class="pill ${p.status==='confirmed'?'pill-forest':p.status==='failed'?'pill-terracotta':'pill-amber'}">${p.status==='confirmed'?'Confirmé':p.status==='failed'?'Échoué':'En attente'}</span>
+    </div>`).join('');
+}
+
+async function abonApplyPlan(){
+  if(abonSelectedPlan === 'free'){
+    state.plan = 'free';
+    renderDashSection('abonnement');
+    renderPlanBadgeAndBanner();
+    await persistRestaurant();
+    toast('Forfait Gratuit appliqué.');
+    return;
+  }
+  // Starter/Premium ne sont JAMAIS activés ici directement — uniquement
+  // après confirmation réelle du paiement par PayTech (voir
+  // startPayTechCheckout et la fonction Edge paytech-webhook, qui seule
+  // met subscription_status à 'active').
+  await startPayTechCheckout(abonSelectedPlan);
+}
+
+/* ---------------- PAYTECH — abonnement du restaurateur à TerangaResto ----------------
+   Concerne l'abonnement (Starter ou Premium) du restaurateur envers
+   TerangaResto. Ne concerne JAMAIS le paiement des commandes de ses
+   propres clients (Wave/Orange Money/espèces — un système entièrement
+   séparé, table `orders`, jamais mélangé avec `payments` ci-dessous). */
+let paymentsHistory = [];
+/* Avis clients réellement enregistrés dans Supabase pour CE restaurant
+   uniquement — jamais mélangés avec ceux d'un autre restaurant, jamais
+   de note ou de nombre d'avis inventé pour l'affichage. */
+let REVIEWS = [];
+async function startPayTechCheckout(plan){
+  const btn = document.getElementById('paytechBtn');
+  const price = priceForPlan(plan);
+  if(btn){ btn.disabled = true; btn.textContent = 'Redirection vers PayTech…'; }
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(!session){
+    toast('Session expirée — reconnectez-vous puis réessayez.');
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    return;
+  }
+  // Appelle la Supabase Edge Function paytech-checkout — jamais PayTech
+  // directement depuis le navigateur, et aucune clé PayTech ici (voir
+  // supabase/functions/paytech-checkout/index.ts).
+  const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
+    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
+  });
+  if(error || !data || !data.redirect_url){
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    return;
+  }
+  window.location.href = data.redirect_url;
+}
+
+async function cancelSubscription(){
+  if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre forfait repassera en Gratuit.")) return;
+  // Passe par la RPC dédiée cancel_my_subscription — subscription_status
+  // n'est plus modifiable par une simple mise à jour de paramètres
+  // (voir "VERROU CRITIQUE" dans supabase_schema.sql).
+  const {data, error} = await supabaseClient.rpc('cancel_my_subscription');
+  if(error){ toast("Impossible de résilier : " + error.message); return; }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
+  renderDashSection('abonnement');
+  renderPlanBadgeAndBanner();
+  toast('Abonnement résilié — accès Premium conservé jusqu\'à la fin de la période déjà payée.');
+}
+async function reactivateSubscription(){
+  // Passe par la RPC dédiée reactivate_my_subscription — ne peut
+  // reprendre qu'un abonnement annulé dont la période payée n'est pas
+  // terminée ; ne peut jamais activer Premium depuis un état
+  // trialing/expired (ça, c'est le rôle exclusif du webhook PayTech).
+  const {data, error} = await supabaseClient.rpc('reactivate_my_subscription');
+  if(error){ toast("Impossible de réactiver : " + error.message); return; }
+  const row = Array.isArray(data) ? data[0] : data;
+  if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
+  renderDashSection('abonnement');
+  renderPlanBadgeAndBanner();
+  toast(ic('checkCircle',14)+' Abonnement réactivé.', true);
+}
+</script>
+
+
+<style>
+/* ---------------- CORRECTIONS MOBILE / CONTRASTE / QR ---------------- */
+ 
+.dashboard-home-return .btn{font-weight:700;}
+.mobile-more-card:active{transform:translateY(1px);}
+.mobile-more-card:hover{background:#fff !important;border-color:#0F1830 !important;}
+@media (max-width:640px){
+  .dashboard-home-return{position:sticky;top:8px;z-index:8;}
+  .dashboard-home-return .btn{width:100%;background:#fff;color:#0F1830;border-color:rgba(15,24,48,.18);}
+  .dashboard-home-return .btn:active{background:#0F1830;color:#fff;}
+}
+
+.ob-progress-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:2px 0 6px;}
+.ob-progress{min-width:520px;}
+.ob-progress > div{min-width:74px;}
+.ob-plan-grid{align-items:stretch;}
+.ob-plan-card{min-height:250px;display:flex;flex-direction:column;justify-content:flex-start;color:var(--ink);background:var(--surface);}
+.ob-plan-card:hover{border-color:var(--amber-deep) !important;box-shadow:0 8px 22px rgba(43,24,16,.08);}
+.ob-plan-card:focus-visible{outline:3px solid rgba(232,135,30,.28);outline-offset:2px;}
+#view-dashboard .icon-btn,#view-dashboard .btn-outline,#view-dashboard .lib-card-actions button{transition:background .15s,color .15s,border-color .15s,transform .15s;}
+#view-dashboard .icon-btn{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.10);color:#fff;}
+#view-dashboard .icon-btn:hover{background:var(--amber-deep);color:#fff;border-color:var(--amber-deep);}
+#view-dashboard .btn-outline{background:#fff;color:#0F1830;border-color:rgba(15,24,48,.16);}
+#view-dashboard .btn-outline:hover,#view-dashboard .btn-outline:active{background:#0B1220;color:#fff;border-color:#0B1220;}
+#view-dashboard .lib-card-actions button{background:#fff;color:#0F1830;border:1px solid rgba(15,24,48,.12);}
+#view-dashboard .lib-card-actions button:hover,#view-dashboard .lib-card-actions button:active{background:#0B1220;color:#fff;border-color:#0B1220;}
+.mobile-qr-card{background:linear-gradient(135deg,#ffffff,#f8fafc);width:100%;max-width:none;align-self:stretch;box-sizing:border-box;}
+@media (max-width:900px){
+  /* Les 3 blocs de l'accueil mobile doivent avoir exactement la même largeur.
+     Dans un conteneur flex, le bloc QR pouvait se réduire à la largeur de son contenu. */
+  .mobile-tablet-only > *{width:100% !important;max-width:none !important;box-sizing:border-box;}
+}
+@media (max-width:640px){
+  .ob-plan-grid{grid-template-columns:1fr !important;gap:10px !important;}
+  .ob-plan-card{min-height:0;padding:16px !important;}
+  .ob-progress{min-width:560px;}
+  .mobile-qr-card{align-items:flex-start;}
+  .mobile-qr-card img{width:92px !important;height:92px !important;}
+}
+
+/* ---------------- RESPONSIVE ---------------- */
+@keyframes icSpin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+.spin{ animation:icSpin 1s linear infinite; }
+
+@media (max-width: 900px){
+  #view-landing > .wrap:first-child{ grid-template-columns:1fr !important; padding-top:36px; padding-bottom:48px; }
+  #featuresGrid{ grid-template-columns:1fr 1fr !important; }
+  #stepsGrid{ grid-template-columns:1fr 1fr !important; }
+  #pricingCards{ grid-template-columns:1fr !important; }
+  footer .wrap{ grid-template-columns:1fr !important; }
+  #sfProductSections .grid, section#view-storefront .grid{ grid-template-columns:repeat(2,1fr) !important; }
+  #dashContent .grid[style*="repeat(4"]{ grid-template-columns:1fr 1fr !important; }
+  #dashContent .grid[style*="repeat(2"]{ grid-template-columns:1fr !important; }
+  #dashContent .grid[style*="repeat(3"]{ grid-template-columns:1fr 1fr !important; }
+}
+@media (max-width: 560px){
+  .gnav-inner{ padding:12px 16px; gap:8px; }
+  section#view-storefront .grid{ grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+  h1.font-display{ font-size:20px !important; }
+  #productsList .grid{ grid-template-columns:1fr 1fr !important; }
+}
+@media (max-width: 480px){
+  #view-landing h1{ font-size:30px !important; }
+}
+
+/* ---- Réseaux sociaux : structure identique Logo → Nom → État → Infos → Action ---- */
+.social-card{ padding:14px 16px; }
+.social-card-top{ display:flex; align-items:center; gap:12px; }
+.social-card-info{ flex:1; min-width:0; }
+.social-card-name{ font-size:13.5px; font-weight:600; line-height:1.3; }
+.social-card-status{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+.social-card-status.is-on{ color:var(--forest); }
+.social-card-value{ margin-top:12px; padding-top:12px; border-top:1px solid var(--cream-line); display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.social-card-value-label{ font-size:11px; color:var(--ink-faint); flex-shrink:0; }
+.social-card-value-text{ font-size:13px; font-weight:500; font-family:var(--font-mono),monospace; overflow-wrap:anywhere; text-align:right; }
+.social-card-actions{ display:flex; gap:8px; margin-top:12px; }
+.social-card-actions .btn{ flex:1; }
+.social-card-form{ margin-top:12px; padding-top:12px; border-top:1px solid var(--cream-line); }
+
+/* ---- Bibliothèque : en-tête et cartes compactes ---- */
+.lib-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.lib-add-btn{ flex-shrink:0; white-space:nowrap; }
+.lib-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; align-items:stretch; }
+.lib-card{ background:var(--surface); border:1px solid var(--cream-line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; height:100%; }
+.lib-thumb{ aspect-ratio:1.4; background:linear-gradient(135deg,var(--cream-deep),var(--cream)); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.lib-empty{ display:flex; opacity:.55; }
+.lib-card-body{ display:flex; flex-direction:column; flex:1; padding:9px 10px 10px; }
+.lib-card-name{ font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lib-card-meta{ font-size:10.5px; color:var(--ink-faint); margin:2px 0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lib-card-actions{ display:flex; gap:6px; margin-top:auto; }
+.lib-card-actions button{ width:26px; height:26px; border-radius:8px; background:var(--cream); display:flex; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0; }
+
+@media (max-width: 900px){
+  .lib-grid{ grid-template-columns:repeat(3,1fr); }
+}
+@media (max-width: 640px){
+  .lib-grid{ grid-template-columns:repeat(2,1fr); gap:10px; }
+  .lib-add-btn span{ display:none; }
+  .lib-add-btn::after{ content:'Ajouter'; }
+  .lib-add-btn{ padding:0 14px; }
+}
+</style>
+
+<script>
+/* ---------------- INIT ---------------- */
+function checkMobile(){
+  document.getElementById('mobileBottomNav').classList.toggle('active-grid', state.view==='dashboard' && window.innerWidth<=900);
+}
+window.addEventListener('resize', checkMobile);
+
+/* Favicon — le vrai logo TerangaResto, jamais déformé (même source que
+   partout ailleurs dans l'app, pas une copie séparée). Réglé en JS pour
+   éviter de dupliquer le base64 dans le <head>. Fonctionne en local
+   comme après déploiement, puisqu'il s'agit d'une data URI autonome,
+   sans dépendance à un chemin de fichier externe. */
+function setRestaurantFavicon(){
+  const fav = document.getElementById('faviconLink');
+  const touch = document.getElementById('appleTouchIconLink');
+  // Sur le site public, le logo réel du restaurant devient l'icône du site.
+  // Tant que les données du restaurant ne sont pas encore chargées, on garde
+  // le fallback TerangaResto existant.
+  const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
+    ? RESTAURANT.logoDataUrl
+    : LOGO_SRC;
+  if(fav) fav.href = iconSrc;
+  if(touch) touch.href = iconSrc;
+}
+setRestaurantFavicon();
+document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
+
+/* Charge d'abord la session + les données Supabase (restaurant du
+   visiteur ou du propriétaire connecté), PUIS rend la page — évite
+   d'afficher un état vide qui clignoterait avant que les vraies
+   données n'arrivent. */
+(async function init(){
+  await restoreSession();
+  renderPricing();
+  renderStorefrontHero();
+  renderProductSections();
+  updateFloatingCartButton();
+  checkMobile();
+  hydrateIcons();
+})();
+
+/* Recharge automatiquement les données quand l'état de connexion
+   change ailleurs (autre onglet, expiration de session, etc.). */
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_OUT'){ currentUser = null; }
+  // Filet de sécurité event-driven pour la confirmation d'e-mail : le
+  // client Supabase détecte et établit automatiquement la session à
+  // partir de l'URL de retour du lien de confirmation (comportement
+  // par défaut, "detectSessionInUrl") et déclenche SIGNED_IN à ce
+  // moment précis — potentiellement avant, après, ou en même temps que
+  // le premier appel de restoreSession() au chargement de la page. Ne
+  // pas se fier à un seul de ces deux déclencheurs : les DEUX tentent
+  // de reprendre l'onboarding en attente, et tryResumePendingOnboarding()
+  // est conçue pour être sûre à appeler plusieurs fois (garde-fou
+  // resumingOnboarding + la sauvegarde locale est supprimée dès la
+  // première réussite, donc un second appel ne trouve simplement plus
+  // rien à reprendre).
+  if(event === 'SIGNED_IN' && session){
+    currentUser = session.user;
+    tryResumePendingOnboarding();
+  }
+});
+</script>
+
+
+</body>
+</html>
