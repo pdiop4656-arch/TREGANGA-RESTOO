@@ -7710,6 +7710,11 @@ async function saveSettings(){
       }
       RESTAURANT.slug = nextSlug;
       RESTAURANT.social = nextSocial;
+
+if (nextSlug !== previousSlug) {
+  window.location.replace(publicRestaurantUrl(nextSlug));
+  return;
+}
     }
     RESTAURANT.name = requestedName;
   }
