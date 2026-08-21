@@ -4296,17 +4296,108 @@ function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElemen
    qu'elle a bien eu lieu. */
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
+let passwordRecoveryEmail = '';
+
 async function sendPasswordReset(){
-  const email = document.getElementById('loginEmail').value.trim();
+  const email = document.getElementById('loginEmail')?.value.trim().toLowerCase();
   if(!email || !/^\S+@\S+\.\S+$/.test(email)){
     toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur "Mot de passe oublié ?".');
     return;
   }
-  const {error} = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin,
+
+  const btn = document.getElementById('loginSubmitBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi du code…'; }
+
+  // Utilise volontairement le même flux OTP numérique que la connexion.
+  // Ainsi, "Mot de passe oublié ?" envoie le code à 8 chiffres déjà utilisé
+  // par TerangaResto au lieu d'un lien de récupération.
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
   });
-  if(error){ toast("Impossible d'envoyer le lien de réinitialisation : " + error.message); return; }
-  toast(ic('checkCircle',14)+` Lien de réinitialisation envoyé à ${email}, si ce compte existe.`, true);
+
+  if(btn){ btn.disabled = false; btn.textContent = 'Se connecter'; }
+  if(error){
+    toast("Impossible d'envoyer le code de récupération. Réessayez dans un instant.");
+    return;
+  }
+
+  passwordRecoveryEmail = email;
+  renderPasswordRecoveryOtp();
+}
+
+function renderPasswordRecoveryOtp(){
+  const body = document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="font-weight:700;font-size:17px;margin-bottom:6px;">Vérifiez votre e-mail</div>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0;">Un code de connexion à 8 chiffres a été envoyé à <b>${escapeAttr(passwordRecoveryEmail)}</b>.</p>
+    </div>
+    <label class="field-label">Code à 8 chiffres</label>
+    <input class="field-input" id="passwordRecoveryOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="12345678" style="margin-bottom:12px;letter-spacing:.22em;text-align:center;font-weight:700;font-size:18px;">
+    <button id="passwordRecoveryVerifyBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
+    <button class="btn btn-ghost btn-sm w-full" onclick="renderLoginTab('login')" style="margin-top:8px;">Retour</button>`;
+  const input = document.getElementById('passwordRecoveryOtp');
+  input?.addEventListener('input', ()=>{ input.value=input.value.replace(/\D/g,'').slice(0,8); });
+  setTimeout(()=>input?.focus(),50);
+}
+
+async function verifyPasswordRecoveryOtp(){
+  const token = (document.getElementById('passwordRecoveryOtp')?.value || '').trim();
+  if(!/^\d{8}$/.test(token)){
+    toast('Entrez les 8 chiffres reçus par e-mail.');
+    return;
+  }
+  const btn = document.getElementById('passwordRecoveryVerifyBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Vérification…'; }
+
+  const {data,error} = await supabaseClient.auth.verifyOtp({
+    email: passwordRecoveryEmail,
+    token,
+    type: 'email'
+  });
+  if(error || !data?.session){
+    if(btn){ btn.disabled = false; btn.textContent = 'Vérifier le code'; }
+    toast(error?.message || 'Code invalide ou expiré.');
+    return;
+  }
+
+  renderPasswordRecoveryNewPassword();
+}
+
+function renderPasswordRecoveryNewPassword(){
+  const body = document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML = `
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="font-weight:700;font-size:17px;margin-bottom:6px;">Nouveau mot de passe</div>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0;">Votre adresse e-mail est vérifiée. Choisissez votre nouveau mot de passe.</p>
+    </div>
+    <label class="field-label">Nouveau mot de passe</label>
+    <input class="field-input" id="recoveryNewPassword" type="password" autocomplete="new-password" placeholder="••••••••" style="margin-bottom:12px;">
+    <label class="field-label">Confirmer le mot de passe</label>
+    <input class="field-input" id="recoveryNewPassword2" type="password" autocomplete="new-password" placeholder="••••••••" style="margin-bottom:14px;">
+    <button id="recoverySavePasswordBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>`;
+  setTimeout(()=>document.getElementById('recoveryNewPassword')?.focus(),50);
+}
+
+async function saveRecoveredPassword(){
+  const p1 = document.getElementById('recoveryNewPassword')?.value || '';
+  const p2 = document.getElementById('recoveryNewPassword2')?.value || '';
+  if(p1.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+  if(p1 !== p2){ toast('Les mots de passe ne correspondent pas.'); return; }
+  const btn = document.getElementById('recoverySavePasswordBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+  const {error} = await supabaseClient.auth.updateUser({password:p1});
+  if(error){
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer le nouveau mot de passe'; }
+    toast('Impossible de modifier le mot de passe : ' + error.message);
+    return;
+  }
+  toast(ic('checkCircle',14)+' Mot de passe modifié. Vous pouvez vous connecter.', true);
+  passwordRecoveryEmail = '';
+  renderLoginTab('login');
 }
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
