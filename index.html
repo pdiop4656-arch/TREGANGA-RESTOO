@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TerangaResto — Aperçu</title>
-<link rel="icon" type="image/png" id="faviconLink" href="/favicon.png">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="512x512" id="faviconLink" href="/favicon.png">
+<link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
 <link rel="apple-touch-icon" id="appleTouchIconLink" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -8417,7 +8419,7 @@ function setRestaurantFavicon(){
   // le logo réel du restaurant devient son favicon.
   const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
     ? RESTAURANT.logoDataUrl
-    : '/favicon.png';
+    : '/favicon.ico';
   if(fav) fav.href = iconSrc;
   if(touch) touch.href = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
     ? RESTAURANT.logoDataUrl
