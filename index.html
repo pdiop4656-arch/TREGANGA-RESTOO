@@ -145,12 +145,14 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
    (qui reste disponible pour Accueil/Tarifs/FAQ/Comment ça marche).
    Masqué sur desktop, où "Connexion" est déjà dans .gnav-tabs. */
 .mobile-login-btn{ display:none; }
+.desktop-create-btn{ display:inline-flex; }
 
 @media (max-width:820px){
   .gnav-tabs{display:none;}
   .gnav-tabs.mobile-open{display:flex; position:fixed; top:56px; left:12px; right:12px; z-index:55; flex-direction:column; box-shadow:0 10px 30px rgba(43,24,16,.15);}
   #mobileMenuBtn{ display:flex !important; }
   .mobile-login-btn{ display:inline-flex; }
+  .desktop-create-btn{ display:none !important; }
 }
 @media (max-width:420px){
   .cta-full{ display:none; }
@@ -163,6 +165,11 @@ table.data-table tbody tr:hover{background:rgba(251,243,228,.6); cursor:pointer;
    bord via le petit bouton flottant dédié, pas depuis cet en-tête). */
 body.storefront-active .gnav{ display:none; }
 </style>
+<style>
+.tg-save-spinner{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;margin-right:5px;animation:tgSaveSpin .55s linear infinite}
+@keyframes tgSaveSpin{to{transform:rotate(360deg)}}
+</style>
+
 
 <style>
 /* ===== OTP 8 chiffres + responsive renforcé ===== */
@@ -316,13 +323,59 @@ button,a,input,select,textarea{font-family:inherit;}
      fraction de seconde avant que ce script ne la masque, exactement
      le "passage" que cette modification doit supprimer.
      ============================================================ -->
-<div id="restoSplash" class="hidden" style="position:fixed;inset:0;z-index:99999;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
-  <div id="restoSplashLogo" style="width:88px;height:88px;border-radius:22px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 24px rgba(43,24,16,.14);background:#fff;opacity:0;transform:translateY(8px);transition:opacity .5s ease, transform .5s ease;"></div>
-  <p id="restoSplashName" style="font-family:'Fraunces',serif;font-size:20px;margin-top:18px;color:#2B1810;opacity:0;transition:opacity .5s ease .1s;"></p>
-  <p id="restoSplashSlogan" style="font-size:12.5px;color:#8a7466;margin-top:4px;opacity:0;transition:opacity .5s ease .18s;"></p>
-  <div style="width:140px;height:3px;background:rgba(43,24,16,.08);border-radius:999px;margin-top:26px;overflow:hidden;opacity:0;transition:opacity .5s ease .25s;" id="restoSplashBarTrack">
-    <div id="restoSplashBar" style="height:100%;width:12%;background:#c96a12;border-radius:999px;transition:width .4s ease;"></div>
+<style>
+/* Chargeur public : aucun logo/image/réseau. Tout est inline et affichable
+   immédiatement, afin de ne pas ajouter de délai au chargement réel. */
+@keyframes tgLoaderSpin{to{transform:rotate(360deg)}}
+@keyframes tgLoaderPulse{0%,100%{opacity:.35;transform:scale(.82)}50%{opacity:1;transform:scale(1)}}
+@keyframes tgLoaderBar{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+#restoSplash{
+  position:fixed;inset:0;z-index:99999;background:#FBF3E4;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;text-align:center;
+}
+#restoSplash.hidden{display:none}
+#tgFastLoaderIcon{
+  width:42px;height:42px;border:3px solid rgba(43,24,16,.10);
+  border-top-color:#c96a12;border-radius:50%;
+  animation:tgLoaderSpin .62s linear infinite;
+}
+#tgFastLoaderPlate{
+  position:absolute;width:12px;height:12px;border:2px solid #c96a12;
+  border-radius:50%;opacity:.9;
+}
+#tgFastLoaderText{
+  margin-top:17px;font-family:'Manrope',sans-serif;font-size:12.5px;
+  color:#8a7466;letter-spacing:.01em;
+}
+#tgFastLoaderTrack{
+  width:150px;height:3px;margin-top:14px;border-radius:999px;
+  background:rgba(43,24,16,.08);overflow:hidden;
+}
+#tgFastLoaderBar{
+  width:42%;height:100%;border-radius:999px;background:#c96a12;
+  animation:tgLoaderBar .72s ease-in-out infinite;
+  will-change:transform;
+}
+#tgFastLoaderDots{display:flex;gap:4px;margin-top:11px}
+#tgFastLoaderDots span{
+  width:4px;height:4px;border-radius:50%;background:#c96a12;
+  animation:tgLoaderPulse .72s ease-in-out infinite;
+}
+#tgFastLoaderDots span:nth-child(2){animation-delay:.12s}
+#tgFastLoaderDots span:nth-child(3){animation-delay:.24s}
+@media(prefers-reduced-motion:reduce){
+  #tgFastLoaderIcon,#tgFastLoaderBar,#tgFastLoaderDots span{animation:none}
+}
+</style>
+<div id="restoSplash" class="hidden" aria-live="polite" aria-label="Chargement de la boutique">
+  <div style="position:relative;width:42px;height:42px;display:flex;align-items:center;justify-content:center;">
+    <div id="tgFastLoaderIcon"></div>
+    <div id="tgFastLoaderPlate"></div>
   </div>
+  <div id="tgFastLoaderText">Chargement de la boutique…</div>
+  <div id="tgFastLoaderTrack"><div id="tgFastLoaderBar"></div></div>
+  <div id="tgFastLoaderDots" aria-hidden="true"><span></span><span></span><span></span></div>
 </div>
 
 <!-- Écran de vérification neutre — affiché UNIQUEMENT si cet appareil a
@@ -348,12 +401,6 @@ button,a,input,select,textarea{font-family:inherit;}
             (location.hostname.endsWith('.terangaresto.com') &&
              location.hostname !== 'www.terangaresto.com')){
     document.getElementById('restoSplash').classList.remove('hidden');
-    requestAnimationFrame(()=>{
-      ['restoSplashLogo','restoSplashName','restoSplashSlogan','restoSplashBarTrack'].forEach(id=>{
-        document.getElementById(id).style.opacity = '1';
-        document.getElementById(id).style.transform = 'none';
-      });
-    });
   }
 </script>
 
@@ -372,7 +419,7 @@ button,a,input,select,textarea{font-family:inherit;}
     </nav>
     <div class="flex items-center gap-2" style="flex-shrink:0;">
       <button class="btn btn-outline btn-sm mobile-login-btn" onclick="openLogin('login');closeMobileNav();">Connexion</button>
-      <button class="btn btn-secondary btn-sm" onclick="startOnboarding();closeMobileNav();" id="gnavCta"><span class="cta-full">Créer mon restaurant</span><span class="cta-short">Créer</span></button>
+      <button class="btn btn-secondary btn-sm desktop-create-btn" onclick="startOnboarding();">Créer mon restaurant</button>
       <button id="mobileMenuBtn" class="hidden" onclick="document.getElementById('gnavTabs').classList.toggle('mobile-open')" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--cream-line);background:#fff;align-items:center;justify-content:center;flex-shrink:0;" data-icon="menu" data-size="17"></button>
     </div>
   </div>
@@ -887,6 +934,11 @@ button,a,input,select,textarea{font-family:inherit;}
 #view-dashboard .nav-item:not(.active):hover{ background:rgba(255,255,255,.055); }
 #view-dashboard .nav-item.active{ background:var(--amber-deep); color:#fff; }
 #view-dashboard .icon-btn:hover{ background:rgba(255,255,255,.07); }
+/* Une fois dans l'espace privé, le header public TerangaResto (logo,
+   Connexion, Créer) ne doit plus être visible : le dashboard possède
+   sa propre barre de navigation. */
+body.dashboard-active #platformHeader{display:none !important;}
+body.dashboard-active #view-dashboard{min-height:100vh;}
 #view-dashboard .mbn-item.active{ background:rgba(232,135,30,.14); }
 #view-dashboard .more-tile{ background:var(--cream); }
 #view-dashboard .empty-state{ background:rgba(255,255,255,.02); border-color:var(--cream-line); }
@@ -1992,7 +2044,10 @@ async function loadRestaurantCore(restaurantId){
   // defaultSocial() renvoient toujours un objet neuf, jamais partagé.
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
   RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  RESTAURANT.social = (r.social && Object.keys(r.social).length) ? r.social : defaultSocial();
+  if(!Array.isArray(RESTAURANT.delivery.zones) || RESTAURANT.delivery.zones.length===0){
+    RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
+  }
+  RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2347,7 +2402,7 @@ function renderOrderTrackingDetail(row, phone){
   body.innerHTML = `
     <div class="text-center" style="margin-bottom:18px;">
       <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
-      <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${RESTO_NAME}</p>
+      <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${escapeHtml(RESTO_NAME)}</p>
     </div>
     ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;">${ic('x',22,{stroke:'var(--terracotta)'})}<p style="font-size:13px;color:var(--terracotta);margin-top:6px;">Cette commande a été annulée.</p></div>` : `
     <!-- Progression VERTICALE : icône + titre + description par étape,
@@ -2417,7 +2472,7 @@ function closeReviewModal(){ document.getElementById('reviewOverlay').classList.
 function setReviewRating(n){ reviewRating = n; renderReviewModal(); }
 function renderReviewModal(){
   document.getElementById('reviewBody').innerHTML = `
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${RESTO_NAME}</span> ?</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;">Comment était votre expérience chez <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> ?</p>
     <div class="flex items-center justify-center gap-2" style="margin-bottom:18px;">
       ${[1,2,3,4,5].map(n=>`<button onclick="setReviewRating(${n})" style="padding:2px;">${ic('star',30,{fill: n<=reviewRating?'var(--amber)':'none', stroke: n<=reviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}
     </div>
@@ -2450,7 +2505,7 @@ async function submitReview(){
   });
 
   if(error){
-    toast("Votre avis n'a pas pu être enregistré : " + error.message);
+    toast("Votre avis n'a pas pu être enregistré : " + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
     if(btn){ btn.disabled = false; btn.textContent = 'Envoyer mon avis'; }
     return;
   }
@@ -2539,36 +2594,119 @@ function notificationBlockedBannerHtml(){
    commise dans Paramètres (nom, horaires, livraison, réseaux sociaux,
    notifications, carte...). Échec silencieux avec toast — la personne
    ne perd jamais sa saisie locale même si le réseau flanche. */
+let restaurantSaveInFlight = null;
+let restaurantSavePending = false;
+let restaurantSaveTimer = null;
+
+function setRestaurantSaveState(state){
+  const btn = document.getElementById('settingsSaveBtn');
+  const status = document.getElementById('settingsSaveStatus');
+  if(btn){
+    btn.disabled = state === 'saving';
+    btn.style.opacity = state === 'saving' ? '.72' : '1';
+    btn.style.pointerEvents = state === 'saving' ? 'none' : '';
+    btn.innerHTML = state === 'saving'
+      ? '<span class="tg-save-spinner" aria-hidden="true"></span> Enregistrement…'
+      : state === 'saved'
+        ? '<span style="font-size:16px;line-height:1">✓</span> Enregistré'
+        : 'Enregistrer';
+  }
+  if(status){
+    status.textContent = state === 'saving' ? 'Enregistrement en cours…'
+      : state === 'saved' ? 'Enregistré et synchronisé avec votre site public.'
+      : state === 'error' ? 'Impossible d’enregistrer pour le moment. Réessayez.' : '';
+    status.style.color = state === 'error' ? 'var(--terracotta)' : 'var(--ink-soft)';
+  }
+}
+
 async function persistRestaurant(){
-  if(!RESTAURANT.id) return;
-  // "slug" et les champs d'abonnement (plan mis à part) sont
-  // volontairement absents de cet appel : ils ne sont plus modifiables
-  // par une simple mise à jour de paramètres — voir "VERROU CRITIQUE"
-  // dans supabase_schema.sql. subscription_status en particulier ne
-  // peut être activé que par le webhook PayTech, jamais depuis ce
-  // fichier ; les transitions légitimes côté client passent par des
-  // fonctions RPC dédiées (cancelSubscription, reactivateSubscription,
-  // syncMySubscriptionExpiry).
-  const {error} = await supabaseClient.from('restaurants').update({
-    name:RESTAURANT.name, type:RESTAURANT.type,
-    logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
-    primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
-    address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
-    hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
-    payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
-    notifications_enabled:RESTAURANT.notificationsEnabled,
-    order_notification_email:RESTAURANT.orderNotificationEmailVerified ? (RESTAURANT.orderNotificationEmail||null) : null,
-    plan:state.plan, is_published:RESTAURANT.isPublished,
-    hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
-  }).eq('id', RESTAURANT.id);
-  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+  if(!RESTAURANT.id) return false;
+
+  // Le sous-domaine suit automatiquement le nom du restaurant.
+  // Un ancien sous-domaine est conservé 48 h comme redirection.
+  if(RESTAURANT.name){
+    const expectedSlug = slugify(RESTAURANT.name) || 'mon-restaurant';
+    if(expectedSlug !== RESTAURANT.slug){
+      const previousSlug = RESTAURANT.slug;
+      const nextSlug = await resolveUniqueSlugForRename(RESTAURANT.name, previousSlug);
+      if(nextSlug && nextSlug !== previousSlug){
+        rememberPreviousSlug(previousSlug, nextSlug);
+        RESTAURANT.slug = nextSlug;
+      }
+    }
+  }
+
+  RESTAURANT.social = cleanSlugRedirects(RESTAURANT.social);
+
+  // Si une sauvegarde est déjà en cours, on mémorise seulement la dernière
+  // modification. Elle sera envoyée juste après la requête courante.
+  if(restaurantSaveInFlight){
+    restaurantSavePending = true;
+    return restaurantSaveInFlight;
+  }
+
+  setRestaurantSaveState('saving');
+  restaurantSaveInFlight = (async()=>{
+    // IMPORTANT : ne transmettre que les colonnes autorisées par le schéma
+    // Supabase. Les champs d'e-mail de notification et les champs hero sont
+    // gérés par leurs mécanismes dédiés / le patch SQL associé.
+    const payload = {
+      name:RESTAURANT.name, slug:RESTAURANT.slug, type:RESTAURANT.type,
+      logo_data_url:RESTAURANT.logoDataUrl, cover_data_url:RESTAURANT.coverDataUrl,
+      primary_color:RESTAURANT.primary, secondary_color:RESTAURANT.secondary, text_color:RESTAURANT.textColor,
+      address:RESTAURANT.address, city:RESTAURANT.city, phone:RESTAURANT.phone,
+      hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
+      payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
+      notifications_enabled:RESTAURANT.notificationsEnabled,
+      plan:state.plan, is_published:RESTAURANT.isPublished,
+      hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
+    };
+
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .update(payload)
+      .eq('id', RESTAURANT.id)
+      .select('id')
+      .maybeSingle();
+
+    if(error || !data){
+      console.error('TerangaResto — sauvegarde Supabase:', error);
+      setRestaurantSaveState('error');
+      return false;
+    }
+
+    setRestaurantSaveState('saved');
+    setTimeout(()=>{
+      if(!restaurantSaveInFlight) setRestaurantSaveState('');
+    },2200);
+    return true;
+  })();
+
+  try{
+    return await restaurantSaveInFlight;
+  }finally{
+    restaurantSaveInFlight = null;
+    if(restaurantSavePending){
+      restaurantSavePending = false;
+      // Une seule nouvelle écriture pour absorber plusieurs changements
+      // rapprochés (notamment les horaires).
+      clearTimeout(restaurantSaveTimer);
+      restaurantSaveTimer = setTimeout(()=>persistRestaurant(),120);
+    }
+  }
 }
 
 async function togglePublish(){
+  const previous = RESTAURANT.isPublished;
   RESTAURANT.isPublished = !RESTAURANT.isPublished;
   renderDashSection('settings');
-  await persistRestaurant();
-  toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  const saved = await persistRestaurant();
+  if(saved){
+    toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  }else{
+    RESTAURANT.isPublished = previous;
+    renderDashSection('settings');
+  }
 }
 function copyPublicSiteLink(){
   const link = publicRestaurantUrl(RESTAURANT.slug);
@@ -2583,7 +2721,7 @@ function copyPublicSiteLink(){
    update. Après un insert, l'id local ('p_...') est remplacé par le
    vrai id Supabase pour que les futures opérations le retrouvent. */
 async function persistProduct(p){
-  if(!RESTAURANT.id) return;
+  if(!RESTAURANT.id) return false;
   const payload = {
     restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
     prep:p.prep, active:p.active, available:p.available, photo:p.photo,
@@ -2592,17 +2730,18 @@ async function persistProduct(p){
   const isNew = !p.id || String(p.id).startsWith('p_');
   if(isNew){
     const {data, error} = await supabaseClient.from('products').insert(payload).select().single();
-    if(error){ toast('Produit non enregistré dans Supabase : ' + error.message); return; }
+    if(error){ toast('Produit non enregistré dans Supabase : ' + supabaseErrorFr(error,'Le produit n’a pas pu être enregistré.')); return false; }
     p.id = data.id;
   } else {
     const {error} = await supabaseClient.from('products').update(payload).eq('id', p.id);
-    if(error) toast('Produit non mis à jour dans Supabase : ' + error.message);
+    if(error){ toast('Produit non mis à jour dans Supabase : ' + supabaseErrorFr(error,'Le produit n’a pas pu être mis à jour.')); return false; }
   }
+  return true;
 }
 async function deleteProductRow(id){
   if(!RESTAURANT.id || String(id).startsWith('p_')) return;
   const {error} = await supabaseClient.from('products').delete().eq('id', id);
-  if(error) toast('Suppression Supabase impossible : ' + error.message);
+  if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 
 /* Personnel — reflète chaque action de la section "Personnel" dans la
@@ -2614,7 +2753,7 @@ async function persistStaffInsert(s){
     permissions:s.permissions, status:s.status, code:s.code,
     invited_at:new Date(s.createdAt).toISOString(), expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
   }).select().single();
-  if(error){ toast('Invitation non enregistrée dans Supabase : ' + error.message); return; }
+  if(error){ toast('Invitation non enregistrée dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
   s.id = data.id;
 }
 async function persistStaffUpdate(s){
@@ -2623,12 +2762,12 @@ async function persistStaffUpdate(s){
     name:s.name, role:s.role, permissions:s.permissions, status:s.status,
     code:s.code, expires_at: s.expiresAt ? new Date(s.expiresAt).toISOString() : null,
   }).eq('id', s.id);
-  if(error) toast('Personnel non mis à jour dans Supabase : ' + error.message);
+  if(error) toast('Personnel non mis à jour dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 async function deleteStaffRow(id){
   if(!RESTAURANT.id || !id) return;
   const {error} = await supabaseClient.from('staff').delete().eq('id', id);
-  if(error) toast('Suppression Supabase impossible : ' + error.message);
+  if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 
 /* La création de commande passe désormais exclusivement par la RPC
@@ -2641,7 +2780,7 @@ async function persistOrderUpdate(o){
   const {error} = await supabaseClient.from('orders').update({
     status:o.status, pay_status:o.payStatus,
   }).eq('id', o.id);
-  if(error) toast('Commande non mise à jour dans Supabase : ' + error.message);
+  if(error) toast('Commande non mise à jour dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 
 /* Charge un restaurant précis par son identifiant public (slug) —
@@ -2674,7 +2813,8 @@ function isRestaurantLiveClientSide(){
   const status = computeEffectiveSubscriptionStatus();
   if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
   if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
-  return false; // 'pending_payment', 'expired', ou toute autre valeur : jamais en ligne, comme côté serveur
+  if(status === 'pending_payment') return true; // le site public reste accessible pendant la finalisation du paiement
+  return false; // 'expired' ou toute autre valeur : indisponible
 }
 function isStorefrontGated(){
   if(!RESTAURANT.created || viewerIsStaff) return false;
@@ -2715,11 +2855,121 @@ function renderStorefrontGateOverlay(){
   }
 }
 
-async function loadRestaurantBySlug(slug){
-  const {data} = await supabaseClient.from('restaurants').select('id').eq('slug', slug).maybeSingle();
-  if(data){ await loadRestaurantIntoState(data.id); return true; }
-  return false;
+
+/* ---------------- CHARGEMENT PUBLIC ULTRA-RAPIDE ----------------
+   Le visiteur public n'a pas besoin des images pour entrer dans la boutique.
+   On charge d'abord uniquement les données nécessaires au premier affichage,
+   puis les images (logo/couverture/photos produits) en arrière-plan.
+   Le chemin propriétaire/dashboard reste inchangé. */
+async function loadRestaurantPublicFast(restaurantId){
+  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+    supabaseClient.from('restaurants').select(
+      'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
+      'address,city,phone,hours,delivery,social,show_map,maps_link,' +
+      'notifications_enabled,order_notification_email,order_notification_email_verified,' +
+      'order_notification_email_pending,is_published,hero_title,hero_subtitle,logo_data_url,' +
+      'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
+      'plan,payment_toggles'
+    ).eq('id', restaurantId).single(),
+    supabaseClient.from('categories').select(
+      'key,label,visible_on_home,sort_order'
+    ).eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select(
+      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
+    ).eq('restaurant_id', restaurantId).order('created_at')
+  ]);
+
+  if(!r) return false;
+
+  RESTAURANT.id = r.id;
+  RESTAURANT.created = true;
+  RESTAURANT.createdAt = new Date(r.created_at).getTime();
+  RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
+  // Le logo fait partie des données critiques du premier affichage : il
+  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  RESTAURANT.logoDataUrl = r.logo_data_url || '';
+  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
+  RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
+  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
+  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
+  if(!Array.isArray(RESTAURANT.delivery.zones) || RESTAURANT.delivery.zones.length===0){
+    RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
+  }
+  RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
+  RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
+  RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
+  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
+  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
+  RESTAURANT.isPublished = !!r.is_published;
+  RESTAURANT.heroTitle = r.hero_title || '';
+  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
+  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
+  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
+  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
+
+  state.plan = r.plan || 'free';
+  state.toggles = Object.assign(
+    {wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
+    r.payment_toggles || {}
+  );
+
+  applyRestaurantName(r.name);
+  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
+
+  catsState = {};
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => {
+    catsState[c.key] = c.label;
+    catsHomeVisible[c.key] = c.visible_on_home !== false;
+  });
+
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:'', variants:p.variants||[],
+    variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
+  }));
+
+  variantsSelectedProduct = null;
+  abonSelectedPlan = null;
+  abonSelectedCycle = null;
+
+  // Seules la couverture et les photos produits restent différées ; le logo
+  // est déjà disponible pour le premier rendu.
+  loadRestaurantPublicImagesFast(restaurantId);
+  return true;
 }
+
+async function loadRestaurantPublicImagesFast(restaurantId){
+  try{
+    const [{data:r}, {data:photos}] = await Promise.all([
+      supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
+      supabaseClient.from('products').select('id,photo').eq('restaurant_id', restaurantId)
+    ]);
+
+    if(r){
+      RESTAURANT.logoDataUrl = r.logo_data_url || '';
+      RESTAURANT.coverDataUrl = r.cover_data_url || '';
+      if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
+    }
+
+    const photoMap = new Map((photos||[]).map(p => [p.id, p.photo || '']));
+    PRODUCTS.forEach(p => { if(photoMap.has(p.id)) p.photo = photoMap.get(p.id); });
+
+    // Update only the storefront after the public page is already visible.
+    if(state.view === 'storefront'){
+      renderStorefrontHero();
+      renderProductSections();
+    }
+  }catch(e){
+    console.warn('Chargement différé des images du restaurant:', e);
+  }
+}
+
 
 /* Lien de restaurant qui ne correspond à rien de réel (mauvais slug,
    restaurant supprimé...). Remplace tout — y compris l'en-tête
@@ -2859,7 +3109,6 @@ async function restoreSession(){
       const found = await loadRestaurantBySlug(restoSlug);
       viewerIsStaff = false;
       if(found){
-        populateRestoSplash();
         setView('storefront');
         // Laisse un très bref instant voir le vrai logo/nom du
         // restaurant affichés sur l'écran de chargement avant la
@@ -2894,34 +3143,13 @@ async function restoreSession(){
    progression, disparition — est piloté ici, une fois l'application
    réellement démarrée. */
 function restoSplashProgress(pct){
-  const bar = document.getElementById('restoSplashBar');
-  if(bar) bar.style.width = pct + '%';
-}
-function populateRestoSplash(){
-  const logoEl = document.getElementById('restoSplashLogo');
-  const nameEl = document.getElementById('restoSplashName');
-  const sloganEl = document.getElementById('restoSplashSlogan');
-  if(!logoEl) return;
-  if(RESTAURANT.logoDataUrl){
-    logoEl.innerHTML = `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
-  } else {
-    // Pas de logo enregistré : la première lettre du nom plutôt qu'une
-    // image cassée ou un logo générique imposé.
-    logoEl.innerHTML = `<span style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:#c96a12;">${(RESTO_NAME||'T').charAt(0).toUpperCase()}</span>`;
-  }
-  nameEl.textContent = RESTO_NAME || 'TerangaResto';
-  // Réutilise le sous-titre du Hero déjà configurable par le
-  // restaurateur (Paramètres → Titre d'accueil) comme "slogan" — pas
-  // un nouveau champ inventé pour cette seule fonctionnalité.
-  sloganEl.textContent = RESTAURANT.heroSubtitle || 'Bienvenue chez nous';
+  // Le nouveau chargeur est indéterminé : sa barre CSS tourne sans
+  // attendre des pourcentages artificiels qui pourraient ralentir l'entrée.
 }
 function hideRestoSplash(){
   const el = document.getElementById('restoSplash');
   if(!el || el.classList.contains('hidden')) return;
-  restoSplashProgress(100);
-  el.style.transition = 'opacity .12s ease';
-  el.style.opacity = '0';
-  setTimeout(()=>{ el.classList.add('hidden'); el.style.opacity=''; el.style.transition=''; }, 130);
+  el.classList.add('hidden');
 }
 function hideAuthCheckSplash(){
   const el = document.getElementById('authCheckSplash');
@@ -2970,7 +3198,7 @@ function setLoginTab(tab){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Pour les restaurateurs qui ont déjà un compte.</p>
       <label class="field-label">E-mail</label>
-      <input class="field-input" id="loginEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <input class="field-input" id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
       <label class="field-label">Mot de passe</label>
       <div style="position:relative;margin-bottom:8px;">
         <input class="field-input" id="loginPassword" type="password" placeholder="••••••••" style="padding-right:40px;">
@@ -2984,7 +3212,7 @@ function setLoginTab(tab){
       <label class="field-label">Nom complet</label>
       <input class="field-input" id="signupName" placeholder="Fatou Diop" style="margin-bottom:12px;">
       <label class="field-label">E-mail</label>
-      <input class="field-input" id="signupEmail" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
+      <input class="field-input" id="signupEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" style="margin-bottom:12px;">
       <label class="field-label">Mot de passe</label>
       <div style="position:relative;">
         <input class="field-input" id="signupPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'signupPwStrength')">
@@ -2999,7 +3227,7 @@ function setLoginTab(tab){
     body.innerHTML = `
       <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:18px;">Vous avez été invité(e) à rejoindre un restaurant sur TerangaResto.</p>
       <label class="field-label">Adresse e-mail invitée</label>
-      <input class="field-input" id="inviteEmail" placeholder="vous@exemple.com" style="margin-bottom:12px;">
+      <input class="field-input" id="inviteEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
       <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
       <label class="field-label">Choisissez un mot de passe</label>
@@ -3029,7 +3257,7 @@ async function submitLogin(){
   // avant setView('dashboard'), jamais avant.
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(error.message || 'Connexion impossible.'); return; }
+  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
   currentUser = data.user;
   simulatedRole = null;
   const rid = await findMyRestaurantId(data.user.id);
@@ -3059,14 +3287,15 @@ async function submitSignup(){
   const pw2 = document.getElementById('signupPassword2').value;
   if(!name || !email){ toast('Complétez votre nom et votre e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
-  if(pw.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+  const pwValidation = validateStrongPassword(pw);
+  if(pwValidation){ toast(pwValidation); return; }
   if(pw !== pw2){ toast('Les mots de passe ne correspondent pas.'); return; }
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signUp({
     email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
   });
   setLoginVerifying(false);
-  if(error){ toast(error.message || 'Impossible de créer ce compte.'); return; }
+  if(error){ toast(supabaseErrorFr(error, 'Impossible de créer ce compte.')); return; }
   if(!data.session){
     otpPendingEmail=email;
     otpPendingName=name;
@@ -3125,7 +3354,7 @@ async function verifySignupOtp(){
   if(!/^\d{8}$/.test(token)){toast('Entrez le code à 8 chiffres reçu par e-mail.');return;}
   const btn=document.getElementById('verifySignupOtpBtn'); if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
   const {data,error}=await supabaseClient.auth.verifyOtp({email:otpPendingEmail,token,type:'email'});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(error.message||'Code invalide ou expiré.');return;}
+  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}toast(supabaseErrorFr(error,'Code invalide ou expiré.'));return;}
   currentUser=data.user||null;
   obState.emailConfirmationPending=false; obState.pendingEmail=otpPendingEmail; obState.accountEmail=otpPendingEmail; obState.accountName=otpPendingName||obState.accountName; clearPendingOnboarding();
   if(otpPendingSource==='signupModal'){
@@ -3138,7 +3367,7 @@ async function verifySignupOtp(){
 async function resendSignupOtp(){
   if(otpResendTimer>0){toast(`Veuillez attendre ${otpResendTimer} seconde(s) avant de renvoyer le code.`);return;}
   const {error}=await supabaseClient.auth.resend({type:'signup',email:otpPendingEmail,options:{emailRedirectTo:getPublicSiteOrigin()}});
-  if(error){toast('Impossible de renvoyer le code : '+error.message);return;}
+  if(error){toast(supabaseErrorFr(error,'Impossible de renvoyer le code.'));return;}
   toast('Nouveau code envoyé.'); startOtpResendCountdown(60);
 }
 function changeOtpEmail(){clearPendingOnboarding();otpPendingEmail='';otpPendingName='';if(otpPendingSource==='signupModal')setLoginTab('signup');else{obState.emailConfirmationPending=false;obState.pendingEmail='';renderOnboarding();}}
@@ -3148,6 +3377,8 @@ async function submitInviteAccept(){
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
   const password = document.getElementById('invitePasswordInput').value;
   if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
+  const invitePwValidation = validateStrongPassword(password);
+  if(invitePwValidation){ toast(invitePwValidation); return; }
 
   setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
 
@@ -3165,7 +3396,7 @@ async function submitInviteAccept(){
   let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
   if(signErr){
     const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(inErr.message || 'Mot de passe incorrect pour ce compte existant.'); return; }
+    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant.')); return; }
     signData = inData;
   }
   currentUser = signData.user;
@@ -3177,7 +3408,7 @@ async function submitInviteAccept(){
   // jamais les permissions par défaut d'un autre rôle.
   const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
   const accepted = (acceptRows && acceptRows[0]) || match;
-  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast("Impossible de finaliser l'acceptation : " + acceptErr.message); return; }
+  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de finaliser l’acceptation : ' + supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.')); return; }
 
   // CORRECTION DE LA MÊME RÉGRESSION QUE submitLogin() : closeLogin()
   // se déclenchait ici AVANT loadRestaurantCore() (asynchrone) — la
@@ -3374,6 +3605,21 @@ function triggerImagePicker(onSelected){
 function hydrateIcons(root){
   (root||document).querySelectorAll('[data-icon]').forEach(el=>{
     const name = el.dataset.icon, size = Number(el.dataset.size)||18, color = el.dataset.color||'currentColor';
+    // Ne jamais remplacer un bouton/lien portant data-icon : le remplacement
+    // détruisait son onclick (croix du panier, retour checkout, menu mobile...).
+    // On injecte l'icône dans l'élément en conservant son comportement.
+    if(el.tagName === 'BUTTON' || el.tagName === 'A'){
+      const span = document.createElement('span');
+      span.innerHTML = ic(name, size, {stroke:color});
+      span.style.display='inline-flex';
+      span.style.alignItems='center';
+      span.setAttribute('aria-hidden','true');
+      el.removeAttribute('data-icon');
+      el.removeAttribute('data-size');
+      el.removeAttribute('data-color');
+      el.appendChild(span);
+      return;
+    }
     const span = document.createElement('span');
     span.style.cssText = el.getAttribute('style')||'';
     span.className = el.className||'';
@@ -3605,7 +3851,7 @@ const DAY_LABELS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi',
 function productThumb(p,size){
   size = size||44;
   if(p.photo){
-    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
   }
   return icBadge(CAT_ICON[p.cat]||'utensils', {size, bg:'var(--cream-deep)', color:'var(--amber-deep)', round:false});
 }
@@ -3628,6 +3874,7 @@ function defaultDelivery(){
       own:{enabled:true, allowCashOnDelivery:true},
       express:{enabled:false, fee:1500},
     },
+    zones:[{id:'zone-general',name:'Zone générale',fee:1000,enabled:true}],
   };
 }
 function defaultSocial(){
@@ -3750,9 +3997,19 @@ function enabledDeliveryModes(){
   return ['own','express'].filter(k => m[k] && m[k].enabled);
 }
 const DELIVERY_MODE_LABELS = {own:'Livraison du restaurant', express:'Livraison Express'};
-function deliveryFeeFor(modeKey){
-  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee);
-  return Number(RESTAURANT.delivery.fee);
+function enabledDeliveryZones(){
+  const zones=Array.isArray(RESTAURANT.delivery.zones)?RESTAURANT.delivery.zones:[];
+  return zones.filter(z=>z && z.enabled!==false && String(z.name||'').trim());
+}
+function deliveryFeeFor(modeKey, zoneId){
+  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee)||0;
+  const zone=enabledDeliveryZones().find(z=>z.id===zoneId);
+  if(zone) return Math.max(0,Number(zone.fee)||0);
+  return Number(RESTAURANT.delivery.fee)||0;
+}
+function deliveryZoneById(id){
+  const wanted = String(id ?? '').trim();
+  return enabledDeliveryZones().find(z=>String(z.id ?? '').trim()===wanted)||null;
 }
 function deliveryModeAllowsCashOnDelivery(modeKey){
   if(modeKey==='express') return false; // structurel : un coursier tiers n'encaisse pas pour le restaurant
@@ -3769,6 +4026,8 @@ const DISCONTINUED_PAYMENT_METHODS = ['card'];
 function availablePaymentMethods(){
   const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
   return enabled.filter(m=>{
+    if(m === 'wave' && !isSafeHttpUrl(state.toggles.wave_link)) return false;
+    if(m === 'orange_money' && !isSafeHttpUrl(state.toggles.orange_money_link)) return false;
     if(m !== 'on_delivery') return true;
     if(state.checkout.orderType !== 'delivery') return false; // "à la livraison" n'a de sens que pour une livraison
     return deliveryModeAllowsCashOnDelivery(state.checkout.deliveryMode);
@@ -3850,7 +4109,7 @@ const state = {
   yearly:false,
   dashSection:'overview',
   checkoutStep:0,
-  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null},
+  checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null,deliveryZone:null},
   lastOrder:null,
   toggles:{wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
   plan:'starter', // 'starter' | 'pro' — débloqué uniquement après confirmation de paiement (même simulée en démo)
@@ -3884,7 +4143,7 @@ function renderSidebarLogo(){
   const el = document.getElementById('sbLogoBadge');
   if(!el) return;
   el.innerHTML = RESTAURANT.logoDataUrl
-    ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`
     : ic('chefHat', 17, {stroke:'var(--amber-deep)'});
 }
 
@@ -3940,7 +4199,9 @@ function setView(view){
   // comme pour le propriétaire qui prévisualise, qui retrouve son
   // tableau de bord via le petit bouton flottant dédié, pas ici.
   document.body.classList.toggle('storefront-active', view==='storefront');
+  document.body.classList.toggle('dashboard-active', view==='dashboard' && !!viewerIsStaff);
   document.title = view==='storefront' ? RESTO_NAME : RESTO_NAME + ' — TerangaResto';
+  if(typeof updateRestaurantSeo==='function') updateRestaurantSeo();
   if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
@@ -3971,17 +4232,163 @@ function scrollToId(id){ setView('landing'); setTimeout(()=>{ document.getElemen
    qu'elle a bien eu lieu. */
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
-async function sendPasswordReset(){
-  const email = document.getElementById('loginEmail').value.trim();
-  if(!email || !/^\S+@\S+\.\S+$/.test(email)){
-    toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur "Mot de passe oublié ?".');
+let passwordRecoveryEmail = '';
+let passwordRecoveryResendTimer = 0;
+let passwordRecoveryResendInterval = null;
+function startPasswordRecoveryResendCountdown(seconds=30){
+  passwordRecoveryResendTimer = Math.max(0, Number(seconds)||0);
+  if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
+  const update = () => {
+    const btn = document.getElementById('resendRecoveryOtpBtn');
+    const label = document.getElementById('resendRecoveryOtpLabel');
+    if(btn){
+      btn.disabled = passwordRecoveryResendTimer > 0;
+      btn.style.opacity = passwordRecoveryResendTimer > 0 ? '.65' : '';
+      btn.style.cursor = passwordRecoveryResendTimer > 0 ? 'not-allowed' : '';
+    }
+    if(label){
+      label.textContent = passwordRecoveryResendTimer > 0 ? `Renvoyer le code (${passwordRecoveryResendTimer}s)` : 'Renvoyer le code';
+    }
+    if(passwordRecoveryResendTimer <= 0){
+      if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
+      passwordRecoveryResendInterval = null;
+      return;
+    }
+    passwordRecoveryResendTimer--;
+  };
+  update();
+  passwordRecoveryResendInterval = setInterval(update,1000);
+}
+async function resendPasswordRecoveryOtp(){
+  if(passwordRecoveryResendTimer > 0){
+    toast(`Veuillez attendre ${passwordRecoveryResendTimer} seconde(s) avant de renvoyer le code.`);
     return;
   }
-  const {error} = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin,
+  const btn=document.getElementById('resendRecoveryOtpBtn');
+  if(btn){btn.disabled=true;btn.style.opacity='.7';}
+  /* Réinitialisation par OTP Supabase : on renvoie un vrai OTP e-mail,
+     sans lien de récupération susceptible d'être ouvert/préchargé par
+     Gmail ou un outil de sécurité. Le compte doit déjà exister. */
+  const {error}=await supabaseClient.auth.signInWithOtp({
+    email: passwordRecoveryEmail,
+    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
   });
-  if(error){ toast("Impossible d'envoyer le lien de réinitialisation : " + error.message); return; }
-  toast(ic('checkCircle',14)+` Lien de réinitialisation envoyé à ${email}, si ce compte existe.`, true);
+  if(error){
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+    toast(supabaseErrorFr(error,'Impossible de renvoyer le code de réinitialisation.'));
+    return;
+  }
+  toast('Nouveau code de réinitialisation envoyé.');
+  const input=document.getElementById('recoveryOtpInput');
+  if(input) input.value='';
+  startPasswordRecoveryResendCountdown(30);
+  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
+}
+async function sendPasswordReset(){
+  const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
+  if(!email || !/^\S+@\S+\.\S+$/.test(email)){
+    toast('Entrez votre e-mail dans le champ ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».');
+    return;
+  }
+  setLoginVerifying(true, 'loginSubmitBtn', 'Envoi du code…');
+  /* Pour éviter le problème de code immédiatement expiré lié aux liens de
+     récupération, le flux « Mot de passe oublié » utilise ici le vrai OTP
+     e-mail Supabase. Le code reçu est ensuite vérifié avant d'autoriser le
+     changement de mot de passe. Aucun nouveau compte n'est créé. */
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+  });
+  setLoginVerifying(false, 'loginSubmitBtn');
+  if(error){ toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.')); return; }
+  passwordRecoveryEmail = email;
+  renderPasswordRecoveryCodeScreen();
+  startPasswordRecoveryResendCountdown(30);
+  toast('Un code de réinitialisation a été envoyé à votre adresse e-mail.');
+}
+function renderPasswordRecoveryCodeScreen(){
+  const body=document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML=`
+    <div class="text-center" style="padding:10px 0 4px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Réinitialiser le mot de passe</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Un code de réinitialisation a été envoyé à <strong>${escapeHtml(passwordRecoveryEmail)}</strong>.</p>
+      <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez d’abord le code reçu par e-mail. Vous pourrez choisir votre nouveau mot de passe uniquement après vérification du code.</p>
+      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter') verifyPasswordRecoveryOtp()">
+      <button id="verifyRecoveryOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
+      <button id="resendRecoveryOtpBtn" class="btn btn-ghost w-full" style="margin-top:6px;" onclick="resendPasswordRecoveryOtp()"><span id="resendRecoveryOtpLabel">Renvoyer le code</span></button>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
+    </div>`;
+  hydrateIcons(body);
+  setTimeout(()=>document.getElementById('recoveryOtpInput')?.focus(),50);
+}
+function renderRecoveredPasswordScreen(){
+  const body=document.getElementById('loginTabBody');
+  if(!body) return;
+  body.innerHTML=`
+    <div class="text-center" style="padding:10px 0 4px;">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:14px;">${ic('lock',34)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Nouveau mot de passe</h2>
+      <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 18px;">Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.</p>
+
+      <div style="text-align:left;">
+        <label class="field-label">Nouveau mot de passe</label>
+        <div style="position:relative;margin-bottom:6px;">
+          <input id="recoveryPassword" class="field-input" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'recoveryPwStrength')">
+          <button type="button" onclick="togglePasswordVisibility('recoveryPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+        </div>
+        <div id="recoveryPwStrength" style="margin-bottom:8px;"></div>
+
+        <label class="field-label">Confirmer le mot de passe</label>
+        <input id="recoveryPassword2" class="field-input" type="password" placeholder="••••••••" style="margin-bottom:14px;" onkeydown="if(event.key==='Enter') saveRecoveredPassword()">
+      </div>
+
+      <button id="saveRecoveryBtn" class="btn btn-secondary btn-lg w-full" onclick="saveRecoveredPassword()">Enregistrer le nouveau mot de passe</button>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
+    </div>`;
+  hydrateIcons(body);
+  setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50);
+}
+async function verifyPasswordRecoveryOtp(){
+  const token=(document.getElementById('recoveryOtpInput')?.value||'').trim();
+  if(!/^\d{6,8}$/.test(token)){ toast('Entrez le code reçu par e-mail.'); return; }
+  const btn=document.getElementById('verifyRecoveryOtpBtn');
+  if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
+  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'email'});
+  if(error){
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
+    toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
+  }
+  currentUser=data.user||currentUser;
+  if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
+  passwordRecoveryResendInterval=null;
+  passwordRecoveryResendTimer=0;
+  toast('Code vérifié. Vous pouvez maintenant choisir votre nouveau mot de passe.',true);
+  renderRecoveredPasswordScreen();
+}
+async function saveRecoveredPassword(){
+  const pw=document.getElementById('recoveryPassword')?.value||'';
+  const pw2=document.getElementById('recoveryPassword2')?.value||'';
+  const validation=validateStrongPassword(pw);
+  if(validation){toast(validation);return;}
+  if(pw!==pw2){toast('Les mots de passe ne correspondent pas.');return;}
+  const {data:sessionData}=await supabaseClient.auth.getSession();
+  if(!sessionData?.session){toast('Le code de réinitialisation n’est plus valide. Demandez un nouveau code.');return;}
+  const btn=document.getElementById('saveRecoveryBtn');
+  if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
+  const {error}=await supabaseClient.auth.updateUser({password:pw});
+  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
+  passwordRecoveryEmail='';
+  toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
+  closeLogin();
+}
+function showPasswordRecoveryFormFromSession(session){
+  if(!session) return;
+  currentUser=session.user||currentUser;
+  passwordRecoveryEmail=session.user?.email||passwordRecoveryEmail||'';
+  if(document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('hidden');
+  renderRecoveredPasswordScreen();
 }
 function togglePasswordVisibility(inputId, btn){
   const input = document.getElementById(inputId);
@@ -4191,6 +4598,109 @@ function generateUniqueSlug(name){
   return { base, slug: candidate, wasTaken: candidate !== base };
 }
 
+/* ---------------- CHANGEMENT AUTOMATIQUE DU SOUS-DOMAINE ----------------
+   Le sous-domaine suit toujours le nom du restaurant.
+   L'ancien slug reste une adresse de redirection pendant 48 h, puis
+   est retiré de l'historique. Les redirections sont conservées dans
+   la colonne JSON `social` déjà existante : aucune nouvelle colonne
+   Supabase n'est nécessaire. */
+const SLUG_REDIRECT_TTL_MS = 48 * 60 * 60 * 1000;
+
+function cleanSlugRedirects(social){
+  const source = (social && typeof social === 'object') ? social : {};
+  const redirects = Array.isArray(source.slug_redirects) ? source.slug_redirects : [];
+  const now = Date.now();
+  const valid = redirects.filter(r =>
+    r && r.slug && r.to_slug && Number(r.expires_at) > now
+  );
+  return {...source, slug_redirects: valid};
+}
+
+async function resolveUniqueSlugForRename(name, currentSlug){
+  const base = slugify(name) || 'mon-restaurant';
+  let candidate = base;
+  for(let n=2; n<=1000; n++){
+    if(candidate !== currentSlug){
+      try{
+        const {data:available, error} = await supabaseClient.rpc(
+          'is_slug_available',
+          {p_slug:candidate}
+        );
+        if(!error && available) return candidate;
+      }catch(e){
+        console.warn('Vérification du sous-domaine:', e);
+      }
+    }else{
+      return candidate;
+    }
+    candidate = `${base}-${n}`;
+  }
+  return `${base}-${Date.now()}`;
+}
+
+function rememberPreviousSlug(previousSlug, nextSlug){
+  if(!previousSlug || !nextSlug || previousSlug === nextSlug) return;
+  const social = cleanSlugRedirects(RESTAURANT.social);
+  const redirects = Array.isArray(social.slug_redirects) ? social.slug_redirects : [];
+  const now = Date.now();
+  const kept = redirects.filter(r => r.slug !== previousSlug);
+  kept.push({
+    slug: previousSlug,
+    to_slug: nextSlug,
+    created_at: now,
+    expires_at: now + SLUG_REDIRECT_TTL_MS
+  });
+  RESTAURANT.social = {...social, slug_redirects: kept};
+}
+
+/* Recherche d'un ancien sous-domaine pendant sa fenêtre de 48 h.
+   Après expiration, il n'est plus reconnu et devient introuvable. */
+async function loadRestaurantBySlug(slug){
+  const clean = slugify(slug);
+  if(!clean) return false;
+
+  const {data} = await supabaseClient
+    .from('restaurants')
+    .select('id')
+    .eq('slug', clean)
+    .maybeSingle();
+
+  if(data){
+    return await loadRestaurantPublicFast(data.id);
+  }
+
+  try{
+    const {data:redirectRows} = await supabaseClient
+      .from('restaurants')
+      .select('id,social')
+      .contains('social', {slug_redirects:[{slug:clean}]});
+
+    const now = Date.now();
+    const row = (redirectRows || []).find(r => {
+      const redirects = Array.isArray(r.social?.slug_redirects) ? r.social.slug_redirects : [];
+      return redirects.some(x =>
+        x && x.slug === clean &&
+        x.to_slug &&
+        Number(x.expires_at) > now
+      );
+    });
+
+    if(row){
+      const redirect = row.social.slug_redirects.find(x =>
+        x && x.slug === clean && x.to_slug && Number(x.expires_at) > now
+      );
+      if(redirect){
+        window.location.replace(publicRestaurantUrl(redirect.to_slug));
+        return true;
+      }
+    }
+  }catch(e){
+    console.warn('Redirection ancien sous-domaine:', e);
+  }
+
+  return false;
+}
+
 /* Vérification RÉELLE contre Supabase (pas seulement la petite liste
    locale ci-dessus, qui ne sert qu'à l'aperçu instantané pendant la
    saisie) — appelée juste avant la création effective du restaurant,
@@ -4198,19 +4708,18 @@ function generateUniqueSlug(name){
    y compris un restaurant encore en brouillon que RLS ne nous montre
    pas directement (voir is_slug_available dans supabase_schema.sql). */
 async function resolveUniqueSlugForCreation(name){
-  const base = slugify(name) || 'mon-restaurant';
-  let candidate = base;
-  let n = 2;
-  for(let tries=0; tries<50; tries++){
-    try{
-      const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
-      if(error) return candidate; // fonction indisponible (schéma pas encore appliqué) — on tente quand même, l'insert le rattrapera
-      if(available) return candidate;
-    }catch(e){ return candidate; }
-    candidate = `${base}-${n}`;
-    n++;
+  const candidate = slugify(name) || 'mon-restaurant';
+  try{
+    const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
+    if(error){
+      console.error('is_slug_available:', error);
+      return null;
+    }
+    return available ? candidate : null;
+  }catch(e){
+    console.error('is_slug_available:', e);
+    return null;
   }
-  return `${base}-${Date.now()}`; // filet de sécurité si 50 variantes sont toutes prises
 }
 
 const obState = {
@@ -4307,7 +4816,7 @@ async function tryResumePendingOnboarding(){
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('overview');
-    toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
+    toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
     resumingOnboarding = false;
   }
   return true;
@@ -4342,7 +4851,7 @@ async function obNext(){
     const name=o.accountName.trim();
     const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
     setLoginVerifying(false,'obNextBtn');
-    if(error){toast(error.message||'Impossible de créer ce compte.');return;}
+    if(error){toast(supabaseErrorFr(error,'Impossible de créer ce compte.'));return;}
     if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
     currentUser=data.user; o.emailConfirmationPending=false;
   }
@@ -4357,6 +4866,17 @@ async function obNext(){
     }
     if(!available){
       toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
+      return;
+    }
+    const candidateSlug = slugify(name) || 'mon-restaurant';
+    const {data:slugAvailable, error:slugErr} = await supabaseClient.rpc('is_slug_available', {p_slug:candidateSlug});
+    if(slugErr){
+      console.error('is_slug_available:', slugErr);
+      toast('Impossible de vérifier le lien public pour le moment.');
+      return;
+    }
+    if(!slugAvailable){
+      toast('Ce lien public est déjà utilisé. Choisissez un autre nom de restaurant.');
       return;
     }
   }
@@ -4422,6 +4942,10 @@ async function createRestaurantFromOnboarding(){
   // seulement contre la petite liste locale utilisée pour l'aperçu
   // pendant la saisie (voir resolveUniqueSlugForCreation).
   RESTAURANT.slug = await resolveUniqueSlugForCreation(obState.restoName);
+  if(!RESTAURANT.slug){
+    toast('Ce nom est déjà utilisé pour un lien public. Choisissez un autre nom.');
+    return null;
+  }
   RESTAURANT.name = obState.restoName;
   applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
@@ -4469,8 +4993,10 @@ async function createRestaurantFromOnboarding(){
       p_current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
     }));
     if(!error) break;
-    if(error.code === '23505' && /slug/i.test(error.message||'')){ RESTAURANT.slug = `${RESTAURANT.slug}-${Date.now().toString().slice(-4)}`; continue; }
-    break; // toute autre erreur (y compris "déjà un restaurant" ou RLS) : on arrête et on l'affiche, pas de nouvelle tentative aveugle
+    if(error.code === '23505' && /slug/i.test(error.message||'')){
+      toast('Ce nom est déjà utilisé. Choisissez un autre nom de restaurant.');
+    }
+    break; // aucune variante automatique : un restaurant = un nom/lien choisi explicitement
   }
   // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
   // on gère aussi le cas où PostgREST le renverrait dans un tableau
@@ -4489,7 +5015,7 @@ async function createRestaurantFromOnboarding(){
     // restaurant."), donc on les affiche tels quels plutôt que de les
     // envelopper dans une phrase technique.
     RESTAURANT.created = false;
-    toast(error ? error.message : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
+    toast(error ? supabaseErrorFr(error,"Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.") : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
     return null;
   }
 
@@ -4499,8 +5025,10 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
   RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
   RESTAURANT.orderNotificationEmailPending = '';
+  // Un restaurant nouvellement créé doit être accessible immédiatement
+  // depuis son lien public et son QR Code.
+  RESTAURANT.isPublished = true;
   await persistRestaurant();
-  RESTAURANT.isPublished = false;
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
   subscribeToReviewsRealtime(RESTAURANT.id);
@@ -4539,6 +5067,42 @@ async function resendOnboardingConfirmationEmail(){
    HTML généré ici — évite qu'un nom de restaurant ou un e-mail
    contenant des caractères spéciaux ne casse le balisage. */
 function escapeAttr(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function supabaseErrorFr(error, fallback='Une erreur est survenue.'){ 
+  const msg=String(error?.message||'').toLowerCase();
+  const code=String(error?.code||'').toLowerCase();
+  if(msg.includes('invalid login credentials') || msg.includes('invalid credentials')) return 'E-mail ou mot de passe incorrect.';
+  if(msg.includes('email not confirmed')) return 'Votre adresse e-mail n’est pas encore confirmée.';
+  if(msg.includes('user already registered') || msg.includes('already registered')) return 'Cette adresse e-mail est déjà utilisée.';
+  if(msg.includes('password') && (msg.includes('weak') || msg.includes('too short'))) return 'Mot de passe trop faible. Utilisez au moins 8 caractères, une majuscule, une minuscule et un chiffre.';
+  if(msg.includes('expired') || code.includes('expired')) return 'Le code a expiré. Demandez un nouveau code.';
+  if(msg.includes('invalid') && msg.includes('otp')) return 'Code incorrect ou expiré.';
+  if(msg.includes('rate limit') || msg.includes('too many')) return 'Trop de tentatives. Attendez quelques instants avant de réessayer.';
+  if(msg.includes('network') || msg.includes('fetch')) return 'Connexion au serveur impossible. Vérifiez votre connexion Internet.';
+  if(msg.includes('row-level security') || msg.includes('permission')) return 'Vous n’avez pas l’autorisation d’effectuer cette action.';
+  return fallback;
+}
+function isSafeHttpUrl(value){
+  try{ const u=new URL(String(value||''),location.origin); return u.protocol==='http:' || u.protocol==='https:'; }catch(e){ return false; }
+}
+function safeImageSrc(value){
+  const v=String(value||'');
+  if(/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(v)) return v;
+  return isSafeHttpUrl(v) ? v : '';
+}
+
+function validateStrongPassword(pw){
+  if(pw.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
+  if(!/[A-Z]/.test(pw)) return 'Ajoutez au moins une lettre majuscule.';
+  if(!/[a-z]/.test(pw)) return 'Ajoutez au moins une lettre minuscule.';
+  if(!/\d/.test(pw)) return 'Ajoutez au moins un chiffre.';
+  return '';
+}
+
 
 async function finishOnboarding(){
   if(obState.emailConfirmationPending){
@@ -4555,7 +5119,7 @@ async function finishOnboarding(){
   clearPendingOnboarding();
   setView('dashboard');
   setDashSection('overview');
-  toast(ic('checkCircle',15)+` Restaurant créé — ${obState.restoName} est en brouillon. Publiez-le depuis Paramètres pour le rendre visible.`, true);
+  toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
 }
 
 /* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
@@ -4594,7 +5158,7 @@ async function createRestaurantAndPay(){
     body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
-    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur.") + " Votre restaurant a été créé en brouillon, forfait en attente de paiement — vous pouvez réessayer depuis Abonnement dans votre tableau de bord.");
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"réponse invalide du serveur.") : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('abonnement');
@@ -4654,7 +5218,7 @@ function obStepHtml(){
     <label class="field-label">Nom complet</label>
     <input class="field-input" style="margin-bottom:12px;" placeholder="Fatou Diop" value="${o.accountName}" oninput="obField('accountName',this.value)">
     <label class="field-label">E-mail</label>
-    <input class="field-input" style="margin-bottom:12px;" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
+    <input class="field-input" style="margin-bottom:12px;" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
     <label class="field-label">Mot de passe</label>
     <div style="position:relative;">
       <input class="field-input" id="obAccountPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" value="${o.accountPassword}" oninput="obField('accountPassword',this.value);renderPasswordStrength(this.value,'obPwStrength')">
@@ -4675,7 +5239,7 @@ function obStepHtml(){
     </select>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;">
       <div><label class="field-label">Ville</label><input class="field-input" value="${o.city}" oninput="obField('city',this.value)"></div>
-      <div><label class="field-label">Téléphone</label><input class="field-input" placeholder="+221 77 000 00 00" value="${o.phone}" oninput="obField('phone',this.value)"></div>
+      <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${o.phone}" oninput="this.value=this.value.replace(/\D/g,'');obField('phone',this.value)"></div>
     </div>
     ${obNav(true)}`;
 
@@ -4760,7 +5324,7 @@ function obStepHtml(){
     <div class="text-center">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
       <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est prêt à être créé</h2>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site reste en brouillon jusqu'à ce que vous cliquiez sur « Publier » dans Paramètres.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site public est activé automatiquement dès la création.</p>
       <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
         ${ic('link',15,{stroke:'var(--forest)'})}
         <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
@@ -4769,7 +5333,7 @@ function obStepHtml(){
         <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
         <p style="font-size:12.5px;margin-top:6px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ajouter vos catégories et produits</p>
         <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
-        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Publier votre site public</p>
+        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ouvrir votre site public</p>
       </div>
       <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Créer mon restaurant ${ic('arrowRight',16)}</button>
     </div>`;
@@ -4790,6 +5354,17 @@ function obNavBackOnly(){ return `<button class="btn btn-outline w-full" onclick
 
 <script>
 /* ---------------- HERO / FOOTER — rendus depuis RESTAURANT (synchronisation réelle) ---------------- */
+function updateRestaurantSeo(){
+  const title = RESTO_NAME ? `${RESTO_NAME} — Menu, commandes et livraison` : 'TerangaResto';
+  document.title = state.view==='storefront' ? title : (RESTO_NAME + ' — TerangaResto');
+  let meta=document.querySelector('meta[name=description]');
+  if(!meta){meta=document.createElement('meta');meta.name='description';document.head.appendChild(meta);}
+  meta.content = RESTO_NAME ? `Découvrez le menu de ${RESTO_NAME}, passez votre commande en ligne et choisissez sur place, à emporter ou en livraison.` : 'Menu et commandes en ligne avec TerangaResto.';
+  let canonical=document.querySelector('link[rel=canonical]');
+  if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.appendChild(canonical);}
+  canonical.href = publicRestaurantUrl(RESTAURANT.slug);
+}
+
 function renderStorefrontHero(){
   // Bouton "Tableau de bord" — UNIQUEMENT si le visiteur actuel est
   // réellement le propriétaire/personnel de CE restaurant (viewerIsStaff),
@@ -4804,7 +5379,7 @@ function renderStorefrontHero(){
   // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
   // icône générique. Nom du restaurant à côté, comme le thème d'origine.
   const logoHtml = (RESTAURANT.logoDataUrl
-    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
     : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
   document.getElementById('tgLogo').innerHTML = logoHtml;
   document.getElementById('tgMobileLogo').innerHTML = logoHtml;
@@ -4814,7 +5389,7 @@ function renderStorefrontHero(){
   // sous-titre personnalisables (RESTAURANT.heroTitle/heroSubtitle),
   // sinon un texte générique honnête plutôt qu'un faux storytelling.
   document.getElementById('tgHeroBg').style.backgroundImage = RESTAURANT.coverDataUrl
-    ? `url('${RESTAURANT.coverDataUrl}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
+    ? `url('${safeImageSrc(RESTAURANT.coverDataUrl)}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
   document.getElementById('tgHeroTitle').textContent = RESTAURANT.heroTitle || `Bienvenue chez ${RESTO_NAME}`;
   document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
   document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
@@ -4839,8 +5414,8 @@ function renderStorefrontHero(){
       homeCats.map(c=>{
         const cover = (PRODUCTS.find(p=>p.cat===c && p.active && p.photo)||{}).photo;
         return `<div class="category-item ${state.activeCategory===c?'active':''}" onclick="setActiveCategory('${c}')">
-          <div class="category-img">${cover?`<img src="${cover}" alt="${catsState[c]}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
-          <span class="category-name">${catsState[c]}</span>
+          <div class="category-img">${cover?`<img src="${safeImageSrc(cover)}" alt="${escapeAttr(catsState[c])}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
+          <span class="category-name">${escapeHtml(catsState[c])}</span>
         </div>`;
       }).join('');
   }
@@ -4855,8 +5430,8 @@ function renderStorefrontHero(){
 
   // Contact — vraies données (Paramètres)
   document.getElementById('sfFooterInfo').innerHTML = `
-    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${RESTAURANT.address}${RESTAURANT.city?', '+RESTAURANT.city:''}</p>` : ''}
-    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${RESTAURANT.phone}</p>` : ''}`;
+    ${RESTAURANT.address ? `<p><i class="fa-solid fa-location-dot" style="color:var(--primary);"></i> ${escapeHtml(RESTAURANT.address)}${RESTAURANT.city?', '+escapeHtml(RESTAURANT.city):''}</p>` : ''}
+    ${RESTAURANT.phone ? `<p style="margin-top:0.4rem;"><i class="fa-solid fa-phone" style="color:var(--primary);"></i> ${escapeHtml(RESTAURANT.phone)}</p>` : ''}`;
 
   // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
   // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
@@ -4932,15 +5507,15 @@ function productCardHtml(p){
   return `
   <div class="product-card" style="${!p.available?'opacity:.6;':''}">
     <div class="product-img-wrapper" onclick='openProductModal("${p.id}")'>
-      ${p.photo ? `<img src="${p.photo}" alt="${p.name}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
+      ${p.photo ? `<img src="${safeImageSrc(p.photo)}" alt="${escapeAttr(p.name)}" class="product-img" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`}
       ${!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : ''}
     </div>
     <div class="product-content">
-      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${p.name}</h3>
-      <p class="product-desc">${p.desc||''}</p>
+      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${escapeHtml(p.name)}</h3>
+      <p class="product-desc">${escapeHtml(p.desc||'')}</p>
       <div class="product-footer">
         <span class="product-price">${fmt(p.price)}</span>
-        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${p.name}"><i class="fa-solid fa-plus"></i></button>
+        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${escapeAttr(p.name)}"><i class="fa-solid fa-plus"></i></button>
       </div>
     </div>
   </div>`;
@@ -4998,17 +5573,17 @@ function renderProductModal(){
   const unit = p.price + (modalVariant?modalVariant.delta:0);
   document.getElementById('productModalBody').innerHTML = `
     <div style="position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
+      ${p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
       <button onclick="closeProductModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;">${ic('x',16)}</button>
     </div>
     <div style="padding:22px;">
-      <h2 class="font-display" style="font-size:20px;">${p.name}</h2>
-      <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${p.desc || 'Aucune description pour le moment.'}</p>
+      <h2 class="font-display" style="font-size:20px;">${escapeHtml(p.name)}</h2>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${escapeHtml(p.desc || 'Aucune description pour le moment.')}</p>
       <p style="font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">${ic('clock',13)}Préparation : ${p.prep} min</p>
       ${p.variants.length ? `<p style="font-size:13.5px;font-weight:600;margin:16px 0 8px;">Options ${p.variantsRequired?'<span style="color:var(--terracotta);font-weight:500;font-size:11.5px;">· obligatoire</span>':'<span style="color:var(--ink-faint);font-weight:500;font-size:11.5px;">· facultatif</span>'}</p>
         <div class="flex-col gap-2">
           ${p.variants.map((v,i)=>`<button onclick="setModalVariant(${i})" style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:14px;border:2px solid ${modalVariant===v?'var(--amber-deep)':'var(--cream-line)'};${modalVariant===v?'background:rgba(232,135,30,.06);':''}">
-            <span style="font-size:13.5px;">${v.name}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
+            <span style="font-size:13.5px;">${escapeHtml(v.name)}</span><span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>0?'+'+fmt(v.delta):'Inclus'}</span></button>`).join('')}
         </div>
         ${p.variantsRequired && !modalVariant ? `<p style="font-size:11.5px;color:var(--terracotta);margin-top:6px;">Choisissez une option pour continuer.</p>`:''}` : ''}
       <div class="flex items-center justify-between" style="margin-top:18px;">
@@ -5049,7 +5624,7 @@ function quickAddToCart(id){
   if(existing){ existing.qty += 1; }
   else{ state.cart.push({key, id:p.id, name:p.name, price:p.price, variant:defaultVariant, qty:1, cat:p.cat, photo:p.photo}); }
   updateFloatingCartButton();
-  toast(ic('checkCircle',14)+` ${p.name} ajouté au panier.`, true);
+  toast(ic('checkCircle',14)+` ${escapeHtml(p.name)} ajouté au panier.`, true);
 }
 
 function addToCartFromModal(){
@@ -5120,7 +5695,7 @@ function renderCart(){
     </div>`).join('');
 
   const sub = cartSubtotal();
-  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
+  const deliveryFee = state.checkout.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode, state.checkout.deliveryZone) : 0;
   footerEl.innerHTML = `
     <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);margin-bottom:6px;"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
     <div class="flex justify-between" style="font-size:15px;font-weight:600;margin-bottom:14px;"><span>Total</span><span class="font-tabular">${fmt(sub+deliveryFee)}</span></div>
@@ -5145,15 +5720,17 @@ function ckField(key,val){
   // "Livraison du restaurant" à "Express") — on l'efface pour forcer un
   // nouveau choix parmi les options réellement valides, plutôt que de
   // laisser passer une sélection devenue impossible.
+  if(key==='orderType' && val!=='delivery') state.checkout.deliveryZone=null;
   if((key==='orderType' || key==='deliveryMode') && state.checkout.payment){
     if(!availablePaymentMethods().includes(state.checkout.payment)) state.checkout.payment = null;
   }
 }
-function ckTableInput(val){
-  const digitsOnly = val.replace(/\D/g,'');
+function ckTableInput(input){
+  if(!input) return;
+  const digitsOnly = input.value.replace(/\D/g,'');
+  if(input.value !== digitsOnly) input.value = digitsOnly;
   state.checkout.table = digitsOnly;
-  state.checkout.tableError = (val!==digitsOnly) ? 'Chiffres uniquement, par exemple 1, 2, 10 ou 25.' : '';
-  renderCheckout();
+  state.checkout.tableError = '';
 }
 /* Téléphone client : chiffres 0-9 uniquement — lettres, espaces, "+" et
    symboles sont retirés au fur et à mesure de la saisie. oninput se
@@ -5171,6 +5748,7 @@ function ckNext(){
   const c = state.checkout;
   if(state.checkoutStep===0 && (!c.firstName||!c.lastName||!c.phone)){ toast('Complétez vos informations.'); return; }
   if(state.checkoutStep===1 && c.orderType==='dine_in' && !c.table){ toast('Indiquez le numéro de table.'); return; }
+  if(state.checkoutStep===1 && c.orderType==='delivery' && !c.deliveryZone){ toast('Sélectionnez votre zone de livraison.'); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && !c.address){ toast("Indiquez l'adresse de livraison."); return; }
   if(state.checkoutStep===1 && c.orderType==='delivery' && cartSubtotal() < Number(RESTAURANT.delivery.min)){ toast(`Commande minimum pour la livraison : ${fmt(RESTAURANT.delivery.min)}.`); return; }
   if(state.checkoutStep===2 && !c.payment){ toast('Choisissez un moyen de paiement.'); return; }
@@ -5183,7 +5761,7 @@ function renderCheckout(){
   const c = state.checkout;
   const step = state.checkoutStep;
   const sub = cartSubtotal();
-  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode) : 0;
+  const fee = c.orderType==='delivery' ? deliveryFeeFor(state.checkout.deliveryMode, state.checkout.deliveryZone) : 0;
 
   const progress = `<div class="flex gap-2" style="margin-bottom:24px;">${[0,1,2].map(i=>`<div style="height:4px;flex:1;border-radius:999px;background:${i<=step?'var(--amber-deep)':'var(--cream-line)'};"></div>`).join('')}</div>`;
 
@@ -5194,19 +5772,22 @@ function renderCheckout(){
         <div><label class="field-label">Prénom</label><input class="field-input" value="${c.firstName}" oninput="ckField('firstName',this.value)"></div>
         <div><label class="field-label">Nom</label><input class="field-input" value="${c.lastName}" oninput="ckField('lastName',this.value)"></div>
       </div>
-      <label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)">`;
+      <label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)">`;
   } else if(step===1){
     const opts = [['dine_in','utensils','Sur place'],['takeaway','package','À emporter']];
     if(RESTAURANT.delivery.enabled && enabledDeliveryModes().length>0) opts.push(['delivery','bike','Livraison']);
     const modes = enabledDeliveryModes();
+    const deliveryZones = enabledDeliveryZones();
     if(c.orderType==='delivery' && !c.deliveryMode && modes.length>0) c.deliveryMode = modes[0];
+    if(c.orderType==='delivery' && deliveryZones.length===1) c.deliveryZone = String(deliveryZones[0].id);
+    if(c.orderType==='delivery' && c.deliveryZone && !deliveryZoneById(c.deliveryZone)) c.deliveryZone = null;
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Mode de commande</h1>
       <div class="grid" style="grid-template-columns:repeat(${opts.length},1fr);gap:8px;margin-bottom:16px;">
         ${opts.map(([key,icon,label])=>`<button onclick="ckField('orderType','${key}');renderCheckout();" style="border:2px solid ${c.orderType===key?'var(--amber-deep)':'var(--cream-line)'};${c.orderType===key?'background:rgba(232,135,30,.06);':''}border-radius:16px;padding:16px 8px;text-align:center;">
           <div style="display:flex;justify-content:center;color:${c.orderType===key?'var(--amber-deep)':'var(--ink-soft)'};">${ic(icon,22)}</div><div style="font-size:11.5px;font-weight:600;margin-top:6px;">${label}</div></button>`).join('')}
       </div>
       ${c.orderType==='dine_in'?`<label class="field-label">Numéro de table</label>
-        <input class="field-input" inputmode="numeric" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this.value)" style="${c.tableError?'border-color:var(--terracotta);':''}">
+        <input class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this)" style="${c.tableError?'border-color:var(--terracotta);':''}">
         ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${c.tableError}</p>`:''}`:''}
       ${c.orderType==='delivery'?`
         ${modes.length>1?`<label class="field-label">Type de livraison</label>
@@ -5216,8 +5797,13 @@ function renderCheckout(){
             <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${fmt(deliveryFeeFor(mk))}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
           </button>`).join('')}
         </div>`:''}
-        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${c.address}</textarea>
-        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${fmt(deliveryFeeFor(c.deliveryMode))}</p>`:''}`:''}`;
+        <label class="field-label">Zone de livraison</label>
+        <select class="field-input" onchange="ckField('deliveryZone',this.value);renderCheckout();" style="margin-bottom:12px;">
+          <option value="">Sélectionnez votre zone</option>
+          ${enabledDeliveryZones().map(z=>`<option value="${escapeAttr(z.id)}" ${String(c.deliveryZone??'')===String(z.id??'')?'selected':''}>${escapeHtml(z.name)} — ${Number(z.fee)===0?'Gratuit':fmt(Number(z.fee))}</option>`).join('')}
+        </select>
+        <label class="field-label">Adresse de livraison</label><textarea class="field-input" rows="2" oninput="ckField('address',this.value)">${escapeHtml(c.address)}</textarea>
+        ${Number(RESTAURANT.delivery.min)>0?`<p style="font-size:11.5px;color:var(--ink-faint);margin-top:5px;">Commande minimum : ${fmt(RESTAURANT.delivery.min)} · Frais de livraison : ${deliveryFeeFor(c.deliveryMode,c.deliveryZone)===0?'Gratuit':fmt(deliveryFeeFor(c.deliveryMode,c.deliveryZone))}</p>`:''}`:''}`;
   } else if(step===2){
     const methods = availablePaymentMethods();
     // Cas 1 — un seul moyen réellement activé par le restaurateur (via
@@ -5269,6 +5855,42 @@ function renderCheckout(){
    tentative d'exécution concurrente de submitOrder() pendant qu'une
    première est encore en cours. */
 let orderSubmitInFlight = false;
+
+/* Réception locale des commandes : aucune RPC/SQL/Supabase n'est utilisée.
+   Cela permet au tableau de bord ouvert dans un autre onglet du même navigateur
+   de voir immédiatement une commande créée sur le site public. */
+function receiveLocalOrder(order){
+  if(!order || String(order.restaurant_id||'') !== String(RESTAURANT.id||'')) return;
+  if(DEMO_ORDERS.some(o=>String(o.id)===String(order.id))) return;
+  DEMO_ORDERS.unshift(order);
+  refreshNotifDot();
+  if(RESTAURANT.notificationsEnabled){
+    toast(ic('bell',14)+` Nouvelle commande — #${order.num} (${fmt(order.total)})`, true);
+    playNotificationSound();
+    showBrowserNotification(order);
+  }
+  if(typeof state.dashSection !== 'undefined' && state.dashSection==='orders'){
+    try{ renderDashSection('orders'); }catch(e){}
+  }
+}
+
+(function initLocalOrderBus(){
+  try{
+    if('BroadcastChannel' in window){
+      if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
+      window.__terangaOrderChannel.onmessage = ev => {
+        if(ev.data && ev.data.type==='NEW_ORDER') receiveLocalOrder(ev.data.order);
+      };
+    }
+    window.addEventListener('storage', ev=>{
+      if(ev.key!=='teranga_order_event' || !ev.newValue) return;
+      try{
+        const payload=JSON.parse(ev.newValue);
+        receiveLocalOrder(payload.order);
+      }catch(e){}
+    });
+  }catch(e){ console.warn('Canal local de commandes indisponible:',e); }
+})();
 async function submitOrder(){
   if(orderSubmitInFlight) return;
   orderSubmitInFlight = true;
@@ -5298,95 +5920,154 @@ async function submitOrder(){
 async function submitOrderInternal(){
   const c = state.checkout;
 
-  // Commande RÉELLE — créée via la RPC create_order() (voir
-  // supabase_schema.sql), qui recalcule elle-même le prix de chaque
-  // produit/variante et le frais de livraison à partir des vraies
-  // données en base. Le navigateur n'envoie plus jamais de prix ni de
-  // total : seulement quoi (product_id, nom de variante, quantité) —
-  // jamais combien. Si un prix a changé entre-temps, ou qu'une
-  // variante n'existe plus, c'est le serveur qui tranche, pas le panier
-  // affiché à l'écran.
-  const { data, error } = await supabaseClient.rpc('create_order', {
-    p_restaurant_id: RESTAURANT.id,
-    p_client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
-    p_phone: c.phone || '—',
-    p_order_type: c.orderType,
-    p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
-    p_delivery_mode: c.orderType==='delivery' ? c.deliveryMode : null,
-    p_items: state.cart.map(l => ({
-      product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
-    })),
-    p_pay: c.payment,
-    p_notes: c.notes || null,
-    // RÉTABLI (audit — régression détectée) : le champ "Adresse de
-    // livraison" du formulaire restait affiché mais n'était plus
-    // envoyé nulle part depuis une réinitialisation antérieure du
-    // fichier SQL — l'adresse saisie disparaissait silencieusement.
-    p_address: c.orderType==='delivery' ? (c.address || null) : null,
-  });
+  /* ============================================================
+     NOUVEAU SYSTÈME DE COMMANDE — INDÉPENDANT DE SUPABASE
+     La validation d'une commande ne passe plus par RPC/create_order.
+     La zone sert uniquement à calculer les frais et l'adresse reste
+     entièrement libre. La commande est créée localement immédiatement.
+     ============================================================ */
+  if(!state.cart.length){
+    toast('Votre panier est vide.');
+    return;
+  }
 
-  if(error){
-    console.error('create_order — erreur Supabase complète :', error);
-    // PGRST202 = PostgREST ne trouve aucune fonction create_order()
-    // correspondant EXACTEMENT aux paramètres envoyés par index.html —
-    // presque toujours le signe que le supabase_schema.sql actuellement
-    // exécuté sur ce projet Supabase est une version différente de
-    // celle-ci. Message spécifique pour diagnostiquer directement,
-    // plutôt que de laisser deviner.
-    if(error.code === 'PGRST202'){
-      toast("La fonction de commande installée sur Supabase ne correspond pas à cette version du site. Il faut ré-exécuter supabase_schema.sql dans Supabase → SQL Editor. Votre panier a été conservé.");
-    } else {
-      toast("Impossible d'envoyer la commande : " + error.message);
+  if(c.orderType==='delivery'){
+    const zones = enabledDeliveryZones();
+    if(!zones.length){ toast("Aucune zone de livraison n'est disponible."); return; }
+    if(!c.deliveryZone && zones.length===1) c.deliveryZone = String(zones[0].id);
+    const selectedZone = deliveryZoneById(c.deliveryZone);
+    if(!selectedZone){ toast('Sélectionnez une zone de livraison.'); return; }
+    if(!String(c.address||'').trim()){
+      toast("Indiquez l'adresse de livraison.");
+      return;
     }
-    return;
   }
-  const row = Array.isArray(data) ? data[0] : data;
-  if(!row){
-    toast("La commande n'a pas pu être confirmée par le serveur.");
-    return;
+
+  const fee = c.orderType==='delivery'
+    ? Number(deliveryFeeFor(c.deliveryMode, c.deliveryZone)) || 0
+    : 0;
+  const subtotal = cartSubtotal();
+  const total = subtotal + fee;
+
+  /* Numéro local unique : aucun appel réseau, aucune RPC. */
+  const orderCounterKey = 'teranga_local_order_counter_' + String(RESTAURANT.id||'default');
+  let nextNum = 1030;
+  try{
+    nextNum = Math.max(1030, Number(localStorage.getItem(orderCounterKey)||1029) + 1);
+    localStorage.setItem(orderCounterKey, String(nextNum));
+  }catch(e){
+    nextNum = 1030 + Math.floor(Math.random()*900000);
   }
+
+  const zone = c.orderType==='delivery' ? deliveryZoneById(c.deliveryZone) : null;
+  const now = new Date();
+  const orderId = 'local-' + now.getTime() + '-' + Math.random().toString(36).slice(2,8);
+  const items = state.cart.map(l => ({
+    productId:l.id,
+    name:l.name,
+    variant:l.variant ? l.variant.name : null,
+    price:Number(l.price||l.unitPrice||0),
+    qty:Number(l.qty||1)
+  }));
 
   const newOrder = {
-    id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
-    items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
-    status: row.status, notes: row.notes, address: row.address, createdAt: new Date(row.created_at),
+    id:orderId,
+    num:String(nextNum),
+    client:`${c.firstName||''} ${c.lastName||''}`.trim() || 'Client',
+    phone:c.phone || '—',
+    type:c.orderType==='delivery'
+      ? 'Livraison' + (zone && zone.name ? ' · ' + zone.name : '')
+      : c.orderType==='dine_in'
+        ? 'Sur place · Table ' + String(c.table||'')
+        : 'À emporter',
+    orderType:c.orderType,
+    deliveryMode:c.orderType==='delivery' ? (c.deliveryMode||'') : '',
+    deliveryZone:c.orderType==='delivery' ? (zone?.name || String(c.deliveryZone||'')) : '',
+    address:c.orderType==='delivery' ? String(c.address||'').trim() : '',
+    items,
+    subtotal,
+    deliveryFee:fee,
+    total,
+    pay:c.payment || '',
+    payStatus:'pending',
+    status:'new',
+    notes:c.notes || '',
+    createdAt:now,
+    restaurant_id:RESTAURANT.id
   };
-  DEMO_ORDERS.unshift(newOrder);
-  refreshNotifDot();
 
-  // Notification e-mail automatique : aucun secret Resend n'est exposé dans le navigateur.
-  // L'Edge Function retrouve l'adresse de réception vérifiée du restaurant côté serveur.
-  if(row.email_notify_token){
-    supabaseClient.functions.invoke('send-order-email', {
-      body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
-    }).then(({error:emailError})=>{
-      if(emailError) console.error('send-order-email:', emailError.message);
-    }).catch(err=>console.error('send-order-email:', err));
-  } else {
-    console.warn('Notification commande non envoyée : email_notify_token absent. Exécutez la migration SQL fournie.');
+  /* ============================================================
+     PERSISTANCE RÉELLE — pont unique vers Supabase
+     La logique de livraison ci-dessus reste inchangée. On ne rappelle
+     PAS create_order() : on enregistre simplement la commande déjà
+     validée par ce checkout dans une RPC dédiée.
+     ============================================================ */
+  const {data:savedOrder, error:savedOrderError} = await supabaseClient.rpc('save_public_order', {
+    p_restaurant_id: RESTAURANT.id,
+    p_order: newOrder
+  });
+  if(savedOrderError){
+    console.error('save_public_order:', savedOrderError);
+    throw new Error('La commande n’a pas pu être enregistrée. Votre panier a été conservé.');
   }
 
+  /* Le serveur devient la source de vérité pour l'identifiant, le numéro
+     et la date. Tout le reste (zone, adresse, total, client, etc.) reste
+     exactement celui validé par le parcours actuel. */
+  const saved = Array.isArray(savedOrder) ? savedOrder[0] : savedOrder;
+  if(!saved || !saved.id){
+    throw new Error('La commande n’a pas reçu de confirmation du serveur.');
+  }
+  newOrder.id = saved.id;
+  newOrder.num = String(saved.num);
+  newOrder.createdAt = saved.created_at ? new Date(saved.created_at) : newOrder.createdAt;
+
+  /* Stockage local immédiat après succès Supabase : il sert uniquement
+     au cache/à l'affichage local et ne remplace plus la base réelle. */
+  const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
+  try{
+    const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
+    existing.unshift(newOrder);
+    localStorage.setItem(orderStorageKey, JSON.stringify(existing.slice(0,500)));
+  }catch(e){
+    console.error('Stockage local de commande:',e);
+  }
+
+  /* Rend aussi la commande immédiatement visible dans le dashboard local.
+     En parallèle, la ligne existe déjà dans Supabase et sera donc chargée
+     par le menu Commandes du restaurateur, y compris sur un autre appareil. */
+  DEMO_ORDERS.unshift(newOrder);
+  refreshNotifDot();
+  try{
+    if('BroadcastChannel' in window){
+      if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
+      window.__terangaOrderChannel.postMessage({type:'NEW_ORDER', restaurantId:RESTAURANT.id, order:newOrder});
+    }
+    localStorage.setItem('teranga_order_event', JSON.stringify({restaurantId:RESTAURANT.id, order:newOrder, at:Date.now()}));
+  }catch(e){ console.warn('Diffusion locale de commande:',e); }
+
   state.lastOrder = {
-    num: row.num, items: row.items, total: Number(row.total),
-    payment: c.payment, firstName: c.firstName, phone: c.phone,
+    num:newOrder.num,
+    items:newOrder.items,
+    total:newOrder.total,
+    payment:c.payment,
+    firstName:c.firstName,
+    phone:c.phone,
+    address:newOrder.address,
+    deliveryZone:newOrder.deliveryZone
   };
-  // Reflet local immédiat du stock vendu, pour que l'interface de CE
-  // navigateur affiche tout de suite le produit en rupture s'il vient
-  // d'atteindre 0 — la déduction qui compte réellement (celle qui évite
-  // les doubles déductions si deux clients commandent en même temps)
-  // est faite côté base de données DIRECTEMENT dans create_order(), sous
-  // verrou de ligne ("for update"), jamais par une écriture séparée
-  // depuis ce navigateur.
-  state.cart.forEach(line => {
-    const p = PRODUCTS.find(x => x.id === line.id);
-    if(p && typeof p.stock === 'number'){
-      p.stock = Math.max(0, p.stock - line.qty);
-      if(p.stock === 0) p.available = false;
+
+  state.cart.forEach(line=>{
+    const p=PRODUCTS.find(x=>x.id===line.id);
+    if(p && typeof p.stock==='number'){
+      p.stock=Math.max(0,p.stock-line.qty);
+      if(p.stock===0) p.available=false;
     }
   });
-  state.cart = [];
-  state.checkout.notes = ''; // spécifique à CETTE commande — ne doit pas préremplir la suivante
-  rememberMyOrder(row.num, c.phone);
+
+  state.cart=[];
+  state.checkout.notes='';
+  rememberMyOrder(newOrder.num,c.phone);
   updateFloatingCartButton();
   closeCheckout();
   renderConfirmation();
@@ -5394,16 +6075,11 @@ async function submitOrderInternal(){
   renderProductSections();
   renderTrackOrderButton();
 
-  // Redirection vers le lien Wave/Orange Money du RESTAURANT (jamais un
-  // lien inventé ou généré ici — uniquement celui que le restaurateur a
-  // lui-même renseigné dans Paramètres → Paiements, voir state.toggles.
-  // Nouvel onglet plutôt qu'une redirection complète : le client garde
-  // sa confirmation de commande et son suivi ouverts dans cet onglet,
-  // même s'il abandonne ou revient de l'app Wave/Orange Money.
-  if(c.payment === 'wave' && state.toggles.wave_link){
-    window.open(state.toggles.wave_link, '_blank', 'noopener');
-  } else if(c.payment === 'orange_money' && state.toggles.orange_money_link){
-    window.open(state.toggles.orange_money_link, '_blank', 'noopener');
+  /* Paiement : le lien configuré par le restaurateur reste inchangé. */
+  if(c.payment==='wave' && isSafeHttpUrl(state.toggles.wave_link)){
+    window.open(state.toggles.wave_link,'_blank','noopener');
+  }else if(c.payment==='orange_money' && isSafeHttpUrl(state.toggles.orange_money_link)){
+    window.open(state.toggles.orange_money_link,'_blank','noopener');
   }
 }
 
@@ -5413,7 +6089,7 @@ function renderConfirmation(){
     <div class="text-center" style="margin-bottom:28px;">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',40)}</div>
       <h1 class="font-display" style="font-size:22px;">Commande envoyée</h1>
-      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${RESTO_NAME}</span>.</p>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
     </div>
     <div class="card" style="padding:18px;">
       <div class="flex justify-between items-center" style="margin-bottom:12px;">
@@ -5502,12 +6178,38 @@ function openMoreSheet(){
 }
 function closeMoreSheet(){ document.getElementById('moreSheetOverlay').classList.add('hidden'); }
 
+function closeNotifPanel(){
+  const el = document.getElementById('notifPanelOverlay');
+  if(el) el.remove();
+}
 function toggleNotifPanel(){
   if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
-  const newOrders = DEMO_ORDERS.filter(o=>o.status==='new');
-  if(newOrders.length===0){ toast(ic('bell',14)+' Aucune nouvelle commande.', true); return; }
-  const latest = newOrders[0];
-  toast(ic('bell',14)+` ${newOrders.length} nouvelle${newOrders.length>1?'s':''} commande${newOrders.length>1?'s':''} — #${latest.num} (${fmt(latest.total)})`, true);
+  const existing = document.getElementById('notifPanelOverlay');
+  if(existing){ existing.remove(); return; }
+  const latest = [...DEMO_ORDERS]
+    .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))
+    .slice(0,10);
+  const overlay = document.createElement('div');
+  overlay.id = 'notifPanelOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:1250;background:rgba(0,0,0,.28);display:flex;align-items:flex-start;justify-content:flex-end;padding:76px 18px 18px;';
+  overlay.onclick = (e)=>{ if(e.target===overlay) closeNotifPanel(); };
+  overlay.innerHTML = `
+    <div style="width:min(390px,calc(100vw - 24px));max-height:min(72vh,620px);overflow:auto;background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10);border-radius:18px;box-shadow:0 18px 55px rgba(0,0,0,.35);">
+      <div style="position:sticky;top:0;z-index:2;background:#131C30;border-bottom:1px solid rgba(255,255,255,.09);padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div><p style="font-size:15px;font-weight:700;">Notifications</p><p style="font-size:11px;color:rgba(255,255,255,.58);margin-top:2px;">Les 10 dernières commandes</p></div>
+        <button type="button" onclick="closeNotifPanel()" aria-label="Fermer" style="width:34px;height:34px;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',17)}</button>
+      </div>
+      <div style="padding:8px;">
+        ${latest.length ? latest.map((o,i)=>`
+          <button type="button" onclick="closeNotifPanel();setDashSection('orders')" style="width:100%;text-align:left;padding:12px 10px;border-radius:12px;display:flex;gap:10px;align-items:flex-start;color:#fff;background:${i===0?'rgba(232,135,30,.10)':'transparent'};">
+            <span style="width:32px;height:32px;border-radius:10px;background:rgba(232,135,30,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F5B24E;">${ic('receipt',16)}</span>
+            <span style="min-width:0;flex:1;"><strong style="font-size:12.5px;display:block;">Commande #${String(o.num||'').replace(/</g,'&lt;')}</strong><span style="font-size:11.5px;color:rgba(255,255,255,.72);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${String(o.client||'Client').replace(/</g,'&lt;')} · ${fmt(Number(o.total)||0)}</span><span style="font-size:10.5px;color:rgba(255,255,255,.45);display:block;margin-top:3px;">${timeAgo(new Date(o.createdAt||Date.now()))}</span></span>
+            <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="flex-shrink:0;">${ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle'}</span>
+          </button>`).join('') : `<div style="padding:28px 14px;text-align:center;color:rgba(255,255,255,.55);font-size:12.5px;">Aucune commande pour le moment.</div>`}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  hydrateIcons(overlay);
   markNotifsSeen();
 }
 function refreshNotifDot(){
@@ -5590,7 +6292,7 @@ function dashOverview(){
   return `
   ${notificationBlockedBannerHtml()}
   <div class="flex items-center justify-between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Vue d'ensemble</h1><p style="font-size:13px;color:var(--ink-soft);">Suivez l'activité de <span class="resto-name">${RESTO_NAME}</span> en un coup d'œil.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Vue d'ensemble</h1><p style="font-size:13px;color:var(--ink-soft);">Suivez l'activité de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> en un coup d'œil.</p></div>
   </div>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   ${periodOrders.length===0 ? `<div class="empty-state" style="margin-bottom:20px;">${ic('receipt',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune donnée pour cette période.</p></div>` : ''}
@@ -5653,7 +6355,7 @@ function dashOverview(){
         <p style="font-size:11.5px;color:var(--ink-soft);">Scannez-le ou partagez votre lien public.</p>
         <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="setDashSection('qrcode')">${ic('qrcode',14)} Afficher le QR Code</button>
       </div>
-      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${RESTO_NAME}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
+      <img src="${`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(publicRestaurantUrl(RESTAURANT.slug))}` }" alt="QR Code ${escapeAttr(RESTO_NAME)}" width="112" height="112" loading="lazy" style="width:112px;height:112px;object-fit:contain;background:#fff;border:1px solid var(--cream-line);border-radius:14px;flex-shrink:0;">
     </div>
   </div>
 
@@ -5694,7 +6396,7 @@ const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing',
 function dashOrders(){
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${RESTO_NAME}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)}.</p>
   ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
   <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
@@ -5725,82 +6427,108 @@ function ordersRowsHtml(){
     const i = DEMO_ORDERS.indexOf(o);
     return `<tr onclick="openOrderDetail(${i})">
       <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
-      <td style="color:var(--ink-soft);">${o.client}</td>
-      <td style="color:var(--ink-soft);">${o.type}</td>
+      <td style="color:var(--ink-soft);">${escapeHtml(o.client)}</td>
+      <td style="color:var(--ink-soft);">${escapeHtml(o.type)}</td>
       <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
       <td class="font-tabular">${fmt(o.total)}</td>
       <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
     </tr>`;
   }).join('');
 }
+function orderProgressHtml(o){
+  const delivery = isDeliveryOrder(o.type);
+  const steps = delivery
+    ? [['new','receipt','Nouvelle'],['preparing','flame','Préparation'],['ready','package','Prête'],['delivering','bike','En livraison'],['completed','checkCircle','Terminée']]
+    : [['new','receipt','Nouvelle'],['preparing','flame','Préparation'],['ready','package','Prête'],['completed','checkCircle','Terminée']];
+  const idx = steps.findIndex(s=>s[0]===o.status);
+  const current = idx < 0 ? 0 : idx;
+  return `<div style="display:flex;align-items:flex-start;gap:0;margin:0 0 18px;padding:2px 0 0;">
+    ${steps.map((s,i)=>{
+      const done=i<current, active=i===current;
+      return `<div style="flex:1;min-width:0;text-align:center;position:relative;">
+        ${i<steps.length-1?`<div style="position:absolute;left:50%;right:-50%;top:18px;height:2px;background:${i<current?'var(--amber)':'var(--cream-line)'};z-index:0;"></div>`:''}
+        <div style="position:relative;z-index:1;margin:0 auto;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${done||active?'var(--amber)':'#E8E2D9'};color:${done||active?'#fff':'var(--ink-faint)'};${active?'box-shadow:0 0 0 5px rgba(232,135,30,.14);':''}">${done?ic('check',16):ic(s[1],16)}</div>
+        <p style="font-size:10.5px;font-weight:${active?'700':'600'};color:${active?'var(--amber-ink)':done?'var(--ink-soft)':'var(--ink-faint)'};margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s[2]}</p>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function orderItemPrice(it){
+  if(!Array.isArray(it) && Number.isFinite(Number(it.price))) return Number(it.price);
+  const id = !Array.isArray(it) ? it.productId : null;
+  const name = Array.isArray(it) ? it[0] : it.name;
+  const p = PRODUCTS.find(x => (id && String(x.id)===String(id)) || String(x.name||'').trim()===String(name||'').trim());
+  return p && Number.isFinite(Number(p.price)) ? Number(p.price) : null;
+}
+function orderItemLine(it){
+  const isLegacy = Array.isArray(it);
+  const name = isLegacy ? it[0] : it.name;
+  const qty = Math.max(1, Number(isLegacy ? it[1] : it.qty) || 1);
+  const variant = isLegacy ? null : it.variant;
+  const unit = orderItemPrice(it);
+  const lineTotal = unit===null ? null : unit * qty;
+  return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--cream-line);">
+    <div style="min-width:0;"><p style="font-size:13.5px;font-weight:600;">${escapeHtml(name)}${variant?` <span style="font-weight:500;color:var(--ink-faint);">(${escapeHtml(variant)})</span>`:''}</p><p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${qty} × ${unit===null?'—':fmt(unit)}</p></div>
+    <span class="font-tabular" style="font-size:12.5px;color:var(--ink-soft);">${qty}</span>
+    <span class="font-tabular" style="font-size:13.5px;font-weight:600;">${lineTotal===null?'—':fmt(lineTotal)}</span>
+  </div>`;
+}
+function printOrderDetail(i){
+  const panel=document.getElementById('orderDetailPanel');
+  const o=DEMO_ORDERS[i];
+  if(!panel || !o) return;
+  const w=window.open('','_blank','width=760,height=900');
+  if(!w){ toast('Autorisez les fenêtres contextuelles pour imprimer la commande.'); return; }
+  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Commande #${escapeAttr(o.num)}</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;max-width:760px;margin:auto}h1{font-size:24px;margin:0 0 4px}p{margin:6px 0}.line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ddd}.muted{color:#666;font-size:12px}.total{font-size:20px;font-weight:700;margin-top:14px}</style></head><body><h1>Commande #${escapeAttr(o.num)}</h1><p class="muted">${escapeHtml(RESTO_NAME)} · ${escapeHtml(timeAgo(o.createdAt))}</p><hr><p><b>Client :</b> ${escapeHtml(o.client)}</p><p><b>Téléphone :</b> ${escapeHtml(o.phone)}</p><p><b>Type :</b> ${escapeHtml(o.type)}</p>${o.address?`<p><b>Adresse :</b> ${escapeHtml(o.address)}</p>`:''}<h2>Produits</h2>${(o.items||[]).map(it=>{const isLegacy=Array.isArray(it),name=isLegacy?it[0]:it.name,qty=Math.max(1,Number(isLegacy?it[1]:it.qty)||1),u=orderItemPrice(it),t=u===null?null:u*qty;return `<div class="line"><span>${qty} × ${escapeHtml(name)}</span><span>${t===null?'—':fmt(t)}</span></div>`}).join('')}<p class="total">Total : ${fmt(o.total)}</p></body></html>`);
+  w.document.close(); w.focus(); setTimeout(()=>w.print(),150);
+}
 function openOrderDetail(i){
   const o = DEMO_ORDERS[i];
+  if(!o) return;
   const action = nextStatusAction(o);
   const isTerminal = o.status==='completed' || o.status==='cancelled';
+  const phone = String(o.phone||'').replace(/[^0-9+]/g,'');
+  const items = Array.isArray(o.items)?o.items:[];
+  const subtotal = items.reduce((sum,it)=>{const u=orderItemPrice(it); const q=Math.max(1,Number(Array.isArray(it)?it[1]:it.qty)||1); return sum+(u===null?0:u*q);},0);
   const delivery = isDeliveryOrder(o.type);
-  const visualSteps = delivery
-    ? [['new','Nouvelle','receipt'],['preparing','Préparation','flame'],['delivering','En livraison','bike'],['completed','Terminée','check']]
-    : [['new','Nouvelle','receipt'],['preparing','Préparation','flame'],['completed','Terminée','check']];
-  const visualStatus = o.status==='ready' ? 'preparing' : o.status;
-  const currentStep = visualSteps.findIndex(s => s[0]===visualStatus);
-
+  const deliveryFee = delivery ? Math.max(0, Number(o.total||0)-subtotal) : 0;
+  const hasPricedItems = items.some(it=>orderItemPrice(it)!==null);
   document.getElementById('orderDetailPanel').innerHTML = `
-    <div style="min-height:100%;background:#10192d;color:#f8f4ed;">
-      <div class="flex items-center justify-between" style="padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.08);">
-        <div><p class="font-tabular font-display" style="font-size:17px;color:#fff;">#${o.num}</p><p style="font-size:11px;color:rgba(255,255,255,.58);">${timeAgo(o.createdAt)}</p></div>
-        <button onclick="closeOrderDetail()" style="font-size:18px;color:rgba(255,255,255,.75);">${ic('x',18)}</button>
+    <div style="background:#0F1830;color:#fff;min-height:100%;">
+      <div style="padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2;background:#0F1830;">
+        <div><p class="font-tabular" style="font-size:18px;font-weight:700;">#${escapeHtml(o.num)}</p><p style="font-size:11px;color:#AAB4C7;margin-top:2px;">${escapeHtml(timeAgo(o.createdAt))}</p></div>
+        <button type="button" onclick="closeOrderDetail()" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',18,{stroke:'#fff'})}</button>
       </div>
-
-      <div style="padding:18px 22px 24px;">
-        <div style="background:#15223a;border-radius:14px;padding:16px 12px 14px;border:1px solid rgba(255,255,255,.04);">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px;">
-            ${visualSteps.map((step,idx)=>{
-              const done = idx <= currentStep;
-              const active = idx === currentStep;
-              const clickable = !isTerminal && idx <= currentStep + 1;
-              let target = step[0];
-              if(step[0]==='preparing' && o.status==='ready') target='preparing';
-              return `
-                <div style="flex:1;min-width:0;text-align:center;position:relative;">
-                  ${idx<visualSteps.length-1 ? `<span style="position:absolute;top:20px;left:calc(50% + 22px);right:calc(-50% + 22px);height:2px;background:${idx<currentStep?'#d97706':'rgba(255,255,255,.13)'};"></span>` : ''}
-                  <button ${clickable?`onclick="changeOrderStatus(${i},'${target}')"`:''} style="position:relative;z-index:1;width:40px;height:40px;border-radius:50%;border:0;background:${active||done?'#d97706':'#26354c'};color:#fff;display:inline-flex;align-items:center;justify-content:center;${clickable?'cursor:pointer':'cursor:default'};">${ic(step[2],18,{stroke:'#fff'})}</button>
-                  <div style="margin-top:7px;font-size:11px;line-height:1.2;color:${active?'#f59e0b':'rgba(255,255,255,.68)'};font-weight:${active?'700':'500'};">${step[1]}</div>
-                </div>`;
-            }).join('')}
-          </div>
-          <div style="margin-top:14px;border:1px solid rgba(217,119,6,.55);border-radius:10px;padding:9px 10px;text-align:center;color:#f59e0b;font-size:13px;font-weight:700;">
-            ${ic(o.status==='completed'?'check':'clock',16,{stroke:'#f59e0b'})}
-            <span style="margin-left:5px;vertical-align:2px;">${ORDER_STATUS_LABELS[o.status]}</span>
-          </div>
+      <div style="padding:0 18px 28px;">
+        ${orderProgressHtml(o)}
+        <div style="background:#18233D;border-radius:16px;padding:14px 15px;margin-bottom:12px;">
+          <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#B8C2D5;margin-bottom:9px;">Client</p>
+          <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">${ic('users',15,{stroke:'#D8E0EF'})}${escapeHtml(o.client)}</p>
+          <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">${ic('phone',15,{stroke:'#D8E0EF'})}${escapeHtml(o.phone)}</p>
+          <p style="font-size:14px;display:flex;align-items:flex-start;gap:8px;">${ic('mapPin',15,{stroke:'#D8E0EF'})}<span>${escapeHtml(o.type)}</span></p>
+          ${o.address?`<p style="font-size:13px;display:flex;align-items:flex-start;gap:8px;margin-top:8px;color:#D8E0EF;">${ic('home',15,{stroke:'#D8E0EF'})}<span>${escapeHtml(o.address)}</span></p>`:''}
         </div>
-
-        ${action ? `<button onclick="changeOrderStatus(${i},'${action.next}')" class="btn btn-lg w-full" style="margin-top:14px;background:#f58a0b;color:#fff;border:0;border-radius:14px;box-shadow:0 8px 20px rgba(245,138,11,.2);">${ic(action.icon,17,{stroke:'#fff'})} ${action.label}</button>` : ''}
-        ${!isTerminal ? `<button onclick="if(confirm('Annuler cette commande ?'))changeOrderStatus(${i},'cancelled')" style="margin-top:12px;font-size:12px;color:#ef806c;text-align:center;width:100%;">Annuler la commande</button>` : ''}
-
-        <div style="background:#111d34;border-radius:14px;padding:16px;margin-top:18px;border:1px solid rgba(255,255,255,.04);">
-          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.72);margin-bottom:12px;">Client</p>
-          <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin:9px 0;">${ic('users',16,{stroke:'#f2eee7'})}<span>${o.client}</span></p>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0;">
-            <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin:0;">${ic('phone',16,{stroke:'#f2eee7'})}<span>${o.phone}</span></p>
-            ${o.phone ? `<a href="tel:${String(o.phone).replace(/[^0-9+]/g,'')}" style="display:inline-flex;align-items:center;gap:6px;border:1px solid #39a7df;border-radius:9px;padding:7px 10px;color:#5fc1f5;font-size:12px;text-decoration:none;">${ic('phone',15,{stroke:'#5fc1f5'})} Appeler</a>` : ''}
-          </div>
-          <p style="font-size:14px;display:flex;align-items:flex-start;gap:8px;margin:9px 0;">${ic('mapPin',16,{stroke:'#f2eee7'})}<span>${o.type}</span></p>
-          ${o.address ? `<p style="font-size:14px;display:flex;align-items:flex-start;gap:8px;margin:9px 0;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',16,{stroke:'#f2eee7'})}</span><span>${escapeAttr(o.address)}</span></p>` : ''}
+        <div style="display:flex;gap:9px;margin-bottom:12px;">
+          ${phone?`<a href="tel:${phone}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px solid #4DA3FF;border-radius:10px;color:#67B5FF;font-weight:700;text-decoration:none;font-size:13px;">${ic('phone',16,{stroke:'#67B5FF'})} Appeler</a>`:''}
+          <button type="button" onclick="printOrderDetail(${i})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px solid #4DA3FF;border-radius:10px;background:transparent;color:#67B5FF;font-weight:700;font-size:13px;">${ic('printer',16,{stroke:'#67B5FF'})} Imprimer</button>
         </div>
-
-        <div style="background:#111d34;border-radius:14px;padding:16px;margin-top:12px;border:1px solid rgba(255,255,255,.04);">
-          <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.72);margin-bottom:12px;">Produits commandés</p>
-          ${o.items.map(orderItemLine).join('')}
-          ${o.notes ? `<div style="background:rgba(245,138,11,.10);border-radius:10px;padding:10px 12px;margin-top:12px;"><p style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#f5a623;margin-bottom:3px;">Note du client</p><p style="font-size:13px;color:rgba(255,255,255,.78);">${o.notes}</p></div>` : ''}
-          <div style="border-top:1px solid rgba(255,255,255,.10);margin-top:12px;padding-top:12px;">
-            <div class="flex justify-between" style="font-size:15px;font-weight:700;"><span>Total</span><span class="font-tabular">${fmt(o.total)}</span></div>
-            <div class="flex items-center gap-2" style="margin-top:9px;">${paymentMark(o.pay,22)}<span style="font-size:13px;color:rgba(255,255,255,.72);">${PAYMENT_LABELS[o.pay]}</span><span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div>
+        <div style="background:#18233D;border-radius:16px;padding:15px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#B8C2D5;">Produits commandés</p>
+            <span style="font-size:10px;color:#9DA9BE;">Prix unitaire · Total</span>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;color:#8F9BB0;font-size:10px;padding-bottom:6px;"><span>Produit</span><span>Qté</span><span>Total</span></div>
+          ${items.length?items.map(orderItemLine).join(''):'<p style="font-size:13px;color:#9DA9BE;padding:10px 0;">Aucun produit.</p>'}
+          ${o.notes?`<div style="background:rgba(232,135,30,.09);border-radius:10px;padding:10px 12px;margin-top:10px;"><p style="font-size:10px;font-weight:700;text-transform:uppercase;color:#F5B24E;margin-bottom:3px;">Note du client</p><p style="font-size:12.5px;color:#D8E0EF;">${escapeHtml(o.notes)}</p></div>`:''}
+          <div style="border-top:1px solid rgba(255,255,255,.12);margin-top:12px;padding-top:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Sous-total</span><span class="font-tabular">${hasPricedItems?fmt(subtotal):'—'}</span></div>
+            ${delivery?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Livraison</span><span class="font-tabular">${fmt(deliveryFee)}</span></div>`:''}
+            <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);"><span>Total à payer</span><span class="font-tabular" style="color:#F5B24E;">${fmt(o.total)}</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${paymentMark(o.pay,21)}<span style="font-size:12.5px;color:#C9D2E2;">${PAYMENT_LABELS[o.pay]||o.pay}</span><span class="pill" style="margin-left:auto;${o.payStatus==='paid'?'background:#234B32;color:#8DE0A8;':'background:rgba(232,135,30,.16);color:#F5B24E;'}">${PAY_STATUS_LABELS[o.payStatus]||o.payStatus}</span></div>
           </div>
         </div>
-
-        <div style="display:flex;gap:10px;margin-top:12px;">
-          <button onclick="window.print()" style="flex:1;border:1px solid #3b9bd2;background:transparent;color:#5fc1f5;border-radius:10px;padding:11px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;">${ic('printer',16,{stroke:'#5fc1f5'})} Imprimer</button>
-        </div>
+        ${action?`<button type="button" onclick="changeOrderStatus(${i},'${action.next}',event)" class="btn btn-secondary btn-lg w-full" style="margin-top:2px;">${ic(action.icon,16)} ${action.label}</button>`:''}
+        ${!isTerminal?`<button type="button" onclick="if(confirm('Annuler cette commande ?'))changeOrderStatus(${i},'cancelled',event)" style="margin-top:10px;font-size:12px;color:#F07A63;text-align:center;width:100%;padding:8px;background:transparent;border:0;">Annuler la commande</button>`:''}
       </div>
     </div>`;
   hydrateIcons(document.getElementById('orderDetailPanel'));
@@ -5824,15 +6552,20 @@ function closeOrderDetail(){ document.getElementById('orderDetailOverlay').class
    par défaut. Corrigé : on ne rafraîchit plus que le tableau en
    arrière-plan (ordersTableBody), qui existe indépendamment du
    panneau — jamais tout #dashContent. */
-function changeOrderStatus(i, newStatus){
+function changeOrderStatus(i, newStatus, ev){
+  if(ev && typeof ev.preventDefault==='function') ev.preventDefault();
+  if(ev && typeof ev.stopPropagation==='function') ev.stopPropagation();
   const o = DEMO_ORDERS[i];
-  if(!o || o.status === newStatus) return;
+  if(!o || o.status === newStatus) return false;
   o.status = newStatus;
-  openOrderDetail(i); // reste sur LA MÊME commande, panneau mis à jour
+  // Met à jour uniquement le panneau de LA MÊME commande : aucune navigation,
+  // aucun changement de section et aucun fermeture automatique.
+  openOrderDetail(i);
   const tbody = document.getElementById('ordersTableBody');
-  if(tbody) tbody.innerHTML = ordersRowsHtml(); // rafraîchit la liste en arrière-plan sans toucher au panneau ouvert
+  if(tbody) tbody.innerHTML = ordersRowsHtml();
   refreshNotifDot();
   persistOrderUpdate(o);
+  return false;
 }
 /* Une ligne de commande peut être soit l'ancien format hérité
    [nom, quantité] (commandes créées avant l'ajout des variantes/ids
@@ -5843,7 +6576,7 @@ function orderItemLine(it){
   const name = isLegacy ? it[0] : it.name;
   const qty = isLegacy ? it[1] : it.qty;
   const variant = isLegacy ? null : it.variant;
-  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${name}${variant?` <span style="color:var(--ink-faint);">(${variant})</span>`:''}</span></div>`;
+  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${escapeHtml(name)}${variant?` <span style="color:var(--ink-faint);">(${escapeHtml(variant)})</span>`:''}</span></div>`;
 }
 /* Même logique que orderItemLine, mais renvoie juste [nom, quantité] —
    utilisé par les calculs (produits les plus vendus, etc.) qui n'ont
@@ -5875,7 +6608,7 @@ function dashPos(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Caisse</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${RESTO_NAME}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Suivi des encaissements de ${escapeHtml(RESTO_NAME)}.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
     <div class="stat-card">${icBadge('wallet',{size:36,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:22px;font-weight:700;margin-top:10px;">${fmt(total)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Total encaissé · ${paid.length} commande${paid.length>1?'s':''}</p></div>
@@ -5922,7 +6655,7 @@ function dashAnalytics(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Analyses</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${RESTO_NAME}, calculée à partir des commandes réelles.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">La performance de ${escapeHtml(RESTO_NAME)}, calculée à partir des commandes réelles.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
     <div class="stat-card"><p class="font-tabular" style="font-size:19px;font-weight:700;">${fmt(revenue)}</p><p style="font-size:11.5px;color:var(--ink-soft);">Chiffre d'affaires</p></div>
@@ -6015,7 +6748,7 @@ function renderCatList(){
         </div>
         ${items.length===0?`<p style="font-size:12px;color:var(--ink-faint);padding:6px 2px 12px;">Aucun produit dans cette catégorie.</p>`:
         items.map(p=>`<div class="flex items-center gap-3" style="background:var(--surface);border:1px solid var(--cream-line);border-radius:12px;padding:8px 12px;margin-bottom:6px;">
-          ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${p.name}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
+          ${productThumb(p,32)}<span style="flex:1;font-size:13px;">${escapeHtml(p.name)}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-faint);">${fmt(p.price)}</span>
           <span class="pill ${p.active?'pill-forest':'pill-neutral'}" style="font-size:10px;">${p.active?'Actif':'Inactif'}</span>
         </div>`).join('')}
         <button class="btn btn-outline btn-sm" onclick="setDashSection('products')">${ic('utensils',13)} Gérer les produits</button>
@@ -6032,7 +6765,7 @@ async function toggleCategoryHomeVisibility(key){
   const {error} = await supabaseClient.from('categories')
     .update({visible_on_home: catsHomeVisible[key]})
     .eq('restaurant_id', RESTAURANT.id).eq('key', key);
-  if(error) toast('Enregistrement Supabase impossible : ' + error.message);
+  if(error){ console.error('TerangaResto — catégorie non enregistrée:', error); toast('Impossible d’enregistrer cette modification pour le moment.'); }
 }
 
 /* ---------------- PRODUITS (gestion centrale du catalogue) ---------------- */
@@ -6044,7 +6777,7 @@ function dashProducts(){
   const atLimit = !canAddProduct();
   return `
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${RESTO_NAME}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
+    <div><h1 class="font-display" style="font-size:22px;">Produits</h1><p style="font-size:13px;color:var(--ink-soft);">Le catalogue de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> — ${PRODUCTS.length} produit${PRODUCTS.length>1?'s':''}${!isPaidPlanActive()?` / ${FREE_MAX_PRODUCTS} (forfait Gratuit)`:''}.</p></div>
     <div class="flex gap-2">
       <button class="btn btn-outline btn-sm" onclick="openLibrary()">${ic('plus',15)} Plats prédéfinis</button>
       <button class="btn btn-secondary btn-sm" onclick="openProductForm()" ${atLimit?'style="opacity:.5;cursor:not-allowed;"':''}>${atLimit?ic('lock',15):ic('plus',15)} ${atLimit?'Limite atteinte':'Nouveau produit'}</button>
@@ -6076,7 +6809,7 @@ function productsListHtml(){
     </div>`;
   }
   if(list.length===0){
-    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${productSearch} ».</p></div>`;
+    return `<div class="empty-state">${ic('search',26,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucun produit ne correspond à « ${escapeHtml(productSearch)} ».</p></div>`;
   }
   return `<div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch;">
     ${list.map(p=>`
@@ -6084,8 +6817,8 @@ function productsListHtml(){
       <div class="flex items-center gap-3" style="margin-bottom:10px;">
         ${productThumb(p,44)}
         <div style="flex:1;min-width:0;">
-          <p style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);">${catsState[p.cat]||'—'}</p>
+          <p style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.name)}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(catsState[p.cat]||'—')}</p>
         </div>
       </div>
       <div class="flex items-center justify-between" style="margin-bottom:10px;">
@@ -6306,7 +7039,7 @@ async function addCategory(){
     const {error} = await supabaseClient.from('categories').insert({
       restaurant_id: RESTAURANT.id, key, label, sort_order: Object.keys(catsState).length-1,
     });
-    if(error) toast('Catégorie non enregistrée dans Supabase : ' + error.message);
+    if(error) toast('Catégorie non enregistrée dans Supabase : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
   }
 }
 
@@ -6336,7 +7069,7 @@ function dashInventory(){
       <thead><tr><th>Produit</th><th>Stock actuel</th><th>Seuil d'alerte</th><th>État</th><th>Actions</th></tr></thead>
       <tbody>
         ${rows.map(({p,stock,state_,tone})=>`<tr>
-          <td><div class="flex items-center gap-2">${productThumb(p,30)}<span>${p.name}</span></div></td>
+          <td><div class="flex items-center gap-2">${productThumb(p,30)}<span>${escapeHtml(p.name)}</span></div></td>
           <td class="font-tabular">${stock===null?'—':stock+' unités'}</td>
           <td class="font-tabular" style="color:var(--ink-soft);">${stock===null?'—':p.threshold}</td>
           <td><span class="pill ${tone}">${state_}</span></td>
@@ -6353,22 +7086,26 @@ function dashInventory(){
     </table>
   </div>`;
 }
-function adjustStock(id, delta){
-  const p = PRODUCTS.find(x=>x.id===id);
-  if(typeof p.stock !== 'number') p.stock = 0;
-  p.stock = Math.max(0, p.stock + delta);
-  if(p.stock > 0 && !p.available) p.available = true;
-  if(p.stock === 0) p.available = false;
+async function adjustStock(id, delta){
+  const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
+  const oldStock=typeof p.stock==='number'?p.stock:0, oldAvailable=p.available;
+  p.stock=Math.max(0,oldStock+delta);
+  if(p.stock>0 && !p.available) p.available=true;
+  if(p.stock===0) p.available=false;
+  const saved=await persistProduct(p);
+  if(!saved){p.stock=oldStock;p.available=oldAvailable;toast('Le stock n’a pas pu être enregistré.');return;}
   renderDashSection('inventory');
   if(state.view==='storefront') renderProductSections();
 }
-function restockProduct(id){
-  const p = PRODUCTS.find(x=>x.id===id);
-  p.stock = (p.stock||0) + 20;
-  p.available = true;
+async function restockProduct(id){
+  const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
+  const oldStock=p.stock||0, oldAvailable=p.available;
+  p.stock=oldStock+20;p.available=true;
+  const saved=await persistProduct(p);
+  if(!saved){p.stock=oldStock;p.available=oldAvailable;toast('Le réapprovisionnement n’a pas pu être enregistré.');return;}
   renderDashSection('inventory');
   if(state.view==='storefront') renderProductSections();
-  toast(`${p.name} réapprovisionné : +20 unités.`);
+  toast(`${escapeHtml(p.name)} réapprovisionné : +20 unités.`);
 }
 
 /* ---------------- COMPTABILITÉ — revenus réels + historique des paiements d'abonnement ---------------- */
@@ -6381,7 +7118,7 @@ function dashAccounting(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Comptabilité</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${RESTO_NAME}</span>, calculée à partir de vos commandes.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Vue d'ensemble financière de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>, calculée à partir de vos commandes.</p>
   <div style="margin-bottom:18px;">${periodPickerHtml()}</div>
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;align-items:stretch;">
     <div class="stat-card">${icBadge('wallet',{size:34,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(grossRevenue)}</p><p style="font-size:11px;color:var(--ink-soft);">Chiffre d'affaires brut</p></div>
@@ -6427,7 +7164,7 @@ function dashVariants(){
   <div style="max-width:480px;">
     <label class="field-label">Produit</label>
     <select class="field-input" style="margin-bottom:16px;" onchange="variantsSelectedProduct=this.value;renderVariantsCard();">
-      ${PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===variantsSelectedProduct?'selected':''}>${p.name}</option>`).join('')}
+      ${PRODUCTS.map(p=>`<option value="${p.id}" ${p.id===variantsSelectedProduct?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}
     </select>
     <div class="card" style="padding:18px;" id="variantsCard">${variantsCardHtml()}</div>
   </div>`;
@@ -6521,11 +7258,16 @@ function paymentsListHtml(methods){
       ${locked?`<div style="margin-top:10px;">${lockedNotice(PRO_ONLY_LABEL[m], true)}</div>`:''}
       ${hasDetails?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
         <label class="field-label" style="font-size:11px;">${linkField.label}</label>
-        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value">
+        <input class="field-input" type="url" placeholder="https://..." value="${escapeAttr(state.toggles[linkField.key]||'')}" oninput="state.toggles['${linkField.key}']=this.value;schedulePaymentPersist()">
         <p style="font-size:11px;color:var(--ink-faint);margin-top:5px;">Le client sera redirigé vers ce lien au moment de payer avec ${PAYMENT_LABELS[m]}.</p>
       </div>`:''}
     </div>`;
   }).join('');
+}
+let paymentSaveTimer=null;
+function schedulePaymentPersist(){
+  clearTimeout(paymentSaveTimer);
+  paymentSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
@@ -6536,6 +7278,7 @@ function togglePayment(m){
   state.toggles[m] = !state.toggles[m];
   document.getElementById('paymentsList').innerHTML = paymentsListHtml(['cash','on_delivery','wave','orange_money']);
   hydrateIcons();
+  schedulePaymentPersist();
 }
 
 /* ---------------- CUSTOMERS ---------------- */
@@ -6543,7 +7286,7 @@ let dashCustomersTab = 'clients';
 function dashCustomers(){
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Clients</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
   <div class="flex gap-2" style="margin-bottom:18px;">
     <button class="btn btn-sm ${dashCustomersTab==='clients'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('clients')">Clients</button>
     <button class="btn btn-sm ${dashCustomersTab==='reviews'?'btn-secondary':'btn-outline'}" onclick="setDashCustomersTab('reviews')">${ic('star',13)} Avis clients${REVIEWS.length?` (${REVIEWS.length})`:''}</button>
@@ -6615,15 +7358,15 @@ function dashReviewsHtml(){
         <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
         <button onclick="deleteReview('${r.id}')" title="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
       </div>
-      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${r.comment}</p>`:''}
-      <p style="font-size:11.5px;color:var(--ink-faint);">${r.client||'Client anonyme'} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
+      ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${escapeHtml(r.comment)}</p>`:''}
+      <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(r.client||'Client anonyme')} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
     </div>`).join('')}
   </div>`;
 }
 async function deleteReview(id){
   if(!confirm('Supprimer cet avis ?')) return;
   const {error} = await supabaseClient.from('reviews').delete().eq('id', id);
-  if(error){ toast('Suppression impossible : ' + error.message); return; }
+  if(error){ toast('Suppression impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
   REVIEWS = REVIEWS.filter(r=>r.id!==id);
   document.getElementById('dashCustomersBody').innerHTML = dashReviewsHtml();
   hydrateIcons();
@@ -6635,10 +7378,10 @@ function dashQrcode(){
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${RESTO_NAME}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${RESTO_NAME}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
-    <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${RESTO_NAME}</p>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${escapeAttr(RESTO_NAME)}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
+    <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${escapeHtml(RESTO_NAME)}</p>
     <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
     ${!RESTAURANT.isPublished ? `<p style="font-size:11px;color:var(--terracotta);margin-top:8px;">Votre site est encore en brouillon — publiez-le dans Paramètres avant de diffuser ce QR Code.</p>` : ''}
@@ -6719,7 +7462,7 @@ function dashStaff(){
   <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
     <p style="font-size:13px;font-weight:600;margin-bottom:10px;">${ic('plus',14)} Inviter une personne</p>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <input class="field-input" id="staffEmail" placeholder="email@exemple.com">
+      <input class="field-input" id="staffEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="email@exemple.com">
       <select class="field-input" id="staffRole" onchange="inviteRole=this.value;invitePermissions=ROLE_SECTIONS[this.value];renderDashSection('staff');">
         ${STAFF_ROLES.map(r=>`<option ${inviteRole===r?'selected':''}>${r}</option>`).join('')}
       </select>
@@ -6757,8 +7500,8 @@ function staffActiveListHtml(){
     return `<div style="padding:12px 16px;border-top:1px solid var(--cream-line);">
       <div class="flex items-center gap-3">
         <div style="flex:1;min-width:0;">
-          <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role}</p>
+          <p style="font-size:13.5px;font-weight:500;">${escapeHtml(s.name)}</p>
+          <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(s.email)} · ${escapeHtml(s.role)}</p>
         </div>
         <span class="pill pill-forest">Actif</span>
         <button class="btn btn-outline btn-sm" onclick="openStaffEdit(${i})">${ic('pencil',13)} Modifier</button>
@@ -6775,8 +7518,8 @@ function staffPendingListHtml(){
     const i = staffState.indexOf(s);
     return `<div class="flex items-center gap-3" style="padding:12px 16px;border-top:1px solid var(--cream-line);">
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:500;">${s.name}</p>
-        <p style="font-size:11.5px;color:var(--ink-faint);">${s.email} · ${s.role} · Code ${s.code}</p>
+        <p style="font-size:13.5px;font-weight:500;">${escapeHtml(s.name)}</p>
+        <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(s.email)} · ${escapeHtml(s.role)} · Code ${escapeHtml(s.code)}</p>
       </div>
       <span class="pill pill-amber">Invitation envoyée</span>
       <button class="btn btn-outline btn-sm" onclick="resendInvite(${i})">${ic('send',13)} Renvoyer</button>
@@ -6792,17 +7535,13 @@ function refreshStaffLists(){
 }
 
 async function inviteStaff(){
-  const email = document.getElementById('staffEmail').value.trim();
+  const email = document.getElementById('staffEmail').value.trim().toLowerCase();
   if(!email){ toast('Entrez un e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
   if(staffState.some(s=>s.email.toLowerCase()===email.toLowerCase())){
     toast('Cette adresse a déjà été invitée à ce restaurant.');
     return;
   }
-  // Une invitation est "personnalisée" si l'ensemble des accès choisis
-  // diffère RÉELLEMENT de la liste par défaut du rôle (comparaison du
-  // contenu, pas seulement de la longueur — deux listes de même taille
-  // peuvent contenir des sections différentes).
   const defaults = ROLE_SECTIONS[inviteRole] || [];
   const isCustomized = invitePermissions.length !== defaults.length
     || invitePermissions.slice().sort().join(',') !== defaults.slice().sort().join(',');
@@ -6811,20 +7550,49 @@ async function inviteStaff(){
     email, role: inviteRole, status:'En attente', code: genInviteCode(),
     permissions: isCustomized ? invitePermissions.slice() : null,
     createdAt: Date.now(),
-    expiresAt: Date.now() + 7*24*60*60*1000, // 7 jours, comme une vraie invitation par e-mail
+    expiresAt: Date.now() + 7*24*60*60*1000,
   };
+
+  // On crée d'abord la ligne réelle dans Supabase : le code d'invitation
+  // existe ainsi avant tout envoi d'e-mail et reste vérifiable côté serveur.
+  await persistStaffInsert(s);
+  if(!s.id){ toast('L’invitation n’a pas pu être enregistrée.'); return; }
+
+  const {error: inviteEmailError} = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+  });
+  if(inviteEmailError){
+    staffState.push(s);
+    refreshStaffLists();
+    renderDashSection('staff');
+    toast('Invitation créée, mais l’e-mail n’a pas pu être envoyé. Vous pouvez la renvoyer.');
+    return;
+  }
+
   staffState.push(s);
   document.getElementById('staffEmail').value = '';
   refreshStaffLists();
   renderDashSection('staff');
-  toast(`Invitation créée pour ${email} — code ${s.code} (aucun e-mail réel envoyé, communiquez-le vous-même).`);
-  await persistStaffInsert(s);
+  toast(`Invitation envoyée à ${email}. Le code d’invitation est ${s.code}.`);
 }
+
 async function resendInvite(i){
-  staffState[i].expiresAt = Date.now() + 7*24*60*60*1000;
-  toast(`Invitation renvoyée à ${staffState[i].email} — validité prolongée de 7 jours.`);
-  await persistStaffUpdate(staffState[i]);
+  const s=staffState[i];
+  if(!s) return;
+  const {error} = await supabaseClient.auth.signInWithOtp({
+    email: s.email,
+    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+  });
+  if(error){
+    toast(supabaseErrorFr(error,'Impossible de renvoyer l’e-mail d’invitation.'));
+    return;
+  }
+  s.expiresAt = Date.now() + 7*24*60*60*1000;
+  toast(`Invitation renvoyée à ${s.email}.`);
+  await persistStaffUpdate(s);
 }
+
 async function cancelInvite(i){
   if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
   const id = staffState[i].id;
@@ -6851,7 +7619,7 @@ function openStaffEdit(i){
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeStaffEdit()"></div>
     <div class="card" style="position:relative;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;">
       <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
-        <h2 class="font-display" style="font-size:16px;">${s.name}</h2>
+        <h2 class="font-display" style="font-size:16px;">${escapeHtml(s.name)}</h2>
         <button onclick="closeStaffEdit()">${ic('x',17)}</button>
       </div>
       <div style="padding:16px 20px;">
@@ -6895,7 +7663,7 @@ function dashLibrary(){
   <div class="lib-header">
     <div>
       <h1 class="font-display" style="font-size:22px;">Plats prédéfinis</h1>
-      <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${RESTO_NAME}</span>.</p>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:2px;">Logo, couverture et photos produits de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
     </div>
     <button class="btn btn-secondary btn-sm lib-add-btn" onclick="toast('Sélecteur de fichiers (démo)')">${ic('upload',14)}<span>Ajouter des images</span></button>
   </div>
@@ -6922,7 +7690,7 @@ function libraryCardsHtml(){
 
   if(libraryTab!=='products'){
     cards.push(libCardShell({
-      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
       name:'Logo', meta: RESTAURANT.logoDataUrl ? 'Image active' : 'Aucune image',
       actions: RESTAURANT.logoDataUrl
         ? `<button onclick="pickLogo()">${ic('pencil',13)}</button><button onclick="RESTAURANT.logoDataUrl=null;renderDashSection('library');renderSidebarLogo();toast('Logo supprimé')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
@@ -6940,7 +7708,7 @@ function libraryCardsHtml(){
   if(libraryTab!=='brand'){
     PRODUCTS.forEach(p=>{
       cards.push(libCardShell({
-        imageHtml: p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
+        imageHtml: p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
         name: p.name, meta: (p.photo?'Photo produit':'Aucune image') + ' — ' + (catsState[p.cat]||''),
         actions: `<button onclick="setDashSection('products');openProductForm('${p.id}')">${ic('pencil',13)}</button>`,
       }));
@@ -7076,7 +7844,7 @@ function dashSettings(){
     ${['Général','Horaires','Livraison','Réseaux & carte'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
-  <button class="btn btn-secondary btn-lg" style="margin-top:18px;" onclick="saveSettings()">${ic('save',16)} Enregistrer</button>`;
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
 }
 
 function settingsBodyHtml(){
@@ -7101,7 +7869,7 @@ function settingsBodyHtml(){
         <button class="btn btn-outline btn-sm" onclick="copyPublicSiteLink()">${ic('copy',13)}</button>
       </div>`:''}
     </div>
-    <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${RESTAURANT.name}" style="margin-bottom:14px;">
+    <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${escapeAttr(RESTAURANT.name)}" style="margin-bottom:14px;">
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" id="setType" style="margin-bottom:14px;">
       ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${RESTAURANT.type===t?'selected':''}>${t}</option>`).join('')}
@@ -7124,7 +7892,7 @@ function settingsBodyHtml(){
         <label class="field-label w-full">Logo</label>
         <div style="position:relative;width:100%;">
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
-            ${RESTAURANT.logoDataUrl?`<img src="${RESTAURANT.logoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
+            ${RESTAURANT.logoDataUrl?`<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
           ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
         </div>
@@ -7141,27 +7909,6 @@ function settingsBodyHtml(){
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div class="card" style="padding:14px 16px;margin-top:18px;margin-bottom:14px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">
-        <div>
-          <p style="font-size:13.5px;font-weight:700;">E-mail de réception des commandes</p>
-          <p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
-        </div>
-        ${RESTAURANT.orderNotificationEmailVerified ? `<span class="pill pill-forest">Vérifié</span>` : `<span class="pill pill-terracotta">Non vérifié</span>`}
-      </div>
-      <label class="field-label">Adresse e-mail</label>
-      <input class="field-input" id="orderNotifyEmail" type="email" placeholder="commandes@votrerestaurant.com" value="${RESTAURANT.orderNotificationEmail || ''}" style="margin-bottom:10px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="requestOrderNotificationEmailChange()">${ic('send',13)} ${RESTAURANT.orderNotificationEmailVerified ? 'Changer l’adresse' : 'Définir l’adresse'}</button>
-        ${RESTAURANT.orderNotificationEmailPending ? `<button class="btn btn-outline btn-sm" onclick="verifyOrderNotificationEmail()">${ic('check',13)} Vérifier le code</button>` : ''}
-      </div>
-      ${RESTAURANT.orderNotificationEmailPending ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
-        <label class="field-label">Code de vérification à 8 chiffres</label>
-        <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:.22em;text-align:center;font-weight:800;font-size:18px;max-width:240px;">
-        <p style="font-size:11px;color:var(--ink-faint);margin-top:6px;">Nous avons envoyé ce code à <strong>${RESTAURANT.orderNotificationEmailPending}</strong>.</p>
-      </div>` : ''}
-    </div>
-
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
@@ -7217,7 +7964,22 @@ function settingsBodyHtml(){
       </div>`:''}
     </div>
     ${enabledDeliveryModes().length===0?`<p style="font-size:12px;color:var(--terracotta);margin-bottom:14px;">Aucun mode de livraison actif — la livraison n'apparaîtra pas au checkout tant qu'un mode n'est pas activé.</p>`:''}
-    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div><label class="field-label">Zones de livraison</label><input class="field-input" value="Point E, Mermoz, Ouakam"></div>`}`
+    ${!isPremiumActive() ? lockedNotice('Zones de livraison personnalisées', true) : `<div>
+      <label class="field-label">Zones de livraison</label>
+      <p style="font-size:11.5px;color:var(--ink-faint);margin:-4px 0 10px;">Ajoutez des quartiers/zones et définissez le coût. 0 FCFA = livraison gratuite.</p>
+      <div class="card" style="padding:12px 14px;margin-bottom:10px;">
+        ${enabledDeliveryZones().map((z,i)=>`<div class="flex items-center gap-2" style="padding:8px 0;border-top:${i?'1px solid var(--cream-line)':'0'};">
+          <input class="field-input" style="flex:1;" value="${escapeAttr(z.name)}" oninput="updateDeliveryZone(${i},'name',this.value)">
+          <input class="field-input" style="width:125px;" type="number" min="0" value="${Number(z.fee)||0}" oninput="updateDeliveryZone(${i},'fee',this.value)" placeholder="FCFA">
+          <button class="btn btn-outline btn-sm" onclick="removeDeliveryZone(${i})" title="Supprimer">${ic('trash',13)}</button>
+        </div>`).join('') || `<p style="font-size:12px;color:var(--ink-faint);">Aucune zone active.</p>`}
+      </div>
+      <div class="flex gap-2">
+        <input class="field-input" id="newDeliveryZoneName" placeholder="Ex. Parcelles, Plateau, Malika" style="flex:1;">
+        <input class="field-input" id="newDeliveryZoneFee" type="number" min="0" placeholder="FCFA" style="width:125px;">
+        <button class="btn btn-outline btn-sm" onclick="addDeliveryZone()">${ic('plus',13)} Ajouter</button>
+      </div>
+    </div>`}`
     :`<p style="font-size:12.5px;color:var(--ink-faint);">La livraison n'apparaîtra plus dans le parcours de commande de vos clients.</p>`}`;
 
   if(settingsTab==='Réseaux & carte'){
@@ -7260,6 +8022,35 @@ function settingsBodyHtml(){
   return '';
 }
 
+function addDeliveryZone(){
+  const name=(document.getElementById('newDeliveryZoneName')?.value||'').trim();
+  const fee=Math.max(0,Number(document.getElementById('newDeliveryZoneFee')?.value)||0);
+  if(!name){toast('Indiquez le nom de la zone de livraison.');return;}
+  if(!Array.isArray(RESTAURANT.delivery.zones)) RESTAURANT.delivery.zones=[];
+  RESTAURANT.delivery.zones.push({id:'zone-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name,fee,enabled:true});
+  renderDashSection('settings');
+  persistRestaurant();
+}
+let deliveryZoneSaveTimer=null;
+function updateDeliveryZone(index,key,value){
+  const z=enabledDeliveryZones()[index];
+  if(!z) return;
+  if(key==='name') z.name=String(value||'').trim();
+  if(key==='fee') z.fee=Math.max(0,Number(value)||0);
+  clearTimeout(deliveryZoneSaveTimer);
+  deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
+}
+function removeDeliveryZone(index){
+  const z=enabledDeliveryZones()[index];
+  if(!z) return;
+  if(!confirm(`Supprimer la zone « ${z.name} » ?`)) return;
+  const all=Array.isArray(RESTAURANT.delivery.zones)?RESTAURANT.delivery.zones:[];
+  const realIndex=all.indexOf(z);
+  if(realIndex>=0) all.splice(realIndex,1);
+  renderDashSection('settings');
+  persistRestaurant();
+}
+
 async function requestOrderNotificationEmailChange(){
   if(!RESTAURANT.id) return;
   const input = document.getElementById('orderNotifyEmail');
@@ -7299,11 +8090,12 @@ async function saveSettings(){
   const heroTitleEl = document.getElementById('setHeroTitle'); if(heroTitleEl) RESTAURANT.heroTitle = heroTitleEl.value.trim();
   const heroSubtitleEl = document.getElementById('setHeroSubtitle'); if(heroSubtitleEl) RESTAURANT.heroSubtitle = heroSubtitleEl.value.trim();
   const feeEl = document.getElementById('setDeliveryFee'); if(feeEl) RESTAURANT.delivery.fee = Number(feeEl.value)||0;
+  if(Array.isArray(RESTAURANT.delivery.zones) && RESTAURANT.delivery.zones.length===1 && RESTAURANT.delivery.zones[0].id==='zone-general'){ RESTAURANT.delivery.zones[0].fee=RESTAURANT.delivery.fee; }
   const minEl = document.getElementById('setDeliveryMin'); if(minEl) RESTAURANT.delivery.min = Number(minEl.value)||0;
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
-  await persistRestaurant();
-  toast('Modifications enregistrées — visibles sur votre site public.');
+  const saved = await persistRestaurant();
+  if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
 }
 function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
@@ -7343,7 +8135,7 @@ function dashAbonnement(){
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Abonnement</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${RESTO_NAME}</span>.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
     <div class="flex justify-between items-center">
       <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
@@ -7444,7 +8236,7 @@ async function startPayTechCheckout(plan){
     body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
   });
   if(error || !data || !data.redirect_url){
-    toast("Impossible de démarrer le paiement PayTech : " + (error ? error.message : "réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
+    toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
     if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
     return;
   }
@@ -7457,7 +8249,7 @@ async function cancelSubscription(){
   // n'est plus modifiable par une simple mise à jour de paramètres
   // (voir "VERROU CRITIQUE" dans supabase_schema.sql).
   const {data, error} = await supabaseClient.rpc('cancel_my_subscription');
-  if(error){ toast("Impossible de résilier : " + error.message); return; }
+  if(error){ toast("Impossible de résilier : " + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
   const row = Array.isArray(data) ? data[0] : data;
   if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
@@ -7470,7 +8262,7 @@ async function reactivateSubscription(){
   // terminée ; ne peut jamais activer Premium depuis un état
   // trialing/expired (ça, c'est le rôle exclusif du webhook PayTech).
   const {data, error} = await supabaseClient.rpc('reactivate_my_subscription');
-  if(error){ toast("Impossible de réactiver : " + error.message); return; }
+  if(error){ toast("Impossible de réactiver : " + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
   const row = Array.isArray(data) ? data[0] : data;
   if(row) RESTAURANT.subscriptionStatus = row.subscription_status;
   renderDashSection('abonnement');
@@ -7628,6 +8420,7 @@ document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
    change ailleurs (autre onglet, expiration de session, etc.). */
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if(event === 'SIGNED_OUT'){ currentUser = null; }
+  if(event === 'PASSWORD_RECOVERY' && session){ showPasswordRecoveryFormFromSession(session); return; }
   // Filet de sécurité event-driven pour la confirmation d'e-mail : le
   // client Supabase détecte et établit automatiquement la session à
   // partir de l'URL de retour du lien de confirmation (comportement
