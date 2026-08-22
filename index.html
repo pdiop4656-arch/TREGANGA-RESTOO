@@ -5996,8 +5996,34 @@ async function submitOrderInternal(){
     restaurant_id:RESTAURANT.id
   };
 
-  /* Stockage local immédiat. Aucune dépendance à create_order(),
-     aucune requête SQL et aucune attente réseau. */
+  /* ============================================================
+     PERSISTANCE RÉELLE — pont unique vers Supabase
+     La logique de livraison ci-dessus reste inchangée. On ne rappelle
+     PAS create_order() : on enregistre simplement la commande déjà
+     validée par ce checkout dans une RPC dédiée.
+     ============================================================ */
+  const {data:savedOrder, error:savedOrderError} = await supabaseClient.rpc('save_public_order', {
+    p_restaurant_id: RESTAURANT.id,
+    p_order: newOrder
+  });
+  if(savedOrderError){
+    console.error('save_public_order:', savedOrderError);
+    throw new Error('La commande n’a pas pu être enregistrée. Votre panier a été conservé.');
+  }
+
+  /* Le serveur devient la source de vérité pour l'identifiant, le numéro
+     et la date. Tout le reste (zone, adresse, total, client, etc.) reste
+     exactement celui validé par le parcours actuel. */
+  const saved = Array.isArray(savedOrder) ? savedOrder[0] : savedOrder;
+  if(!saved || !saved.id){
+    throw new Error('La commande n’a pas reçu de confirmation du serveur.');
+  }
+  newOrder.id = saved.id;
+  newOrder.num = String(saved.num);
+  newOrder.createdAt = saved.created_at ? new Date(saved.created_at) : newOrder.createdAt;
+
+  /* Stockage local immédiat après succès Supabase : il sert uniquement
+     au cache/à l'affichage local et ne remplace plus la base réelle. */
   const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
   try{
     const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
@@ -6007,8 +6033,9 @@ async function submitOrderInternal(){
     console.error('Stockage local de commande:',e);
   }
 
-  /* Rend la commande immédiatement visible dans le dashboard si celui-ci
-     est ouvert dans le même navigateur, et entre deux onglets du même site. */
+  /* Rend aussi la commande immédiatement visible dans le dashboard local.
+     En parallèle, la ligne existe déjà dans Supabase et sera donc chargée
+     par le menu Commandes du restaurateur, y compris sur un autre appareil. */
   DEMO_ORDERS.unshift(newOrder);
   refreshNotifDot();
   try{
