@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TerangaResto — Aperçu</title>
-<link rel="icon" type="image/png" id="faviconLink" href="">
-<link rel="apple-touch-icon" id="appleTouchIconLink" href="">
+<link rel="icon" type="image/png" id="faviconLink" href="/favicon.png">
+<link rel="apple-touch-icon" id="appleTouchIconLink" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -8412,14 +8412,16 @@ window.addEventListener('resize', checkMobile);
 function setRestaurantFavicon(){
   const fav = document.getElementById('faviconLink');
   const touch = document.getElementById('appleTouchIconLink');
-  // Sur le site public, le logo réel du restaurant devient l'icône du site.
-  // Tant que les données du restaurant ne sont pas encore chargées, on garde
-  // le fallback TerangaResto existant.
+  // Favicon TerangaResto fixe pour la plateforme.
+  // Sur le site public d'un restaurant, on conserve le comportement existant :
+  // le logo réel du restaurant devient son favicon.
   const iconSrc = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
     ? RESTAURANT.logoDataUrl
-    : LOGO_SRC;
+    : '/favicon.png';
   if(fav) fav.href = iconSrc;
-  if(touch) touch.href = iconSrc;
+  if(touch) touch.href = (state.view === 'storefront' && RESTAURANT.logoDataUrl)
+    ? RESTAURANT.logoDataUrl
+    : '/apple-touch-icon.png';
 }
 setRestaurantFavicon();
 document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
