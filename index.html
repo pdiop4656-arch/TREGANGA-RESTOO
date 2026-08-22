@@ -5855,6 +5855,42 @@ function renderCheckout(){
    tentative d'exécution concurrente de submitOrder() pendant qu'une
    première est encore en cours. */
 let orderSubmitInFlight = false;
+
+/* Réception locale des commandes : aucune RPC/SQL/Supabase n'est utilisée.
+   Cela permet au tableau de bord ouvert dans un autre onglet du même navigateur
+   de voir immédiatement une commande créée sur le site public. */
+function receiveLocalOrder(order){
+  if(!order || String(order.restaurant_id||'') !== String(RESTAURANT.id||'')) return;
+  if(DEMO_ORDERS.some(o=>String(o.id)===String(order.id))) return;
+  DEMO_ORDERS.unshift(order);
+  refreshNotifDot();
+  if(RESTAURANT.notificationsEnabled){
+    toast(ic('bell',14)+` Nouvelle commande — #${order.num} (${fmt(order.total)})`, true);
+    playNotificationSound();
+    showBrowserNotification(order);
+  }
+  if(typeof state.dashSection !== 'undefined' && state.dashSection==='orders'){
+    try{ renderDashSection('orders'); }catch(e){}
+  }
+}
+
+(function initLocalOrderBus(){
+  try{
+    if('BroadcastChannel' in window){
+      if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
+      window.__terangaOrderChannel.onmessage = ev => {
+        if(ev.data && ev.data.type==='NEW_ORDER') receiveLocalOrder(ev.data.order);
+      };
+    }
+    window.addEventListener('storage', ev=>{
+      if(ev.key!=='teranga_order_event' || !ev.newValue) return;
+      try{
+        const payload=JSON.parse(ev.newValue);
+        receiveLocalOrder(payload.order);
+      }catch(e){}
+    });
+  }catch(e){ console.warn('Canal local de commandes indisponible:',e); }
+})();
 async function submitOrder(){
   if(orderSubmitInFlight) return;
   orderSubmitInFlight = true;
@@ -5884,116 +5920,127 @@ async function submitOrder(){
 async function submitOrderInternal(){
   const c = state.checkout;
 
-  // Sécurisation UNIQUEMENT du parcours Livraison :
-  // on envoie toujours l'ID réel de la zone et un mode valide.
+  /* ============================================================
+     NOUVEAU SYSTÈME DE COMMANDE — INDÉPENDANT DE SUPABASE
+     La validation d'une commande ne passe plus par RPC/create_order.
+     La zone sert uniquement à calculer les frais et l'adresse reste
+     entièrement libre. La commande est créée localement immédiatement.
+     ============================================================ */
+  if(!state.cart.length){
+    toast('Votre panier est vide.');
+    return;
+  }
+
   if(c.orderType==='delivery'){
-    const modes = enabledDeliveryModes();
     const zones = enabledDeliveryZones();
-    if(!modes.length){
-      toast("Aucun mode de livraison n'est disponible.");
+    if(!zones.length){ toast("Aucune zone de livraison n'est disponible."); return; }
+    if(!c.deliveryZone && zones.length===1) c.deliveryZone = String(zones[0].id);
+    const selectedZone = deliveryZoneById(c.deliveryZone);
+    if(!selectedZone){ toast('Sélectionnez une zone de livraison.'); return; }
+    if(!String(c.address||'').trim()){
+      toast("Indiquez l'adresse de livraison.");
       return;
     }
-    if(!c.deliveryMode || !modes.includes(c.deliveryMode)) c.deliveryMode = modes[0];
-    if(zones.length===1 && !c.deliveryZone) c.deliveryZone = String(zones[0].id);
-    if(!c.deliveryZone || !deliveryZoneById(c.deliveryZone)){
-      toast("Sélectionnez une zone de livraison valide.");
-      return;
-    }
-    c.deliveryZone = String(deliveryZoneById(c.deliveryZone).id);
   }
 
-  // Commande RÉELLE — créée via la RPC create_order() (voir
-  // supabase_schema.sql), qui recalcule elle-même le prix de chaque
-  // produit/variante et le frais de livraison à partir des vraies
-  // données en base. Le navigateur n'envoie plus jamais de prix ni de
-  // total : seulement quoi (product_id, nom de variante, quantité) —
-  // jamais combien. Si un prix a changé entre-temps, ou qu'une
-  // variante n'existe plus, c'est le serveur qui tranche, pas le panier
-  // affiché à l'écran.
-  const { data, error } = await supabaseClient.rpc('create_order', {
-    p_restaurant_id: RESTAURANT.id,
-    p_client: `${c.firstName} ${c.lastName}`.trim() || 'Client',
-    p_phone: c.phone || '—',
-    p_order_type: c.orderType,
-    p_table: c.orderType==='dine_in' ? String(c.table||'') : null,
-    p_delivery_mode: c.orderType==='delivery' ? (c.deliveryMode || 'own') : null,
-    // Le client envoie l'identifiant de la zone sélectionnée. Le serveur
-    // accepte aussi le nom de zone en secours, sans comparer l'adresse libre.
-    p_delivery_zone: c.orderType==='delivery' ? String(c.deliveryZone || '') : null,
-    p_items: state.cart.map(l => ({
-      product_id: l.id, variant_name: l.variant ? l.variant.name : null, qty: l.qty,
-    })),
-    p_pay: c.payment,
-    p_notes: c.notes || null,
-    // RÉTABLI (audit — régression détectée) : le champ "Adresse de
-    // livraison" du formulaire restait affiché mais n'était plus
-    // envoyé nulle part depuis une réinitialisation antérieure du
-    // fichier SQL — l'adresse saisie disparaissait silencieusement.
-    p_address: c.orderType==='delivery' ? ([deliveryZoneById(c.deliveryZone)?.name, c.address].filter(Boolean).join(' — ') || null) : null,
-  });
+  const fee = c.orderType==='delivery'
+    ? Number(deliveryFeeFor(c.deliveryMode, c.deliveryZone)) || 0
+    : 0;
+  const subtotal = cartSubtotal();
+  const total = subtotal + fee;
 
-  if(error){
-    console.error('create_order — erreur Supabase complète :', error);
-    // PGRST202 = PostgREST ne trouve aucune fonction create_order()
-    // correspondant EXACTEMENT aux paramètres envoyés par index.html —
-    // presque toujours le signe que le supabase_schema.sql actuellement
-    // exécuté sur ce projet Supabase est une version différente de
-    // celle-ci. Message spécifique pour diagnostiquer directement,
-    // plutôt que de laisser deviner.
-    if(error.code === 'PGRST202'){
-      toast("La fonction de commande installée sur Supabase ne correspond pas à cette version du site. Il faut ré-exécuter supabase_schema.sql dans Supabase → SQL Editor. Votre panier a été conservé.");
-    } else {
-      toast("Impossible d'envoyer la commande : " + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
-    }
-    return;
+  /* Numéro local unique : aucun appel réseau, aucune RPC. */
+  const orderCounterKey = 'teranga_local_order_counter_' + String(RESTAURANT.id||'default');
+  let nextNum = 1030;
+  try{
+    nextNum = Math.max(1030, Number(localStorage.getItem(orderCounterKey)||1029) + 1);
+    localStorage.setItem(orderCounterKey, String(nextNum));
+  }catch(e){
+    nextNum = 1030 + Math.floor(Math.random()*900000);
   }
-  const row = Array.isArray(data) ? data[0] : data;
-  if(!row){
-    toast("La commande n'a pas pu être confirmée par le serveur.");
-    return;
-  }
+
+  const zone = c.orderType==='delivery' ? deliveryZoneById(c.deliveryZone) : null;
+  const now = new Date();
+  const orderId = 'local-' + now.getTime() + '-' + Math.random().toString(36).slice(2,8);
+  const items = state.cart.map(l => ({
+    productId:l.id,
+    name:l.name,
+    variant:l.variant ? l.variant.name : null,
+    price:Number(l.price||l.unitPrice||0),
+    qty:Number(l.qty||1)
+  }));
 
   const newOrder = {
-    id: row.id, num: row.num, client: row.client, phone: row.phone, type: row.type,
-    items: row.items, total: Number(row.total), pay: row.pay, payStatus: row.pay_status,
-    status: row.status, notes: row.notes, address: row.address, createdAt: new Date(row.created_at),
+    id:orderId,
+    num:String(nextNum),
+    client:`${c.firstName||''} ${c.lastName||''}`.trim() || 'Client',
+    phone:c.phone || '—',
+    type:c.orderType==='delivery'
+      ? 'Livraison' + (zone && zone.name ? ' · ' + zone.name : '')
+      : c.orderType==='dine_in'
+        ? 'Sur place · Table ' + String(c.table||'')
+        : 'À emporter',
+    orderType:c.orderType,
+    deliveryMode:c.orderType==='delivery' ? (c.deliveryMode||'') : '',
+    deliveryZone:c.orderType==='delivery' ? (zone?.name || String(c.deliveryZone||'')) : '',
+    address:c.orderType==='delivery' ? String(c.address||'').trim() : '',
+    items,
+    subtotal,
+    deliveryFee:fee,
+    total,
+    pay:c.payment || '',
+    payStatus:'pending',
+    status:'new',
+    notes:c.notes || '',
+    createdAt:now,
+    restaurant_id:RESTAURANT.id
   };
-  DEMO_ORDERS.unshift(newOrder);
-  refreshNotifDot();
 
-  // Notification e-mail automatique : aucun secret Resend n'est exposé dans le navigateur.
-  // L'Edge Function retrouve l'adresse de réception vérifiée du restaurant côté serveur.
-  if(row.email_notify_token){
-    supabaseClient.functions.invoke('send-order-email', {
-      body:{ restaurant_id: RESTAURANT.id, order_id: row.id, token: row.email_notify_token }
-    }).then(({error:emailError})=>{
-      if(emailError) console.error('send-order-email:', emailError.message);
-    }).catch(err=>console.error('send-order-email:', err));
-  } else {
-    console.warn('Notification commande non envoyée : email_notify_token absent. Exécutez la migration SQL fournie.');
+  /* Stockage local immédiat. Aucune dépendance à create_order(),
+     aucune requête SQL et aucune attente réseau. */
+  const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
+  try{
+    const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
+    existing.unshift(newOrder);
+    localStorage.setItem(orderStorageKey, JSON.stringify(existing.slice(0,500)));
+  }catch(e){
+    console.error('Stockage local de commande:',e);
   }
 
+  /* Rend la commande immédiatement visible dans le dashboard si celui-ci
+     est ouvert dans le même navigateur, et entre deux onglets du même site. */
+  DEMO_ORDERS.unshift(newOrder);
+  refreshNotifDot();
+  try{
+    if('BroadcastChannel' in window){
+      if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
+      window.__terangaOrderChannel.postMessage({type:'NEW_ORDER', restaurantId:RESTAURANT.id, order:newOrder});
+    }
+    localStorage.setItem('teranga_order_event', JSON.stringify({restaurantId:RESTAURANT.id, order:newOrder, at:Date.now()}));
+  }catch(e){ console.warn('Diffusion locale de commande:',e); }
+
   state.lastOrder = {
-    num: row.num, items: row.items, total: Number(row.total),
-    payment: c.payment, firstName: c.firstName, phone: c.phone,
+    num:newOrder.num,
+    items:newOrder.items,
+    total:newOrder.total,
+    payment:c.payment,
+    firstName:c.firstName,
+    phone:c.phone,
+    address:newOrder.address,
+    deliveryZone:newOrder.deliveryZone
   };
-  // Reflet local immédiat du stock vendu, pour que l'interface de CE
-  // navigateur affiche tout de suite le produit en rupture s'il vient
-  // d'atteindre 0 — la déduction qui compte réellement (celle qui évite
-  // les doubles déductions si deux clients commandent en même temps)
-  // est faite côté base de données DIRECTEMENT dans create_order(), sous
-  // verrou de ligne ("for update"), jamais par une écriture séparée
-  // depuis ce navigateur.
-  state.cart.forEach(line => {
-    const p = PRODUCTS.find(x => x.id === line.id);
-    if(p && typeof p.stock === 'number'){
-      p.stock = Math.max(0, p.stock - line.qty);
-      if(p.stock === 0) p.available = false;
+
+  state.cart.forEach(line=>{
+    const p=PRODUCTS.find(x=>x.id===line.id);
+    if(p && typeof p.stock==='number'){
+      p.stock=Math.max(0,p.stock-line.qty);
+      if(p.stock===0) p.available=false;
     }
   });
-  state.cart = [];
-  state.checkout.notes = ''; // spécifique à CETTE commande — ne doit pas préremplir la suivante
-  rememberMyOrder(row.num, c.phone);
+
+  state.cart=[];
+  state.checkout.notes='';
+  rememberMyOrder(newOrder.num,c.phone);
   updateFloatingCartButton();
   closeCheckout();
   renderConfirmation();
@@ -6001,16 +6048,11 @@ async function submitOrderInternal(){
   renderProductSections();
   renderTrackOrderButton();
 
-  // Redirection vers le lien Wave/Orange Money du RESTAURANT (jamais un
-  // lien inventé ou généré ici — uniquement celui que le restaurateur a
-  // lui-même renseigné dans Paramètres → Paiements, voir state.toggles.
-  // Nouvel onglet plutôt qu'une redirection complète : le client garde
-  // sa confirmation de commande et son suivi ouverts dans cet onglet,
-  // même s'il abandonne ou revient de l'app Wave/Orange Money.
-  if(c.payment === 'wave' && isSafeHttpUrl(state.toggles.wave_link)){
-    window.open(state.toggles.wave_link, '_blank', 'noopener');
-  } else if(c.payment === 'orange_money' && isSafeHttpUrl(state.toggles.orange_money_link)){
-    window.open(state.toggles.orange_money_link, '_blank', 'noopener');
+  /* Paiement : le lien configuré par le restaurateur reste inchangé. */
+  if(c.payment==='wave' && isSafeHttpUrl(state.toggles.wave_link)){
+    window.open(state.toggles.wave_link,'_blank','noopener');
+  }else if(c.payment==='orange_money' && isSafeHttpUrl(state.toggles.orange_money_link)){
+    window.open(state.toggles.orange_money_link,'_blank','noopener');
   }
 }
 
