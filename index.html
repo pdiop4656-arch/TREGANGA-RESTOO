@@ -2276,6 +2276,22 @@ function onRealtimeOrderUpdated(row){
     });
   }
   refreshNotifDot();
+
+  // Si la commande mise à jour est précisément celle que le restaurateur
+  // regarde, on ne reconstruit PAS tout #dashContent : cela fermerait le
+  // panneau et obligerait à rouvrir la commande après chaque étape.
+  // On actualise seulement le tableau en arrière-plan et le panneau ouvert.
+  const overlay = document.getElementById('orderDetailOverlay');
+  const sameOpenOrder = overlay && !overlay.classList.contains('hidden') &&
+    String(window.__terangaOpenOrderId||'') === String(row.id||'');
+  if(sameOpenOrder){
+    const tbody = document.getElementById('ordersTableBody');
+    if(tbody) tbody.innerHTML = ordersRowsHtml();
+    const currentIndex = DEMO_ORDERS.findIndex(o => String(o.id) === String(row.id));
+    if(currentIndex !== -1) openOrderDetail(currentIndex);
+    return;
+  }
+
   if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers'].includes(state.dashSection)){
     renderDashSection(state.dashSection);
   }
@@ -6485,6 +6501,9 @@ function printOrderDetail(i){
 function openOrderDetail(i){
   const o = DEMO_ORDERS[i];
   if(!o) return;
+  // Mémorise la commande actuellement ouverte pour que les mises à jour
+  // Realtime de cette même commande ne reconstruisent jamais tout le dashboard.
+  window.__terangaOpenOrderId = o.id;
   const action = nextStatusAction(o);
   const isTerminal = o.status==='completed' || o.status==='cancelled';
   const phone = String(o.phone||'').replace(/[^0-9+]/g,'');
@@ -6534,7 +6553,10 @@ function openOrderDetail(i){
   hydrateIcons(document.getElementById('orderDetailPanel'));
   document.getElementById('orderDetailOverlay').classList.remove('hidden');
 }
-function closeOrderDetail(){ document.getElementById('orderDetailOverlay').classList.add('hidden'); }
+function closeOrderDetail(){
+  document.getElementById('orderDetailOverlay').classList.add('hidden');
+  window.__terangaOpenOrderId = null;
+}
 /* Seul véritable point d'écriture du statut d'une commande — la
    fonction persistOrderUpdate() existait déjà mais n'était appelée par
    AUCUNE action de l'interface (aucun contrôle de changement de statut
