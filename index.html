@@ -7963,6 +7963,31 @@ function settingsBodyHtml(){
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px;margin-top:14px;margin-bottom:4px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
+        <div>
+          <p style="font-size:13.5px;font-weight:700;margin-bottom:4px;">E-mail de réception des commandes</p>
+          <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.45;max-width:430px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
+        </div>
+        ${RESTAURANT.orderNotificationEmailVerified && !RESTAURANT.orderNotificationEmailPending
+          ? `<span style="flex:0 0 auto;background:rgba(16,185,129,.15);color:#10B981;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap;">Vérifié</span>`
+          : RESTAURANT.orderNotificationEmailPending
+            ? `<span style="flex:0 0 auto;background:rgba(245,158,11,.15);color:#D97706;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap;">À vérifier</span>`
+            : ''}
+      </div>
+      <label class="field-label" style="font-size:11px;">Adresse e-mail</label>
+      <input class="field-input" id="orderNotifyEmail" type="email" value="${escapeAttr(RESTAURANT.orderNotificationEmailPending || RESTAURANT.orderNotificationEmail || '')}" placeholder="exemple@gmail.com" style="margin-bottom:10px;">
+      <button class="btn btn-secondary" type="button" onclick="requestOrderNotificationEmailChange()">${ic('send',15)} ${RESTAURANT.orderNotificationEmailPending?'Renvoyer le code':'Changer l’adresse'}</button>
+      ${RESTAURANT.orderNotificationEmailPending ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Un code à 8 chiffres a été envoyé à <strong>${escapeHtml(RESTAURANT.orderNotificationEmailPending)}</strong>.</p>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="Code à 8 chiffres" style="flex:1;min-width:180px;">
+            <button class="btn btn-outline" type="button" onclick="verifyOrderNotificationEmail()">${ic('check',15)} Vérifier</button>
+          </div>
+        </div>` : ''}
     </div>`;
 
   if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
