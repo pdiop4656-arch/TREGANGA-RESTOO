@@ -8112,23 +8112,6 @@ function settingsBodyHtml(){
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div style="border-top:1px solid var(--cream-line);margin-top:16px;padding-top:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-        <div>
-          <div class="field-label" style="margin-bottom:2px;">Photos supplémentaires</div>
-          <div style="font-size:11px;color:var(--ink-faint);">Jusqu'à 3 photos après la couverture.</div>
-        </div>
-        <span style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">${(RESTAURANT.social.galleryPhotos||[]).length}/3</span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
-        ${[0,1,2].map(i=>{const ph=(RESTAURANT.galleryPhotos||[])[i]||null;return `
-          <div style="position:relative;aspect-ratio:1.35;border-radius:12px;overflow:hidden;border:2px ${ph?'solid var(--cream-line)':'dashed var(--cream-line)'};background:var(--surface);">
-            <button type="button" onclick="pickGalleryPhoto(${i})" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${ph?`center/cover no-repeat url('${ph}')`:'var(--surface)'};">${ph?'':ic('plus',18,{stroke:'var(--ink-faint)'})}</button>
-            ${ph?`<button type="button" aria-label="Supprimer la photo ${i+1}" onclick="removeGalleryPhoto(${i})" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;"><span aria-hidden="true" style="display:block;font:700 18px/18px Arial,sans-serif;transform:translateY(-1px);">&times;</span></button>`:''}
-          </div>`;}).join('')}
-      </div>
-      <button type="button" onclick="addGalleryPhotos()" style="margin-top:10px;width:100%;height:40px;border:1px solid var(--cream-line);border-radius:12px;background:var(--surface);font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:7px;">${ic('upload',15,{stroke:'var(--amber-deep)'})} Ajouter plusieurs photos (${(RESTAURANT.galleryPhotos||[]).filter(Boolean).length}/3)</button>
-    </div>
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:16px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
