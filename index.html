@@ -2049,6 +2049,8 @@ async function loadRestaurantCore(restaurantId){
     RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
   }
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
+  RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.social.galleryPhotos) ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
+  RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2654,6 +2656,7 @@ async function persistRestaurant(){
   }
 
   RESTAURANT.social = cleanSlugRedirects(RESTAURANT.social);
+  RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.galleryPhotos) ? RESTAURANT.galleryPhotos.filter(Boolean).slice(0,3) : [];
 
   // Si une sauvegarde est déjà en cours, on mémorise seulement la dernière
   // modification. Elle sera envoyée juste après la requête courante.
@@ -2741,7 +2744,8 @@ async function persistProduct(p){
   if(!RESTAURANT.id) return false;
   const payload = {
     restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
-    prep:p.prep, active:p.active, available:p.available, photo:p.photo,
+    prep:p.prep, active:p.active, available:p.available, photo:(normalizeProductPhotos(p.photos, p.photo)[0]||null),
+    gallery_photos:normalizeProductPhotos(p.photos, p.photo),
     variants:p.variants||[], variants_required: !!p.variantsRequired, stock:p.stock, threshold:p.threshold,
   };
   const isNew = !p.id || String(p.id).startsWith('p_');
@@ -2914,6 +2918,8 @@ async function loadRestaurantPublicFast(restaurantId){
     RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
   }
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
+  RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.social.galleryPhotos) ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
+  RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
@@ -2945,11 +2951,14 @@ async function loadRestaurantPublicFast(restaurantId){
   });
 
   PRODUCTS.length = 0;
-  (prods||[]).forEach(p => PRODUCTS.push({
-    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
-    active:p.active, available:p.available, photo:'', variants:p.variants||[],
-    variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
-  }));
+  (prods||[]).forEach(p => {
+    const productPhotos = normalizeProductPhotos(p.gallery_photos, p.photo);
+    PRODUCTS.push({
+      id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+      active:p.active, available:p.available, photo:productPhotos[0]||'', photos:productPhotos, variants:p.variants||[],
+      variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
+    });
+  });
 
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
@@ -2965,17 +2974,23 @@ async function loadRestaurantPublicImagesFast(restaurantId){
   try{
     const [{data:r}, {data:photos}] = await Promise.all([
       supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
-      supabaseClient.from('products').select('id,photo').eq('restaurant_id', restaurantId)
+      supabaseClient.from('products').select('id,photo,gallery_photos').eq('restaurant_id', restaurantId)
     ]);
 
     if(r){
       RESTAURANT.logoDataUrl = r.logo_data_url || '';
       RESTAURANT.coverDataUrl = r.cover_data_url || '';
+      RESTAURANT.galleryPhotos = Array.isArray(RESTAURANT.social?.galleryPhotos) ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
       if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
     }
 
-    const photoMap = new Map((photos||[]).map(p => [p.id, p.photo || '']));
-    PRODUCTS.forEach(p => { if(photoMap.has(p.id)) p.photo = photoMap.get(p.id); });
+    const photoMap = new Map((photos||[]).map(p => [p.id, normalizeProductPhotos(p.gallery_photos, p.photo)]));
+    PRODUCTS.forEach(p => {
+      if(photoMap.has(p.id)){
+        p.photos = photoMap.get(p.id);
+        p.photo = p.photos[0] || '';
+      }
+    });
 
     // Update only the storefront after the public page is already visible.
     if(state.view === 'storefront'){
@@ -3620,6 +3635,43 @@ function triggerImagePicker(onSelected){
   input.click();
 }
 
+/* Sélecteur multiple dédié à la galerie du restaurant : permet de choisir
+   plusieurs photos en une seule fois, jusqu'à la limite de 3. */
+function triggerMultipleImagePicker(maxCount,onSelected){
+  const limit=Math.max(1,Math.min(3,Number(maxCount)||3));
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.multiple=true;
+  input.style.display='none';
+  document.body.appendChild(input);
+  input.addEventListener('change',()=>{
+    const files=Array.from(input.files||[]).filter(f=>f && f.type && f.type.startsWith('image/')).slice(0,limit);
+    document.body.removeChild(input);
+    if(!files.length) return;
+    if(files.some(f=>f.size>8*1024*1024)){
+      toast("Chaque image ne doit pas dépasser 8 Mo.");
+      return;
+    }
+    const results=[];
+    let remaining=files.length;
+    files.forEach((file,index)=>{
+      const reader=new FileReader();
+      reader.onload=e=>{
+        results[index]=e.target.result;
+        remaining--;
+        if(remaining===0) onSelected(results.filter(Boolean),files);
+      };
+      reader.onerror=()=>{
+        remaining--;
+        if(remaining===0) onSelected(results.filter(Boolean),files);
+      };
+      reader.readAsDataURL(file);
+    });
+  },{once:true});
+  input.click();
+}
+
 /* Hydrate les icônes déclarées dans du HTML statique via
    <span data-icon="nom" data-size="18"></span> (les zones déjà rendues
    par JS utilisent directement ic() dans leurs template strings). */
@@ -3904,6 +3956,7 @@ function defaultSocial(){
     instagram:{enabled:false, value:''},
     tiktok:{enabled:false, value:''},
     facebook:{enabled:false, value:''},
+    galleryPhotos:[],
   };
 }
 const RESTAURANT = {
@@ -3913,6 +3966,7 @@ const RESTAURANT = {
   slug:'',
   type:'',
   logoDataUrl:null, coverDataUrl:null,
+  galleryPhotos:[],
   primary:'#E8871E', secondary:'#1F6B45', textColor:'#2B1810',
   address:'', city:'', phone:'',
   hours: defaultHours(),
@@ -4747,7 +4801,7 @@ const obState = {
   step:0,
   accountName:'', accountEmail:'', accountPassword:'',
   restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
-  obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null,
+  obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, galleryPhotos:[],
   address:'', deliveryEnabled:true,
   paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
   plan:null, billing:'monthly', paymentMethod:'wave', // plan:null — jamais de forfait présélectionné, le client doit cliquer
@@ -4817,7 +4871,7 @@ function startOnboarding(presetPlan){
   Object.assign(obState, {
     step:0, accountName:'', accountEmail:'', accountPassword:'',
     restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
-    obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, address:'', deliveryEnabled:true,
+    obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, galleryPhotos:[], address:'', deliveryEnabled:true,
     paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
     // presetPlan reste honoré s'il vient d'un clic explicite sur une
     // carte de tarif précise ("Commencer avec Premium" par exemple) —
@@ -4911,6 +4965,8 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.address = obState.address;
   RESTAURANT.logoDataUrl = obState.logoPhoto;
   RESTAURANT.coverDataUrl = obState.coverPhoto;
+  RESTAURANT.galleryPhotos = Array.isArray(obState.galleryPhotos) ? obState.galleryPhotos.filter(Boolean).slice(0,3) : [];
+  RESTAURANT.social.galleryPhotos = RESTAURANT.galleryPhotos.slice();
   RESTAURANT.delivery.enabled = obState.deliveryEnabled;
   // Vérifié contre la VRAIE base juste avant l'insertion — jamais
   // seulement contre la petite liste locale utilisée pour l'aperçu
@@ -5233,6 +5289,18 @@ function obStepHtml(){
         ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
       </div>
     </div>
+    <div style="margin-top:14px;border-top:1px solid var(--cream-line);padding-top:14px;">
+      <p class="field-label" style="margin-bottom:8px;">Photos supplémentaires (3 maximum)</p>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+        ${[0,1,2].map(i=>{const ph=o.galleryPhotos?.[i]||null;return `
+          <div style="position:relative;aspect-ratio:1.35;border-radius:12px;overflow:hidden;border:2px ${ph?'solid var(--cream-line)':'dashed var(--cream-line)'};background:#fff;">
+            <button type="button" onclick="pickOnboardingGallery(${i})" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${ph?`center/cover no-repeat url('${ph}')`:'#fff'};">${ph?'':ic('plus',18,{stroke:'var(--ink-faint)'})}</button>
+            ${ph?`<button type="button" aria-label="Supprimer la photo ${i+1}" title="Supprimer" onclick="obState.galleryPhotos.splice(${i},1);obState.galleryPhotos=obState.galleryPhotos.filter(Boolean);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;font:700 18px/18px Arial,sans-serif;cursor:pointer;"><span aria-hidden="true" style="display:block;line-height:18px;transform:translateY(-1px);">&times;</span></button>`:''}
+          </div>`;}).join('')}
+      </div>
+      <button type="button" onclick="addOnboardingGalleryPhotos()" style="margin-top:10px;width:100%;height:40px;border:1px solid var(--cream-line);border-radius:12px;background:#fff;font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:7px;">${ic('upload',15,{stroke:'var(--amber-deep)'})} Ajouter plusieurs photos (${o.galleryPhotos?.filter(Boolean).length||0}/3)</button>
+      <p style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;">Sélectionnez jusqu’à 3 photos en une seule fois. Ces photos seront visibles après la photo de couverture sur votre site public.</p>
+    </div>
     ${obNav(true)}`;
   }
 
@@ -5311,6 +5379,26 @@ function obStepHtml(){
   return '';
 }
 
+function addOnboardingGalleryPhotos(){
+  const existing=Array.isArray(obState.galleryPhotos)?obState.galleryPhotos.filter(Boolean):[];
+  const remaining=Math.max(0,3-existing.length);
+  if(!remaining){ toast('Vous avez déjà ajouté 3 photos supplémentaires.'); return; }
+  triggerMultipleImagePicker(remaining,(dataUrls)=>{
+    obState.galleryPhotos=existing.concat(dataUrls).filter(Boolean).slice(0,3);
+    renderOnboarding();
+  });
+}
+function pickOnboardingGallery(index){
+  const slot=Number(index);
+  if(!Number.isInteger(slot)||slot<0||slot>2) return;
+  triggerImagePicker((dataUrl)=>{
+    if(!Array.isArray(obState.galleryPhotos)) obState.galleryPhotos=[];
+    obState.galleryPhotos[slot]=dataUrl;
+    obState.galleryPhotos=obState.galleryPhotos.filter(Boolean).slice(0,3);
+    renderOnboarding();
+  });
+}
+
 function obTogglePayMethod(m){ obState.paymentToggles[m] = !obState.paymentToggles[m]; renderOnboarding(); }
 
 function obNav(showBack){
@@ -5364,6 +5452,32 @@ function renderStorefrontHero(){
   document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
   document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
 
+  // Galerie du restaurant — la couverture reste l'image principale ; les photos supplémentaires
+  // sont affichées juste après sous forme de galerie horizontale légère.
+  const galleryPhotos = Array.isArray(RESTAURANT.galleryPhotos) ? RESTAURANT.galleryPhotos.filter(Boolean).slice(0,3) : [];
+  let gallerySection = document.getElementById('tgGallerySection');
+  if(!gallerySection){
+    const heroSection = document.getElementById('tgAccueil');
+    gallerySection = document.createElement('section');
+    gallerySection.id = 'tgGallerySection';
+    gallerySection.className = 'menu-section';
+    heroSection?.insertAdjacentElement('afterend', gallerySection);
+  }
+  if(gallerySection){
+    if(galleryPhotos.length){
+      gallerySection.style.display='';
+      gallerySection.innerHTML = `<div class="container">
+        <div class="section-title"><span>Découvrez le restaurant</span><h2>Quelques vues</h2></div>
+        <div style="display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;">
+          ${galleryPhotos.map((ph,i)=>`<a href="${safeImageSrc(ph)}" target="_blank" rel="noreferrer" style="display:block;flex:0 0 min(320px,82vw);aspect-ratio:1.6;overflow:hidden;border-radius:var(--radius-md);scroll-snap-align:start;border:1px solid var(--border);background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06);"><img src="${safeImageSrc(ph)}" alt="Vue ${i+1} de ${escapeAttr(RESTAURANT.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></a>`).join('')}
+        </div>
+      </div>`;
+    }else{
+      gallerySection.style.display='none';
+      gallerySection.innerHTML='';
+    }
+  }
+
   // Catalogues affichés sur l'accueil — uniquement ceux que le
   // restaurateur a choisi de rendre visibles (catsHomeVisible), jamais
   // la totalité automatiquement (voir Catégories dans le tableau de
@@ -5416,7 +5530,7 @@ function renderStorefrontHero(){
     tiktok: normalizeUrl(RESTAURANT.social.tiktok.value),
     facebook: normalizeUrl(RESTAURANT.social.facebook.value),
   };
-  const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
+  const activeSocials = ['whatsapp','instagram','tiktok','facebook'].filter(k=>RESTAURANT.social[k]?.enabled && RESTAURANT.social[k]?.value?.trim());
   document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
     `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
   ).join('');
@@ -5530,6 +5644,7 @@ function openProductModal(id){
   modalProduct = PRODUCTS.find(p=>p.id===id);
   if(!modalProduct.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
   modalVariant = modalProduct.variantsRequired ? null : (modalProduct.variants[0] || null);
+  modalPhotoIndex = 0;
   modalQty = 1;
   renderProductModal();
   document.getElementById('productModalOverlay').classList.remove('hidden');
@@ -5538,14 +5653,20 @@ function closeProductModal(){ document.getElementById('productModalOverlay').cla
 function setModalVariant(idx){ modalVariant = idx===-1 ? null : modalProduct.variants[idx]; renderProductModal(); }
 function setModalQty(delta){ modalQty = Math.max(1, modalQty+delta); renderProductModal(); }
 
+let modalPhotoIndex = 0;
+function setModalPhotoIndex(index){ modalPhotoIndex = Math.max(0, Math.min(index, Math.max(0, normalizeProductPhotos(modalProduct?.photos, modalProduct?.photo).length-1))); renderProductModal(); }
 function renderProductModal(){
   const p = modalProduct;
+  const photos = normalizeProductPhotos(p.photos, p.photo);
+  if(modalPhotoIndex >= photos.length) modalPhotoIndex = 0;
+  const activePhoto = photos[modalPhotoIndex] || p.photo || '';
   const unit = p.price + (modalVariant?modalVariant.delta:0);
   document.getElementById('productModalBody').innerHTML = `
     <div style="position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      ${p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
+      ${activePhoto ? `<img src="${safeImageSrc(activePhoto)}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
       <button onclick="closeProductModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;">${ic('x',16)}</button>
     </div>
+    ${photos.length>1?`<div style="display:flex;gap:8px;overflow-x:auto;padding:10px 22px 0;background:#fff;">${photos.map((ph,i)=>`<button type="button" onclick="setModalPhotoIndex(${i})" aria-label="Voir la photo ${i+1}" style="flex:0 0 58px;width:58px;height:58px;padding:0;border-radius:10px;overflow:hidden;border:2px solid ${i===modalPhotoIndex?'var(--amber-deep)':'var(--cream-line)'};background:#fff;"><img src="${safeImageSrc(ph)}" alt="" style="width:100%;height:100%;object-fit:cover;"></button>`).join('')}</div>`:''}
     <div style="padding:22px;">
       <h2 class="font-display" style="font-size:20px;">${escapeHtml(p.name)}</h2>
       <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${escapeHtml(p.desc || 'Aucune description pour le moment.')}</p>
@@ -6899,16 +7020,54 @@ function deleteProduct(id){
   deleteProductRow(id);
 }
 
+function normalizeProductPhotos(value, fallback){
+  const list = Array.isArray(value) ? value.filter(v=>typeof v==='string' && v.trim()) : [];
+  if(list.length) return list.slice(0,3);
+  return (fallback && typeof fallback==='string') ? [fallback] : [];
+}
+function productPhotosForForm(source){
+  return normalizeProductPhotos(source && source.photos, source && source.photo);
+}
 function openProductForm(id){
   if(!id && !canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
   const existing = id ? PRODUCTS.find(p=>p.id===id) : null;
-  productForm = existing ? {...existing} : {id:null,name:'',desc:'',price:'',cat:Object.keys(catsState)[0],prep:15,active:true,available:true,variants:[],photo:null};
+  productForm = existing
+    ? {...existing, photos:productPhotosForForm(existing)}
+    : {id:null,name:'',desc:'',price:'',cat:Object.keys(catsState)[0],prep:15,active:true,available:true,variants:[],photo:null,photos:[]};
+  productForm.photo = productForm.photos[0] || null;
   renderProductForm();
 }
 function closeProductForm(){ productForm=null; document.getElementById('productFormModal').innerHTML=''; }
 function pfField(key,val){ productForm[key]=val; }
-function pfPickPhoto(){
-  triggerImagePicker((dataUrl)=>{ productForm.photo = dataUrl; renderProductForm(); });
+function pfSyncPhotos(){
+  productForm.photos = normalizeProductPhotos(productForm.photos, productForm.photo);
+  productForm.photos = productForm.photos.slice(0,3);
+  productForm.photo = productForm.photos[0] || null;
+}
+function pfPickPhotos(){
+  const remaining = Math.max(1, 3 - (productForm.photos||[]).length);
+  triggerMultipleImagePicker(remaining, (dataUrls)=>{
+    const current = normalizeProductPhotos(productForm.photos, productForm.photo);
+    productForm.photos = current.concat(dataUrls||[]).filter(Boolean).slice(0,3);
+    productForm.photo = productForm.photos[0] || null;
+    renderProductForm();
+  });
+}
+function pfReplacePhoto(index){
+  triggerImagePicker((dataUrl)=>{
+    const photos = normalizeProductPhotos(productForm.photos, productForm.photo);
+    photos[index] = dataUrl;
+    productForm.photos = photos.filter(Boolean).slice(0,3);
+    productForm.photo = productForm.photos[0] || null;
+    renderProductForm();
+  });
+}
+function pfRemovePhoto(index){
+  const photos = normalizeProductPhotos(productForm.photos, productForm.photo);
+  photos.splice(index,1);
+  productForm.photos = photos.slice(0,3);
+  productForm.photo = productForm.photos[0] || null;
+  renderProductForm();
 }
 
 function renderProductForm(){
@@ -6923,18 +7082,22 @@ function renderProductForm(){
         <button onclick="closeProductForm()">${ic('x',17)}</button>
       </div>
       <div style="padding:18px 20px;">
-        <label class="field-label">Photo principale</label>
-        <div class="flex items-center gap-3" style="margin-bottom:16px;">
-          <div style="position:relative;width:72px;height:72px;flex-shrink:0;">
-            <button onclick="pfPickPhoto()" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px ${f.photo?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;background:var(--cream-deep);">
-              ${f.photo ? `<img src="${f.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[f.cat]||'utensils',26,{stroke:'var(--amber-deep)'})}
-            </button>
-            ${f.photo?`<button onclick="productForm.photo=null;renderProductForm();" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:999px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;">${ic('x',11)}</button>`:''}
+        <label class="field-label">Photos du produit <span style="font-weight:500;color:var(--ink-faint);">(${(f.photos||[]).length}/3)</span></label>
+        <div style="margin-bottom:16px;">
+          <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:8px;">
+            ${[0,1,2].map(i=>{
+              const ph=(f.photos||[])[i]||null;
+              return `<div style="position:relative;aspect-ratio:1/1;min-width:0;">
+                <button type="button" onclick="${ph?`pfReplacePhoto(${i})`:`pfPickPhotos()`}" aria-label="${ph?`Remplacer la photo ${i+1}`:`Ajouter la photo ${i+1}`}" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px ${ph?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;background:var(--cream-deep);">
+                  ${ph ? `<img src="${safeImageSrc(ph)}" alt="Photo ${i+1}" style="width:100%;height:100%;object-fit:cover;">` : ic('plus',22,{stroke:'var(--amber-deep)'})}
+                </button>
+                ${ph?`<button type="button" aria-label="Supprimer la photo ${i+1}" title="Supprimer" onclick="pfRemovePhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.28);z-index:5;font:700 16px/16px Arial,sans-serif;"><span aria-hidden="true">×</span></button>`:''}
+                ${i===0 && ph?`<span style="position:absolute;left:6px;bottom:6px;padding:3px 6px;border-radius:7px;background:rgba(43,24,16,.82);color:#fff;font-size:9px;font-weight:700;">Principale</span>`:''}
+              </div>`;
+            }).join('')}
           </div>
-          <div>
-            <button class="btn btn-outline btn-sm" onclick="pfPickPhoto()">${ic('upload',13)} ${f.photo?'Remplacer':'Ajouter une photo'}</button>
-            <p style="font-size:10.5px;color:var(--ink-faint);margin-top:5px;">${f.photo?'Photo importée depuis votre appareil.':"Icône par défaut tant qu'aucune photo n'est ajoutée."}</p>
-          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="pfPickPhotos()" ${((f.photos||[]).length>=3)?'disabled style="opacity:.5;cursor:not-allowed;"':''}>${ic('upload',13)} Ajouter plusieurs photos</button>
+          <p style="font-size:10.5px;color:var(--ink-faint);margin-top:5px;">Jusqu’à 3 photos : une photo principale + 2 photos supplémentaires. Sélection multiple possible depuis votre appareil.</p>
         </div>
         <label class="field-label">Nom</label>
         <input class="field-input" style="margin-bottom:12px;" value="${f.name}" oninput="pfField('name',this.value)" placeholder="Ex : Thiéboudienne">
@@ -6965,14 +7128,19 @@ async function saveProductForm(){
   const f = productForm;
   if(!f.name.trim()){ toast('Le nom du produit est requis.'); return; }
   if(!f.price || Number(f.price)<0){ toast('Indiquez un prix valide.'); return; }
-  const payload = {name:f.name.trim(), desc:f.desc, price:Number(f.price), cat:f.cat, prep:Number(f.prep)||15, active:f.active, available:f.available, variants:f.variants||[], photo:f.photo||null};
+  const productPhotos = normalizeProductPhotos(f.photos, f.photo);
+  const payload = {name:f.name.trim(), desc:f.desc, price:Number(f.price), cat:f.cat, prep:Number(f.prep)||15, active:f.active, available:f.available, variants:f.variants||[], photo:productPhotos[0]||null, photos:productPhotos};
   let p;
   if(f.id){
     p = PRODUCTS.find(x=>x.id===f.id);
     Object.assign(p, payload);
+    p.photos = normalizeProductPhotos(p.photos, p.photo);
+    p.photo = p.photos[0] || null;
     toast('Produit mis à jour.');
   } else {
     p = {id:'p_'+Date.now(), stock:20, threshold:5, ...payload};
+    p.photos = normalizeProductPhotos(p.photos, p.photo);
+    p.photo = p.photos[0] || null;
     PRODUCTS.push(p);
     toast('Produit ajouté à votre catalogue.');
   }
@@ -7944,7 +8112,24 @@ function settingsBodyHtml(){
         ${RESTAURANT.coverDataUrl?`<button onclick="pickCover()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:`<p style="font-size:10px;color:var(--ink-faint);margin-top:5px;">Format large recommandé (ratio ~2.6:1), sans déformation.</p>`}
       </div>
     </div>
-    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
+    <div style="border-top:1px solid var(--cream-line);margin-top:16px;padding-top:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+        <div>
+          <div class="field-label" style="margin-bottom:2px;">Photos supplémentaires</div>
+          <div style="font-size:11px;color:var(--ink-faint);">Jusqu'à 3 photos après la couverture.</div>
+        </div>
+        <span style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">${(RESTAURANT.social.galleryPhotos||[]).length}/3</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+        ${[0,1,2].map(i=>{const ph=(RESTAURANT.galleryPhotos||[])[i]||null;return `
+          <div style="position:relative;aspect-ratio:1.35;border-radius:12px;overflow:hidden;border:2px ${ph?'solid var(--cream-line)':'dashed var(--cream-line)'};background:var(--surface);">
+            <button type="button" onclick="pickGalleryPhoto(${i})" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${ph?`center/cover no-repeat url('${ph}')`:'var(--surface)'};">${ph?'':ic('plus',18,{stroke:'var(--ink-faint)'})}</button>
+            ${ph?`<button type="button" aria-label="Supprimer la photo ${i+1}" onclick="removeGalleryPhoto(${i})" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;"><span aria-hidden="true" style="display:block;font:700 18px/18px Arial,sans-serif;transform:translateY(-1px);">&times;</span></button>`:''}
+          </div>`;}).join('')}
+      </div>
+      <button type="button" onclick="addGalleryPhotos()" style="margin-top:10px;width:100%;height:40px;border:1px solid var(--cream-line);border-radius:12px;background:var(--surface);font-size:12px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:7px;">${ic('upload',15,{stroke:'var(--amber-deep)'})} Ajouter plusieurs photos (${(RESTAURANT.galleryPhotos||[]).filter(Boolean).length}/3)</button>
+    </div>
+    <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:16px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
     </div>`;
@@ -8024,7 +8209,7 @@ function settingsBodyHtml(){
       ['tiktok','TikTok','Lien du profil','https://tiktok.com/@votre-page','text'],
       ['facebook','Facebook','Lien de la page','https://facebook.com/votre-page','text'],
     ];
-    const activeSocials = Object.keys(RESTAURANT.social).filter(k=>RESTAURANT.social[k].enabled && RESTAURANT.social[k].value.trim());
+    const activeSocials = ['whatsapp','instagram','tiktok','facebook'].filter(k=>RESTAURANT.social[k]?.enabled && RESTAURANT.social[k]?.value?.trim());
     return `
     <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Réseaux sociaux</p>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;max-width:480px;">WhatsApp : indiquez simplement votre numéro, le lien est généré automatiquement. Instagram, TikTok et Facebook : collez directement le lien complet de votre profil.</p>
@@ -8133,6 +8318,70 @@ async function saveSettings(){
   if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
 }
 function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
+
+async function optimizeGalleryPhoto(dataUrl, maxSide=1600, quality=0.84){
+  return new Promise((resolve)=>{
+    try{
+      const img=new Image();
+      img.onload=()=>{
+        const srcW=img.naturalWidth||img.width||1;
+        const srcH=img.naturalHeight||img.height||1;
+        const scale=Math.min(1, maxSide/Math.max(srcW,srcH));
+        const w=Math.max(1,Math.round(srcW*scale));
+        const h=Math.max(1,Math.round(srcH*scale));
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        if(!ctx){ resolve(dataUrl); return; }
+        ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.onerror=()=>resolve(dataUrl);
+      img.src=dataUrl;
+    }catch(e){ resolve(dataUrl); }
+  });
+}
+
+async function addGalleryPhotos(){
+  const existing=Array.isArray(RESTAURANT.galleryPhotos)?RESTAURANT.galleryPhotos.filter(Boolean):[];
+  const remaining=Math.max(0,3-existing.length);
+  if(!remaining){ toast('Vous avez déjà ajouté 3 photos supplémentaires.'); return; }
+  triggerMultipleImagePicker(remaining,async(dataUrls)=>{
+    const optimized=[];
+    for(const dataUrl of dataUrls) optimized.push(await optimizeGalleryPhoto(dataUrl));
+    RESTAURANT.galleryPhotos=existing.concat(optimized).filter(Boolean).slice(0,3);
+    RESTAURANT.social.galleryPhotos=RESTAURANT.galleryPhotos.slice();
+    renderDashSection('settings');
+    if(state.view==='storefront') renderStorefrontHero();
+    await persistRestaurant();
+    toast(`${optimized.length} photo${optimized.length>1?'s':''} supplémentaire${optimized.length>1?'s':''} ajoutée${optimized.length>1?'s':''}.`);
+  });
+}
+function pickGalleryPhoto(index){
+  const slot=Number(index);
+  if(!Number.isInteger(slot)||slot<0||slot>2) return;
+  triggerImagePicker(async (dataUrl)=>{
+    const optimized=await optimizeGalleryPhoto(dataUrl);
+    if(!Array.isArray(RESTAURANT.galleryPhotos)) RESTAURANT.galleryPhotos=[];
+    RESTAURANT.galleryPhotos[slot]=optimized;
+    RESTAURANT.galleryPhotos=RESTAURANT.galleryPhotos.filter(Boolean).slice(0,3);
+    RESTAURANT.social.galleryPhotos=RESTAURANT.galleryPhotos.slice();
+    renderDashSection('settings');
+    if(state.view==='storefront') renderStorefrontHero();
+    await persistRestaurant();
+    toast('Photo supplémentaire mise à jour.');
+  });
+}
+function removeGalleryPhoto(index){
+  const slot=Number(index);
+  if(!Number.isInteger(slot)||slot<0||slot>2) return;
+  RESTAURANT.galleryPhotos=(RESTAURANT.galleryPhotos||[]).filter((_,i)=>i!==slot).filter(Boolean).slice(0,3);
+  RESTAURANT.social.galleryPhotos=RESTAURANT.galleryPhotos.slice();
+  renderDashSection('settings');
+  if(state.view==='storefront') renderStorefrontHero();
+  persistRestaurant();
+  toast('Photo supplémentaire supprimée.');
+}
 
 function pickLogo(){
   triggerImagePicker((dataUrl)=>{
