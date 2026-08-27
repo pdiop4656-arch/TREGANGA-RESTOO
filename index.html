@@ -3092,7 +3092,7 @@ async function restoreSession(){
     }
 
     const pendingOtp = loadPendingOnboarding();
-    if(pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
+    if(!currentUser && pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
       Object.assign(obState, pendingOtp);
       otpPendingEmail = pendingOtp.pendingEmail;
       otpPendingName = pendingOtp.accountName || '';
@@ -3312,7 +3312,11 @@ async function submitSignup(){
     email, password: pw, options:{ data:{name}, emailRedirectTo:getPublicSiteOrigin() },
   });
   setLoginVerifying(false);
-  if(error){ toast(supabaseErrorFr(error, 'Impossible de créer ce compte.')); return; }
+  const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+  if(error || signupAlreadyExists){
+    toast(error ? supabaseErrorFr(error, 'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
+    return;
+  }
   if(!data.session){
     otpPendingEmail=email;
     otpPendingName=name;
@@ -3802,7 +3806,7 @@ const LIBRARY_ITEMS = [
   {name:'thiakry',desc:'',price:1000,cat:'desserts',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/0fba0878-af51-4d6b-b4b6-6ef7c484de13.jpg?v=1785948941'},
   {name:'thiebou dieune bou khonk',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/4fb4eb75-c0dc-4458-a741-684f5d4c81c3.png?v=1785947435'},
   {name:'thiebou dieune bou wekh',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/2d5b3c8b-5f04-4b75-838d-e41fb3d5576a.jpg?v=1785947306'},
-  {name:'thiere',desc:'',price:500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/90b873d4-75f1-4c1e-9216-aaaaadc93e4f.jpg?v=1785948263'},
+  {name:'thiere',desc:'',price:500,cat:'plats',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/90b873d4-75f1-4c1e-9216-aaaaadc93e4f.jpg?v=1785948263'},
   {name:'vermicelle Poulet',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/6adf4ad9-d3b3-4c37-82d4-1c6a86811fdb.jpg?v=1785970251'},
   {name:'WASS',desc:'',price:500,cat:'boissons',prep:5,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/d377ade4-69d4-4e7e-8a64-58cc325b744b.jpg?v=1785951861'},
   {name:'Yassa poulet',desc:'',price:3000,cat:'plats',prep:20,photo:'https://cdn.shopify.com/s/files/1/0696/6768/4540/files/09a09680-d2ed-49ba-a2d8-133d55ab6f6a.png?v=1785947553'},
@@ -4725,18 +4729,18 @@ async function loadRestaurantBySlug(slug){
    y compris un restaurant encore en brouillon que RLS ne nous montre
    pas directement (voir is_slug_available dans supabase_schema.sql). */
 async function resolveUniqueSlugForCreation(name){
-  const candidate = slugify(name) || 'mon-restaurant';
-  try{
-    const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug: candidate});
-    if(error){
-      console.error('is_slug_available:', error);
-      return null;
+  const base = slugify(name) || 'mon-restaurant';
+  for(let n=1; n<=1000; n++){
+    const candidate = n===1 ? base : `${base}-${n}`;
+    try{
+      const {data: available, error} = await supabaseClient.rpc('is_slug_available', {p_slug:candidate});
+      if(!error && available) return candidate;
+      if(error) console.error('is_slug_available:', error);
+    }catch(e){
+      console.error('is_slug_available:', e);
     }
-    return available ? candidate : null;
-  }catch(e){
-    console.error('is_slug_available:', e);
-    return null;
   }
+  return `${base}-${Date.now()}`;
 }
 
 const obState = {
@@ -4753,12 +4757,9 @@ const obState = {
 
 /* ---------------- ONBOARDING EN ATTENTE DE CONFIRMATION E-MAIL ----------------
    Quand Supabase exige la confirmation de l'adresse avant d'ouvrir une
-   session, le parcours 1/7 → 7/7 continue quand même normalement (voir
-   obNext()) — tout ce qui a été saisi est simplement recopié ici, pour
-   que restoreSession() puisse retrouver EXACTEMENT ces informations et
-   terminer automatiquement la création du restaurant dès qu'une vraie
-   session apparaît (après le clic sur le lien reçu par e-mail) — sans
-   jamais redemander quoi que ce soit à la personne. */
+   session, le parcours est mis en pause sur l'étape e-mail : les données
+   saisies sont sauvegardées afin que, lors de la confirmation, le client
+   reprenne à l'étape 2/7 et continue normalement jusqu'à la fin. */
 const PENDING_ONBOARDING_KEY = 'tg_pending_onboarding';
 let resumingOnboarding = false;
 let otpPendingEmail = '';
@@ -4781,61 +4782,34 @@ function loadPendingOnboarding(){
 function clearPendingOnboarding(){
   try{ localStorage.removeItem(PENDING_ONBOARDING_KEY); }catch(e){ /* rien à nettoyer */ }
 }
-/* Reprise automatique après confirmation d'e-mail — appelée depuis
-   restoreSession() dès qu'une vraie session existe mais qu'aucun
-   restaurant n'y est encore associé. Restaure EXACTEMENT les données
-   déjà saisies pendant 1/7→7/7 (jamais un restaurant vide, jamais une
-   ressaisie demandée), termine la création, puis redirige directement
-   vers le tableau de bord (ou PayTech, si un forfait payant avait été
-   choisi) — sans jamais repasser par "Connexion". */
+/* Reprise après confirmation d'e-mail : restaurer l'onboarding sans
+   terminer automatiquement la création. Après confirmation, on revient
+   à l'étape Restaurant (2/7) et le parcours continue normalement. */
 async function tryResumePendingOnboarding(){
   if(!currentUser) return false;
-  if(resumingOnboarding) return true; // déjà en cours (voir garde-fou ci-dessous) — ne jamais tenter une deuxième création en parallèle
+  if(resumingOnboarding) return true;
   const saved = loadPendingOnboarding();
   if(!saved) return false;
-  // Vérification de cohérence : ne reprendre que si la session active
-  // correspond bien au compte pour lequel cet onboarding a été rempli
-  // — évite qu'un autre compte utilisé plus tard sur le même appareil
-  // ne se voie attribuer par erreur un onboarding abandonné par
-  // quelqu'un d'autre.
   const savedEmail = (saved.pendingEmail || saved.accountEmail || '').toLowerCase();
   const sessionEmail = (currentUser.email || '').toLowerCase();
-  if(savedEmail && sessionEmail && savedEmail !== sessionEmail){
-    return false;
-  }
+  if(savedEmail && sessionEmail && savedEmail !== sessionEmail) return false;
+
   resumingOnboarding = true;
   Object.assign(obState, saved);
-  obState.emailConfirmationPending = false; // la session existe désormais, plus la peine d'attendre
-  hideRestoSplash(); hideAuthCheckSplash();
-  setView('onboarding'); // affiche l'onboarding pendant la finalisation ; createRestaurantFromOnboarding() peut y renvoyer un pas précis (ex: forfait manquant) si besoin
-  toast(ic('checkCircle',14)+' E-mail confirmé — finalisation de votre restaurant…', true);
+  obState.emailConfirmationPending = false;
+  obState.pendingEmail = sessionEmail || obState.pendingEmail || obState.accountEmail;
+  hideRestoSplash();
+  hideAuthCheckSplash();
+  closeLogin();
+  setView('onboarding');
 
-  if(obState.plan === 'starter' || obState.plan === 'pro'){
-    const row = await createRestaurantFromOnboarding();
-    if(!row){ resumingOnboarding = false; return true; } // l'erreur (ou l'étape manquante) a déjà été annoncée par createRestaurantFromOnboarding() — on autorise un nouveau clic pour réessayer
-    clearPendingOnboarding();
-    const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-      body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: 'monthly' },
-    });
-    if(error || !data || !data.redirect_url){
-      toast("Restaurant créé — le paiement n'a pas pu démarrer automatiquement. Terminez-le depuis Abonnement.");
-      viewerIsStaff = true;
-      setView('dashboard');
-      setDashSection('abonnement');
-      resumingOnboarding = false;
-      return true;
-    }
-    window.location.href = data.redirect_url;
-  } else {
-    const row = await createRestaurantFromOnboarding();
-    if(!row){ resumingOnboarding = false; return true; }
-    clearPendingOnboarding();
-    viewerIsStaff = true;
-    setView('dashboard');
-    setDashSection('overview');
-    toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
-    resumingOnboarding = false;
-  }
+  // L'e-mail est confirmé : reprendre à l'étape 2/7.
+  // Aucune création automatique et aucune étape n'est sautée.
+  obState.step = 1;
+  savePendingOnboarding();
+  renderOnboarding();
+  toast(ic('checkCircle',14)+' E-mail confirmé — poursuivez la création de votre restaurant.', true);
+  resumingOnboarding = false;
   return true;
 }
 
@@ -4868,35 +4842,18 @@ async function obNext(){
     const name=o.accountName.trim();
     const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
     setLoginVerifying(false,'obNextBtn');
-    if(error){toast(supabaseErrorFr(error,'Impossible de créer ce compte.'));return;}
+    const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+    if(error || signupAlreadyExists){
+      toast(error ? supabaseErrorFr(error,'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
+      return;
+    }
     if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
     currentUser=data.user; o.emailConfirmationPending=false;
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
-  if(o.step===1){
-    const name = o.restoName.trim();
-    const {data:available, error:nameErr} = await supabaseClient.rpc('is_restaurant_name_available', {p_name:name});
-    if(nameErr){
-      console.error('is_restaurant_name_available:', nameErr);
-      toast('Impossible de vérifier le nom du restaurant pour le moment.');
-      return;
-    }
-    if(!available){
-      toast('Ce nom de restaurant est déjà utilisé. Choisissez un autre nom.');
-      return;
-    }
-    const candidateSlug = slugify(name) || 'mon-restaurant';
-    const {data:slugAvailable, error:slugErr} = await supabaseClient.rpc('is_slug_available', {p_slug:candidateSlug});
-    if(slugErr){
-      console.error('is_slug_available:', slugErr);
-      toast('Impossible de vérifier le lien public pour le moment.');
-      return;
-    }
-    if(!slugAvailable){
-      toast('Ce lien public est déjà utilisé. Choisissez un autre nom de restaurant.');
-      return;
-    }
-  }
+  // Le nom commercial peut être identique à celui d'un autre restaurant.
+  // Seul le sous-domaine public doit être unique (géré automatiquement
+  // par resolveUniqueSlugForCreation()).
   if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
   if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
@@ -5061,13 +5018,9 @@ async function createRestaurantFromOnboarding(){
   return restaurantRow;
 }
 
-/* Écran affiché à la toute dernière étape si l'e-mail n'est pas encore
-   confirmé — remplace la tentative de création (qui échouerait de
-   toute façon sans session) par une explication claire. Les données
-   sont déjà sauvegardées (voir savePendingOnboarding) : dès que la
-   personne clique sur le lien reçu par e-mail, restoreSession() les
-   retrouve automatiquement et termine la création sans rien
-   redemander. */
+/* Écran affiché tant que l'e-mail n'est pas confirmé : les données
+   sont déjà sauvegardées et, après confirmation, l'utilisateur reprend
+   au début de l'étape Restaurant sans création automatique. */
 function renderOnboardingEmailPendingScreen(){
   otpPendingEmail=obState.pendingEmail||obState.accountEmail;
   otpPendingName=obState.accountName||'';
@@ -7994,31 +7947,6 @@ function settingsBodyHtml(){
     <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);margin-top:6px;padding-top:14px;">
       <span style="font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;">${ic('bell',15)}Notifications de nouvelles commandes</span>
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
-    </div>
-
-    <div class="card" style="padding:14px 16px;margin-top:14px;margin-bottom:4px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
-        <div>
-          <p style="font-size:13.5px;font-weight:700;margin-bottom:4px;">E-mail de réception des commandes</p>
-          <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.45;max-width:430px;">Cette adresse est indépendante de votre e-mail de connexion. Elle reçoit automatiquement chaque nouvelle commande.</p>
-        </div>
-        ${RESTAURANT.orderNotificationEmailVerified && !RESTAURANT.orderNotificationEmailPending
-          ? `<span style="flex:0 0 auto;background:rgba(16,185,129,.15);color:#10B981;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap;">Vérifié</span>`
-          : RESTAURANT.orderNotificationEmailPending
-            ? `<span style="flex:0 0 auto;background:rgba(245,158,11,.15);color:#D97706;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;white-space:nowrap;">À vérifier</span>`
-            : ''}
-      </div>
-      <label class="field-label" style="font-size:11px;">Adresse e-mail</label>
-      <input class="field-input" id="orderNotifyEmail" type="email" value="${escapeAttr(RESTAURANT.orderNotificationEmailPending || RESTAURANT.orderNotificationEmail || '')}" placeholder="exemple@gmail.com" style="margin-bottom:10px;">
-      <button class="btn btn-secondary" type="button" onclick="requestOrderNotificationEmailChange()">${ic('send',15)} ${RESTAURANT.orderNotificationEmailPending?'Renvoyer le code':'Changer l’adresse'}</button>
-      ${RESTAURANT.orderNotificationEmailPending ? `
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-line);">
-          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">Un code à 8 chiffres a été envoyé à <strong>${escapeHtml(RESTAURANT.orderNotificationEmailPending)}</strong>.</p>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input class="field-input" id="orderNotifyCode" inputmode="numeric" maxlength="8" placeholder="Code à 8 chiffres" style="flex:1;min-width:180px;">
-            <button class="btn btn-outline" type="button" onclick="verifyOrderNotificationEmail()">${ic('check',15)} Vérifier</button>
-          </div>
-        </div>` : ''}
     </div>`;
 
   if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
