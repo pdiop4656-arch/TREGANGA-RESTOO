@@ -306,7 +306,7 @@ button,a,input,select,textarea{font-family:inherit;}
   #view-dashboard .mbn-item{font-size:9.5px;padding:6px 1px;}
   #view-dashboard .mbn-item .mbn-icon{width:20px;height:20px;}
   #view-dashboard .dashboard-home-return{margin-bottom:12px !important;}
-  #view-dashboard .dashboard-home-return .btn{min-height:42px;font-size:13px;}
+  #view-dashboard .dashboard-home-return .btn{min-height:38px;font-size:13px;}
   #view-storefront #sfCover{height:170px !important;}
   #view-storefront #sfLogo{width:78px !important;height:78px !important;border-radius:16px !important;margin-left:0;}
   #view-storefront .resto-name{overflow-wrap:anywhere;word-break:break-word;}
@@ -548,12 +548,15 @@ button,a,input,select,textarea{font-family:inherit;}
       <p style="color:var(--ink-soft);">Gratuit pendant 10 jours pour essayer. Starter et Premium se paient immédiatement par PayTech, sans période d'essai.</p>
     </div>
 
-    <div class="flex items-center justify-center gap-3" style="margin-bottom:44px;">
-      <span id="periodLabelM" style="font-size:14px;font-weight:600;">Mensuel</span>
-      <button id="periodToggle" onclick="togglePeriod()" style="position:relative;width:52px;height:28px;border-radius:999px;background:var(--ink);">
-        <span id="periodDot" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;"></span>
-      </button>
-      <span id="periodLabelY" style="font-size:14px;font-weight:600;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
+    <div class="billing-cycle-wrap" style="margin-bottom:44px;">
+      <div class="billing-cycle-toggle" role="group" aria-label="Période de facturation">
+        <button id="periodMButton" type="button" class="billing-cycle-option" onclick="setBillingCycle('monthly')">
+          <span id="periodLabelM">Mensuel</span>
+        </button>
+        <button id="periodYButton" type="button" class="billing-cycle-option active" onclick="setBillingCycle('annual')">
+          <span id="periodLabelY">Annuel <span class="billing-cycle-badge">-16%</span></span>
+        </button>
+      </div>
     </div>
 
     <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
@@ -4181,7 +4184,7 @@ const state = {
   cart:[], // {id,name,price,qty,variant,emoji}
   activeCategory:'all',
   storefrontSearch:'',
-  yearly:false,
+  yearly:true,
   dashSection:'overview',
   checkoutStep:0,
   checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null,deliveryZone:null},
@@ -4598,24 +4601,33 @@ const PLANS = [
   {code:'starter',name:'Starter',tagline:'Pour un restaurant qui commence réellement à vendre et à gérer ses commandes.',monthly:STARTER_PRICE,yearly:Math.round(STARTER_PRICE*12*0.84),
    features:['1 restaurant','Catalogue et commandes sans limite','QR Code personnalisé','Paiement à la livraison et espèces','Gestion essentielle du restaurant']},
   {code:'pro',name:'Premium',tagline:'Pour un restaurant qui veut toutes les fonctionnalités avancées.',monthly:PREMIUM_PRICE,yearly:Math.round(PREMIUM_PRICE*12*0.84),
-   features:['Tout Starter','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable','Thème et personnalisation complets']},
+   features:['Tout Starter','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable']},
 ];
 
-function togglePeriod(){
-  state.yearly = !state.yearly;
-  document.getElementById('periodDot').style.transform = state.yearly ? 'translateX(24px)':'translateX(0)';
-  document.getElementById('periodToggle').style.background = state.yearly ? 'var(--amber-deep)':'var(--ink)';
-  document.getElementById('periodLabelM').style.color = state.yearly ? 'var(--ink-faint)':'var(--ink)';
-  document.getElementById('periodLabelY').style.color = state.yearly ? 'var(--ink)':'var(--ink-faint)';
+function setBillingCycle(cycle){
+  state.yearly = cycle === 'annual';
+  const m = document.getElementById('periodLabelM');
+  const y = document.getElementById('periodLabelY');
+  const mb = document.getElementById('periodMButton');
+  const yb = document.getElementById('periodYButton');
+  if(m&&y&&mb&&yb){
+    mb.classList.toggle('active', !state.yearly);
+    yb.classList.toggle('active', state.yearly);
+    m.classList.toggle('active-label', !state.yearly);
+    y.classList.toggle('active-label', state.yearly);
+  }
   renderPricing();
 }
+function togglePeriod(){ setBillingCycle(state.yearly ? 'monthly' : 'annual'); }
 
 function renderPricing(){
   document.getElementById('pricingCards').innerHTML = PLANS.map(p=>{
     const isPro = p.code==='pro';
     const isFree = p.code==='free';
     const monthlyEq = state.yearly ? Math.round(p.yearly/12) : p.monthly;
-    const ctaLabel = isFree ? 'Commencer gratuitement' : `Choisir ${p.name} — ${fmt(p.monthly)}`;
+    const ctaAmount = state.yearly ? p.yearly : p.monthly;
+    const ctaCycle = state.yearly ? ' / an' : ' / mois';
+    const ctaLabel = isFree ? 'Commencer gratuitement' : `Choisir ${p.name} — ${fmt(ctaAmount)}${ctaCycle}`;
     return `
     <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
       ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
@@ -6629,7 +6641,34 @@ function printOrderDetail(i){
   if(!panel || !o) return;
   const w=window.open('','_blank','width=760,height=900');
   if(!w){ toast('Autorisez les fenêtres contextuelles pour imprimer la commande.'); return; }
-  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Commande #${escapeAttr(o.num)}</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;max-width:760px;margin:auto}h1{font-size:24px;margin:0 0 4px}p{margin:6px 0}.line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ddd}.muted{color:#666;font-size:12px}.total{font-size:20px;font-weight:700;margin-top:14px}</style></head><body><h1>Commande #${escapeAttr(o.num)}</h1><p class="muted">${escapeHtml(RESTO_NAME)} · ${escapeHtml(timeAgo(o.createdAt))}</p><hr><p><b>Client :</b> ${escapeHtml(o.client)}</p><p><b>Téléphone :</b> ${escapeHtml(o.phone)}</p><p><b>Type :</b> ${escapeHtml(o.type)}</p>${o.address?`<p><b>Adresse :</b> ${escapeHtml(o.address)}</p>`:''}<h2>Produits</h2>${(o.items||[]).map(it=>{const isLegacy=Array.isArray(it),name=isLegacy?it[0]:it.name,qty=Math.max(1,Number(isLegacy?it[1]:it.qty)||1),u=orderItemPrice(it),t=u===null?null:u*qty;return `<div class="line"><span>${qty} × ${escapeHtml(name)}</span><span>${t===null?'—':fmt(t)}</span></div>`}).join('')}<p class="total">Total : ${fmt(o.total)}</p></body></html>`);
+  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Commande #${escapeAttr(o.num)}</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;max-width:760px;margin:auto}h1{font-size:24px;margin:0 0 4px}p{margin:6px 0}.line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ddd}.muted{color:#666;font-size:12px}.total{font-size:20px;font-weight:700;margin-top:14px}</style></head><body><h1>Commande #${escapeAttr(o.num)}</h1><p class="muted">${escapeHtml(RESTO_NAME)} · ${escapeHtml(timeAgo(o.createdAt))}</p><hr><p><b>Client :</b> ${escapeHtml(o.client)}</p><p><b>Téléphone :</b> ${escapeHtml(o.phone)}</p><p><b>Type :</b> ${escapeHtml(o.type)}</p>${o.address?`<p><b>Adresse :</b> ${escapeHtml(o.address)}</p>`:''}<h2>Produits</h2>${(o.items||[]).map(it=>{const isLegacy=Array.isArray(it),name=isLegacy?it[0]:it.name,qty=Math.max(1,Number(isLegacy?it[1]:it.qty)||1),u=orderItemPrice(it),t=u===null?null:u*qty;return `<div class="line"><span>${qty} × ${escapeHtml(name)}</span><span>${t===null?'—':fmt(t)}</span></div>`}).join('')}<p class="total">Total : ${fmt(o.total)}</p>
+<style id="dashboard-billing-cycle-compact">
+.billing-cycle-toggle-dashboard{
+  border-color:rgba(251,243,228,.18);
+  background:rgba(255,255,255,.025);
+  box-shadow:none;
+}
+.billing-cycle-toggle-dashboard .billing-cycle-option{
+    color:var(--ink) !important;
+
+  min-width:92px;
+  height:38px;
+  padding:0 10px;
+  font-size:13px;
+}
+.billing-cycle-toggle-dashboard .billing-cycle-badge{
+  min-width:48px;
+  height:24px;
+  margin-left:5px;
+  padding:0 7px;
+  font-size:10px;
+}
+@media(max-width:600px){
+  .billing-cycle-toggle-dashboard .billing-cycle-option{min-width:88px;height:36px;padding:0 8px;font-size:12.5px;}
+  .billing-cycle-toggle-dashboard .billing-cycle-badge{min-width:44px;height:22px;font-size:9.5px;margin-left:4px;}
+}
+</style>
+</body></html>`);
   w.document.close(); w.focus(); setTimeout(()=>w.print(),150);
 }
 function openOrderDetail(i){
@@ -8432,8 +8471,27 @@ function dashAbonnement(){
   <div class="card" style="padding:18px;max-width:560px;" id="paymentsHistoryCard">${paymentsHistoryHtml()}</div>`;
 }
 
+function setAbonBillingCycle(cycle){
+  abonSelectedCycle = cycle === 'annual' ? 'annual' : 'monthly';
+  const card = document.getElementById('abonCard');
+  if(card) card.innerHTML = abonCardHtml();
+}
+
+function abonBillingToggleHtml(){
+  const annual = abonSelectedCycle === 'annual';
+  return `<div class="billing-cycle-wrap" style="justify-content:flex-start;margin-bottom:12px;">
+    <div class="billing-cycle-toggle billing-cycle-toggle-dashboard" role="group" aria-label="Période de facturation">
+      <button type="button" class="billing-cycle-option ${annual?'':'active'}" onclick="setAbonBillingCycle('monthly')">Mensuel</button>
+      <button type="button" class="billing-cycle-option ${annual?'active':''}" onclick="setAbonBillingCycle('annual')">Annuel <span class="billing-cycle-badge">-16%</span></button>
+    </div>
+  </div>`;
+}
+
 function abonCardHtml(){
-  const price = priceForPlan(abonSelectedPlan);
+  const priceMonthly = priceForPlan(abonSelectedPlan);
+  const annualPrice = Math.round(priceMonthly * 12 * 0.84);
+  const isAnnual = abonSelectedCycle === 'annual';
+  const price = isAnnual ? annualPrice : priceMonthly;
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
@@ -8444,13 +8502,14 @@ function abonCardHtml(){
     <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
+  ${abonBillingToggleHtml()}
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
     <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
-    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}${isAnnual?' / an':' / mois'}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
   </div>
   <div style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} /mois</p></div>
+    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} <span style="font-family:inherit;font-size:12px;">/ ${isAnnual?'an':'mois'}</span></p></div>
     <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
@@ -8483,7 +8542,7 @@ async function abonApplyPlan(){
   // après confirmation réelle du paiement par PayTech (voir
   // startPayTechCheckout et la fonction Edge paytech-webhook, qui seule
   // met subscription_status à 'active').
-  await startPayTechCheckout(abonSelectedPlan);
+  await startPayTechCheckout(abonSelectedPlan, abonSelectedCycle || 'monthly');
 }
 
 /* ---------------- PAYTECH — abonnement du restaurateur à TerangaResto ----------------
@@ -8496,9 +8555,10 @@ let paymentsHistory = [];
    uniquement — jamais mélangés avec ceux d'un autre restaurant, jamais
    de note ou de nombre d'avis inventé pour l'affichage. */
 let REVIEWS = [];
-async function startPayTechCheckout(plan){
+async function startPayTechCheckout(plan, cycle='monthly'){
   const btn = document.getElementById('paytechBtn');
-  const price = priceForPlan(plan);
+  const monthlyPrice = priceForPlan(plan);
+  const price = cycle === 'annual' ? Math.round(monthlyPrice * 12 * 0.84) : monthlyPrice;
   if(btn){ btn.disabled = true; btn.textContent = 'Redirection vers PayTech…'; }
   const { data: { session } } = await supabaseClient.auth.getSession();
   if(!session){
@@ -8510,7 +8570,7 @@ async function startPayTechCheckout(plan){
   // directement depuis le navigateur, et aucune clé PayTech ici (voir
   // supabase/functions/paytech-checkout/index.ts).
   const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
+    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: cycle },
   });
   if(error || !data || !data.redirect_url){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
@@ -8648,7 +8708,7 @@ async function reactivateSubscription(){
   .lib-grid{ grid-template-columns:repeat(2,1fr); gap:10px; }
   .lib-add-btn span{ display:none; }
   .lib-add-btn::after{ content:'Ajouter'; }
-  .lib-add-btn{ padding:0 14px; }
+  .lib-add-btn{ padding:0 12px; }
 }
 </style>
 
@@ -8720,5 +8780,70 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 </script>
 
 
+<style id="billing-cycle-button-only">
+.billing-cycle-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.billing-cycle-toggle{
+  display:inline-flex;
+  align-items:center;
+  padding:4px;
+  border:1px solid #ead9b8;
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(43,24,16,.08);
+}
+.billing-cycle-option{
+  min-width:128px;
+  height:52px;
+  padding:0 16px;
+  border:0;
+  border-radius:13px;
+  background:transparent;
+  color:var(--ink-soft);
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+}
+.billing-cycle-option.active{
+  background:var(--amber-deep);
+  color:#fff;
+  box-shadow:0 5px 14px rgba(232,135,30,.18);
+}
+.billing-cycle-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:67px;
+  height:32px;
+  margin-left:8px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.34);
+  background:rgba(255,255,255,.08);
+  color:inherit;
+  font-size:13px;
+  font-weight:600;
+}
+.billing-cycle-option:not(.active){
+  color:#000 !important;
+}
+.billing-cycle-option:not(.active) .billing-cycle-badge{
+  border-color:#e7eee8;
+  background:#edf8f1;
+  color:#0f7450;
+}
+@media (max-width:600px){
+  .billing-cycle-option{min-width:112px;height:48px;padding:0 12px;font-size:15px;}
+  .billing-cycle-badge{height:28px;min-width:58px;padding:0 8px;font-size:12px;margin-left:6px;}
+}
+</style>
 </body>
 </html>
