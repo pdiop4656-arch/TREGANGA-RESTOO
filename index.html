@@ -2005,6 +2005,8 @@ function publicRestaurantUrl(slug){
   if(custom) return `https://${custom}`;
   const clean = String(slug || '').trim().toLowerCase();
   if(!clean) return PRODUCTION_SITE_ORIGIN;
+  // URL publique canonique : un sous-domaine par restaurant.
+  // Requiert le wildcard *.terangaresto.com côté Vercel/DNS pour être joignable.
   return `https://${clean}.terangaresto.com`;
 }
 
@@ -3114,27 +3116,6 @@ async function findMyRestaurantId(p_knownUserId){
    défaut : "landing"), jamais les données d'un restaurant au hasard.
    Chaque restaurant n'est chargé que par son propre lien ou par la
    session de son propriétaire/personnel — jamais par défaut. */
-
-async function tryLoadRestaurantFromCustomDomainHost(){
-  const host=String(location.hostname||'').trim().toLowerCase().replace(/\.$/,'');
-  if(!host || host==='terangaresto.com' || host==='www.terangaresto.com' || host.endsWith('.terangaresto.com')) return false;
-  try{
-    const {data,error}=await supabaseClient.rpc('find_restaurant_by_custom_domain',{p_domain:host});
-    const row=Array.isArray(data)?data[0]:data;
-    if(error || !row?.id) return false;
-    const ok=await loadRestaurantPublicFast(row.id);
-    if(!ok) return false;
-    viewerIsStaff=false;
-    setView('storefront');
-    hideRestoSplash();
-    hideAuthCheckSplash();
-    return true;
-  }catch(e){
-    console.warn('Domaine personnalisé:',e);
-    return false;
-  }
-}
-
 async function restoreSession(){
   try{
     const {data:{session}} = await supabaseClient.auth.getSession();
@@ -3206,8 +3187,6 @@ async function restoreSession(){
     // visite future, alors qu'elle n'a en réalité plus de session valide.
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
-
-    if(await tryLoadRestaurantFromCustomDomainHost()) return;
 
     const restoSlug = restaurantSlugFromLocation();
     if(restoSlug){
@@ -6527,7 +6506,12 @@ function afficherResultatRechercheDomaine(resultats){
     return;
   }
   box.innerHTML = resultats.map(r=>{
-    const gift = !!r.gift_eligible;
+    const premiumAnnualActive =
+      state.plan === 'pro' &&
+      RESTAURANT.billingCycle === 'annual' &&
+      computeEffectiveSubscriptionStatus() === 'active' &&
+      RESTAURANT.social?.domain_gift_used !== true;
+    const gift = premiumAnnualActive && !!r.gift_eligible;
     const price = r.customer_price_xof != null ? `${fmt(r.customer_price_xof)} / an` : 'Prix indisponible';
     return `
       <div class="tr-domain-result">
@@ -6548,7 +6532,12 @@ function afficherResultatRechercheDomaine(resultats){
 function choisirDomaineResultat(serialized){
   const r = JSON.parse(serialized);
   window.__domainSelection = r;
-  const isGift = !!r.gift_eligible;
+  const isGift =
+    !!r.gift_eligible &&
+    state.plan === 'pro' &&
+    RESTAURANT.billingCycle === 'annual' &&
+    computeEffectiveSubscriptionStatus() === 'active' &&
+    RESTAURANT.social?.domain_gift_used !== true;
   const confirmText = isGift
     ? `Utiliser ${r.domain} comme votre domaine offert pendant 1 an ?\n\nAprès confirmation, votre cadeau sera utilisé.`
     : `Acheter ${r.domain} pour ${fmt(r.customer_price_xof)} par an ?`;
@@ -6582,14 +6571,17 @@ async function lancerActionDomaine(domain, kind){
       domain,
       restaurant_id:RESTAURANT.id
     });
-    if(data.redirect_url){
-      window.location.href = data.redirect_url;
+    const redirectUrl = data.redirect_url || data.redirectUrl || '';
+    if(redirectUrl){
+      window.location.href = redirectUrl;
       return;
     }
     if(data.ok){
       toast(kind==='gift' ? 'Votre domaine offert a été confirmé.' : 'Votre commande domaine a été lancée.');
       setTimeout(()=>renderDashSection('settings'), 500);
+      return;
     }
+    throw new Error('PayTech n’a pas retourné de lien de paiement. Vérifie les secrets PayTech et PAYTECH_ENV dans Supabase.');
   }catch(e){
     toast(e.message || 'Impossible de traiter le domaine.');
   }
@@ -6607,57 +6599,6 @@ async function renouvelerDomaineDepuisInterface(domain, customerPriceXof){
     });
     if(data.redirect_url) window.location.href = data.redirect_url;
   }catch(e){ toast(e.message || 'Renouvellement impossible.'); }
-}
-
-
-async function ouvrirGestionDnsDomaine(){
-  const box=document.getElementById('domainDnsPanel');
-  if(!box) return;
-  box.innerHTML='<p style="font-size:12px;color:rgba(255,255,255,.65);margin-top:10px;">Chargement des DNS…</p>';
-  try{
-    const data=await appelerFonctionDomaine('gestion-domaines',{
-      action:'dns_list',
-      restaurant_id:RESTAURANT.id
-    });
-    const records=Array.isArray(data.records)?data.records:[];
-    box.innerHTML=`
-      <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.12);">
-        ${records.length ? records.map(r=>`
-          <div style="display:grid;grid-template-columns:58px 1fr 1fr 60px;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:10.5px;color:#fff;">
-            <strong>${escapeHtml(r.type||'')}</strong>
-            <span style="overflow-wrap:anywhere;">${escapeHtml(r.host||'@')}</span>
-            <span style="overflow-wrap:anywhere;">${escapeHtml(r.value||'')}</span>
-            <span>${escapeHtml(r.ttl||'')}</span>
-          </div>`).join('') :
-          '<p style="font-size:11.5px;color:rgba(255,255,255,.65);padding:10px 0;">Aucun enregistrement.</p>'}
-      </div>
-      <button type="button" class="tr-domain-buy-btn" style="margin-top:10px;" onclick="ajouterDnsDepuisInterface()">+ Ajouter un DNS</button>
-    `;
-  }catch(e){
-    box.innerHTML='<p style="font-size:11.5px;color:#ffb3b3;margin-top:10px;">Impossible de charger les DNS pour le moment.</p>';
-  }
-}
-
-async function ajouterDnsDepuisInterface(){
-  const type=(prompt('Type : A, AAAA, CNAME, MX, TXT, SRV ou CAA')||'').trim().toUpperCase();
-  const host=prompt('Nom / hôte :','');
-  const value=prompt('Valeur :','');
-  if(!type || value===null) return;
-  const ttl=Number(prompt('TTL :','3600')||3600);
-  try{
-    const data=await appelerFonctionDomaine('gestion-domaines',{
-      action:'dns_add',
-      restaurant_id:RESTAURANT.id,
-      rrtype:type,
-      rrhost:host||'',
-      rrvalue:value,
-      rrttl:ttl
-    });
-    if(data?.ok){
-      toast('Enregistrement DNS ajouté.');
-      ouvrirGestionDnsDomaine();
-    }
-  }catch(e){ toast(e.message||'Impossible d’ajouter cet enregistrement DNS.'); }
 }
 
 function renderDashSection(key){
@@ -8494,18 +8435,6 @@ function settingsBodyHtml(){
           </div>
           <div id="domainSearchResults" class="tr-domain-search-results"></div>
         </div>
-
-        ${customDomain && domainStatus==='active' ? `
-          <div class="tr-domain-panel">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-              <div>
-                <p style="font-size:12.5px;font-weight:800;color:#fff;">DNS du domaine</p>
-                <p style="font-size:11.5px;color:rgba(255,255,255,.70);margin-top:5px;">La connexion au site est automatique. Vous pouvez gérer vos propres enregistrements DNS si nécessaire.</p>
-              </div>
-              <button type="button" class="tr-domain-primary" onclick="ouvrirGestionDnsDomaine()">Gérer les DNS</button>
-            </div>
-            <div id="domainDnsPanel"></div>
-          </div>` : ''}
 
         ${customDomain && domainStatus==='active' ? `
           <div class="tr-domain-panel">
