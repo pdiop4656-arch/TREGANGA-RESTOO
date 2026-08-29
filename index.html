@@ -580,12 +580,12 @@ button,a,input,select,textarea{font-family:inherit;}
       <p style="color:var(--ink-soft);">Gratuit pendant 10 jours pour essayer. Starter et Premium se paient immédiatement par PayTech, sans période d'essai.</p>
     </div>
 
-    <div class="flex items-center justify-center gap-3" style="margin-bottom:44px;">
-      <span id="periodLabelM" style="font-size:14px;font-weight:600;">Mensuel</span>
-      <button id="periodToggle" onclick="togglePeriod()" style="position:relative;width:52px;height:28px;border-radius:999px;background:var(--ink);">
+    <div class="flex items-center justify-center gap-3" style="margin:0 auto 44px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:6px 10px;width:max-content;box-shadow:0 6px 18px rgba(43,24,16,.06);">
+      <span id="periodLabelM" style="font-size:14px;font-weight:700;color:#000;">Mensuel</span>
+      <button id="periodToggle" type="button" onclick="togglePeriod()" aria-label="Basculer entre mensuel et annuel" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:var(--amber-deep);padding:0;">
         <span id="periodDot" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;"></span>
       </button>
-      <span id="periodLabelY" style="font-size:14px;font-weight:600;color:var(--ink-faint);display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
+      <span id="periodLabelY" style="font-size:14px;font-weight:700;color:#000;display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
     </div>
 
     <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
@@ -4242,7 +4242,7 @@ const state = {
   cart:[], // {id,name,price,qty,variant,emoji}
   activeCategory:'all',
   storefrontSearch:'',
-  yearly:true,
+  yearly:false,
   dashSection:'overview',
   checkoutStep:0,
   checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null,deliveryZone:null},
@@ -4664,10 +4664,14 @@ const PLANS = [
 
 function togglePeriod(){
   state.yearly = !state.yearly;
-  document.getElementById('periodDot').style.transform = state.yearly ? 'translateX(24px)':'translateX(0)';
-  document.getElementById('periodToggle').style.background = state.yearly ? 'var(--amber-deep)':'var(--ink)';
-  document.getElementById('periodLabelM').style.color = state.yearly ? 'var(--ink-faint)':'var(--ink)';
-  document.getElementById('periodLabelY').style.color = state.yearly ? 'var(--ink)':'var(--ink-faint)';
+  const dot = document.getElementById('periodDot');
+  const toggle = document.getElementById('periodToggle');
+  const lm = document.getElementById('periodLabelM');
+  const ly = document.getElementById('periodLabelY');
+  if(dot) dot.style.transform = state.yearly ? 'translateX(24px)' : 'translateX(0)';
+  if(toggle) toggle.style.background = 'var(--amber-deep)';
+  if(lm) lm.style.color = '#000';
+  if(ly) ly.style.color = '#000';
   renderPricing();
 }
 
@@ -4677,9 +4681,9 @@ function renderPricing(){
   const lm=document.getElementById('periodLabelM');
   const ly=document.getElementById('periodLabelY');
   if(dot) dot.style.transform = state.yearly ? 'translateX(24px)':'translateX(0)';
-  if(toggle) toggle.style.background = state.yearly ? 'var(--amber-deep)':'var(--ink)';
-  if(lm) lm.style.color = state.yearly ? 'var(--ink-faint)':'var(--ink)';
-  if(ly) ly.style.color = state.yearly ? 'var(--ink)':'var(--ink-faint)';
+  if(toggle) toggle.style.background = 'var(--amber-deep)';
+  if(lm) lm.style.color = '#000';
+  if(ly) ly.style.color = '#000';
   const offerNote = document.getElementById('domainOfferRuleNote');
   if(offerNote){
     offerNote.style.border = `1.5px solid ${state.yearly ? 'var(--amber)' : '#D85C5C'}`;
@@ -6563,7 +6567,7 @@ async function lancerRechercheDomaine(){
   }
 }
 
-async function lancerActionDomaine(domain, kind){
+async async function lancerActionDomaine(domain, kind){
   try{
     const data = await appelerFonctionDomaine('gestion-domaines', {
       action:'register',
@@ -6571,17 +6575,17 @@ async function lancerActionDomaine(domain, kind){
       domain,
       restaurant_id:RESTAURANT.id
     });
-    const redirectUrl = data.redirect_url || data.redirectUrl || '';
+    const redirectUrl = data?.redirect_url || data?.redirectUrl || '';
     if(redirectUrl){
-      window.location.href = redirectUrl;
+      window.location.assign(redirectUrl);
       return;
     }
-    if(data.ok){
+    if(data?.ok){
       toast(kind==='gift' ? 'Votre domaine offert a été confirmé.' : 'Votre commande domaine a été lancée.');
       setTimeout(()=>renderDashSection('settings'), 500);
       return;
     }
-    throw new Error('PayTech n’a pas retourné de lien de paiement. Vérifie les secrets PayTech et PAYTECH_ENV dans Supabase.');
+    throw new Error('PayTech n’a pas retourné de lien de paiement. Vérifie que la fonction gestion-domaines et les secrets PayTech sont bien configurés dans Supabase.');
   }catch(e){
     toast(e.message || 'Impossible de traiter le domaine.');
   }
