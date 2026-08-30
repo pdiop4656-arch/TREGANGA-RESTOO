@@ -2894,37 +2894,80 @@ function isStorefrontGated(){
 function renderStorefrontGateOverlay(){
   const container = document.getElementById('view-storefront');
   if(!container) return;
+
   let overlay = document.getElementById('storefrontGateOverlay');
   if(isStorefrontGated()){
     if(!overlay){
       overlay = document.createElement('div');
       overlay.id = 'storefrontGateOverlay';
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:1200;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;';
+      overlay.style.cssText = [
+        'position:fixed',
+        'inset:0',
+        'z-index:1200',
+        'background:#ffffff',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'padding:28px 18px',
+        'text-align:center',
+        'box-sizing:border-box',
+        'overflow:auto'
+      ].join(';');
       container.appendChild(overlay);
     }
+
     const status = computeEffectiveSubscriptionStatus();
-    let iconName, title, text;
-    if(!RESTAURANT.isPublished){
-      iconName='lock'; title="Cette boutique n'est pas encore publiée";
-      text=`${RESTO_NAME} prépare encore son menu. Revenez bientôt !`;
+    const unpublished = !RESTAURANT.isPublished;
+
+    if(unpublished){
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Cette boutique n'est pas encore disponible.</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">${escapeHtml(RESTO_NAME)} prépare encore son site. Revenez bientôt.</p>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
     } else if(status === 'pending_payment'){
-      iconName='clock'; title="Cette boutique n'est pas encore active";
-      text=`${RESTO_NAME} finalise l'activation de son abonnement. Revenez bientôt !`;
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('clock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible.</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce site est temporairement indisponible. L'abonnement du propriétaire est en cours d'activation.</p>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
     } else {
-      iconName='alertTriangle'; title="Cette boutique est actuellement indisponible";
-      text=`${RESTO_NAME} reviendra bientôt. Merci de votre patience.`;
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible.</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce site est temporairement indisponible.<br>L'abonnement du propriétaire <strong style="color:#D97706;font-weight:800;">a expiré.</strong></p>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
     }
-    overlay.innerHTML = `
-      <div style="max-width:360px;">
-        <div style="display:flex;justify-content:center;margin-bottom:14px;">${ic(iconName,34,{stroke: iconName==='alertTriangle'?'var(--terracotta)':'var(--amber-deep)'})}</div>
-        <h1 class="font-display" style="font-size:20px;margin-bottom:8px;">${title}</h1>
-        <p style="font-size:13.5px;color:var(--ink-soft);">${text}</p>
-      </div>`;
     hydrateIcons(overlay);
   } else if(overlay){
     overlay.remove();
   }
 }
+
 
 
 /* ---------------- CHARGEMENT PUBLIC ULTRA-RAPIDE ----------------
@@ -6520,8 +6563,22 @@ function extractDomainRows(data){
   }).filter(r=>r.domain);
 }
 
+function domainPriceNumber(value){
+  if(typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  const raw = String(value ?? '').trim();
+  if(!raw) return NaN;
+  // Accepte aussi une valeur déjà formatée par le backend, ex.
+  // "12 374 FCFA" ou "12 374 FCFA/an", sans doubler l'unité.
+  const cleaned = raw
+    .replace(/FCFA/gi,'')
+    .replace(/\/an/gi,'')
+    .replace(/[^0-9,.-]/g,'')
+    .replace(/,/g,'.');
+  return Number(cleaned);
+}
+
 function domainFormatPrice(value){
-  const n=Number(value);
+  const n=domainPriceNumber(value);
   return Number.isFinite(n) ? fmt(Math.round(n))+' FCFA/an' : 'Prix indisponible';
 }
 
@@ -6602,7 +6659,7 @@ function purchaseDomainByIndex(index){
 }
 
 function domainPurchaseBody(row,isGift){
-  const price=Number(row.price) || 0;
+  const price=domainPriceNumber(row.price) || 0;
   const cycle=RESTAURANT.billingCycle || 'monthly';
   const plan=state.plan || 'free';
   return {
@@ -6635,7 +6692,7 @@ async function purchaseDomain(row,isGift=false){
   if(!row?.domain){ toast('Domaine invalide.'); return; }
   if(row.available===false){ toast('Ce domaine est indisponible.'); return; }
   if(isGift && !isDomainGiftEligible(row)){ toast('Ce domaine ne peut pas utiliser le cadeau Premium annuel.'); return; }
-  if(!isGift && !Number.isFinite(Number(row.price))){ toast('Le prix de ce domaine est indisponible.'); return; }
+  if(!isGift && !Number.isFinite(domainPriceNumber(row.price))){ toast('Le prix de ce domaine est indisponible.'); return; }
 
   domainActionBusy=true;
   try{
@@ -8496,8 +8553,29 @@ function settingsBodyHtml(){
 
   if(settingsTab==='Domaine'){
     const customDomain = String(RESTAURANT.social?.custom_domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'');
-    const domainStatus = RESTAURANT.social?.custom_domain_status || '';
+    const domainStatus = String(RESTAURANT.social?.custom_domain_status || '').trim().toLowerCase();
     const currentDomain = customDomain || publicRestaurantUrl(RESTAURANT.slug);
+    const hasCustomDomain = !!customDomain;
+    const isActiveDomain = hasCustomDomain && domainStatus === 'active';
+    const isPendingDomain = hasCustomDomain && ['pending','configuring','processing','provisioning','verifying'].includes(domainStatus);
+    const isErrorDomain = hasCustomDomain && ['error','failed','blocked'].includes(domainStatus);
+    const domainStatusBadge = hasCustomDomain
+      ? (isActiveDomain
+          ? `<span class="tr-domain-current-badge"><span class="check">✓</span> Domaine actif</span>`
+          : isErrorDomain
+            ? `<span class="tr-domain-current-badge" style="background:rgba(210,67,67,.12);border-color:rgba(210,67,67,.38);color:#ff9d9d;"><span class="check" style="background:#d24343;">!</span> Problème de configuration</span>`
+            : `<span class="tr-domain-current-badge" style="background:rgba(255,179,91,.12);border-color:rgba(255,179,91,.38);color:#ffcf9e;"><span class="check" style="background:#d58a39;">…</span> Domaine en cours de configuration</span>`)
+      : `<span class="tr-domain-current-badge"><span class="check">✓</span> Domaine actuel</span>`;
+    const domainText = isActiveDomain
+      ? `<a href="https://${escapeAttr(currentDomain)}" target="_blank" rel="noopener noreferrer" class="tr-domain-url" style="margin-top:9px;display:inline-block;text-decoration:none;">${escapeHtml(currentDomain)}</a>`
+      : `<p class="tr-domain-url" style="margin-top:9px;">${escapeHtml(currentDomain)}</p>`;
+    const domainHelp = isPendingDomain
+      ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine a été enregistré. La configuration DNS et la mise en ligne sont en cours. Le domaine deviendra actif dès que la configuration sera confirmée.</p>`
+      : isErrorDomain
+        ? `<p style="font-size:11.5px;color:#ffb2b2;margin-top:8px;line-height:1.45;">La configuration de votre domaine nécessite une vérification.</p>`
+        : isActiveDomain
+          ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine personnalisé est maintenant actif et accessible publiquement.</p>`
+          : '';
     return `
       <div class="tr-domain-settings">
         <div class="tr-domain-hero">
@@ -8511,8 +8589,9 @@ function settingsBodyHtml(){
         <div class="tr-domain-panel">
           <div class="tr-domain-status-row">
             <div style="min-width:0;">
-              <p class="tr-domain-label"><span class="tr-domain-current-badge"><span class="check">✓</span> Domaine actuel</span></p>
-              <p class="tr-domain-url" style="margin-top:9px;">${escapeHtml(currentDomain)}</p>
+              <p class="tr-domain-label">${domainStatusBadge}</p>
+              ${domainText}
+              ${domainHelp}
             </div>
           </div>
         </div>
@@ -8527,11 +8606,6 @@ function settingsBodyHtml(){
           <div id="domainSearchResults" class="tr-domain-search-results"></div>
         </div>
 
-        ${customDomain && domainStatus==='active' ? `
-          <div class="tr-domain-panel">
-            <p style="font-size:12.5px;font-weight:800;color:#fff;">Votre domaine personnalisé est actif</p>
-            <p style="font-size:11.5px;color:rgba(255,255,255,.70);margin-top:5px;">${escapeHtml(currentDomain)}</p>
-          </div>` : ''}
       </div>`;
   }
   if(settingsTab==='Réseaux & carte'){
@@ -8772,7 +8846,9 @@ function dashAbonnement(){
 }
 
 function abonCardHtml(){
-  const price = priceForPlan(abonSelectedPlan);
+  if(abonSelectedCycle===null) abonSelectedCycle='monthly';
+  const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
+  const price = priceForPlanCycle(abonSelectedPlan, cycle);
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
@@ -8784,12 +8860,16 @@ function abonCardHtml(){
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
+  <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
+    <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
+    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'rgba(255,255,255,.45)':'var(--cream-line)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:${cycle==='annual'?'#fff':'var(--ink-soft)'};">-16%</span></button>
+  </div>
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
     <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
-    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)} ${cycle==='annual'?'/an':'/mois'}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
   </div>
   <div style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} /mois</p></div>
+    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} ${cycle==='annual'?'/ an':'/mois'}</p></div>
     <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
@@ -8837,7 +8917,8 @@ let paymentsHistory = [];
 let REVIEWS = [];
 async function startPayTechCheckout(plan){
   const btn = document.getElementById('paytechBtn');
-  const price = priceForPlan(plan);
+  const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
+  const price = priceForPlanCycle(plan, cycle);
   if(btn){ btn.disabled = true; btn.textContent = 'Redirection vers PayTech…'; }
   const { data: { session } } = await supabaseClient.auth.getSession();
   if(!session){
@@ -8849,7 +8930,7 @@ async function startPayTechCheckout(plan){
   // directement depuis le navigateur, et aucune clé PayTech ici (voir
   // supabase/functions/paytech-checkout/index.ts).
   const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: 'monthly' },
+    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: cycle },
   });
   if(error || !data || !data.redirect_url){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
