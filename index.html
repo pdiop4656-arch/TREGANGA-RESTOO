@@ -580,12 +580,9 @@ button,a,input,select,textarea{font-family:inherit;}
       <p style="color:var(--ink-soft);">Gratuit pendant 10 jours pour essayer. Starter et Premium se paient immédiatement par PayTech, sans période d'essai.</p>
     </div>
 
-    <div class="flex items-center justify-center gap-3" style="margin:0 auto 44px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:6px 10px;width:max-content;box-shadow:0 6px 18px rgba(43,24,16,.06);">
-      <span id="periodLabelM" style="font-size:14px;font-weight:700;color:#000;">Mensuel</span>
-      <button id="periodToggle" type="button" onclick="togglePeriod()" aria-label="Basculer entre mensuel et annuel" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:var(--amber-deep);padding:0;">
-        <span id="periodDot" style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;"></span>
-      </button>
-      <span id="periodLabelY" style="font-size:14px;font-weight:700;color:#000;display:flex;align-items:center;gap:6px;">Annuel <span class="pill pill-forest">-16%</span></span>
+    <div id="pricingPeriodSwitch" role="group" aria-label="Choisir la période de facturation" style="margin:0 auto 44px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;display:flex;align-items:center;width:max-content;box-shadow:0 6px 18px rgba(43,24,16,.06);">
+      <button id="periodLabelM" type="button" onclick="setPricingPeriod('monthly')" aria-pressed="false" style="border:0;background:transparent;color:#000;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
+      <button id="periodLabelY" type="button" onclick="setPricingPeriod('annual')" aria-pressed="true" style="border:0;background:var(--amber-deep);color:#fff;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#fff;">-16%</span></button>
     </div>
 
     <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
@@ -4242,7 +4239,7 @@ const state = {
   cart:[], // {id,name,price,qty,variant,emoji}
   activeCategory:'all',
   storefrontSearch:'',
-  yearly:false,
+  yearly:true,
   dashSection:'overview',
   checkoutStep:0,
   checkout:{firstName:'',lastName:'',phone:'',orderType:'takeaway',table:'',address:'',notes:'',payment:null,deliveryMode:null,deliveryZone:null},
@@ -4662,28 +4659,28 @@ const PLANS = [
    features:['Tout Starter','Paiements Wave et Orange Money','Gestion du personnel et des permissions','Analyses avancées','Livraison configurable']},
 ];
 
-function togglePeriod(){
-  state.yearly = !state.yearly;
-  const dot = document.getElementById('periodDot');
-  const toggle = document.getElementById('periodToggle');
-  const lm = document.getElementById('periodLabelM');
-  const ly = document.getElementById('periodLabelY');
-  if(dot) dot.style.transform = state.yearly ? 'translateX(24px)' : 'translateX(0)';
-  if(toggle) toggle.style.background = 'var(--amber-deep)';
-  if(lm) lm.style.color = '#000';
-  if(ly) ly.style.color = '#000';
+function setPricingPeriod(period){
+  state.yearly = period === 'annual';
   renderPricing();
 }
 
+function togglePeriod(){
+  setPricingPeriod(state.yearly ? 'monthly' : 'annual');
+}
+
 function renderPricing(){
-  const dot=document.getElementById('periodDot');
-  const toggle=document.getElementById('periodToggle');
   const lm=document.getElementById('periodLabelM');
   const ly=document.getElementById('periodLabelY');
-  if(dot) dot.style.transform = state.yearly ? 'translateX(24px)':'translateX(0)';
-  if(toggle) toggle.style.background = 'var(--amber-deep)';
-  if(lm) lm.style.color = '#000';
-  if(ly) ly.style.color = '#000';
+  if(lm){
+    lm.style.background = state.yearly ? 'transparent' : 'var(--amber-deep)';
+    lm.style.color = state.yearly ? '#000' : '#fff';
+    lm.setAttribute('aria-pressed', state.yearly ? 'false' : 'true');
+  }
+  if(ly){
+    ly.style.background = state.yearly ? 'var(--amber-deep)' : 'transparent';
+    ly.style.color = state.yearly ? '#fff' : '#000';
+    ly.setAttribute('aria-pressed', state.yearly ? 'true' : 'false');
+  }
   const offerNote = document.getElementById('domainOfferRuleNote');
   if(offerNote){
     offerNote.style.border = `1.5px solid ${state.yearly ? 'var(--amber)' : '#D85C5C'}`;
@@ -6494,114 +6491,204 @@ function dashboardHomeButton(){
 /* ---------------- DOMAINE — V2 ---------------- */
 const DOMAINE_CADEAU_LIMITE_XOF = 10000;
 const DOMAINE_MARGE_XOF = 2000;
+const DOMAIN_EDGE_SEARCH = 'recherche-domaines';
+const DOMAIN_EDGE_MANAGE = 'gestion-domaines';
+const DOMAIN_EDGE_CONFIRM = 'confirmation-paiement-domaines';
+let domainSearchResults = [];
+let domainSearchBusy = false;
+let domainActionBusy = false;
+
+function domainNormalizeName(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i,'')
+    .replace(/\/$/,'');
+}
+
+function extractDomainRows(data){
+  const candidates = data?.results ?? data?.domains ?? data?.data ?? data;
+  const arr = Array.isArray(candidates) ? candidates : [];
+  return arr.map((r,i)=>{
+    if(typeof r === 'string') return {domain:r, price:null, available:true, _i:i};
+    const domain = r.domain || r.name || r.fqdn || r.domain_name || r.domainName || '';
+    const price = r.customer_price_xof ?? r.client_price_xof ?? r.client_price ?? r.price_client ?? r.customer_price ?? r.price ?? r.amount ?? null;
+    const available = r.available ?? r.is_available ?? r.purchasable ?? r.can_purchase ?? true;
+    const isStandard = r.isStandard ?? r.is_standard ?? r.standard ?? /\\.(com|net|org)$/i.test(domain);
+    const giftEligible = r.gift_eligible ?? r.eligible_for_gift ?? r.eligible ?? false;
+    return {...r, domain, price, customer_price_xof:price, available, isStandard, giftEligible, _i:i};
+  }).filter(r=>r.domain);
+}
+
+function domainFormatPrice(value){
+  const n=Number(value);
+  return Number.isFinite(n) ? fmt(Math.round(n))+' FCFA/an' : 'Prix indisponible';
+}
 
 async function appelerFonctionDomaine(nom, corps){
-  const {data,error} = await supabaseClient.functions.invoke(nom, {body: corps});
+  const {data,error}=await supabaseClient.functions.invoke(nom,{body:corps});
   if(error) throw new Error(error.message || 'Erreur du service domaine.');
-  if(data?.error) throw new Error(data.error);
+  if(data?.error) throw new Error(typeof data.error==='string' ? data.error : (data.error.message || 'Erreur du service domaine.'));
   return data;
 }
 
-function afficherResultatRechercheDomaine(resultats){
-  const box = document.getElementById('domainSearchResults');
-  if(!box) return;
-  if(!resultats?.length){
-    box.innerHTML = '<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
-    return;
-  }
-  box.innerHTML = resultats.map(r=>{
-    const premiumAnnualActive =
-      state.plan === 'pro' &&
-      RESTAURANT.billingCycle === 'annual' &&
-      computeEffectiveSubscriptionStatus() === 'active' &&
-      RESTAURANT.social?.domain_gift_used !== true;
-    const gift = premiumAnnualActive && !!r.gift_eligible;
-    const price = r.customer_price_xof != null ? `${fmt(r.customer_price_xof)} / an` : 'Prix indisponible';
-    return `
-      <div class="tr-domain-result">
-        <div class="flex items-center justify-between" style="gap:12px;">
-          <div style="min-width:0;flex:1;">
-            <p class="tr-domain-result-name">${escapeHtml(r.domain)}</p>
-            <p class="tr-domain-result-price">${price}</p>
-            ${gift ? '<p class="tr-domain-offer">🎁 Domaine offert pendant 1 an</p>' : ''}
-          </div>
-          <div style="flex:0 0 auto;">
-            ${r.available ? `<button type="button" class="${gift?'tr-domain-gift-btn':'tr-domain-buy-btn'}" onclick="choisirDomaineResultat(${JSON.stringify(JSON.stringify(r))})">${gift?'🎁 Offert':'Acheter'}</button>` : '<span style="font-size:11px;color:rgba(255,255,255,.45);">Indisponible</span>'}
-          </div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function choisirDomaineResultat(serialized){
-  const r = JSON.parse(serialized);
-  window.__domainSelection = r;
-  const isGift =
-    !!r.gift_eligible &&
+function isDomainGiftEligible(row){
+  return !!row?.giftEligible &&
     state.plan === 'pro' &&
     RESTAURANT.billingCycle === 'annual' &&
     computeEffectiveSubscriptionStatus() === 'active' &&
-    RESTAURANT.social?.domain_gift_used !== true;
-  const confirmText = isGift
-    ? `Utiliser ${r.domain} comme votre domaine offert pendant 1 an ?\n\nAprès confirmation, votre cadeau sera utilisé.`
-    : `Acheter ${r.domain} pour ${fmt(r.customer_price_xof)} par an ?`;
-  if(!confirm(confirmText)) return;
-  lancerActionDomaine(r.domain, isGift ? 'gift' : 'paid');
+    RESTAURANT.social?.domain_gift_used !== true &&
+    Number(row.price || 0) <= DOMAINE_CADEAU_LIMITE_XOF;
+}
+
+function renderDomainSearchResults(){
+  const box=document.getElementById('domainSearchResults');
+  if(!box) return;
+  if(!domainSearchResults.length){
+    box.innerHTML='<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
+    return;
+  }
+  box.innerHTML=domainSearchResults.map((r,i)=>{
+    const gift=isDomainGiftEligible(r);
+    const price=gift ? '<span style="font-weight:700;color:var(--forest);">Offert pendant 1 an</span>' : `<span class="font-tabular">${domainFormatPrice(r.price)}</span>`;
+    const disabled=r.available===false;
+    return `<div class="tr-domain-result domain-result-row">
+      <div class="domain-result-main" style="min-width:0;flex:1;">
+        <div class="domain-result-name">${escapeHtml(r.domain)}</div>
+        <div class="domain-result-price">${price}</div>
+      </div>
+      <button type="button" class="btn ${gift?'btn-secondary':'btn-outline'} btn-sm" onclick="purchaseDomainByIndex(${i})" ${disabled?'disabled':''}>
+        ${gift?'🎁 Offert':'Acheter'}
+      </button>
+    </div>`;
+  }).join('');
+  if(typeof hydrateIcons==='function') hydrateIcons(box);
 }
 
 async function lancerRechercheDomaine(){
-  const input = document.getElementById('domainSearchInput');
-  const domain = String(input?.value || '').trim();
-  const box = document.getElementById('domainSearchResults');
-  if(!domain) { toast('Entrez un nom de domaine.'); return; }
-  box.innerHTML = '<p style="font-size:12.5px;color:var(--ink-faint);">Recherche en cours…</p>';
+  const input=document.getElementById('domainSearchInput');
+  const box=document.getElementById('domainSearchResults');
+  const query=domainNormalizeName(input?.value || '');
+  if(!query){ toast('Entrez un nom de domaine.'); return; }
+  if(domainSearchBusy) return;
+  domainSearchBusy=true;
+  if(box) box.innerHTML='<p style="font-size:12.5px;color:var(--ink-faint);">Recherche des domaines disponibles…</p>';
   try{
-    const data = await appelerFonctionDomaine('recherche-domaines', {
-      domain,
-      restaurant_id: RESTAURANT.id
+    const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{
+      action:'search',
+      operation:'search',
+      query,
+      search:query,
+      domain:query,
+      restaurant_id:RESTAURANT.id
     });
-    afficherResultatRechercheDomaine(data.results || []);
+    domainSearchResults=extractDomainRows(data);
+    renderDomainSearchResults();
+    if(!domainSearchResults.length) toast('Aucun domaine disponible pour cette recherche.');
   }catch(e){
-    box.innerHTML = '';
-    toast(e.message || 'Recherche impossible.');
+    console.error('recherche-domaines:',e);
+    if(box) box.innerHTML='';
+    toast(e.message || 'Recherche impossible. Vérifiez la fonction recherche-domaines dans Supabase.');
+  }finally{
+    domainSearchBusy=false;
   }
 }
 
-async async function lancerActionDomaine(domain, kind){
+function purchaseDomainByIndex(index){
+  const row=domainSearchResults[Number(index)];
+  if(!row) { toast('Domaine introuvable. Relancez la recherche.'); return; }
+  const gift=isDomainGiftEligible(row);
+  purchaseDomain(row,gift);
+}
+
+function domainPurchaseBody(row,isGift){
+  const price=Number(row.price) || 0;
+  const cycle=RESTAURANT.billingCycle || 'monthly';
+  const plan=state.plan || 'free';
+  return {
+    // Compatibilité avec la fonction gestion-domaines déjà déployée.
+    action:'register',
+    operation:isGift?'gift':'purchase',
+    mode:isGift?'gift':'purchase',
+    type:isGift?'gift':'purchase',
+    kind:isGift?'gift':'paid',
+    restaurant_id:RESTAURANT.id,
+    domain:row.domain,
+    domain_name:row.domain,
+    price,
+    client_price:price,
+    customer_price_xof:price,
+    plan,
+    billing_cycle:cycle,
+    is_gift:!!isGift,
+    gift:!!isGift
+  };
+}
+
+function extractRedirectUrl(data){
+  return data?.redirect_url || data?.redirectUrl || data?.payment_url || data?.paymentUrl || data?.checkout_url || data?.checkoutUrl || data?.url || data?.payment?.redirect_url || data?.payment?.url || null;
+}
+
+async function purchaseDomain(row,isGift=false){
+  if(domainActionBusy) return;
+  if(!RESTAURANT?.id){ toast('Restaurant introuvable. Reconnectez-vous puis réessayez.'); return; }
+  if(!row?.domain){ toast('Domaine invalide.'); return; }
+  if(row.available===false){ toast('Ce domaine est indisponible.'); return; }
+  if(isGift && !isDomainGiftEligible(row)){ toast('Ce domaine ne peut pas utiliser le cadeau Premium annuel.'); return; }
+  if(!isGift && !Number.isFinite(Number(row.price))){ toast('Le prix de ce domaine est indisponible.'); return; }
+
+  domainActionBusy=true;
   try{
-    const data = await appelerFonctionDomaine('gestion-domaines', {
-      action:'register',
-      kind,
-      domain,
-      restaurant_id:RESTAURANT.id
-    });
-    const redirectUrl = data?.redirect_url || data?.redirectUrl || '';
+    const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+    if(sessionError) throw sessionError;
+    if(!sessionData?.session){
+      toast('Session expirée. Reconnectez-vous puis réessayez.');
+      return;
+    }
+
+    toast(isGift ? 'Activation du cadeau…' : 'Préparation du paiement PayTech…',false);
+    const data=await appelerFonctionDomaine(DOMAIN_EDGE_MANAGE,domainPurchaseBody(row,isGift));
+    const redirectUrl=extractRedirectUrl(data);
+
     if(redirectUrl){
+      // Le paiement est créé par Supabase/PayTech. Aucune clé secrète n'est exposée ici.
       window.location.assign(redirectUrl);
       return;
     }
-    if(data?.ok){
-      toast(kind==='gift' ? 'Votre domaine offert a été confirmé.' : 'Votre commande domaine a été lancée.');
-      setTimeout(()=>renderDashSection('settings'), 500);
+
+    if(isGift && (data?.ok || data?.success || data?.status==='active' || data?.domain_registered)){
+      toast('Domaine offert activé.');
+      await loadRestaurantIntoState(RESTAURANT.id);
+      renderDashSection('settings');
       return;
     }
-    throw new Error('PayTech n’a pas retourné de lien de paiement. Vérifie que la fonction gestion-domaines et les secrets PayTech sont bien configurés dans Supabase.');
+
+    throw new Error('PayTech n’a pas retourné de lien de paiement. Vérifiez la réponse de gestion-domaines dans Supabase.');
   }catch(e){
-    toast(e.message || 'Impossible de traiter le domaine.');
+    console.error('gestion-domaines:',e);
+    toast(e.message || 'Impossible de démarrer le paiement du domaine.');
+  }finally{
+    domainActionBusy=false;
   }
 }
 
-async function renouvelerDomaineDepuisInterface(domain, customerPriceXof){
+async function renouvelerDomaineDepuisInterface(domain,customerPriceXof){
   if(!confirm(`Renouveler ${domain} pour ${fmt(customerPriceXof)} ?`)) return;
   try{
-    const data = await appelerFonctionDomaine('gestion-domaines', {
+    const data=await appelerFonctionDomaine(DOMAIN_EDGE_MANAGE,{
       action:'renew',
+      operation:'renew',
       kind:'paid',
       domain,
+      domain_name:domain,
       restaurant_id:RESTAURANT.id,
-      customer_price_xof:customerPriceXof
+      customer_price_xof:Number(customerPriceXof),
+      price:Number(customerPriceXof)
     });
-    if(data.redirect_url) window.location.href = data.redirect_url;
+    const redirectUrl=extractRedirectUrl(data);
+    if(redirectUrl) window.location.assign(redirectUrl);
+    else if(data?.ok) toast('Renouvellement lancé.');
+    else throw new Error('PayTech n’a pas retourné de lien de paiement.');
   }catch(e){ toast(e.message || 'Renouvellement impossible.'); }
 }
 
