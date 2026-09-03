@@ -6632,26 +6632,127 @@ async function lancerRechercheDomaine(){
   const input=document.getElementById('domainSearchInput');
   const box=document.getElementById('domainSearchResults');
   const query=domainNormalizeName(input?.value || '');
-  if(!query){ toast('Entrez un nom de domaine.'); return; }
+
+  if(!query){
+    toast('Entrez un nom de domaine.');
+    return;
+  }
+
   if(domainSearchBusy) return;
+
   domainSearchBusy=true;
-  if(box) box.innerHTML='<p style="font-size:12.5px;color:var(--ink-faint);">Recherche des domaines disponibles…</p>';
+  domainSearchResults=[];
+
+  if(box){
+    box.innerHTML='<p style="font-size:12.5px;color:var(--ink-faint);">Recherche des domaines disponibles…</p>';
+  }
+
   try{
-    const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{
-      action:'search',
-      operation:'search',
-      query,
-      search:query,
-      domain:query,
-      restaurant_id:RESTAURANT.id
-    });
-    domainSearchResults=extractDomainRows(data);
-    renderDomainSearchResults();
-    if(!domainSearchResults.length) toast('Aucun domaine disponible pour cette recherche.');
+    let batch=0;
+    let tlds=null;
+    let pendingResults=[];
+    const seenDomains=new Set();
+
+    while(true){
+      const body={
+        action:'search',
+        operation:'search',
+        query,
+        search:query,
+        domain:query,
+        restaurant_id:RESTAURANT.id,
+        batch
+      };
+
+      if(Array.isArray(tlds) && tlds.length){
+        body.tlds=tlds;
+      }
+
+      const data=await appelerFonctionDomaine(
+        DOMAIN_EDGE_SEARCH,
+        body
+      );
+
+      if(!tlds && Array.isArray(data?.tlds)){
+        tlds=data.tlds;
+      }
+
+      const rows=extractDomainRows(data);
+
+      for(const row of rows){
+        const key=String(row?.domain || '').toLowerCase();
+        if(!key || seenDomains.has(key)) continue;
+        seenDomains.add(key);
+        pendingResults.push(row);
+      }
+
+      /*
+       * Affiche les résultats par groupes de 10.
+       * Pendant qu'ils sont visibles, la recherche continue
+       * sur les lots suivants.
+       */
+      while(pendingResults.length>=10){
+        domainSearchResults.push(
+          ...pendingResults.splice(0,10)
+        );
+
+        renderDomainSearchResults();
+
+        if(box && data?.has_more===true){
+          box.insertAdjacentHTML(
+            'beforeend',
+            '<p class="domain-search-progress" style="font-size:12.5px;color:var(--ink-faint);margin-top:10px;">Recherche de nouvelles disponibilités…</p>'
+          );
+        }
+
+        /*
+         * Laisse le navigateur afficher les 10 résultats
+         * avant de lancer le lot suivant.
+         */
+        await new Promise(resolve=>requestAnimationFrame(resolve));
+      }
+
+      if(data?.has_more!==true){
+        break;
+      }
+
+      const nextBatch=Number(data?.next_batch);
+
+      if(!Number.isFinite(nextBatch) || nextBatch<0){
+        break;
+      }
+
+      batch=nextBatch;
+    }
+
+    /*
+     * Affiche les derniers résultats, même s'il en reste moins de 10.
+     */
+    if(pendingResults.length){
+      domainSearchResults.push(...pendingResults);
+      renderDomainSearchResults();
+    }
+
+    if(!domainSearchResults.length){
+      if(box){
+        box.innerHTML='<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
+      }
+      toast('Aucun domaine disponible pour cette recherche.');
+    }
+
   }catch(e){
     console.error('recherche-domaines:',e);
-    if(box) box.innerHTML='';
-    toast(e.message || 'Recherche impossible. Vérifiez la fonction recherche-domaines dans Supabase.');
+
+    /*
+     * On conserve toujours les résultats déjà trouvés.
+     */
+    if(domainSearchResults.length){
+      renderDomainSearchResults();
+      toast(`${domainSearchResults.length} domaine${domainSearchResults.length>1?'s':''} trouvé${domainSearchResults.length>1?'s':''}. La recherche complémentaire a rencontré un problème.`);
+    }else{
+      if(box) box.innerHTML='';
+      toast(e.message || 'Recherche impossible. Vérifiez la fonction recherche-domaines dans Supabase.');
+    }
   }finally{
     domainSearchBusy=false;
   }
