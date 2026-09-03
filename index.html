@@ -582,7 +582,7 @@ button,a,input,select,textarea{font-family:inherit;}
 
     <div id="pricingPeriodSwitch" role="group" aria-label="Choisir la période de facturation" style="margin:0 auto 44px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;display:flex;align-items:center;width:max-content;box-shadow:0 6px 18px rgba(43,24,16,.06);">
       <button id="periodLabelM" type="button" onclick="setPricingPeriod('monthly')" aria-pressed="false" style="border:0;background:transparent;color:#000;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
-      <button id="periodLabelY" type="button" onclick="setPricingPeriod('annual')" aria-pressed="true" style="border:0;background:var(--amber-deep);color:#fff;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#fff;">-16%</span></button>
+      <button id="periodLabelY" type="button" onclick="setPricingPeriod('annual')" aria-pressed="true" style="border:0;background:var(--amber-deep);color:#fff;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span id="periodDiscountBadge" style="border:1px solid #008000;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
     </div>
 
     <div class="grid" id="pricingCards" style="grid-template-columns:repeat(3,1fr);gap:22px;max-width:960px;margin:0 auto;align-items:stretch;"></div>
@@ -4724,6 +4724,12 @@ function renderPricing(){
     ly.style.color = state.yearly ? '#fff' : '#000';
     ly.setAttribute('aria-pressed', state.yearly ? 'true' : 'false');
   }
+  const discountBadge = document.getElementById('periodDiscountBadge');
+  if(discountBadge){
+    discountBadge.textContent = 'Économisez 16 %';
+    discountBadge.style.color = '#008000';
+    discountBadge.style.borderColor = state.yearly ? '#008000' : 'rgba(255,255,255,.45)';
+  }
   const offerNote = document.getElementById('domainOfferRuleNote');
   if(offerNote){
     offerNote.style.border = `1.5px solid ${state.yearly ? 'var(--amber)' : '#D85C5C'}`;
@@ -4750,7 +4756,7 @@ function renderPricing(){
         </div>
       </div>` : '';
     return `
-    <div class="${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
+    <div class="pricing-plan-card ${isPro?'':'card'}" style="position:relative;padding:32px;border-radius:24px;display:flex;flex-direction:column;height:100%;${isPro?'background:var(--ink);color:var(--cream);box-shadow:0 20px 50px rgba(43,24,16,.15);':''}">
       ${isPro?'<span class="pill" style="position:absolute;top:-12px;left:28px;background:var(--amber);color:#fff;">Le plus choisi</span>':''}
       <h3 class="font-display" style="font-size:22px;margin-bottom:4px;">${p.name}</h3>
       <p style="font-size:13px;margin-bottom:22px;color:${isPro?'rgba(251,243,228,.7)':'var(--ink-soft)'};min-height:36px;">${p.tagline}</p>
@@ -4763,7 +4769,7 @@ function renderPricing(){
         ${p.features.map(f=>`<div class="flex items-center gap-2" style="font-size:13.5px;"><span style="color:${isPro?'var(--amber)':'var(--forest)'};display:flex;flex-shrink:0;">${ic('check',15)}</span><span style="color:${isPro?'rgba(251,243,228,.9)':'var(--ink-soft)'};">${f}</span></div>`).join('')}
       </div>
       ${giftBlock}
-      <button class="btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')" style="margin-top:18px;">${ctaLabel}</button>
+      <button class="pricing-plan-cta btn ${isPro?'btn-secondary':'btn-outline'} btn-lg w-full" onclick="startOnboarding('${p.code}')" style="margin-top:18px;">${ctaLabel}</button>
       ${!isFree?`<p style="font-size:10.5px;text-align:center;margin-top:10px;color:${isPro?'rgba(251,243,228,.55)':'var(--ink-faint)'};">Paiement immédiat par PayTech — aucun essai gratuit sur ce forfait</p>`:''}
     </div>`;
   }).join('');
@@ -5461,7 +5467,7 @@ function obStepHtml(){
       <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:${cycle==='annual'?'var(--amber-deep)':'var(--ink)'};">
         <span style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;transform:${cycle==='annual'?'translateX(24px)':'translateX(0)'};"></span>
       </button>
-      <span style="font-size:12px;font-weight:600;color:${cycle==='annual'?'var(--ink)':'var(--ink-faint)'};">Annuel <span class="pill pill-forest">-16%</span></span>
+      <span style="font-size:12px;font-weight:600;color:${cycle==='annual'?'var(--ink)':'var(--ink-faint)'};">Annuel <span class="pricing-discount-badge" style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></span>
     </div>
     <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
       ${plans.map(p=>{
@@ -6579,7 +6585,7 @@ function domainPriceNumber(value){
 
 function domainFormatPrice(value){
   const n=domainPriceNumber(value);
-  return Number.isFinite(n) ? fmt(Math.round(n))+' FCFA/an' : 'Prix indisponible';
+  return Number.isFinite(n) ? fmt(Math.round(n))+'/an' : 'Prix indisponible';
 }
 
 async function appelerFonctionDomaine(nom, corps){
@@ -8862,7 +8868,7 @@ function abonCardHtml(){
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
   <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
     <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
-    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'rgba(255,255,255,.45)':'var(--cream-line)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:${cycle==='annual'?'#fff':'var(--ink-soft)'};">-16%</span></button>
+    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
   </div>
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
     <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
@@ -9007,6 +9013,100 @@ async function reactivateSubscription(){
   .ob-progress{min-width:560px;}
   .mobile-qr-card{align-items:flex-start;}
   .mobile-qr-card img{width:92px !important;height:92px !important;}
+}
+
+/* ---------------- PRICING LAYOUT FIX — requested changes only ---------------- */
+#pricingCards{
+  width:100% !important;
+  max-width:1180px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  align-items:stretch !important;
+}
+#pricingCards > .pricing-plan-card{
+  min-width:0 !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  height:100% !important;
+  min-height:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+#pricingCards > .pricing-plan-card > .flex-col.gap-2{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+}
+#pricingCards > .pricing-plan-card .tr-domain-gift{
+  width:100% !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  flex:0 0 auto !important;
+  align-self:stretch !important;
+  position:relative !important;
+  z-index:1 !important;
+  margin-top:16px !important;
+  margin-bottom:24px !important;
+}
+#pricingCards > .pricing-plan-card .pricing-plan-cta{
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  flex:0 0 auto !important;
+  position:relative !important;
+  z-index:2 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:56px !important;
+  margin-top:0 !important;
+  padding-left:8px !important;
+  padding-right:8px !important;
+  line-height:1.2 !important;
+  font-size:14px !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:clip !important;
+  text-align:center !important;
+}
+#pricingCards > .pricing-plan-card .pricing-plan-cta + p{
+  min-height:32px !important;
+}
+@media (min-width: 901px){
+  #pricingCards > .pricing-plan-card:first-child .pricing-plan-cta{
+    margin-bottom:32px !important;
+  }
+}
+@media (max-width: 1100px){
+  #pricingCards{max-width:calc(100vw - 48px) !important;}
+}
+@media (max-width: 900px){
+  #pricingCards{
+    max-width:calc(100vw - 32px) !important;
+    grid-template-columns:1fr !important;
+    gap:18px !important;
+  }
+  #pricingCards > .pricing-plan-card{
+    width:100% !important;
+    height:auto !important;
+  }
+  #pricingCards > .pricing-plan-card .pricing-plan-cta{
+    font-size:15px !important;
+  }
+}
+@media (max-width: 560px){
+  #pricingCards{max-width:calc(100vw - 32px) !important;gap:16px !important;}
+  #pricingCards > .pricing-plan-card{padding:24px !important;height:auto !important;}
+  #pricingCards > .pricing-plan-card .pricing-plan-cta{
+    font-size:13px !important;
+    padding-left:8px !important;
+    padding-right:8px !important;
+    min-height:52px !important;
+  }
+  #pricingCards > .pricing-plan-card .tr-domain-gift{
+    margin-top:16px !important;
+    margin-bottom:24px !important;
+  }
 }
 
 /* ---------------- RESPONSIVE ---------------- */
