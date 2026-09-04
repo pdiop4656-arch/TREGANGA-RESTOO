@@ -848,14 +848,14 @@ body{min-width:0;}
     Voir le panier <span id="cartTotalBadge" class="font-tabular"></span>
   </button>
 
-  <!-- Suivre ma commande — petit bouton flottant compact, jamais un
-       grand bandeau. Visible uniquement si CE navigateur a déjà passé
-       au moins une commande sur CE restaurant (voir getMyOrders()). -->
-  <button id="trackOrderBtn" class="hidden" onclick="openTrackOrderModal()" title="Suivre ma commande" aria-label="Suivre ma commande" style="position:fixed;bottom:22px;left:14px;z-index:1050;width:44px;height:44px;background:var(--ink);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(43,24,16,.28);">
-    <span data-icon="receipt" data-size="18"></span>
-  </button>
-  <button id="reviewOrdersBtn" class="hidden" onclick="openReviewOrdersModal()" title="Avis client" aria-label="Avis client" style="position:fixed;bottom:22px;left:66px;z-index:1050;width:44px;height:44px;background:#fff;color:var(--ink);border:1px solid var(--cream-line);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(43,24,16,.16);">
-    <span data-icon="star" data-size="18"></span>
+  <!-- Espace client : un seul petit bouton flottant qui regroupe
+       le suivi des commandes et les avis. Visible uniquement après
+       qu'au moins une commande a été passée sur ce restaurant. -->
+  <button id="trackOrderBtn" class="hidden" onclick="openTrackOrderModal()" title="Mes commandes" aria-label="Mes commandes" style="position:fixed;bottom:22px;left:14px;z-index:1050;width:48px;height:48px;background:var(--ink);color:var(--cream);border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(43,24,16,.28);border:0;">
+    <span style="position:relative;width:28px;height:24px;display:block;">
+      <span data-icon="receipt" data-size="17" style="position:absolute;left:0;top:3px;"></span>
+      <span data-icon="star" data-size="15" style="position:absolute;right:0;bottom:0;"></span>
+    </span>
   </button>
 </section>
 
@@ -866,7 +866,7 @@ body{min-width:0;}
   <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeTrackOrderModal()"></div>
   <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:80vh;overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
     <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
-      <h2 class="font-display" style="font-size:17px;">Suivre ma commande</h2>
+      <h2 class="font-display" style="font-size:17px;">Mes commandes</h2>
       <button onclick="closeTrackOrderModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
     </div>
     <div style="padding:16px 20px;" id="trackOrderBody"></div>
@@ -2512,35 +2512,53 @@ function renderTrackOrderButton(){
   const hasOrders = !viewerIsStaff && getMyOrders().length > 0;
   const btn = document.getElementById('trackOrderBtn');
   if(btn) btn.classList.toggle('hidden', !hasOrders);
-  const reviewBtn = document.getElementById('reviewOrdersBtn');
-  if(reviewBtn) reviewBtn.classList.toggle('hidden', !hasOrders);
 }
 async function openTrackOrderModal(){
-  unsubscribeFromOrderTracking(); // quitte le suivi d'une commande précise si on revient à la liste
+  unsubscribeFromOrderTracking();
   const overlay = document.getElementById('trackOrderOverlay');
   overlay.classList.remove('hidden');
   const body = document.getElementById('trackOrderBody');
   const myOrders = getMyOrders();
+
   body.innerHTML = `<div class="text-center" style="padding:30px 0;">${ic('loader',26,{className:'spin', stroke:'var(--amber-deep)'})}</div>`;
   hydrateIcons(body);
 
   const results = await Promise.all(myOrders.map(async ref => {
-    const {data, error} = await supabaseClient.rpc('track_order', {p_restaurant_id: RESTAURANT.id, p_num: ref.num, p_phone: ref.phone});
+    const {data, error} = await supabaseClient.rpc('track_order', {
+      p_restaurant_id: RESTAURANT.id,
+      p_num: ref.num,
+      p_phone: ref.phone
+    });
     return {ref, row: Array.isArray(data) ? data[0] : data, error};
   }));
 
-  body.innerHTML = results.map(({ref, row}) => {
-    if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p></div>`;
-    const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
-    return `<button onclick="openOrderTrackingDetail('${row.num}','${ref.phone}')" class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;">
-      <div class="flex items-center justify-between" style="margin-bottom:6px;">
-        <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
-        <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
-      </div>
-      <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
-      <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
-    </button>`;
-  }).join('') || `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune commande à afficher.</p>`;
+  body.innerHTML = `
+    <div style="padding:2px 0 8px;">
+      <p style="font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:14px;">
+        Retrouvez toutes vos commandes. Ouvrez une commande pour suivre son état ou laisser votre avis.
+      </p>
+    </div>
+    ${results.map(({ref,row}) => {
+      if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;">
+        <p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p>
+      </div>`;
+      const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
+      return `<button type="button" onclick="openOrderTrackingDetail('${row.num}','${ref.phone}')"
+        class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;cursor:pointer;">
+        <div class="flex items-center justify-between" style="margin-bottom:6px;">
+          <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
+          <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+        </div>
+        <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
+        <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;">
+          <span>Total</span><span class="font-tabular">${fmt(row.total)}</span>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid var(--cream-line);padding-top:9px;text-align:center;font-size:12.5px;font-weight:600;color:var(--amber-deep);">
+          Voir les détails ${ic('arrowRight',13)}
+        </div>
+      </button>`;
+    }).join('') || `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune commande à afficher.</p>`
+  }`;
   hydrateIcons(body);
 }
 function closeTrackOrderModal(){ document.getElementById('trackOrderOverlay').classList.add('hidden'); unsubscribeFromOrderTracking(); }
@@ -2618,9 +2636,16 @@ function renderOrderTrackingDetail(row, phone){
       <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
       ${delivery && row.address ? `<div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',13,{stroke:'var(--ink-faint)'})}</span><span style="font-size:12.5px;color:var(--ink-soft);">${escapeAttr(row.address)}</span></div>` : ''}
     </div>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;">
-      <button class="btn btn-outline" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>
-      <button class="btn btn-outline" onclick="openReviewModal('${row.num}')">${ic('star',14)} Avis client</button>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <button class="btn" style="background:var(--amber);color:#fff;min-height:52px;" onclick="openOrderTrackingDetail('${row.num}','${phone||''}')">
+        ${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
+      </button>
+      <button class="btn btn-outline" style="min-height:52px;" onclick="openReviewModal('${row.num}')">
+        ${ic('star',18)} <span style="margin-left:6px;">Avis client</span>
+      </button>
+    </div>
+    <div style="margin-bottom:12px;">
+      <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>
     </div>`;
   hydrateIcons(body);
 }
