@@ -2508,6 +2508,23 @@ function rememberMyOrder(num, phone){
     localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(all));
   }catch(e){ /* localStorage indisponible (navigation privée stricte...) — pas bloquant */ }
 }
+function syncRememberedMyOrderNumber(oldNum, newNum, phone){
+  if(!RESTAURANT.id || !newNum) return;
+  try{
+    const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
+    const list = Array.isArray(all[RESTAURANT.id]) ? all[RESTAURANT.id] : [];
+    const oldIndex = list.findIndex(o=>String(o.num)===String(oldNum));
+    const newExists = list.some(o=>String(o.num)===String(newNum));
+    if(oldIndex >= 0){
+      if(newExists && String(list[oldIndex].num)!==String(newNum)) list.splice(oldIndex,1);
+      else list[oldIndex] = {num:String(newNum), phone:phone||list[oldIndex].phone||''};
+    }else if(!newExists){
+      list.unshift({num:String(newNum), phone:phone||''});
+    }
+    all[RESTAURANT.id] = list.slice(0, 10);
+    localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(all));
+  }catch(e){ /* localStorage indisponible — pas bloquant */ }
+}
 function renderTrackOrderButton(){
   const hasOrders = !viewerIsStaff && getMyOrders().length > 0;
   const btn = document.getElementById('trackOrderBtn');
@@ -6481,10 +6498,13 @@ async function submitOrderInternal(){
       return;
     }
 
+    const localOrderNum = orderSnapshot.num;
     orderSnapshot.id = saved.id;
     orderSnapshot.num = String(saved.num);
     orderSnapshot.createdAt = saved.created_at ? new Date(saved.created_at) : orderSnapshot.createdAt;
+    syncRememberedMyOrderNumber(localOrderNum, orderSnapshot.num, c.phone);
     state.lastOrder.num = orderSnapshot.num;
+    renderConfirmation();
     const live = DEMO_ORDERS.find(o=>o===orderSnapshot || String(o.id)===String(orderId));
     if(live){
       live.id = orderSnapshot.id;
