@@ -429,9 +429,8 @@ button,a,input,select,textarea{font-family:inherit;}
   // les deux en même temps. Reflète exactement l'ordre de priorité
   // réel utilisé par restoreSession() (session existante d'abord, lien
   // direct vers un restaurant ensuite).
-  if(localStorage.getItem('tg_returning_user')){
-    document.getElementById('authCheckSplash').classList.remove('hidden');
-  } else if(/[?&]resto=/.test(location.search) ||
+  /* Une session existante ne doit jamais afficher l'écran "Vérification de votre session". */
+  if(/[?&]resto=/.test(location.search) ||
             (location.hostname.endsWith('.terangaresto.com') &&
              location.hostname !== 'www.terangaresto.com')){
     document.getElementById('restoSplash').classList.remove('hidden');
@@ -2115,7 +2114,14 @@ const SUPABASE_PUBLISHABLE_KEY =
 
 // Client global, utilisé par toutes les fonctions du fichier.
 // Clé PUBLISHABLE uniquement — jamais de clé service_role ici.
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+  }
+});
 
 // Domaine public officiel TerangaResto. En production, tous les liens
 // restaurant, QR Codes et partages utilisent ce domaine; en local,
@@ -3391,47 +3397,52 @@ async function restoreSession(){
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
 
-    // findMyRestaurantId() revalide lui-même la session en direct
-    // (auth.getUser()) — on ne conditionne donc plus cet appel à l'état
-    // de la variable locale `currentUser`, qui pourrait être en retard
-    // d'une frappe sur la vraie session.
-    const rid = await findMyRestaurantId();
-    if(rid){
-      hideRestoSplash(); // garde-fou : si un ?resto= était aussi présent dans l'URL, ne jamais laisser l'écran de chargement bloqué au-dessus du tableau de bord
-      hideAuthCheckSplash();
-      // Phase rapide seulement ici : affiche le tableau de bord dès que
-      // le restaurant/catégories/produits sont prêts. Commandes/
-      // personnel/paiements/avis se chargent APRÈS, en arrière-plan
-      // (voir loadRestaurantSecondaryData), sans retarder l'accès.
-      const ok = await loadRestaurantCore(rid);
-      if(!ok) return;
+    if(currentUser){
+      const desiredSection = requestedDashSection() || 'overview';
+      const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
+      let rid = null;
+      try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
+
+      /* Entrée directe : le tableau de bord devient visible tout de suite.
+         Les données Supabase sont ensuite chargées et remplacent les états
+         initiaux, sans écran d'attente intermédiaire. */
       viewerIsStaff = true;
+      state.dashSection = desiredSection;
+      hideRestoSplash();
+      hideAuthCheckSplash();
       setView('dashboard');
-      setDashSection(requestedDashSection() || 'overview');
-      loadRestaurantSecondaryData(rid);
-      // Retour depuis PayTech (success_url/cancel_url de paytech-checkout) —
-      // informe la personne de ce qui vient de se passer. Le forfait n'est
-      // considéré actif que si subscription_status l'est VRAIMENT (rechargé
-      // ci-dessus depuis Supabase) — jamais supposé actif simplement parce
-      // que le paramètre "paytech=success" est présent dans l'URL, qui
-      // pourrait tout aussi bien venir d'une confirmation encore en cours
-      // de traitement par le webhook.
-      const paytechParam = new URLSearchParams(location.search).get('paytech');
-      const domainParam = new URLSearchParams(location.search).get('domain');
-      if(paytechParam === 'success'){
-        setDashSection('abonnement');
-        try{ sessionStorage.removeItem('teranga_paytech_return_section'); }catch(e){}
-        toast(isPaidPlanActive()
-          ? ic('checkCircle',14)+' Paiement confirmé — votre forfait est actif.'
-          : ic('clock',14)+' Paiement reçu par PayTech — confirmation en cours, actualisez dans quelques instants si votre forfait n\'apparaît pas encore actif.', true);
-      } else if(paytechParam === 'cancel'){
-        setDashSection(consumePayTechReturnSection('abonnement'));
-        toast("Paiement annulé — vous êtes resté dans la section où vous aviez lancé le paiement.");
-      } else if(domainParam === 'cancel'){
-        setDashSection(consumePayTechReturnSection('settings'));
-        toast("Paiement annulé — vous êtes resté dans la section Domaine.");
+
+      /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
+      if(rid){
+        try{
+          const ok = await loadRestaurantCore(rid);
+          if(ok){
+            setView('dashboard');
+            setDashSection(desiredSection);
+            loadRestaurantSecondaryData(rid);
+            return;
+          }
+        }catch(e){
+          console.warn('Chargement direct du restaurant mémorisé:', e);
+        }
       }
-      return;
+
+      /* Premier passage ou restaurant mémorisé devenu inaccessible :
+         seulement ici on retrouve l'association propriétaire/personnel. */
+      rid = await findMyRestaurantId(currentUser.id);
+      if(rid){
+        try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
+        await loadRestaurantCore(rid);
+        setView('dashboard');
+        setDashSection(desiredSection);
+        loadRestaurantSecondaryData(rid);
+        return;
+      }
+
+      viewerIsStaff = false;
+      setView('landing');
+    } else {
+      hideAuthCheckSplash();
     }
 
     const pendingOtp = loadPendingOnboarding();
@@ -3446,20 +3457,8 @@ async function restoreSession(){
       return;
     }
 
-    // Ici, rid est confirmé null : soit aucune session, soit une session
-    // qui ne correspond plus à un restaurant réel. AVANT de conclure
-    // "aucune session utile", on vérifie s'il s'agit en réalité d'une
-    // personne qui vient de confirmer son e-mail après avoir déjà
-    // rempli tout le parcours 1/7→7/7 — dans ce cas, on termine la
-    // création automatiquement à partir des données déjà sauvegardées,
-    // sans jamais rien redemander ni la renvoyer vers "Connexion".
     if(await tryResumePendingOnboarding()) return;
 
-    // Ici, on sait qu'il n'y a ni restaurant existant ni onboarding en
-    // attente à reprendre. Le marqueur "utilisateur de retour" ne doit
-    // plus déclencher l'écran de vérification au PROCHAIN chargement —
-    // sinon la personne resterait bloquée dessus indéfiniment à chaque
-    // visite future, alors qu'elle n'a en réalité plus de session valide.
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
@@ -3470,27 +3469,22 @@ async function restoreSession(){
       viewerIsStaff = false;
       if(found){
         setView('storefront');
-        // Laisse un très bref instant voir le vrai logo/nom du
-        // restaurant affichés sur l'écran de chargement avant la
-        // transition — sinon la barre saute directement à 100% sans
-        // que personne n'ait eu le temps de la voir se remplir.
         hideRestoSplash();
         return;
       }
-      // Un lien de restaurant qui ne correspond à rien ne doit jamais
-      // retomber sur la page d'accueil générale TerangaResto — ça
-      // laisserait croire au visiteur qu'il est "sur la plateforme"
-      // plutôt que sur un lien de restaurant cassé/expiré.
-      hideRestoSplash();
       renderRestaurantNotFound();
+      hideRestoSplash();
       return;
     }
-    // Ni lien direct ni session propriétaire : on reste sur la page
-    // d'accueil TerangaResto par défaut (state.view==='landing').
+
+    hideRestoSplash();
   }catch(e){
-    console.error('Supabase — échec du chargement initial', e);
-    hideRestoSplash(); // ne jamais laisser le client bloqué indéfiniment sur l'écran de chargement
+    console.error('Restauration session:', e);
+    currentUser = null;
+    viewerIsStaff = false;
+    try{ localStorage.removeItem('tg_returning_user'); }catch(_e){}
     hideAuthCheckSplash();
+    hideRestoSplash();
   }
 }
 </script>
@@ -3626,39 +3620,50 @@ async function submitLogin(){
   currentUser = data.user;
   simulatedRole = null;
   const desiredSection = requestedDashSection() || 'overview';
+  const lastRidKey = 'tg_last_restaurant_' + String(data.user.id);
+  let rid = null;
+  try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
-  // Dès que Supabase Auth a confirmé les identifiants, on sort immédiatement
-  // de la modale et on affiche un écran neutre du tableau de bord. Aucune
-  // donnée d’un autre restaurant n’est affichée pendant la revalidation.
   setLoginVerifying(false);
   closeLogin();
-  showDashboardBootScreen(desiredSection);
+  viewerIsStaff = true;
+  state.dashSection = desiredSection;
+  setView('dashboard');
 
   try{
-    const rid = await findMyRestaurantId(data.user.id);
+    /* Compte déjà connu : on charge directement le restaurant mémorisé. */
+    if(rid){
+      const ok = await loadRestaurantCore(rid);
+      if(ok){
+        setView('dashboard');
+        setDashSection(desiredSection);
+        loadRestaurantSecondaryData(rid);
+        return;
+      }
+    }
+
+    rid = await findMyRestaurantId(data.user.id);
     if(!rid){
       viewerIsStaff = false;
-      closeLogin();
+      setView('landing');
+      openLogin('login');
       toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
       startOnboarding();
       return;
     }
 
+    try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
     await loadRestaurantCore(rid);
-    viewerIsStaff = true;
     setView('dashboard');
     setDashSection(desiredSection);
     loadRestaurantSecondaryData(rid);
-    try{ localStorage.setItem('tg_last_restaurant_'+String(data.user.id), String(rid)); }catch(e){}
     toast('Connecté — bienvenue sur votre tableau de bord.');
   }catch(e){
     console.error('Connexion — chargement du restaurant:', e);
     viewerIsStaff = false;
-    const el = document.getElementById('dashContent');
-    if(el){
-      el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('alertTriangle',28,{stroke:'var(--terracotta)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Impossible de charger votre espace</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Vérifiez votre connexion Internet puis réessayez.</p><button class="btn btn-secondary" style="margin-top:16px;" onclick="openLogin('login')">Réessayer</button></div>`;
-      hydrateIcons(el);
-    }
+    setView('landing');
+    openLogin('login');
+    toast('Impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
   }
 }
 
