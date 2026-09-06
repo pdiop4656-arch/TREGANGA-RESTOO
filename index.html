@@ -3187,9 +3187,13 @@ function renderStorefrontGateOverlay(){
           <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
             ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
           </div>
-          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible.</h1>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce site est temporairement indisponible.<br>L'abonnement du propriétaire <strong style="color:#D97706;font-weight:800;">a expiré.</strong></p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
+          <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
+            <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
+            <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
+          </div>
           <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
           <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
             <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
@@ -3403,14 +3407,13 @@ async function restoreSession(){
       let rid = null;
       try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
-      /* Entrée directe : le tableau de bord devient visible tout de suite.
-         Les données Supabase sont ensuite chargées et remplacent les états
-         initiaux, sans écran d'attente intermédiaire. */
+      /* Ne jamais afficher un tableau de bord intermédiaire.
+         On charge d'abord le restaurant de l'utilisateur, puis seulement
+         après succès on affiche le VRAI tableau de bord avec ses données. */
       viewerIsStaff = true;
       state.dashSection = desiredSection;
       hideRestoSplash();
       hideAuthCheckSplash();
-      setView('dashboard');
 
       /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
       if(rid){
@@ -3624,17 +3627,20 @@ async function submitLogin(){
   let rid = null;
   try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
-  setLoginVerifying(false);
-  closeLogin();
+  /* Ne ferme pas la connexion et n'affiche pas un faux tableau de bord
+     avant que le restaurant réel soit chargé. */
   viewerIsStaff = true;
   state.dashSection = desiredSection;
-  setView('dashboard');
 
   try{
     /* Compte déjà connu : on charge directement le restaurant mémorisé. */
     if(rid){
       const ok = await loadRestaurantCore(rid);
       if(ok){
+        setLoginVerifying(false);
+        closeLogin();
+        hideRestoSplash();
+        hideAuthCheckSplash();
         setView('dashboard');
         setDashSection(desiredSection);
         loadRestaurantSecondaryData(rid);
@@ -3654,6 +3660,10 @@ async function submitLogin(){
 
     try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
     await loadRestaurantCore(rid);
+    setLoginVerifying(false);
+    closeLogin();
+    hideRestoSplash();
+    hideAuthCheckSplash();
     setView('dashboard');
     setDashSection(desiredSection);
     loadRestaurantSecondaryData(rid);
@@ -3661,6 +3671,7 @@ async function submitLogin(){
   }catch(e){
     console.error('Connexion — chargement du restaurant:', e);
     viewerIsStaff = false;
+    setLoginVerifying(false);
     setView('landing');
     openLogin('login');
     toast('Impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
@@ -3705,18 +3716,18 @@ async function submitInviteAccept(){
   const accepted = (acceptRows && acceptRows[0]) || match;
   if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de finaliser l’acceptation : ' + supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.')); return; }
 
-  // CORRECTION DE LA MÊME RÉGRESSION QUE submitLogin() : closeLogin()
-  // se déclenchait ici AVANT loadRestaurantCore() (asynchrone) — la
-  // page d'accueil publique était donc révélée derrière la modale déjà
-  // fermée, pendant toute cette attente. Fermée seulement juste avant
-  // setView('dashboard') désormais, jamais avant.
-  setLoginVerifying(false,'inviteSubmitBtn');
-  closeLogin();
+  // Même règle ici : aucun tableau de bord intermédiaire n'est affiché.
+  // Le compte est authentifié, mais l'espace réel n'apparaît qu'après
+  // chargement complet du restaurant concerné.
   setSimulatedRole(accepted.role, accepted.permissions);
-  showDashboardBootScreen(requestedDashSection() || 'overview');
+  state.dashSection = requestedDashSection() || 'overview';
   try{
     await loadRestaurantCore(accepted.restaurant_id);
     viewerIsStaff = true;
+    setLoginVerifying(false,'inviteSubmitBtn');
+    closeLogin();
+    hideRestoSplash();
+    hideAuthCheckSplash();
     setView('dashboard');
     setDashSection(requestedDashSection() || 'overview');
     toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
@@ -5048,6 +5059,45 @@ function rememberPreviousSlug(previousSlug, nextSlug){
 
 /* Recherche d'un ancien sous-domaine pendant sa fenêtre de 48 h.
    Après expiration, il n'est plus reconnu et devient introuvable. */
+async function loadRestaurantPublicGateState(slug){
+  /* Vérification 100 % côté HTML : si la lecture publique du restaurant
+     échoue parce que RLS masque une boutique non publique, l'RPC déjà
+     présent dans Supabase `is_slug_available()` permet de savoir si le slug
+     existe sans exposer aucune donnée du restaurant.
+
+     - false  => le slug existe mais n'est pas publiquement lisible :
+                  on affiche la page d'accès suspendu/abonnement expiré.
+     - true   => aucun restaurant n'existe pour ce slug : on conserve
+                  le vrai message "Restaurant introuvable".
+
+     Aucun nouveau réglage SQL n'est requis et aucun secret n'est ajouté
+     au HTML. */
+  try{
+    const {data, error} = await supabaseClient.rpc('is_slug_available', {p_slug: slug});
+    if(error || data !== false) return false;
+
+    RESTAURANT.id = '';
+    RESTAURANT.created = true;
+    RESTAURANT.name = 'Ce restaurant';
+    RESTAURANT.slug = slug;
+    RESTAURANT.isPublished = true;
+    RESTAURANT.subscriptionStatus = 'expired';
+    RESTAURANT.trialEndsAt = null;
+    RESTAURANT.currentPeriodEnd = null;
+    RESTAURANT.logoDataUrl = '';
+    RESTAURANT.coverDataUrl = '';
+    RESTAURANT.primary = '#E8871E';
+    RESTAURANT.secondary = '#D97706';
+    RESTAURANT.textColor = '#2B1810';
+    applyRestaurantName(RESTAURANT.name);
+    applyThemeColors(RESTAURANT.primary, RESTAURANT.secondary, RESTAURANT.textColor);
+    return true;
+  }catch(e){
+    console.warn('Vérification publique du restaurant indisponible:', e);
+    return false;
+  }
+}
+
 async function loadRestaurantBySlug(slug){
   const clean = slugify(slug);
   if(!clean) return false;
@@ -5061,6 +5111,8 @@ async function loadRestaurantBySlug(slug){
   if(data){
     return await loadRestaurantPublicFast(data.id);
   }
+
+  if(await loadRestaurantPublicGateState(clean)) return true;
 
   try{
     const {data:redirectRows} = await supabaseClient
