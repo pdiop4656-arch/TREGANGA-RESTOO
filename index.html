@@ -9702,10 +9702,10 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 </style>
 <script type="module">
 /* =====================================================================
-   TERANGARESTO — ASSISTANT IA NATIF — CLIENT CORRIGÉ
-   - Appelle l’Edge Function Supabase `ai-agency`.
-   - Envoie le contexte réel déjà chargé dans le dashboard.
-   - Aucune clé Groq dans le navigateur.
+   TERANGARESTO — ASSISTANT IA NATIF
+   Module isolé : aucun moteur local n'est chargé.
+   Les questions sont envoyées à l'Edge Function Supabase `ai-agency`,
+   qui utilise la clé GROQ_API_KEY côté serveur.
    ===================================================================== */
 (function(){
   'use strict';
@@ -9714,7 +9714,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   const AI_HISTORY_KEY='tg_ai_history_';
   const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
 
-  function aiSvg(){ return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 2l3.4 12.1L39 17.5l-11.6 3.4L24 33l-3.4-12.1L9 17.5l11.6-3.4L24 2zm14 26l1.9 6.1L46 36l-6.1 1.9L38 44l-1.9-6.1L30 36l6.1-1.9L38 28zM10 30l1.5 4.5L16 36l-4.5 1.5L10 42l-1.5-4.5L10 30z" fill="currentColor"/></svg>'; }
+  function aiSvg(){ return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 2l3.4 12.1L39 17.5l-11.6 3.4L24 33l-3.4-12.1L9 17.5l11.6-3.4L24 2zm14 26l1.9 6.1L46 36l-6.1 1.9L38 44l-1.9-6.1L30 36l6.1-1.9L38 28zM10 30l1.5 4.5L16 36l-4.5 1.5L10 42l-1.5-4.5L4 36l4.5-1.5L10 30z" fill="currentColor"/></svg>'; }
   function getAid(){ return RESTAURANT?.id ? String(RESTAURANT.id) : 'anonymous'; }
   function getAiEnabled(){
     if(typeof RESTAURANT?.aiEnabled==='boolean') return RESTAURANT.aiEnabled;
@@ -9723,86 +9723,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function setLocalAiEnabled(v){ try{localStorage.setItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid(),v?'1':'0');}catch(e){} }
   function loadHistory(){ try{ const raw=localStorage.getItem(AI_HISTORY_KEY+getAid()); const x=raw?JSON.parse(raw):[]; return Array.isArray(x)?x.slice(-30):[];}catch(e){return [];} }
   function saveHistory(){ try{localStorage.setItem(AI_HISTORY_KEY+getAid(),JSON.stringify(aiMessages.slice(-30)));}catch(e){} }
-
-  function normalizeOrder(o){
-    const created = o?.createdAt instanceof Date ? o.createdAt.toISOString() : (o?.createdAt ? new Date(o.createdAt).toISOString() : null);
-    return {
-      num:String(o?.num??''),
-      total:Number(o?.total)||0,
-      status:String(o?.status||''),
-      pay:String(o?.pay||''),
-      payStatus:String(o?.payStatus||''),
-      type:String(o?.orderType||o?.type||''),
-      created_at:created,
-      items:Array.isArray(o?.items)?o.items.slice(0,30).map(i=>({
-        name:String(i?.name??i?.productName??''),
-        qty:Number(i?.qty??i?.quantity??1)||1,
-        price:Number(i?.price)||0,
-        total:Number(i?.total)||0
-      })):[]
-    };
-  }
-
-  function buildAiContext(){
-    const orders = Array.isArray(DEMO_ORDERS) ? DEMO_ORDERS : [];
-    const products = Array.isArray(PRODUCTS) ? PRODUCTS : [];
-    const categories = (typeof catsState==='object' && catsState) ? catsState : {};
-    const staff = Array.isArray(staffState) ? staffState : [];
-    const reviews = Array.isArray(REVIEWS) ? REVIEWS : [];
-    const payments = Array.isArray(paymentsHistory) ? paymentsHistory : [];
-
-    const orderRows = orders
-      .map(normalizeOrder)
-      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-
-    const paidOrders = orderRows.filter(o=>['paid','success','completed','succeeded'].includes(o.payStatus.toLowerCase()) || o.payStatus==='paid');
-    const totalAll = orderRows.reduce((s,o)=>s+o.total,0);
-    const todayKey = new Date().toISOString().slice(0,10);
-    const todayOrders = orderRows.filter(o=>o.created_at && o.created_at.slice(0,10)===todayKey);
-    const todayTotal = todayOrders.reduce((s,o)=>s+o.total,0);
-
-    const productRows = products.map(p=>( {
-      id:String(p?.id??''),
-      name:String(p?.name??''),
-      price:Number(p?.price)||0,
-      category:String(p?.cat??''),
-      active:p?.active!==false,
-      available:p?.available!==false,
-      stock:p?.stock==null?null:Number(p.stock),
-      threshold:p?.threshold==null?null:Number(p.threshold)
-    }));
-
-    const recentOrders = orderRows.slice(0,500);
-    return {
-      generated_at:new Date().toISOString(),
-      restaurant:{
-        id:getAid(),
-        name:String(RESTAURANT?.name||'TerangaResto'),
-        type:String(RESTAURANT?.type||''),
-        city:String(RESTAURANT?.city||''),
-        published:!!RESTAURANT?.isPublished,
-        ai_enabled:!!RESTAURANT?.aiEnabled,
-        hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours:null,
-        delivery:RESTAURANT?.delivery||null,
-        plan:String(state?.plan||RESTAURANT?.plan||''),
-        subscription_status:String(RESTAURANT?.subscriptionStatus||'')
-      },
-      categories:Object.entries(categories).map(([key,label])=>({key:String(key),label:String(label)})),
-      products:productRows,
-      staff:staff.map(s=>({name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||'')})),
-      reviews:reviews.slice(0,100).map(r=>({rating:Number(r?.rating)||0,comment:String(r?.comment||r?.content||''),created_at:r?.created_at||r?.createdAt||null})),
-      payments:payments.slice(0,20).map(p=>({amount:Number(p?.amount??p?.total??0)||0,status:String(p?.status||p?.payment_status||''),created_at:p?.created_at||null})),
-      orders_summary:{
-        loaded_orders:orderRows.length,
-        orders_today:todayOrders.length,
-        sales_today_fcfa:todayTotal,
-        total_loaded_sales_fcfa:totalAll,
-        paid_orders_loaded:paidOrders.length,
-        note:'Les commandes détaillées ci-dessous correspondent aux données actuellement chargées dans le tableau de bord.'
-      },
-      recent_orders:recentOrders
-    };
-  }
+  function escapeText(v){ return String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
   function showAi(){
     if(!currentUser || !viewerIsStaff || state.view!=='dashboard' || !getAiEnabled() || isAccessBlocked()) return;
@@ -9815,45 +9736,41 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function openAi(){
     if(!getAiEnabled() || !currentUser || !viewerIsStaff) return;
     aiOpen=true; aiMessages=loadHistory();
-    if(!aiMessages.length) aiMessages=[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Posez-moi une question générale ou une question sur votre restaurant : ventes, commandes, produits, stock, personnel, horaires, avis, etc. Je réponds à partir des données actuellement disponibles dans votre espace.'}];
+    if(!aiMessages.length) aiMessages=[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Je peux répondre à vos questions et, une fois les outils métier activés, analyser votre restaurant et effectuer certaines actions de gestion.'}];
     renderAi();
   }
-  function closeAi(){aiOpen=false;const p=document.getElementById('tgAiPanel');if(p)p.remove();}
+  function closeAi(){ aiOpen=false; const p=document.getElementById('tgAiPanel'); if(p)p.remove(); }
   function renderAi(){
     if(!aiOpen || !getAiEnabled()) return;
     let panel=document.getElementById('tgAiPanel');
-    if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">Espace privé · réponses intelligentes</div></div></div><button class="tg-ai-close" type="button" aria-label="Fermer">×</button></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Quels sont mes résultats aujourd’hui ?">Résultats aujourd’hui</button><button class="tg-ai-chip" data-q="Quelles sont mes commandes les plus récentes ?">Commandes récentes</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou presque en rupture ?">Stock</button><button class="tg-ai-chip" data-q="Que peux-tu faire pour mon restaurant ?">Que peux-tu faire ?</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div></div>`;
+    if(!panel){ panel=document.createElement('section'); panel.id='tgAiPanel'; panel.className='tg-ai-panel'; document.body.appendChild(panel); }
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">Espace privé · réponses rapides et sécurisées</div></div></div><button class="tg-ai-close" type="button" aria-label="Fermer">×</button></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Salut">Salut</button><button class="tg-ai-chip" data-q="Quelle est la capitale du Sénégal ?">Question générale</button><button class="tg-ai-chip" data-q="Comment peux-tu m’aider ?">Que peux-tu faire ?</button><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div></div>`;
     const list=panel.querySelector('#tgAiMessages');
-    for(const m of aiMessages){const div=document.createElement('div');div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;div.textContent=m.text;list.appendChild(div);}
+    for(const m of aiMessages){ const div=document.createElement('div'); div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`; div.textContent=m.text; list.appendChild(div); }
     list.scrollTop=list.scrollHeight;
     panel.querySelector('.tg-ai-close').onclick=closeAi;
     panel.querySelector('#tgAiForm').onsubmit=sendAi;
     panel.querySelector('#tgAiMic').onclick=toggleMic;
-    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{const input=panel.querySelector('#tgAiInput');if(input){input.value=btn.dataset.q||'';input.focus();}});
+    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{ const input=panel.querySelector('#tgAiInput'); if(input){ input.value=btn.dataset.q||''; input.focus(); } });
     setTimeout(()=>panel.querySelector('#tgAiInput')?.focus(),0);
   }
-  function appendMessage(role,text){aiMessages.push({role,text:String(text??'')});saveHistory();renderAi();}
-  function setStatus(html,show=true){const el=document.getElementById('tgAiStatus');if(!el)return;el.innerHTML=html||'';el.hidden=!show;}
-  function busy(v){const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic');if(s)s.disabled=v;if(m)m.disabled=v;}
+  function appendMessage(role,text){ aiMessages.push({role,text:String(text??'')}); saveHistory(); renderAi(); }
+  function setStatus(html,show=true){ const el=document.getElementById('tgAiStatus'); if(!el)return; el.innerHTML=html||''; el.hidden=!show; }
+  function busy(v){ const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'); if(s)s.disabled=v; if(m)m.disabled=v; }
 
   async function askGroq(text){
-    if(!window.supabaseClient || typeof supabaseClient.functions?.invoke!=='function') throw new Error('Supabase Functions indisponible.');
-    const history=aiMessages.filter((m)=>m && (m.role==='user'||m.role==='assistant')).slice(-10).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    if(typeof supabaseClient === 'undefined' || !supabaseClient?.functions || typeof supabaseClient.functions.invoke!=='function') throw new Error('Supabase Functions indisponible.');
+    const history=aiMessages.slice(-10).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const payload={
       question:text,
+      message:text,
       restaurant_id:RESTAURANT?.id ? String(RESTAURANT.id) : '',
       restaurant_name:RESTAURANT?.name ? String(RESTAURANT.name) : '',
       user_id:currentUser?.id ? String(currentUser.id) : '',
-      messages:history,
-      context:buildAiContext()
+      messages:history
     };
     const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});
-    if(error){
-      const detail=error?.context?.body ? String(error.context.body) : '';
-      throw new Error(detail || error.message || 'La fonction ai-agency a échoué.');
-    }
-    if(data?.success===false) throw new Error(String(data?.error||'Le service IA a refusé la demande.'));
+    if(error) throw error;
     const answer=String(data?.answer ?? data?.response ?? data?.message ?? data?.text ?? '').trim();
     if(!answer) throw new Error('Réponse IA vide.');
     return answer;
@@ -9865,36 +9782,54 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const input=document.getElementById('tgAiInput');
     const text=(input?.value||'').trim();
     if(!text)return;
-    aiThinking=true;busy(true);appendMessage('user',text);if(input)input.value='';
+    aiThinking=true; busy(true); appendMessage('user',text); if(input)input.value='';
     setStatus('<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>');
-    try{const answer=await askGroq(text);setStatus('',false);appendMessage('assistant',answer);}catch(err){console.error('TerangaResto IA:',err);setStatus('',false);appendMessage('assistant','Le service IA n’a pas pu traiter cette demande. Détail : '+String(err?.message||'erreur inconnue')+'\n\nVérifiez que la fonction « ai-agency » a bien été déployée après sa modification.');}finally{aiThinking=false;busy(false);}
+    try{
+      const answer=await askGroq(text);
+      setStatus('',false);
+      appendMessage('assistant',answer);
+    }catch(err){
+      console.error('TerangaResto IA:',err);
+      setStatus('',false);
+      appendMessage('assistant','Je n’arrive pas à joindre le service IA pour le moment. Vérifiez la fonction « ai-agency » et réessayez.');
+    }finally{
+      aiThinking=false; busy(false);
+    }
   }
 
   function toggleMic(){
     const C=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!C){appendMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.');return;}
+    if(!C){ appendMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.'); return; }
     const mic=document.getElementById('tgAiMic');
-    if(aiListening){aiRecognition?.stop();return;}
-    aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;
+    if(aiListening){ aiRecognition?.stop(); return; }
+    aiRecognition=new C(); aiRecognition.lang='fr-FR'; aiRecognition.interimResults=false; aiRecognition.maxAlternatives=1;
     aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');if(mic)mic.textContent='■';setStatus('Parlez…',true)};
     aiRecognition.onresult=(e)=>{const v=e.results?.[0]?.[0]?.transcript||'';const input=document.getElementById('tgAiInput');if(input){input.value=v;input.focus();}};
-    aiRecognition.onerror=(e)=>{console.warn('SpeechRecognition:',e?.error);setStatus('',false)};
+    aiRecognition.onerror=()=>{setStatus('',false)};
     aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};
     aiRecognition.start();
   }
-
   async function toggleTerangaAI(){
     const next=!getAiEnabled();
-    RESTAURANT.aiEnabled=next;setLocalAiEnabled(next);renderDashSection('settings');
-    if(next){syncAiVisibility();toast('IA activée.');try{await persistRestaurant();}catch(e){}}
-    else{closeAi();syncAiVisibility();toast('IA désactivée.');try{await persistRestaurant();}catch(e){}}
+    RESTAURANT.aiEnabled=next;
+    setLocalAiEnabled(next);
+    renderDashSection('settings');
+    if(next){
+      syncAiVisibility();
+      toast('IA activée.');
+      try{ await persistRestaurant(); }catch(e){}
+    }else{
+      closeAi();
+      syncAiVisibility();
+      toast('IA désactivée.');
+      try{ await persistRestaurant(); }catch(e){}
+    }
   }
-
-  window.openAi=openAi;window.closeAi=closeAi;window.toggleTerangaAI=toggleTerangaAI;
+  window.openAi=openAi; window.closeAi=closeAi; window.toggleTerangaAI=toggleTerangaAI;
   window.addEventListener('hashchange',syncAiVisibility);
   const origSetDashSection=window.setDashSection;
-  if(typeof origSetDashSection==='function')window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen)closeAi();});
+  if(typeof origSetDashSection==='function') window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen) closeAi();});
   setTimeout(syncAiVisibility,300);
 })();
 </script>
