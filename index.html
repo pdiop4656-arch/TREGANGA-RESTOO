@@ -2223,6 +2223,7 @@ async function loadRestaurantCore(restaurantId){
   RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
+  RESTAURANT.aiEnabled = !!r.ai_enabled;
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
   RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
   RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
@@ -2946,6 +2947,7 @@ async function persistRestaurant(){
       hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
       payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
       notifications_enabled:RESTAURANT.notificationsEnabled,
+      ai_enabled:!!RESTAURANT.aiEnabled,
       plan:state.plan, is_published:RESTAURANT.isPublished,
       hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
     };
@@ -4258,6 +4260,7 @@ const RESTAURANT = {
   showMap:false,
   mapsLink:'',
   notificationsEnabled:true,
+  aiEnabled:false,
   orderNotificationEmail:'',
   orderNotificationEmailVerified:false,
   orderNotificationEmailPending:'',
@@ -8790,7 +8793,7 @@ function dashSettings(){
     <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
   </div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:16px;">
-    ${['Général','Horaires','Livraison','Réseaux & carte','Domaine'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
+    ${['Général','Horaires & IA','Livraison','Réseaux & carte','Domaine'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
@@ -8863,7 +8866,7 @@ function settingsBodyHtml(){
       <div class="toggle ${RESTAURANT.notificationsEnabled?'on':''}" onclick="RESTAURANT.notificationsEnabled=!RESTAURANT.notificationsEnabled;renderDashSection('settings');refreshNotifDot();persistRestaurant();"><div class="dot"></div></div>
     </div>`;
 
-  if(settingsTab==='Horaires') return DAY_LABELS_FULL.map((d,i)=>{
+  if(settingsTab==='Horaires & IA') return `${DAY_LABELS_FULL.map((d,i)=>{
     const h = RESTAURANT.hours[i];
     return `<div class="flex items-center gap-3 flex-wrap" style="padding:9px 0;border-top:1px solid var(--cream-line);">
       <span style="width:84px;font-size:13.5px;font-weight:500;">${d}</span>
@@ -8873,7 +8876,20 @@ function settingsBodyHtml(){
         <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;persistRestaurant();">`
         : `<span style="font-size:12px;color:var(--ink-faint);">Fermé</span>`}
     </div>`;
-  }).join('');
+  }).join('')}
+  <div class="tr-ai-hours-card" style="margin-top:18px;background:linear-gradient(110deg,#3d404c 0%,#8e9098 100%);color:#fff;border:1px solid rgba(232,135,30,.42);border-radius:22px;padding:18px 22px;box-shadow:0 10px 28px rgba(15,23,42,.14);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;">
+      <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+        <span class="tr-ai-settings-icon" style="background:rgba(232,135,30,.13);color:#ffb35b;">${ic('sparkles',17,{stroke:'#ffb35b'})}</span>
+        <div style="min-width:0;">
+          <p style="font-size:14px;font-weight:800;margin:0;color:#fff;">IA</p>
+          <p style="font-size:11.5px;color:rgba(255,255,255,.86);margin:3px 0 0;line-height:1.45;">Activez l’assistant IA de TerangaResto pour vos analyses et actions de gestion.</p>
+        </div>
+      </div>
+      <div class="toggle ${RESTAURANT.aiEnabled?'on':''}" role="switch" aria-checked="${RESTAURANT.aiEnabled?'true':'false'}" tabindex="0" onclick="toggleTerangaAI()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTerangaAI();}"><div class="dot"></div></div>
+    </div>
+    <p style="font-size:10.8px;color:rgba(255,255,255,.9);margin:10px 0 0;">Désactivée par défaut. Lorsqu’elle est désactivée, aucun appel IA n’est effectué.</p>
+  </div>`;
 
   if(settingsTab==='Livraison') return `
     <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
@@ -9666,5 +9682,156 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
 }
 </style>
+
+<style id="teranga-ai-native">
+/* IA — module isolé : aucun impact de chargement tant que désactivé. */
+.tr-ai-settings-card{background:linear-gradient(135deg,rgba(232,135,30,.055),rgba(255,255,255,.72));border:1px solid rgba(232,135,30,.16);}
+.tr-ai-settings-icon{width:32px;height:32px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(232,135,30,.10);flex:0 0 auto;}
+.tg-ai-floating{position:fixed;right:22px;bottom:26px;width:56px;height:56px;border:1px solid rgba(232,135,30,.45);border-radius:50%;display:flex;align-items:center;justify-content:center;background:#E8871E;color:#0B1220;box-shadow:0 16px 36px rgba(43,24,16,.22);cursor:pointer;z-index:1180;transition:transform .18s ease,box-shadow .18s ease;}
+.tg-ai-floating:hover{transform:translateY(-2px);box-shadow:0 20px 42px rgba(43,24,16,.28)}
+.tg-ai-floating svg{width:24px;height:24px;}
+.tg-ai-panel{position:fixed;right:22px;bottom:92px;width:min(430px,calc(100vw - 28px));height:min(650px,calc(100vh - 128px));display:flex;flex-direction:column;background:#0D1526;color:#fff;border:1px solid rgba(232,135,30,.22);border-radius:20px;box-shadow:0 24px 70px rgba(5,10,20,.34);overflow:hidden;z-index:1179;}
+.tg-ai-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#101a2c,#0c1424);}
+.tg-ai-title{display:flex;align-items:center;gap:10px;min-width:0}.tg-ai-title .spark{width:34px;height:34px;border-radius:11px;background:rgba(232,135,30,.13);color:#E8871E;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.tg-ai-title .spark svg{width:19px;height:19px}.tg-ai-title-main{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-title-sub{font-size:10px;color:rgba(255,255,255,.52);margin-top:2px}
+.tg-ai-close{border:0;background:rgba(255,255,255,.06);color:#fff;width:32px;height:32px;border-radius:10px;font-size:20px;cursor:pointer;flex:0 0 auto}
+.tg-ai-body{display:flex;flex-direction:column;min-height:0;flex:1}.tg-ai-messages{padding:16px;display:flex;flex-direction:column;gap:9px;overflow:auto;flex:1;scroll-behavior:smooth}.tg-ai-msg{max-width:86%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}.tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}.tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}.tg-ai-meta{font-size:9px;color:rgba(255,255,255,.42);margin-top:2px}.tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px}.tg-ai-chip{border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;border-radius:999px;padding:7px 10px;font-size:10.5px;cursor:pointer}.tg-ai-chip:hover{border-color:rgba(232,135,30,.45)}
+.tg-ai-form{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:#0A1221}.tg-ai-input{flex:1;min-width:0;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;padding:0 12px;outline:none;font-size:13px}.tg-ai-input:focus{border-color:rgba(232,135,30,.55);box-shadow:0 0 0 3px rgba(232,135,30,.08)}.tg-ai-mic,.tg-ai-send{width:43px;height:43px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}.tg-ai-mic{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10)}.tg-ai-mic.recording{background:#C64A3B}.tg-ai-send{background:#E8871E;color:#0B1220;font-size:18px}.tg-ai-send:disabled,.tg-ai-mic:disabled{opacity:.5;cursor:not-allowed}
+.tg-ai-status{padding:9px 16px;font-size:10.5px;color:rgba(255,255,255,.54);border-top:1px solid rgba(255,255,255,.06);background:#0D1526}.tg-ai-thinking{display:inline-flex;align-items:center;gap:7px}.tg-ai-thinking-dots{display:inline-flex;gap:3px}.tg-ai-thinking-dots i{width:5px;height:5px;border-radius:50%;background:#E8871E;animation:tgAiDot 1.1s infinite ease-in-out}.tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}.tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}@keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
+.tg-ai-action{margin:2px 0 4px;align-self:flex-start;background:#101a2c;border:1px solid rgba(232,135,30,.23);border-radius:14px;padding:11px 12px;max-width:90%;font-size:11.5px;line-height:1.45}.tg-ai-action strong{display:block;font-size:12px;margin-bottom:4px}.tg-ai-action .row{display:flex;gap:7px;margin-top:9px}.tg-ai-action button{border-radius:10px;padding:8px 11px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:11px}.tg-ai-action button.primary{background:#E8871E;color:#0B1220;border-color:#E8871E;font-weight:700}
+@media(max-width:900px){.tg-ai-floating{right:14px;bottom:76px;width:52px;height:52px}.tg-ai-panel{right:10px;left:10px;bottom:136px;width:auto;height:min(72vh,620px);border-radius:18px}}
+</style>
+<script type="module">
+/* =====================================================================
+   TERANGARESTO — ASSISTANT IA NATIF
+   Module isolé : aucun moteur local n'est chargé.
+   Les questions sont envoyées à l'Edge Function Supabase `ai-agency`,
+   qui utilise la clé GROQ_API_KEY côté serveur.
+   ===================================================================== */
+(function(){
+  'use strict';
+  let aiOpen=false, aiThinking=false, aiMessages=[];
+  let aiRecognition=null, aiListening=false;
+  const AI_HISTORY_KEY='tg_ai_history_';
+  const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
+
+  function aiSvg(){ return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 2l3.4 12.1L39 17.5l-11.6 3.4L24 33l-3.4-12.1L9 17.5l11.6-3.4L24 2zm14 26l1.9 6.1L46 36l-6.1 1.9L38 44l-1.9-6.1L30 36l6.1-1.9L38 28zM10 30l1.5 4.5L16 36l-4.5 1.5L10 42l-1.5-4.5L4 36l4.5-1.5L10 30z" fill="currentColor"/></svg>'; }
+  function getAid(){ return RESTAURANT?.id ? String(RESTAURANT.id) : 'anonymous'; }
+  function getAiEnabled(){
+    if(typeof RESTAURANT?.aiEnabled==='boolean') return RESTAURANT.aiEnabled;
+    try{return localStorage.getItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid())==='1';}catch(e){return false;}
+  }
+  function setLocalAiEnabled(v){ try{localStorage.setItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid(),v?'1':'0');}catch(e){} }
+  function loadHistory(){ try{ const raw=localStorage.getItem(AI_HISTORY_KEY+getAid()); const x=raw?JSON.parse(raw):[]; return Array.isArray(x)?x.slice(-30):[];}catch(e){return [];} }
+  function saveHistory(){ try{localStorage.setItem(AI_HISTORY_KEY+getAid(),JSON.stringify(aiMessages.slice(-30)));}catch(e){} }
+  function escapeText(v){ return String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function showAi(){
+    if(!currentUser || !viewerIsStaff || state.view!=='dashboard' || !getAiEnabled() || isAccessBlocked()) return;
+    let btn=document.getElementById('tgAiFloating');
+    if(!btn){ btn=document.createElement('button'); btn.id='tgAiFloating'; btn.className='tg-ai-floating'; btn.type='button'; btn.title='Ouvrir l’IA'; btn.setAttribute('aria-label','Ouvrir l’IA'); btn.innerHTML=aiSvg(); btn.onclick=openAi; document.body.appendChild(btn); }
+  }
+  function hideAi(){ const b=document.getElementById('tgAiFloating'); if(b)b.remove(); const p=document.getElementById('tgAiPanel'); if(p)p.remove(); aiOpen=false; }
+  function syncAiVisibility(){ if(getAiEnabled()) showAi(); else hideAi(); }
+
+  function openAi(){
+    if(!getAiEnabled() || !currentUser || !viewerIsStaff) return;
+    aiOpen=true; aiMessages=loadHistory();
+    if(!aiMessages.length) aiMessages=[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Je peux répondre à vos questions et, une fois les outils métier activés, analyser votre restaurant et effectuer certaines actions de gestion.'}];
+    renderAi();
+  }
+  function closeAi(){ aiOpen=false; const p=document.getElementById('tgAiPanel'); if(p)p.remove(); }
+  function renderAi(){
+    if(!aiOpen || !getAiEnabled()) return;
+    let panel=document.getElementById('tgAiPanel');
+    if(!panel){ panel=document.createElement('section'); panel.id='tgAiPanel'; panel.className='tg-ai-panel'; document.body.appendChild(panel); }
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">Espace privé · réponses rapides et sécurisées</div></div></div><button class="tg-ai-close" type="button" aria-label="Fermer">×</button></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Salut">Salut</button><button class="tg-ai-chip" data-q="Quelle est la capitale du Sénégal ?">Question générale</button><button class="tg-ai-chip" data-q="Comment peux-tu m’aider ?">Que peux-tu faire ?</button><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div></div>`;
+    const list=panel.querySelector('#tgAiMessages');
+    for(const m of aiMessages){ const div=document.createElement('div'); div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`; div.textContent=m.text; list.appendChild(div); }
+    list.scrollTop=list.scrollHeight;
+    panel.querySelector('.tg-ai-close').onclick=closeAi;
+    panel.querySelector('#tgAiForm').onsubmit=sendAi;
+    panel.querySelector('#tgAiMic').onclick=toggleMic;
+    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{ const input=panel.querySelector('#tgAiInput'); if(input){ input.value=btn.dataset.q||''; input.focus(); } });
+    setTimeout(()=>panel.querySelector('#tgAiInput')?.focus(),0);
+  }
+  function appendMessage(role,text){ aiMessages.push({role,text:String(text??'')}); saveHistory(); renderAi(); }
+  function setStatus(html,show=true){ const el=document.getElementById('tgAiStatus'); if(!el)return; el.innerHTML=html||''; el.hidden=!show; }
+  function busy(v){ const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'); if(s)s.disabled=v; if(m)m.disabled=v; }
+
+  async function askGroq(text){
+    if(!window.supabaseClient || typeof supabaseClient.functions?.invoke!=='function') throw new Error('Supabase Functions indisponible.');
+    const history=aiMessages.slice(-10).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const payload={
+      question:text,
+      message:text,
+      restaurant_id:RESTAURANT?.id ? String(RESTAURANT.id) : '',
+      restaurant_name:RESTAURANT?.name ? String(RESTAURANT.name) : '',
+      user_id:currentUser?.id ? String(currentUser.id) : '',
+      messages:history
+    };
+    const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});
+    if(error) throw error;
+    const answer=String(data?.answer ?? data?.response ?? data?.message ?? data?.text ?? '').trim();
+    if(!answer) throw new Error('Réponse IA vide.');
+    return answer;
+  }
+
+  async function sendAi(e){
+    e.preventDefault();
+    if(aiThinking)return;
+    const input=document.getElementById('tgAiInput');
+    const text=(input?.value||'').trim();
+    if(!text)return;
+    aiThinking=true; busy(true); appendMessage('user',text); if(input)input.value='';
+    setStatus('<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>');
+    try{
+      const answer=await askGroq(text);
+      setStatus('',false);
+      appendMessage('assistant',answer);
+    }catch(err){
+      console.error('TerangaResto IA:',err);
+      setStatus('',false);
+      appendMessage('assistant','Je n’arrive pas à joindre le service IA pour le moment. Vérifiez la fonction « ai-agency » et réessayez.');
+    }finally{
+      aiThinking=false; busy(false);
+    }
+  }
+
+  function toggleMic(){
+    const C=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!C){ appendMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.'); return; }
+    const mic=document.getElementById('tgAiMic');
+    if(aiListening){ aiRecognition?.stop(); return; }
+    aiRecognition=new C(); aiRecognition.lang='fr-FR'; aiRecognition.interimResults=false; aiRecognition.maxAlternatives=1;
+    aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');if(mic)mic.textContent='■';setStatus('Parlez…',true)};
+    aiRecognition.onresult=(e)=>{const v=e.results?.[0]?.[0]?.transcript||'';const input=document.getElementById('tgAiInput');if(input){input.value=v;input.focus();}};
+    aiRecognition.onerror=()=>{setStatus('',false)};
+    aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};
+    aiRecognition.start();
+  }
+  async function toggleTerangaAI(){
+    const next=!getAiEnabled();
+    RESTAURANT.aiEnabled=next;
+    setLocalAiEnabled(next);
+    renderDashSection('settings');
+    if(next){
+      syncAiVisibility();
+      toast('IA activée.');
+      try{ await persistRestaurant(); }catch(e){}
+    }else{
+      closeAi();
+      syncAiVisibility();
+      toast('IA désactivée.');
+      try{ await persistRestaurant(); }catch(e){}
+    }
+  }
+  window.openAi=openAi; window.closeAi=closeAi; window.toggleTerangaAI=toggleTerangaAI;
+  window.addEventListener('hashchange',syncAiVisibility);
+  const origSetDashSection=window.setDashSection;
+  if(typeof origSetDashSection==='function') window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen) closeAi();});
+  setTimeout(syncAiVisibility,300);
+})();
+</script>
 </body>
 </html>
