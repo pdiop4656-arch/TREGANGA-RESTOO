@@ -9816,7 +9816,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
       }
       const rows=[`<strong>Modifier « ${escapeText(a.product_name||'Produit')} »</strong>`];const ch=a.changes||{};
-      if(ch.name!=null)rows.push(`<span>Nom → ${escapeText(ch.name)}</span>`);if(ch.description!=null)rows.push(`<span>Description modifiée</span>`);if(ch.price!=null)rows.push(`<span>Prix → ${escapeText(fmt(Number(ch.price)||0))}</span>`);if(ch.category_label!=null)rows.push(`<span>Catégorie → ${escapeText(ch.category_label)}</span>`);if(ch.prep!=null)rows.push(`<span>Préparation → ${escapeText(String(ch.prep))} min</span>`);if(ch.active!=null)rows.push(`<span>Visibilité → ${ch.active?'Actif':'Inactif'}</span>`);if(ch.available!=null)rows.push(`<span>Disponibilité → ${ch.available?'Disponible':'Indisponible'}</span>`);if(ch.stock!=null)rows.push(`<span>Stock → ${escapeText(String(ch.stock))}</span>`);if(ch.threshold!=null)rows.push(`<span>Seuil → ${escapeText(String(ch.threshold))}</span>`);if(ch.photo_data_url!=null)rows.push(`<span>Photo → remplacée</span>`);
+      if(ch.name!=null)rows.push(`<span>Nom → ${escapeText(ch.name)}</span>`);if(ch.description!=null)rows.push(`<span>Description modifiée</span>`);if(ch.price!=null)rows.push(`<span>Prix → ${escapeText(fmt(Number(ch.price)||0))}</span>`);if(ch.category_label!=null)rows.push(`<span>Catégorie → ${escapeText(ch.category_label)}</span>`);if(ch.prep!=null)rows.push(`<span>Préparation → ${escapeText(String(ch.prep))} min</span>`);if(ch.active!=null)rows.push(`<span>Visibilité → ${ch.active?'Actif':'Inactif'}</span>`);if(ch.available!=null)rows.push(`<span>Disponibilité → ${ch.available?'Disponible':'Indisponible'}</span>`);if(ch.stock!=null)rows.push(`<span>Stock → ${escapeText(String(ch.stock))}</span>`);if(ch.threshold!=null)rows.push(`<span>Seuil → ${escapeText(String(ch.threshold))}</span>`);if(ch.photo_data_url!=null||aiDraftAttachment)rows.push(`<span>Photo → ${ch.photo_data_url!=null?'remplacée':'jointe'}</span>`);
       return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
     }).join('');
     return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${items}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
@@ -9854,7 +9854,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
   async function executeAiAction(action){const data=await callEdge({mode:'execute_action',restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',action});return data?.product||null;}
   function applyProductRowLocally(row){if(!row||typeof row!=='object')return null;const normalize=r=>({id:String(r.id||''),stock:r.stock==null?null:Number(r.stock),threshold:r.threshold==null?null:Number(r.threshold),name:String(r.name||''),desc:String(r.desc??r.description??''),price:Number(r.price||0),cat:String(r.cat??r.category??''),prep:r.prep==null?15:Number(r.prep),active:r.active!==false,available:r.available!==false,variants:Array.isArray(r.variants)?r.variants.slice(0,20):[],variantsRequired:!!(r.variants_required??r.variantsRequired),photo:r.photo||null,photos:Array.isArray(r.gallery_photos)?r.gallery_photos.slice(0,3):(Array.isArray(r.photos)?r.photos.slice(0,3):(r.photo?[r.photo]:[]))});const p=normalize(row);const idx=PRODUCTS.findIndex(x=>String(x.id)===p.id);if(idx>=0)PRODUCTS[idx]={...PRODUCTS[idx],...p};else PRODUCTS.push(p);return PRODUCTS.find(x=>String(x.id)===p.id)||p;}
-  async function applyUpdateAction(a){if(!a.product_id){const p=PRODUCTS.find(x=>String(x.name||'').trim().toLowerCase()===String(a.product_name||'').trim().toLowerCase());if(p)a={...a,product_id:String(p.id)};}if(!a.product_id)throw new Error(`Produit introuvable : ${a.product_name||'cible inconnue'}.`);const row=await executeAiAction(a);const p=applyProductRowLocally(row);if(!p)throw new Error('Le serveur a enregistré la modification mais n’a pas renvoyé le produit mis à jour.');return p;}
+  async function applyUpdateAction(a){if(!a.product_id){const p=PRODUCTS.find(x=>String(x.name||'').trim().toLowerCase()===String(a.product_name||'').trim().toLowerCase());if(p)a={...a,product_id:String(p.id)};}if(!a.product_id)throw new Error(`Produit introuvable : ${a.product_name||'cible inconnue'}.`);const action={...a,changes:{...(a.changes||{})}};if(aiDraftAttachment?.dataUrl&&action.changes.photo_data_url==null)action.changes.photo_data_url=aiDraftAttachment.dataUrl;const row=await executeAiAction(action);const p=applyProductRowLocally(row);if(!p)throw new Error('Le serveur a enregistré la modification mais n’a pas renvoyé le produit mis à jour.');return p;}
   async function applyCreateAction(a){if(!canAddProduct())throw new Error('La limite de produits de votre forfait est atteinte.');const action={...a};if(aiDraftAttachment?.dataUrl)action.photo_data_url=aiDraftAttachment.dataUrl;const row=await executeAiAction(action);const p=applyProductRowLocally(row);if(!p)throw new Error('Le produit a été enregistré mais sa réponse serveur est incomplète.');return p;}
   function refreshProductViews(){if(state.view==='storefront'&&typeof renderProductSections==='function')renderProductSections();if(state.dashSection==='products'){const list=document.getElementById('productsList');if(list){list.innerHTML=productsListHtml();hydrateIcons(list);}}if(state.view==='dashboard'&&state.dashSection!=='products'&&typeof renderDashSection==='function')renderDashSection(state.dashSection);}
   async function confirmPendingActions(){if(!pendingActions?.length||aiThinking)return;const actions=pendingActions.map(a=>({...a}));pendingActions=null;busy(true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);try{const done=[];for(const a of actions){if(a.type==='update_product')done.push(await applyUpdateAction(a));else if(a.type==='create_product')done.push(await applyCreateAction(a));}aiDraftAttachment=null;refreshProductViews();addMessage('assistant',`Modifications confirmées et enregistrées dans votre catalogue.\n\n${done.map(p=>`✓ ${p.name} — ${fmt(p.price)} · ${p.active?'actif':'inactif'} · ${p.available?'disponible':'indisponible'} · stock ${p.stock==null?'—':p.stock}`).join('\n')}`);setStatus('',false);renderAi({scrollBottom:true,focus:true});toast(done.length>1?`${done.length} modifications ont été enregistrées.`:'Modification enregistrée.');}catch(err){console.error('TerangaResto IA — action:',err);addMessage('assistant',`La modification n’a pas été appliquée.\n\n${String(err?.message||'Erreur inconnue')}`);setStatus('',false);renderAi({scrollBottom:true,focus:true});}finally{busy(false);}}
@@ -9866,14 +9866,40 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
   function toggleMic(){const C=window.SpeechRecognition||window.webkitSpeechRecognition;if(!C){addMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.');renderAi({scrollBottom:true,focus:true});return;}const mic=document.getElementById('tgAiMic');if(aiListening){aiRecognition?.stop();return;}aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');if(mic)mic.textContent='■';setStatus('Parlez…',true)};aiRecognition.onresult=e=>{const v=e.results?.[0]?.[0]?.transcript||'';const input=document.getElementById('tgAiInput');if(input){input.value=v;input.focus();}};aiRecognition.onerror=()=>setStatus('',false);aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};aiRecognition.start();}
   async function persistAiEnabledSilently(next){
-    if(!RESTAURANT?.id)return false;
-    const {data,error}=await supabaseClient.from('restaurants').update({ai_enabled:!!next}).eq('id',RESTAURANT.id).select('id,ai_enabled').maybeSingle();
-    if(error||!data){console.error('TerangaResto — activation IA:',error);return false;}return true;
+    if(!RESTAURANT?.id || !currentUser) return false;
+    // Cette préférence est le SEUL réglage sauvegardé sans le bandeau
+    // d’enregistrement. On n’appelle volontairement pas persistRestaurant(),
+    // afin de ne déclencher aucun état global « Enregistrement… ».
+    // Aucun .select() ici : la documentation Supabase indique que update()
+    // ne renvoie pas de ligne par défaut, et cela évite d’exiger une politique
+    // SELECT supplémentaire après l’UPDATE.
+    const {error}=await supabaseClient
+      .from('restaurants')
+      .update({ai_enabled:!!next})
+      .eq('id',RESTAURANT.id);
+    if(error){
+      console.error('TerangaResto — activation IA:',error);
+      return false;
+    }
+    return true;
   }
   async function toggleTerangaAI(){
-    const next=!getAiEnabled();const previous=getAiEnabled();RESTAURANT.aiEnabled=next;setLocalAiEnabled(next);renderDashSection('settings');syncAiVisibility();toast(next?'IA activée.':'IA désactivée.');
+    if(!RESTAURANT?.id || !currentUser) return;
+    const next=!getAiEnabled();
+    const previous=getAiEnabled();
+    RESTAURANT.aiEnabled=next;
+    setLocalAiEnabled(next);
+    renderDashSection('settings');
+    syncAiVisibility();
+    toast(next?'IA activée.':'IA désactivée.');
     const saved=await persistAiEnabledSilently(next);
-    if(!saved){RESTAURANT.aiEnabled=previous;setLocalAiEnabled(previous);renderDashSection('settings');syncAiVisibility();toast('Impossible de modifier l’activation de l’IA pour le moment.');}
+    if(!saved){
+      RESTAURANT.aiEnabled=previous;
+      setLocalAiEnabled(previous);
+      renderDashSection('settings');
+      syncAiVisibility();
+      toast('Impossible de modifier l’activation de l’IA pour le moment.');
+    }
   }
   window.openAi=openAi;window.closeAi=closeAi;window.toggleAi=toggleAi;window.toggleTerangaAI=toggleTerangaAI;
   window.addEventListener('hashchange',syncAiVisibility);window.addEventListener('popstate',syncAiVisibility);
