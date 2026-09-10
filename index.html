@@ -9712,22 +9712,29 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 .tg-ai-history-panel{position:absolute;inset:0;background:#0D1526;display:none;flex-direction:column;z-index:5}.tg-ai-history-panel.open{display:flex}.tg-ai-history-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}.tg-ai-history-title{font-size:13px;font-weight:800}.tg-ai-history-list{overflow:auto;flex:1;padding:8px}.tg-ai-history-row{display:flex;align-items:center;gap:8px;padding:10px;border-radius:11px;cursor:pointer;border:1px solid transparent}.tg-ai-history-row:hover{background:#131C30}.tg-ai-history-row.active{background:#19233A;border-color:rgba(232,135,30,.25)}.tg-ai-history-main{min-width:0;flex:1}.tg-ai-history-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-history-date{font-size:9.5px;color:rgba(255,255,255,.44);margin-top:2px}.tg-ai-history-new{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}.tg-ai-history-empty{padding:28px 14px;text-align:center;color:rgba(255,255,255,.52);font-size:11.5px;line-height:1.5}
 @media(max-width:900px){.tg-ai-floating{right:14px;bottom:74px;width:52px;height:52px}.tg-ai-floating svg{width:28px;height:28px}.tg-ai-panel{right:8px;left:8px;bottom:132px;width:auto;height:min(74vh,650px);border-radius:18px}.tg-ai-head{padding:12px}.tg-ai-title .spark{width:36px;height:36px}.tg-ai-title-main{font-size:13px}.tg-ai-title-sub{font-size:9.5px}.tg-ai-icon-btn{width:32px;height:32px}.tg-ai-messages{padding:12px}.tg-ai-action{margin-left:10px;margin-right:10px}.tg-ai-chips{padding-left:10px;padding-right:10px}}
 @media(max-width:430px){.tg-ai-panel{right:0;left:0;bottom:0;height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}.tg-ai-floating{right:12px;bottom:68px}.tg-ai-head-actions{gap:4px}.tg-ai-icon-btn{width:31px;height:31px}.tg-ai-form{padding:10px}.tg-ai-input{font-size:14px}.tg-ai-msg{max-width:90%;font-size:13px}}
+.tg-ai-attach{width:34px;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:0;font-size:15px}.tg-ai-attachment{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;margin:0 12px 8px;border-radius:10px;background:#131C30;border:1px solid rgba(255,255,255,.09);font-size:10.5px;color:rgba(255,255,255,.78)}.tg-ai-attachment button{border:0;background:transparent;color:#fff;cursor:pointer;font-size:15px;padding:0}.tg-ai-action-item strong{color:#fff}.tg-ai-action-item span{white-space:normal}.tg-ai-form .tg-ai-attach{margin-right:-1px}
 </style>
 <script type="module">
-/* =====================================================================
-   TERANGARESTO — ASSISTANT IA NATIF v3
-   ===================================================================== */
 (function(){
   'use strict';
 
   let aiOpen=false, aiThinking=false;
   let aiRecognition=null, aiListening=false;
   let aiChats=[], activeChatId=null, pendingActions=null;
+  let aiAttachment=null;
   const AI_CHATS_KEY='tg_ai_chats_';
   const AI_LEGACY_HISTORY_KEY='tg_ai_history_';
   const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
-  const MAX_CHATS=50;
-  const MAX_MESSAGES_PER_CHAT=80;
+  const MAX_CHATS=50, MAX_MESSAGES_PER_CHAT=80;
+
+  const SUGGESTIONS=[
+    ['Ventes aujourd’hui','Combien ai-je vendu aujourd’hui et combien de commandes ai-je eues ?'],
+    ['Stock à réapprovisionner','Quels produits sont en rupture ou sous le seuil de réapprovisionnement ?'],
+    ['Produits les plus vendus','Quels sont mes produits les plus vendus sur les 30 derniers jours ?'],
+    ['Comparer mes ventes','Compare mes ventes de ce mois avec le mois précédent.'],
+    ['Abonnement restant','Combien de jours reste-t-il sur mon abonnement et quelle est ma prochaine échéance ?'],
+    ['Booster mes ventes','Donne-moi trois conseils concrets pour augmenter mes ventes à partir de mes données.'],
+  ];
 
   function getAid(){ return RESTAURANT?.id ? String(RESTAURANT.id) : 'anonymous'; }
   function getAiEnabled(){
@@ -9735,394 +9742,318 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     try{return localStorage.getItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid())==='1';}catch(e){return false;}
   }
   function setLocalAiEnabled(v){ try{localStorage.setItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid(),v?'1':'0');}catch(e){} }
-
-  /* SVG avec une vraie marge interne : les pointes restent dans la viewBox. */
-  function aiSvg(){
-    return '<svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M40 7l6.4 24.8L71 40l-24.6 6.2L40 73l-6.4-26.8L9 40l24.6-8.2L40 7zM63 17l1.9 7.1L72 26l-7.1 1.9L63 35l-1.9-7.1L54 26l7.1-1.9L63 17zM16 47l1.7 6.2L24 55l-6.3 1.8L16 63l-1.8-6.2L8 55l6.2-1.8L16 47z" fill="currentColor"/></svg>';
+  function aiSvg(){return '<svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M40 7l6.4 24.8L71 40l-24.6 6.2L40 73l-6.4-26.8L9 40l24.6-8.2L40 7zM63 17l1.9 7.1L72 26l-7.1 1.9L63 35l-1.9-7.1L54 26l7.1-1.9L63 17zM16 47l1.7 6.2L24 55l-6.3 1.8L16 63l-1.8-6.2L8 55l6.2-1.8L16 47z" fill="currentColor"/></svg>';}
+  function escapeText(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function formatChatDate(ts){const d=new Date(ts||Date.now());return Number.isNaN(d.getTime())?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
+  function fallbackTitle(q){
+    const clean=String(q||'').replace(/\s+/g,' ').trim(); if(!clean) return 'Nouveau chat';
+    const stop=new Set(['je','tu','il','elle','nous','vous','les','des','une','un','de','du','la','le','et','ou','pour','avec','dans','sur','est','sont','que','qui','quoi','comment','peux','peut','mon','ma','mes','aujourd’hui','aujourdhui','est-ce','ce','cette','ces','donne','moi']);
+    const words=clean.replace(/[!?.,;:()]/g,'').split(' ').filter(Boolean), picked=[];
+    for(const w of words){if(!stop.has(w.toLowerCase())&&!picked.includes(w))picked.push(w);if(picked.length>=5)break;}
+    const base=(picked.length?picked:words).slice(0,5).join(' ');return base.charAt(0).toUpperCase()+base.slice(1);
   }
-  function escapeText(v){ return String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-  function formatChatDate(ts){
-    const d=new Date(ts||Date.now());
-    if(Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
-  }
-  function fallbackTitle(question){
-    const clean=String(question||'').replace(/\s+/g,' ').trim();
-    if(!clean) return 'Nouveau chat';
-    const stop=new Set(['je','tu','il','elle','nous','vous','les','des','une','un','de','du','la','le','et','ou','pour','avec','dans','sur','est','sont','que','qui','quoi','comment','peux','peut','mon','ma','mes','aujourd’hui','aujourdhui','est-ce','ce','cette','ces']);
-    const words=clean.replace(/[!?.,;:()]/g,'').split(' ').filter(Boolean);
-    const picked=[];
-    for(const w of words){ if(!stop.has(w.toLowerCase()) && !picked.includes(w)) picked.push(w); if(picked.length>=5) break; }
-    const base=(picked.length?picked:words).slice(0,5).join(' ');
-    return base.charAt(0).toUpperCase()+base.slice(1);
-  }
-
   function makeNewChat(){
-    const now=Date.now();
-    const id='chat_'+now+'_'+Math.random().toString(36).slice(2,8);
-    return {id,title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Posez-moi une question, demandez une analyse ou demandez une modification. Toute modification importante doit être confirmée avant d’être appliquée.'}]};
+    const now=Date.now(),id='chat_'+now+'_'+Math.random().toString(36).slice(2,8);
+    return {id,title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis l’assistant IA de TerangaResto. Je peux analyser votre activité et vous aider à modifier votre restaurant. Toute modification importante sera affichée avant confirmation.'}]};
   }
-  function newChat(){
-    const chat=makeNewChat();
-    aiChats.unshift(chat);
-    aiChats=aiChats.slice(0,MAX_CHATS);
-    activeChatId=chat.id;
-    pendingActions=null;
-    persistChats();
-    return chat;
-  }
+  function newChat(){const c=makeNewChat();aiChats.unshift(c);aiChats=aiChats.slice(0,MAX_CHATS);activeChatId=c.id;pendingActions=null;aiAttachment=null;persistChats();return c;}
+  function persistChats(){try{localStorage.setItem(AI_CHATS_KEY+getAid(),JSON.stringify(aiChats.map(c=>({...c,messages:(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT)}))));}catch(e){}}
   function migrateLegacy(){
     try{
       const raw=localStorage.getItem(AI_CHATS_KEY+getAid());
-      if(raw){
-        const parsed=JSON.parse(raw);
-        if(Array.isArray(parsed) && parsed.length){
-          aiChats=parsed.filter(x=>x&&x.id&&Array.isArray(x.messages)).map(c=>({...c,messages:c.messages.slice(-MAX_MESSAGES_PER_CHAT)})).slice(0,MAX_CHATS);
-          activeChatId=aiChats[0]?.id||null;
-          return;
-        }
-      }
-      const legacyRaw=localStorage.getItem(AI_LEGACY_HISTORY_KEY+getAid());
-      const legacy=legacyRaw?JSON.parse(legacyRaw):[];
-      if(Array.isArray(legacy) && legacy.length){
-        const normalized=legacy.map(m=>({role:m?.role==='assistant'?'assistant':'user',text:String(m?.text??'')})).filter(m=>m.text).slice(-MAX_MESSAGES_PER_CHAT);
-        aiChats=[{id:'chat_legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),messages:normalized.length?normalized:[{role:'assistant',text:'Bonjour 👋'}]}];
-        activeChatId=aiChats[0].id;
-        persistChats();
-        return;
-      }
-    }catch(e){ aiChats=[]; activeChatId=null; }
-    if(!aiChats.length) newChat();
-  }
-  function persistChats(){
-    try{
-      const safe=aiChats.map(c=>({...c,messages:(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT)}));
-      localStorage.setItem(AI_CHATS_KEY+getAid(),JSON.stringify(safe));
+      if(raw){const p=JSON.parse(raw);if(Array.isArray(p)&&p.length){aiChats=p.filter(x=>x&&x.id&&Array.isArray(x.messages)).slice(0,MAX_CHATS);activeChatId=aiChats[0]?.id||null;return;}}
+      const old=localStorage.getItem(AI_LEGACY_HISTORY_KEY+getAid()); const legacy=old?JSON.parse(old):[];
+      if(Array.isArray(legacy)&&legacy.length){aiChats=[{id:'chat_legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),messages:legacy.map(m=>({role:m?.role==='assistant'?'assistant':'user',text:String(m?.text||'')})).filter(m=>m.text).slice(-MAX_MESSAGES_PER_CHAT)}];activeChatId=aiChats[0].id;persistChats();return;}
     }catch(e){}
+    if(!aiChats.length)newChat();
   }
-  function activeChat(){ return aiChats.find(c=>c.id===activeChatId)||aiChats[0]||null; }
-  function ensureActiveChat(){
-    if(!aiChats.length) newChat();
-    if(!activeChatId || !aiChats.some(c=>c.id===activeChatId)) activeChatId=aiChats[0].id;
-    return activeChat();
-  }
-  function addMessage(role,text){
-    const chat=ensureActiveChat();
-    chat.messages=(chat.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
-    chat.messages.push({role:role==='assistant'?'assistant':'user',text:String(text??'')});
-    chat.updatedAt=Date.now();
-    persistChats();
-  }
+  function activeChat(){return aiChats.find(c=>c.id===activeChatId)||aiChats[0]||null;}
+  function ensureActiveChat(){if(!aiChats.length)newChat();if(!activeChatId||!aiChats.some(c=>c.id===activeChatId))activeChatId=aiChats[0].id;return activeChat();}
+  function addMessage(role,text){const c=ensureActiveChat();c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);c.messages.push({role:role==='assistant'?'assistant':'user',text:String(text||'')});c.updatedAt=Date.now();persistChats();}
 
   function safeOrder(o){
-    const items=Array.isArray(o?.items)?o.items.slice(0,50).map(it=>{
-      if(Array.isArray(it)) return {name:String(it[0]??''),qty:Number(it[1]??1)||1};
-      return {productId:it?.productId?String(it.productId):'',name:String(it?.name??''),variant:it?.variant?String(it.variant):null,price:Number(it?.price||0),qty:Number(it?.qty||1)||1};
-    }):[];
+    const items=Array.isArray(o?.items)?o.items.slice(0,50).map(it=>Array.isArray(it)?{name:String(it[0]||''),qty:Number(it[1]||1)||1}:{productId:it?.productId?String(it.productId):'',name:String(it?.name||''),variant:it?.variant?String(it.variant):null,price:Number(it?.price||0),qty:Number(it?.qty||1)||1}):[];
     return {id:o?.id?String(o.id):'',num:o?.num?String(o.num):'',type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items,subtotal:Number(o?.subtotal||0),deliveryFee:Number(o?.deliveryFee||0),total:Number(o?.total||0),pay:String(o?.pay||''),payStatus:String(o?.payStatus||''),status:String(o?.status||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};
   }
+  function buildStats(orders, products){
+    const valid=(Array.isArray(orders)?orders:[]).filter(o=>String(o?.status||'')!=='cancelled');
+    const now=new Date();
+    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const startMonth=new Date(now.getFullYear(),now.getMonth(),1);
+    const startPrevMonth=new Date(now.getFullYear(),now.getMonth()-1,1);
+    const endPrevMonth=startMonth;
+    const startYear=new Date(now.getFullYear(),0,1);
+    const sum=arr=>arr.reduce((s,o)=>s+Number(o.total||0),0);
+    const inRange=(d,a,b)=>d>=a&&d<b;
+    const today=valid.filter(o=>inRange(new Date(o.createdAt||0),startToday,new Date(startToday.getTime()+86400000)));
+    const month=valid.filter(o=>inRange(new Date(o.createdAt||0),startMonth,new Date(now.getTime()+86400000)));
+    const prevMonth=valid.filter(o=>inRange(new Date(o.createdAt||0),startPrevMonth,endPrevMonth));
+    const year=valid.filter(o=>inRange(new Date(o.createdAt||0),startYear,new Date(now.getTime()+86400000)));
+    const byProduct={};
+    valid.forEach(o=>{(o.items||[]).forEach(it=>{const name=String(it.name||'').trim();if(!name)return;byProduct[name]=(byProduct[name]||0)+Number(it.qty||0);});});
+    const byMonth={};valid.forEach(o=>{const d=new Date(o.createdAt||0);if(Number.isNaN(d.getTime()))return;const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');byMonth[k]=(byMonth[k]||0)+Number(o.total||0);});
+    return {
+      orders_total:valid.length,revenue_total:sum(valid),
+      today:{orders:today.length,revenue:sum(today)},
+      month:{orders:month.length,revenue:sum(month)},
+      previous_month:{orders:prevMonth.length,revenue:sum(prevMonth)},
+      year:{orders:year.length,revenue:sum(year)},
+      average_order:valid.length?Math.round(sum(valid)/valid.length):0,
+      top_products:Object.entries(byProduct).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([name,qty])=>({name,qty})),
+      revenue_by_month:byMonth,
+      product_count:Array.isArray(products)?products.length:0,
+      active_product_count:Array.isArray(products)?products.filter(p=>p.active!==false).length:0,
+      low_stock_count:Array.isArray(products)?products.filter(p=>typeof p.stock==='number'&&p.stock<=(Number(p.threshold)||0)).length:0
+    };
+  }
   function buildAiContext(){
-    const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}})();
-    const restaurant={id:RESTAURANT?.id?String(RESTAURANT.id):'',name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),slug:String(RESTAURANT?.slug||''),type:String(RESTAURANT?.type||''),city:String(RESTAURANT?.city||''),hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours.slice(0,7):[],delivery:RESTAURANT?.delivery||{},subscriptionStatus:String(RESTAURANT?.subscriptionStatus||''),billingCycle:String(RESTAURANT?.billingCycle||''),isPublished:!!RESTAURANT?.isPublished};
-    const categories=Object.entries(catsState||{}).map(([key,label])=>({key:String(key),label:String(label)}));
-    const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,300).map(p=>({id:p?.id?String(p.id):'',name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(catsState?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),active:p?.active!==false,available:p?.available!==false,stock:p?.stock==null?null:Number(p.stock),threshold:p?.threshold==null?null:Number(p.threshold),variants:Array.isArray(p?.variants)?p.variants.slice(0,20):[]}));
-    const recent_orders=(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]).slice(0,200).map(safeOrder);
-    const staff=(Array.isArray(staffState)?staffState:[]).slice(0,100).map(s=>({name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions.slice(0,30):[]}));
-    const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,100).map(r=>({rating:Number(r?.rating??r?.stars??0)||0,text:String(r?.comment??r?.text??r?.message??''),createdAt:r?.created_at?String(r.created_at):(r?.createdAt instanceof Date?r.createdAt.toISOString():String(r?.createdAt||''))}));
-    const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,30).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')}));
-    return {version:'terangaresto-ai-context-v3',generated_at:new Date().toISOString(),timezone:tz,restaurant,categories,products,recent_orders,staff,reviews,payments};
+    const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,500).map(p=>({id:String(p?.id||''),name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(catsState?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),active:p?.active!==false,available:p?.available!==false,stock:p?.stock==null?null:Number(p.stock),threshold:p?.threshold==null?null:Number(p.threshold)}));
+    const orders=(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]);
+    const restaurant={id:String(RESTAURANT?.id||''),name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),slug:String(RESTAURANT?.slug||''),type:String(RESTAURANT?.type||''),city:String(RESTAURANT?.city||''),phone:String(RESTAURANT?.phone||''),address:String(RESTAURANT?.address||''),hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours:[],delivery:RESTAURANT?.delivery||{},subscriptionStatus:String(RESTAURANT?.subscriptionStatus||''),billingCycle:String(RESTAURANT?.billingCycle||''),trialEndsAt:RESTAURANT?.trialEndsAt||null,currentPeriodEnd:RESTAURANT?.currentPeriodEnd||null,isPublished:!!RESTAURANT?.isPublished,notificationsEnabled:!!RESTAURANT?.notificationsEnabled,aiEnabled:!!RESTAURANT?.aiEnabled};
+    const subscription={status:restaurant.subscriptionStatus,billingCycle:restaurant.billingCycle,trialEndsAt:restaurant.trialEndsAt,currentPeriodEnd:restaurant.currentPeriodEnd,plan:String(state?.plan||'free')};
+    const staff=(Array.isArray(staffState)?staffState:[]).map(s=>({id:String(s?.id||''),name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions:[]}));
+    const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,200).map(r=>({rating:Number(r?.rating??r?.stars??0)||0,text:String(r?.comment??r?.text??r?.message??''),createdAt:String(r?.created_at||r?.createdAt||'')}));
+    const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,50).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')}));
+    const library=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS.map(p=>({name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),prep:p?.prep==null?15:Number(p.prep),photo:p?.photo||null})):[];
+    return {version:'terangaresto-ai-v5',generated_at:new Date().toISOString(),timezone:(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}})(),restaurant,subscription,statistics:buildStats(orders,products),categories:Object.entries(catsState||{}).map(([key,label])=>({key,label})),products,recent_orders:orders.slice(0,300).map(safeOrder),staff,reviews,payments,product_library:library};
   }
 
   function showAi(){
-    if(!currentUser || !viewerIsStaff || state.view!=='dashboard' || !getAiEnabled() || isAccessBlocked()) return;
-    let btn=document.getElementById('tgAiFloating');
-    if(!btn){
-      btn=document.createElement('button'); btn.id='tgAiFloating'; btn.className='tg-ai-floating'; btn.type='button'; btn.title='Ouvrir / fermer l’IA'; btn.setAttribute('aria-label','Ouvrir / fermer l’IA');
-      btn.innerHTML=aiSvg(); btn.onclick=toggleAi; document.body.appendChild(btn);
-    }
-    btn.setAttribute('aria-expanded',aiOpen?'true':'false');
+    if(!currentUser||!viewerIsStaff||state.view!=='dashboard'||!getAiEnabled()||isAccessBlocked())return;
+    let b=document.getElementById('tgAiFloating');
+    if(!b){b=document.createElement('button');b.id='tgAiFloating';b.className='tg-ai-floating';b.type='button';b.title='Ouvrir / fermer l’IA';b.setAttribute('aria-label','Ouvrir / fermer l’IA');b.innerHTML=aiSvg();b.onclick=toggleAi;document.body.appendChild(b);}
+    b.setAttribute('aria-expanded',aiOpen?'true':'false');
   }
-  function hideAi(){
-    const b=document.getElementById('tgAiFloating'); if(b)b.remove();
-    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
-    aiOpen=false; pendingActions=null;
-  }
-  function syncAiVisibility(){ if(getAiEnabled()) showAi(); else hideAi(); }
-
-  function scrollChatToBottom(){
-    const list=document.getElementById('tgAiMessages');
-    if(!list) return;
-    requestAnimationFrame(()=>{
-      list.scrollTop=list.scrollHeight;
-      const last=list.lastElementChild;
-      if(last) last.scrollIntoView({block:'end',inline:'nearest'});
-    });
-    setTimeout(()=>{ if(list) list.scrollTop=list.scrollHeight; },30);
-  }
-
-  function openAi(){
-    if(!getAiEnabled() || !currentUser || !viewerIsStaff) return;
-    if(!aiChats.length) migrateLegacy(); else ensureActiveChat();
-    aiOpen=true;
-    renderAi(true);
-  }
-  function closeAi(){
-    aiOpen=false; pendingActions=null;
-    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
-    const b=document.getElementById('tgAiFloating'); if(b)b.setAttribute('aria-expanded','false');
-  }
-  function toggleAi(){ if(aiOpen) closeAi(); else openAi(); }
+  function hideAi(){document.getElementById('tgAiFloating')?.remove();document.getElementById('tgAiPanel')?.remove();aiOpen=false;pendingActions=null;}
+  function syncAiVisibility(){if(getAiEnabled())showAi();else hideAi();}
+  function scrollChatToBottom(){const l=document.getElementById('tgAiMessages');if(!l)return;requestAnimationFrame(()=>{l.scrollTop=l.scrollHeight;});}
+  function openAi(){if(!getAiEnabled()||!currentUser||!viewerIsStaff)return;if(!aiChats.length)migrateLegacy();else ensureActiveChat();aiOpen=true;renderAi(true);}
+  function closeAi(){aiOpen=false;pendingActions=null;document.getElementById('tgAiPanel')?.remove();document.getElementById('tgAiFloating')?.setAttribute('aria-expanded','false');}
+  function toggleAi(){if(aiOpen)closeAi();else openAi();}
 
   function renderHistoryPanel(panel){
-    const list=panel.querySelector('#tgAiHistoryList'); if(!list)return;
+    const list=panel.querySelector('#tgAiHistoryList');if(!list)return;
     const sorted=[...aiChats].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
     list.innerHTML=sorted.length?sorted.map(c=>`<div class="tg-ai-history-row ${c.id===activeChatId?'active':''}" data-chat-id="${escapeText(c.id)}"><div class="tg-ai-history-main"><div class="tg-ai-history-name">${escapeText(c.title||'Nouveau chat')}</div><div class="tg-ai-history-date">${escapeText(formatChatDate(c.updatedAt||c.createdAt))} · ${(c.messages||[]).length} message${(c.messages||[]).length>1?'s':''}</div></div></div>`).join(''):`<div class="tg-ai-history-empty">Aucune conversation enregistrée pour le moment.</div>`;
-    list.querySelectorAll('[data-chat-id]').forEach(row=>row.onclick=()=>{activeChatId=row.dataset.chatId;pendingActions=null;persistChats();renderAi(true);});
+    list.querySelectorAll('[data-chat-id]').forEach(r=>r.onclick=()=>{activeChatId=r.dataset.chatId;pendingActions=null;persistChats();renderAi(true);});
   }
-  function openHistory(){const panel=document.getElementById('tgAiHistoryPanel');if(!panel)return;panel.classList.add('open');renderHistoryPanel(panel);}
+  function openHistory(){const p=document.getElementById('tgAiHistoryPanel');if(!p)return;p.classList.add('open');renderHistoryPanel(p);}
   function closeHistory(){document.getElementById('tgAiHistoryPanel')?.classList.remove('open');}
 
+  function actionLabel(a){
+    const t=String(a.type||'');
+    if(t==='create_product') return `Ajouter « ${a.name||a.library_name||'nouveau produit'} »`;
+    if(t==='update_product') return `Modifier « ${a.product_name||'produit'} »`;
+    if(t==='delete_product') return `Supprimer « ${a.product_name||'produit'} »`;
+    if(t==='update_hours') return `Modifier les horaires de ${a.day_label||a.day||'ce jour'}`;
+    if(t==='update_delivery') return 'Modifier les réglages de livraison';
+    if(t==='update_delivery_zone') return `${a.operation==='delete'?'Supprimer':'Modifier'} la zone de livraison « ${a.name||''} »`;
+    if(t==='update_payment_toggle') return `${a.enabled?'Activer':'Désactiver'} ${a.label||a.method||'le moyen de paiement'}`;
+    if(t==='update_restaurant') return 'Modifier les informations du restaurant';
+    if(t==='update_social') return `${a.enabled===false?'Désactiver':'Modifier'} ${a.network||'un réseau social'}`;
+    if(t==='update_map') return 'Modifier la localisation Google Maps';
+    if(t==='update_notifications') return `${a.enabled===false?'Désactiver':'Activer'} les notifications de commandes`;
+    if(t==='publish_site') return `${a.published===false?'Dépublier':'Publier'} le site public`;
+    if(t==='update_category') return `${a.operation==='delete'?'Supprimer':'Modifier'} la catégorie ${a.name||a.category_label||''}`;
+    if(t==='update_staff') return `Modifier ${a.staff_name||'un membre du personnel'}`;
+    if(t==='start_subscription_checkout') return `Préparer l’abonnement ${String(a.plan||'').toLowerCase()==='pro'?'Premium':'Starter'}`;
+    return 'Modifier un réglage du restaurant';
+  }
   function renderPendingAction(){
-    if(!pendingActions?.length) return '';
-    const items=pendingActions.map(a=>{
-      if(a.type==='create_product'){
-        const rows=[];
-        rows.push(`<strong>Créer « ${escapeText(a.name||'Nouveau produit')} »</strong>`);
-        if(a.price!=null) rows.push(`<span>Prix : ${escapeText(fmt(Number(a.price)||0))}</span>`);
-        if(a.category_label||a.category) rows.push(`<span>Catégorie : ${escapeText(a.category_label||a.category)}</span>`);
-        if(a.prep!=null) rows.push(`<span>Préparation : ${escapeText(String(a.prep))} min</span>`);
-        if(a.stock!=null) rows.push(`<span>Stock initial : ${escapeText(String(a.stock))}</span>`);
-        rows.push(`<span>Visibilité : ${a.active===false?'Inactif':'Actif'} · Disponibilité : ${a.available===false?'Indisponible':'Disponible'}</span>`);
-        return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
-      }
-      const rows=[`<strong>Modifier « ${escapeText(a.product_name||'Produit')} »</strong>`];
-      const ch=a.changes||{};
-      if(ch.name!=null) rows.push(`<span>Nom → ${escapeText(ch.name)}</span>`);
-      if(ch.description!=null) rows.push(`<span>Description modifiée</span>`);
-      if(ch.price!=null) rows.push(`<span>Prix → ${escapeText(fmt(Number(ch.price)||0))}</span>`);
-      if(ch.category_label!=null) rows.push(`<span>Catégorie → ${escapeText(ch.category_label)}</span>`);
-      if(ch.prep!=null) rows.push(`<span>Préparation → ${escapeText(String(ch.prep))} min</span>`);
-      if(ch.active!=null) rows.push(`<span>Visibilité → ${ch.active?'Actif':'Inactif'}</span>`);
-      if(ch.available!=null) rows.push(`<span>Disponibilité → ${ch.available?'Disponible':'Indisponible'}</span>`);
-      if(ch.stock!=null) rows.push(`<span>Stock → ${escapeText(String(ch.stock))}</span>`);
-      if(ch.threshold!=null) rows.push(`<span>Seuil → ${escapeText(String(ch.threshold))}</span>`);
-      return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
-    }).join('');
+    if(!pendingActions?.length)return '';
+    const items=pendingActions.map(a=>`<div class="tg-ai-action-item"><strong>${escapeText(actionLabel(a))}</strong>${a.summary?`<span>${escapeText(a.summary)}</span>`:''}</div>`).join('');
     return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${items}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
   }
 
-  function renderAi(keepBottom=false){
-    if(!aiOpen || !getAiEnabled()) return;
-    const chat=ensureActiveChat();
-    let panel=document.getElementById('tgAiPanel');
-    if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${escapeText(chat.title||'Nouveau chat')} · réponses intelligentes</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique des chats" aria-label="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer" aria-label="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Salut">Salut</button><button class="tg-ai-chip" data-q="Quelle est la capitale du Sénégal ?">Question générale</button><button class="tg-ai-chip" data-q="Que peux-tu faire ?">Que peux-tu faire ?</button><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+  function attachmentHtml(){return aiAttachment?`<div class="tg-ai-attachment"><span>📎 ${escapeText(aiAttachment.name||'Photo jointe')}</span><button type="button" id="tgAiAttachmentRemove" aria-label="Retirer la photo">×</button></div>`:'';}
+  function suggestionsHtml(){return SUGGESTIONS.map(([label,q])=>`<button class="tg-ai-chip" data-q="${escapeText(q)}">${escapeText(label)}</button>`).join('');}
 
+  function renderAi(keepBottom=false){
+    if(!aiOpen||!getAiEnabled())return;
+    const chat=ensureActiveChat(); let panel=document.getElementById('tgAiPanel');
+    if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${escapeText(chat.title||'Nouveau chat')} · réponses et gestion</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique" aria-label="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer" aria-label="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips">${suggestionsHtml()}</div>${attachmentHtml()}<form class="tg-ai-form" id="tgAiForm"><button class="tg-ai-attach" id="tgAiAttach" type="button" aria-label="Joindre une photo" title="Joindre une photo">📎</button><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button><input id="tgAiFile" type="file" accept="image/*" hidden></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button" title="Nouveau chat">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     const list=panel.querySelector('#tgAiMessages');
-    for(const m of (chat.messages||[])){
-      const div=document.createElement('div');div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;div.textContent=m.text;list.appendChild(div);
-    }
+    for(const m of(chat.messages||[])){const d=document.createElement('div');d.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;d.textContent=m.text;list.appendChild(d);}
     panel.querySelector('#tgAiClose').onclick=closeAi;
     panel.querySelector('#tgAiNewChat').onclick=()=>{newChat();renderAi(true);};
-    panel.querySelector('#tgAiHistory').onclick=()=>{openHistory();};
+    panel.querySelector('#tgAiHistory').onclick=openHistory;
     panel.querySelector('#tgAiHistoryNew').onclick=()=>{newChat();closeHistory();renderAi(true);};
     panel.querySelector('#tgAiForm').onsubmit=sendAi;
     panel.querySelector('#tgAiMic').onclick=toggleMic;
-    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{const input=panel.querySelector('#tgAiInput');if(input){input.value=btn.dataset.q||'';input.focus();}});
+    panel.querySelector('#tgAiAttach').onclick=()=>panel.querySelector('#tgAiFile').click();
+    panel.querySelector('#tgAiFile').onchange=handleAttachment;
+    panel.querySelector('#tgAiAttachmentRemove')?.addEventListener('click',()=>{aiAttachment=null;renderAi(true);});
+    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{const i=panel.querySelector('#tgAiInput');if(i){i.value=btn.dataset.q||'';i.focus();}});
     panel.querySelector('[data-ai-action="cancel"]')?.addEventListener('click',()=>{pendingActions=null;renderAi(true);});
     panel.querySelector('[data-ai-action="confirm"]')?.addEventListener('click',confirmPendingActions);
     const floating=document.getElementById('tgAiFloating');if(floating)floating.setAttribute('aria-expanded','true');
-    if(keepBottom) scrollChatToBottom(); else scrollChatToBottom();
+    if(keepBottom)scrollChatToBottom();else scrollChatToBottom();
     setTimeout(()=>panel.querySelector('#tgAiInput')?.focus(),0);
   }
-
   function setStatus(html,show=true){const el=document.getElementById('tgAiStatus');if(!el)return;el.innerHTML=html||'';el.hidden=!show;}
-  function busy(v){const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'),n=document.getElementById('tgAiNewChat');if(s)s.disabled=v;if(m)m.disabled=v;if(n)n.disabled=v;}
+  function busy(v){for(const id of['tgAiSend','tgAiMic']){const el=document.getElementById(id);if(el)el.disabled=v;}const n=document.getElementById('tgAiNewChat');if(n)n.disabled=v;}
 
-  function normalizeAction(action){
-    if(!action||typeof action!=='object') return null;
-    const type=String(action.type||'none');
-    if(type==='none') return null;
+  async function handleAttachment(e){
+    const file=e.target.files?.[0]; if(!file)return;
+    if(!file.type.startsWith('image/'))return;
+    const reader=new FileReader();
+    reader.onload=async()=>{try{const optimized=await optimizeImage(reader.result);aiAttachment={name:file.name,dataUrl:optimized};renderAi(true);}catch(err){aiAttachment={name:file.name,dataUrl:reader.result};renderAi(true);}};
+    reader.readAsDataURL(file); e.target.value='';
+  }
+  async function optimizeImage(dataUrl){return await new Promise(resolve=>{const img=new Image();img.onload=()=>{const max=1400,scale=Math.min(1,max/Math.max(img.naturalWidth||1,img.naturalHeight||1)),w=Math.max(1,Math.round((img.naturalWidth||1)*scale)),h=Math.max(1,Math.round((img.naturalHeight||1)*scale)),c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');if(!ctx)return resolve(dataUrl);ctx.drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',.82));};img.onerror=()=>resolve(dataUrl);img.src=dataUrl;});}
+
+  function normalizeAction(a){
+    if(!a||typeof a!=='object')return null;const type=String(a.type||'none');if(type==='none')return null;
+    const out={...a,type,summary:String(a.summary||'').trim()};
     if(type==='create_product'){
-      const a={type,name:String(action.name||action.product_name||'').trim(),description:action.description==null?null:String(action.description),price:action.price==null?null:Number(action.price),category:String(action.category||'').trim(),category_label:String(action.category_label||'').trim(),prep:action.prep==null?null:Number(action.prep),active:action.active==null?true:Boolean(action.active),available:action.available==null?true:Boolean(action.available),stock:action.stock==null?20:Number(action.stock),threshold:action.threshold==null?5:Number(action.threshold),variants:Array.isArray(action.variants)?action.variants.slice(0,20):[],summary:String(action.summary||'').trim()};
-      return Number.isFinite(a.price)&&a.price>=0&&a.name?a:null;
+      out.name=String(a.name||a.product_name||a.library_name||'').trim();out.library_name=String(a.library_name||a.name||'').trim();out.description=a.description==null?null:String(a.description);out.price=a.price==null?null:Number(a.price);out.category=String(a.category||'').trim();out.category_label=String(a.category_label||'').trim();out.prep=a.prep==null?15:Number(a.prep);out.stock=a.stock==null?20:Number(a.stock);out.threshold=a.threshold==null?5:Number(a.threshold);out.active=a.active==null?true:Boolean(a.active);out.available=a.available==null?true:Boolean(a.available);out.image_data_url=a.image_data_url||null;return out.name&&Number.isFinite(out.price)&&out.price>=0?out:null;
     }
-    if(type==='update_product'){
-      const ch=action.changes&&typeof action.changes==='object'?action.changes:{};
-      return {type,product_id:String(action.product_id||'').trim(),product_name:String(action.product_name||action.name||'').trim(),summary:String(action.summary||'').trim(),changes:{name:ch.name==null?null:String(ch.name),description:ch.description==null?null:String(ch.description),price:ch.price==null?null:Number(ch.price),category:ch.category==null?null:String(ch.category),category_label:ch.category_label==null?null:String(ch.category_label),prep:ch.prep==null?null:Number(ch.prep),active:ch.active==null?null:Boolean(ch.active),available:ch.available==null?null:Boolean(ch.available),stock:ch.stock==null?null:Number(ch.stock),threshold:ch.threshold==null?null:Number(ch.threshold)}};
+    if(type==='update_product'||type==='delete_product'){
+      out.product_id=String(a.product_id||'').trim();out.product_name=String(a.product_name||a.name||'').trim();out.changes=a.changes&&typeof a.changes==='object'?{...a.changes}:{};if(type==='update_product')return out.product_id||out.product_name?out:null;return out.product_id||out.product_name?out:null;
     }
+    if(['update_hours','update_delivery','update_delivery_zone','update_payment_toggle','update_restaurant','update_social','update_map','update_notifications','publish_site','update_category','update_staff','start_subscription_checkout'].includes(type))return out;
     return null;
   }
 
   async function callEdge(payload){
-    if(typeof supabaseClient==='undefined' || !supabaseClient || !supabaseClient.functions || typeof supabaseClient.functions.invoke!=='function') throw new Error('Client Supabase indisponible.');
+    if(typeof supabaseClient==='undefined'||!supabaseClient?.functions||typeof supabaseClient.functions.invoke!=='function')throw new Error('service');
     const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});
-    if(error) throw error;
-    if(!data?.success) throw new Error(String(data?.error||'Le service IA a renvoyé une erreur.'));
+    if(error)throw new Error('service');
+    if(!data?.success)throw new Error('service');
     return data;
   }
-
-  async function askGroq(text){
+  async function askAi(text){
     const chat=ensureActiveChat();
-    const history=(chat.messages||[]).slice(-12).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
-    const payload={mode:'chat',question:text,message:text,restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',restaurant_name:RESTAURANT?.name?String(RESTAURANT.name):String(RESTO_NAME||'TerangaResto'),user_id:currentUser?.id?String(currentUser.id):'',messages:history,context:buildAiContext(),conversation_title:chat.title||''};
-    const data=await callEdge(payload);
-    const answer=String(data?.answer??'').trim();
-    if(!answer) throw new Error('Réponse IA vide.');
-    return {answer,title:String(data?.chat_title||'').trim(),actions:Array.isArray(data?.actions)?data.actions:[]};
+    const history=(chat.messages||[]).slice(-16).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const payload={mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages:history,context:buildAiContext(),conversation_title:chat.title||'',attachment:aiAttachment?{name:aiAttachment.name,data_url:aiAttachment.dataUrl}:null};
+    const data=await callEdge(payload);return {answer:String(data.answer||'').trim(),title:String(data.chat_title||'').trim(),actions:Array.isArray(data.actions)?data.actions.map(normalizeAction).filter(Boolean).slice(0,8):[]};
   }
 
-  async function executeAiAction(action){
-    const data=await callEdge({mode:'execute_action',restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',action});
-    return data?.product||null;
+  function findProduct(a){
+    if(a.product_id){const byId=PRODUCTS.find(p=>String(p.id)===String(a.product_id));if(byId)return byId;}
+    const n=String(a.product_name||a.name||'').trim().toLowerCase();
+    return PRODUCTS.find(p=>String(p.name||'').trim().toLowerCase()===n)||PRODUCTS.find(p=>String(p.name||'').toLowerCase().includes(n)&&n)||null;
   }
-
-  function applyProductRowLocally(row){
-    if(!row||typeof row!=='object') return null;
-    const normalize=(r)=>({id:String(r.id||''),stock:r.stock==null?null:Number(r.stock),threshold:r.threshold==null?null:Number(r.threshold),name:String(r.name||''),desc:String(r.desc??r.description??''),price:Number(r.price||0),cat:String(r.cat??r.category??''),prep:r.prep==null?15:Number(r.prep),active:r.active!==false,available:r.available!==false,variants:Array.isArray(r.variants)?r.variants.slice(0,20):[],variantsRequired:!!(r.variants_required??r.variantsRequired),photo:r.photo||null,photos:Array.isArray(r.gallery_photos)?r.gallery_photos.slice(0,3):(Array.isArray(r.photos)?r.photos.slice(0,3):(r.photo?[r.photo]:[]))});
-    const p=normalize(row);
-    const idx=PRODUCTS.findIndex(x=>String(x.id)===p.id);
-    if(idx>=0) PRODUCTS[idx]={...PRODUCTS[idx],...p}; else PRODUCTS.push(p);
-    return PRODUCTS.find(x=>String(x.id)===p.id)||p;
+  function findLibraryItem(a){
+    const n=String(a.library_name||a.name||'').trim().toLowerCase();
+    return (Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).find(x=>String(x.name||'').trim().toLowerCase()===n)|| (Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS.find(x=>String(x.name||'').toLowerCase().includes(n)&&n):null);
   }
-
-  async function applyUpdateAction(a){
-    if(!a.product_id){
-      const p=PRODUCTS.find(x=>String(x.name||'').trim().toLowerCase()===String(a.product_name||'').trim().toLowerCase());
-      if(p)a={...a,product_id:String(p.id)};
+  function setHoursDay(a){
+    const day=String(a.day||'').toLowerCase();const idx=DAY_LABELS_FULL.findIndex(x=>x.toLowerCase()===day||x.toLowerCase().startsWith(day));if(idx<0)throw new Error('jour');
+    const h=RESTAURANT.hours[idx]||{open:true,from:'11:00',to:'22:00'};if(a.open!=null)h.open=!!a.open;if(a.from)h.from=String(a.from).slice(0,5);if(a.to)h.to=String(a.to).slice(0,5);RESTAURANT.hours[idx]=h;renderDashSection('settings');return `Horaires de ${DAY_LABELS_FULL[idx]} mis à jour.`;
+  }
+  async function applyAction(a){
+    if(a.type==='create_product'){
+      const lib=findLibraryItem(a); if(!lib)throw new Error('produit de référence introuvable');
+      if(!canAddProduct())throw new Error('limite de produits atteinte');
+      const p={id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name:a.name||lib.name,desc:a.description==null?String(lib.desc||''):String(a.description),price:Number(a.price),cat:a.category||lib.cat,prep:Number.isFinite(a.prep)?a.prep:Number(lib.prep||15),active:a.active!==false,available:a.available!==false,variants:[],variantsRequired:false,stock:Number.isFinite(a.stock)?a.stock:20,threshold:Number.isFinite(a.threshold)?a.threshold:5,photo:a.image_data_url||lib.photo||null,photos:a.image_data_url?[a.image_data_url]:[lib.photo].filter(Boolean)};
+      if(!(await persistProduct(p)))throw new Error('enregistrement');PRODUCTS.push(p);renderProductViewsAfterAction();return {label:`${p.name} ajouté au catalogue.`};
     }
-    if(!a.product_id) throw new Error(`Produit introuvable : ${a.product_name||'cible inconnue'}.`);
-    const row=await executeAiAction(a);
-    const p=applyProductRowLocally(row);
-    if(!p) throw new Error('Le serveur a enregistré la modification mais n’a pas renvoyé le produit mis à jour.');
-    return p;
-  }
-  async function applyCreateAction(a){
-    if(!canAddProduct()) throw new Error(`La limite de produits de votre forfait est atteinte.`);
-    const row=await executeAiAction(a);
-    const p=applyProductRowLocally(row);
-    if(!p) throw new Error('Le produit a été enregistré mais sa réponse serveur est incomplète.');
-    return p;
-  }
-
-  function refreshProductViews(){
-    if(state.view==='storefront' && typeof renderProductSections==='function') renderProductSections();
-    if(state.dashSection==='products'){
-      const list=document.getElementById('productsList');
-      if(list){list.innerHTML=productsListHtml();hydrateIcons(list);}
+    if(a.type==='update_product'){
+      const p=findProduct(a);if(!p)throw new Error('produit introuvable');
+      const before={...p,photos:Array.isArray(p.photos)?p.photos.slice():undefined};
+      const ch=a.changes||{};
+      if(ch.name!=null)p.name=String(ch.name);if(ch.description!=null)p.desc=String(ch.description);if(ch.price!=null)p.price=Number(ch.price);if(ch.category!=null)p.cat=String(ch.category);if(ch.prep!=null)p.prep=Number(ch.prep);if(ch.active!=null)p.active=!!ch.active;if(ch.available!=null)p.available=!!ch.available;if(ch.stock!=null)p.stock=Math.max(0,Number(ch.stock));if(ch.threshold!=null)p.threshold=Math.max(0,Number(ch.threshold));if(a.image_data_url)p.photo=a.image_data_url,p.photos=[a.image_data_url];
+      if(!(await persistProduct(p))){Object.assign(p,before);throw new Error('enregistrement');}
+      renderProductViewsAfterAction();return {label:`${p.name} mis à jour.`};
     }
-    if(state.view==='dashboard' && state.dashSection!=='products' && typeof renderDashSection==='function') renderDashSection(state.dashSection);
+    if(a.type==='delete_product'){
+      const p=findProduct(a);if(!p)throw new Error('produit introuvable');const idx=PRODUCTS.indexOf(p);if(idx>=0)PRODUCTS.splice(idx,1);if(p.id&&!String(p.id).startsWith('p_')){const {error}=await supabaseClient.from('products').delete().eq('id',p.id);if(error)throw new Error('suppression');}renderProductViewsAfterAction();return {label:`${p.name} supprimé.`};
+    }
+    if(a.type==='update_hours'){const msg=setHoursDay(a);await persistRestaurant();return {label:msg};}
+    if(a.type==='update_delivery'){
+      const d=RESTAURANT.delivery||{};if(a.enabled!=null)d.enabled=!!a.enabled;if(a.fee!=null)d.fee=Math.max(0,Number(a.fee)||0);if(a.min!=null)d.min=Math.max(0,Number(a.min)||0);RESTAURANT.delivery=d;await persistRestaurant();renderDashSection('settings');if(state.view==='storefront')renderStorefrontHero();return {label:'Réglages de livraison mis à jour.'};
+    }
+    if(a.type==='update_delivery_zone'){
+      if(!Array.isArray(RESTAURANT.delivery.zones))RESTAURANT.delivery.zones=[];const op=String(a.operation||'update');const idx=RESTAURANT.delivery.zones.findIndex(z=>String(z.id)===String(a.id||'')||String(z.name||'').toLowerCase()===String(a.name||'').toLowerCase());
+      if(op==='add'){RESTAURANT.delivery.zones.push({id:'zone-'+Date.now(),name:String(a.name||'Zone'),fee:Math.max(0,Number(a.fee)||0),enabled:a.enabled!==false});}
+      else if(op==='delete'){if(idx<0)throw new Error('zone introuvable');RESTAURANT.delivery.zones.splice(idx,1);}
+      else {if(idx<0)throw new Error('zone introuvable');const z=RESTAURANT.delivery.zones[idx];if(a.new_name!=null)z.name=String(a.new_name);if(a.fee!=null)z.fee=Math.max(0,Number(a.fee)||0);if(a.enabled!=null)z.enabled=!!a.enabled;}
+      await persistRestaurant();renderDashSection('settings');if(state.view==='storefront')renderStorefrontHero();return {label:'Zone de livraison mise à jour.'};
+    }
+    if(a.type==='update_payment_toggle'){
+      const m=String(a.method||'');if(!Object.prototype.hasOwnProperty.call(state.toggles,m))throw new Error('moyen de paiement introuvable');state.toggles[m]=a.enabled!=null?!!a.enabled:!state.toggles[m];await persistRestaurant();return {label:`${a.label||m} ${state.toggles[m]?'activé':'désactivé'}.`};
+    }
+    if(a.type==='update_restaurant'){
+      if(a.name!=null)RESTAURANT.name=String(a.name);if(a.type_name!=null)RESTAURANT.type=String(a.type_name);if(a.city!=null)RESTAURANT.city=String(a.city);if(a.phone!=null)RESTAURANT.phone=String(a.phone);if(a.address!=null)RESTAURANT.address=String(a.address);if(a.hero_title!=null)RESTAURANT.heroTitle=String(a.hero_title);if(a.hero_subtitle!=null)RESTAURANT.heroSubtitle=String(a.hero_subtitle);await persistRestaurant();renderDashSection('settings');applyRestaurantName(RESTAURANT.name);return {label:'Informations du restaurant mises à jour.'};
+    }
+    if(a.type==='update_social'){
+      const key=String(a.network||a.key||'').trim();if(!RESTAURANT.social[key])RESTAURANT.social[key]={enabled:true,value:''};if(a.enabled!=null)RESTAURANT.social[key].enabled=!!a.enabled;if(a.value!=null)RESTAURANT.social[key].value=String(a.value);await persistRestaurant();renderDashSection('settings');return {label:'Réseau social mis à jour.'};
+    }
+    if(a.type==='update_map'){if(a.maps_link!=null)RESTAURANT.mapsLink=String(a.maps_link);if(a.show_map!=null)RESTAURANT.showMap=!!a.show_map;await persistRestaurant();renderDashSection('settings');if(state.view==='storefront')renderStorefrontHero();return {label:'Localisation mise à jour.'};}
+    if(a.type==='update_notifications'){RESTAURANT.notificationsEnabled=!!a.enabled;await persistRestaurant();renderDashSection('settings');return {label:`Notifications ${RESTAURANT.notificationsEnabled?'activées':'désactivées'}.`};}
+    if(a.type==='publish_site'){RESTAURANT.isPublished=a.published!==false;const saved=await persistRestaurant();if(!saved)throw new Error('publication');renderDashSection('settings');return {label:RESTAURANT.isPublished?'Site publié.':'Site dépublié.'};}
+    if(a.type==='update_category'){
+      const key=String(a.key||a.category||'').trim();const op=String(a.operation||'update');
+      if(op==='add'){const newKey='cat_'+Date.now();catsState[newKey]=String(a.name||a.category_label||'Nouvelle catégorie');await supabaseClient.from('categories').insert({restaurant_id:RESTAURANT.id,key:newKey,label:catsState[newKey],sort_order:Object.keys(catsState).length-1});}
+      else {if(!catsState[key])throw new Error('catégorie introuvable');if(op==='delete'){delete catsState[key];const {error}=await supabaseClient.from('categories').delete().eq('restaurant_id',RESTAURANT.id).eq('key',key);if(error)throw new Error('catégorie');}else{catsState[key]=String(a.new_label||a.name||catsState[key]);const {error}=await supabaseClient.from('categories').update({label:catsState[key]}).eq('restaurant_id',RESTAURANT.id).eq('key',key);if(error)throw new Error('catégorie');}}
+      renderDashSection('categories');return {label:'Catégorie mise à jour.'};
+    }
+    if(a.type==='update_staff'){
+      const s=staffState.find(x=>String(x.id)===String(a.staff_id||'')||String(x.name||'').toLowerCase()===String(a.staff_name||'').toLowerCase());if(!s)throw new Error('membre du personnel introuvable');if(a.name!=null)s.name=String(a.name);if(a.role!=null)s.role=String(a.role);if(Array.isArray(a.permissions))s.permissions=a.permissions;if(a.status!=null)s.status=String(a.status);await persistStaffUpdate(s);renderDashSection('staff');return {label:`${s.name} a été mis à jour.`};
+    }
+    if(a.type==='start_subscription_checkout'){
+      const plan=String(a.plan||'').toLowerCase();
+      if(!['starter','pro'].includes(plan)) throw new Error('forfait introuvable');
+      abonSelectedPlan=plan;
+      abonSelectedCycle=(a.billing_cycle==='annual'?'annual':'monthly');
+      await startPayTechCheckout(plan);
+      return {label:`Paiement ${plan==='pro'?'Premium':'Starter'} préparé.`};
+    }
+    throw new Error('action non supportée');
   }
-
+  function renderProductViewsAfterAction(){if(state.dashSection==='products'){const el=document.getElementById('productsList');if(el){el.innerHTML=productsListHtml();hydrateIcons(el);}}if(state.view==='storefront')renderProductSections();}
   async function confirmPendingActions(){
-    if(!pendingActions?.length || aiThinking)return;
-    const actions=[...pendingActions];
-    pendingActions=null;
-    busy(true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
-    try{
-      const done=[];
-      for(const a of actions){
-        if(a.type==='update_product') done.push(await applyUpdateAction(a));
-        else if(a.type==='create_product') done.push(await applyCreateAction(a));
-      }
-      refreshProductViews();
-      addMessage('assistant',`Modifications confirmées et enregistrées dans votre catalogue.\n\n${done.map(p=>`✓ ${p.name} — ${fmt(p.price)} · ${p.active?'actif':'inactif'} · ${p.available?'disponible':'indisponible'} · stock ${p.stock==null?'—':p.stock}`).join('\n')}`);
-      setStatus('',false);renderAi(true);toast(done.length>1?`${done.length} modifications ont été enregistrées.`:'Modification enregistrée.');
-    }catch(err){
-      console.error('TerangaResto IA — action:',err);
-      addMessage('assistant',`La modification n’a pas été appliquée.\n\n${String(err?.message||'Erreur inconnue')}`);
-      setStatus('',false);renderAi(true);
-    }finally{busy(false);}
+    if(!pendingActions?.length||aiThinking)return;const actions=[...pendingActions];pendingActions=null;busy(true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
+    try{const done=[];for(const a of actions)done.push(await applyAction(a));persistChats();addMessage('assistant',`C’est fait. ${done.map(x=>'✓ '+x.label).join(' ' )}`);setStatus('',false);renderAi(true);}
+    catch(e){console.error(e);addMessage('assistant','La modification n’a pas pu être appliquée pour le moment. Aucun changement supplémentaire n’a été effectué.');setStatus('',false);renderAi(true);}
+    finally{busy(false);}
   }
-
   async function sendAi(e){
-    e.preventDefault();
-    if(aiThinking)return;
-    const input=document.getElementById('tgAiInput');
-    const text=(input?.value||'').trim();
-    if(!text)return;
-    const chat=ensureActiveChat();
-    if((chat.messages||[]).filter(m=>m.role==='user').length===0) chat.title=fallbackTitle(text);
-    aiThinking=true;busy(true);addMessage('user',text);if(input)input.value='';
-    setStatus('<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
-    renderAi(true); // repositionne immédiatement le chat sur la nouvelle question
-    try{
-      const result=await askGroq(text);
-      const current=ensureActiveChat();
-      if(result.title && (current.messages||[]).filter(m=>m.role==='user').length<=1) current.title=result.title.slice(0,70);
-      const actions=result.actions.map(normalizeAction).filter(Boolean).slice(0,5);
-      pendingActions=actions.length?actions:null;
-      addMessage('assistant',result.answer);
-      setStatus('',false);
-      persistChats();renderAi(true);
-    }catch(err){
-      console.error('TerangaResto IA:',err);
-      addMessage('assistant','Le service IA n’a pas pu traiter cette demande.\n\nDétail : '+String(err?.message||'Erreur inconnue')+'\n\nAucune modification n’a été appliquée.');
-      setStatus('',false);renderAi(true);
-    }finally{aiThinking=false;busy(false);}
+    e.preventDefault();if(aiThinking)return;const input=document.getElementById('tgAiInput');const text=(input?.value||'').trim();if(!text&&!aiAttachment)return;const chat=ensureActiveChat();if((chat.messages||[]).filter(m=>m.role==='user').length===0)chat.title=fallbackTitle(text||'Gestion du restaurant');aiThinking=true;busy(true);if(text)addMessage('user',text);else addMessage('user','📎 Photo jointe');if(input)input.value='';setStatus('<span class="tg-ai-thinking">Analyse de votre demande <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);renderAi(true);
+    const attachmentForRequest=aiAttachment;
+    try{const r=await askAi(text||'Utilise la photo jointe pour ma demande.');const c=ensureActiveChat();if(r.title&&(c.messages||[]).filter(m=>m.role==='user').length<=1)c.title=r.title.slice(0,70);pendingActions=r.actions.length?r.actions:null;addMessage('assistant',r.answer||'Voici ce que j’ai trouvé.');setStatus('',false);persistChats();renderAi(true);}catch(err){console.error('IA',err);addMessage('assistant','Je n’ai pas pu traiter cette demande pour le moment. Vérifiez votre connexion puis réessayez.');setStatus('',false);renderAi(true);}finally{aiAttachment=null;aiThinking=false;busy(false);}
   }
-
-  function toggleMic(){
-    const C=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!C){addMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.');renderAi(true);return;}
-    const mic=document.getElementById('tgAiMic');
-    if(aiListening){aiRecognition?.stop();return;}
-    aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;
-    aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');if(mic)mic.textContent='■';setStatus('Parlez…',true)};
-    aiRecognition.onresult=(e)=>{const v=e.results?.[0]?.[0]?.transcript||'';const input=document.getElementById('tgAiInput');if(input){input.value=v;input.focus();}};
-    aiRecognition.onerror=()=>{setStatus('',false)};
-    aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};
-    aiRecognition.start();
-  }
+  function toggleMic(){const C=window.SpeechRecognition||window.webkitSpeechRecognition;if(!C){addMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre demande.');renderAi(true);return;}const mic=document.getElementById('tgAiMic');if(aiListening){aiRecognition?.stop();return;}aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;aiRecognition.onstart=()=>{aiListening=true;if(mic){mic.classList.add('recording');mic.textContent='■';}setStatus('Parlez…',true)};aiRecognition.onresult=e=>{const v=e.results?.[0]?.[0]?.transcript||'';const i=document.getElementById('tgAiInput');if(i){i.value=v;i.focus();}};aiRecognition.onerror=()=>setStatus('',false);aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};aiRecognition.start();}
 
   async function toggleTerangaAI(){
-    const previous=!!RESTAURANT.aiEnabled;
-    const next=!previous;
+    const next=!getAiEnabled();
 
-    // Cette action est volontairement indépendante de persistRestaurant().
-    // L’interrupteur IA ne doit jamais déclencher la sauvegarde générale
-    // des paramètres ni afficher « Enregistrement… ».
+    // L'état visuel change immédiatement. Cette bascule est volontairement
+    // indépendante du mécanisme d'enregistrement des autres paramètres :
+    // aucun bandeau "Enregistrement…" ne doit apparaître ici.
     RESTAURANT.aiEnabled=next;
+    setLocalAiEnabled(next);
     renderDashSection('settings');
-    if(next){syncAiVisibility();toast('IA activée.');}
-    else{closeAi();syncAiVisibility();toast('IA désactivée.');}
+    if(next) syncAiVisibility();
+    else { closeAi(); syncAiVisibility(); }
 
-    // Synchronisation silencieuse d’une seule colonne. Le client Supabase
-    // utilise automatiquement la session de l’utilisateur courant. On ne
-    // demande aucune ligne en retour : seule l’erreur d’écriture compte.
+    // Sauvegarde silencieuse et ciblée : uniquement ai_enabled.
+    // On n'utilise pas persistRestaurant() ici afin de ne pas déclencher
+    // le statut global d'enregistrement ni de dépendre de .select().
+    if(!RESTAURANT.id || typeof supabaseClient?.from!=='function') return;
     try{
       const {error}=await supabaseClient
         .from('restaurants')
         .update({ai_enabled:next})
-        .eq('id',RESTAURANT.id);
+        .eq('id', RESTAURANT.id);
 
       if(error){
-        console.error('TerangaResto — synchronisation IA:',error);
-        RESTAURANT.aiEnabled=previous;
-        renderDashSection('settings');
-        if(previous) syncAiVisibility(); else { closeAi(); syncAiVisibility(); }
-        toast('L’IA n’a pas pu être synchronisée. Vérifiez votre connexion puis réessayez.', true);
+        console.error('TerangaResto — activation IA non synchronisée:',error);
+        // On garde l'état local immédiatement visible ; la prochaine
+        // synchronisation du restaurant pourra rétablir l'état serveur.
         return;
       }
-
-      // Persistance locale uniquement comme secours UX sur cet appareil.
-      setLocalAiEnabled(next);
     }catch(error){
-      console.error('TerangaResto — synchronisation IA:',error);
-      RESTAURANT.aiEnabled=previous;
-      renderDashSection('settings');
-      if(previous) syncAiVisibility(); else { closeAi(); syncAiVisibility(); }
-      toast('L’IA n’a pas pu être synchronisée. Vérifiez votre connexion puis réessayez.', true);
+      console.error('TerangaResto — activation IA non synchronisée:',error);
     }
   }
 
   window.openAi=openAi;window.closeAi=closeAi;window.toggleAi=toggleAi;window.toggleTerangaAI=toggleTerangaAI;
-  window.addEventListener('hashchange',syncAiVisibility);
-  window.addEventListener('popstate',syncAiVisibility);
-  const origSetDashSection=window.setDashSection;
-  if(typeof origSetDashSection==='function')window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen)closeAi();});
-  setTimeout(syncAiVisibility,300);
+  window.addEventListener('hashchange',syncAiVisibility);window.addEventListener('popstate',syncAiVisibility);
+  const origSetDashSection=window.setDashSection;if(typeof origSetDashSection==='function')window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen)closeAi();});setTimeout(syncAiVisibility,300);
 })();
 </script>
 
