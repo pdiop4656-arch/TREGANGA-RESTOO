@@ -9685,15 +9685,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 
 <style id="teranga-ai-native">
 /* ============================================================
-   TERANGARESTO — ASSISTANT IA NATIF v3
-   - bouton flottant ouvrant/fermant le chat
-   - icône SVG avec marge interne suffisante (aucun rognage)
-   - multi-chats + historique local
-   - titres de chats générés par l'IA avec secours local
-   - contexte métier réel
-   - propositions d'actions avec confirmation obligatoire
-   - application des actions via Edge Function Supabase
-   - défilement toujours positionné sur le dernier message
+   TERANGARESTO — ASSISTANT IA NATIF V5
+   Le reste de l'application reste inchangé.
    ============================================================ */
 .tr-ai-settings-card{background:linear-gradient(135deg,rgba(232,135,30,.055),rgba(255,255,255,.72));border:1px solid rgba(232,135,30,.16);}
 .tr-ai-settings-icon{width:32px;height:32px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(232,135,30,.10);flex:0 0 auto;}
@@ -9703,19 +9696,94 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 .tg-ai-floating svg{width:30px;height:30px;display:block;overflow:visible;flex:none;}
 .tg-ai-panel{position:fixed;right:20px;bottom:92px;width:min(470px,calc(100vw - 28px));height:min(680px,calc(100vh - 128px));display:flex;flex-direction:column;background:#0D1526;color:#fff;border:1px solid rgba(232,135,30,.30);border-radius:20px;box-shadow:0 24px 70px rgba(5,10,20,.38);overflow:hidden;z-index:1299;}
 .tg-ai-head{padding:14px 14px 14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#101a2c,#0c1424);flex:0 0 auto;}
-.tg-ai-title{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.tg-ai-title .spark{width:40px;height:40px;border-radius:12px;background:rgba(232,135,30,.13);color:#E8871E;display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;padding:4px;box-sizing:border-box}.tg-ai-title .spark svg{width:30px;height:30px;display:block;overflow:visible}.tg-ai-title-main{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-title-sub{font-size:10px;color:rgba(255,255,255,.52);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tg-ai-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.tg-ai-icon-btn{border:0;background:rgba(255,255,255,.06);color:#fff;width:34px;height:34px;border-radius:10px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.tg-ai-icon-btn:hover{background:rgba(255,255,255,.10)}
-.tg-ai-body{display:flex;flex-direction:column;min-height:0;flex:1;position:relative;overflow:hidden}.tg-ai-messages{padding:16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;scroll-behavior:smooth;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}.tg-ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}.tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}.tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}.tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px;flex:0 0 auto;}.tg-ai-chip{border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;border-radius:999px;padding:7px 10px;font-size:10.5px;cursor:pointer}.tg-ai-chip:hover{border-color:rgba(232,135,30,.45)}
-.tg-ai-form{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:#0A1221;flex:0 0 auto;}.tg-ai-input{flex:1;min-width:0;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;padding:0 12px;outline:none;font-size:13px}.tg-ai-input:focus{border-color:rgba(232,135,30,.55);box-shadow:0 0 0 3px rgba(232,135,30,.08)}.tg-ai-mic,.tg-ai-send{width:43px;height:43px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:0}.tg-ai-mic{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10)}.tg-ai-mic.recording{background:#C64A3B}.tg-ai-send{background:#E8871E;color:#0B1220;font-size:18px}.tg-ai-send:disabled,.tg-ai-mic:disabled,.tg-ai-icon-btn:disabled{opacity:.5;cursor:not-allowed}
-.tg-ai-status{padding:9px 16px;font-size:10.5px;color:rgba(255,255,255,.54);border-top:1px solid rgba(255,255,255,.06);background:#0D1526;flex:0 0 auto}.tg-ai-thinking{display:inline-flex;align-items:center;gap:7px}.tg-ai-thinking-dots{display:inline-flex;gap:3px}.tg-ai-thinking-dots i{width:5px;height:5px;border-radius:50%;background:#E8871E;animation:tgAiDot 1.1s infinite ease-in-out}.tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}.tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}@keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
-.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}.tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07)}.tg-ai-action-item strong{display:block;color:#fff;margin-bottom:3px}.tg-ai-action-item span{display:block;color:rgba(255,255,255,.72)}.tg-ai-action-actions{display:flex;gap:7px}.tg-ai-action-actions button{border-radius:10px;padding:9px 12px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:11px}.tg-ai-action-actions button.primary{background:#E8871E;color:#0B1220;border-color:#E8871E;font-weight:800}
-.tg-ai-history-panel{position:absolute;inset:0;background:#0D1526;display:none;flex-direction:column;z-index:5}.tg-ai-history-panel.open{display:flex}.tg-ai-history-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}.tg-ai-history-title{font-size:13px;font-weight:800}.tg-ai-history-list{overflow:auto;flex:1;padding:8px}.tg-ai-history-row{display:flex;align-items:center;gap:8px;padding:10px;border-radius:11px;cursor:pointer;border:1px solid transparent}.tg-ai-history-row:hover{background:#131C30}.tg-ai-history-row.active{background:#19233A;border-color:rgba(232,135,30,.25)}.tg-ai-history-main{min-width:0;flex:1}.tg-ai-history-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-history-date{font-size:9.5px;color:rgba(255,255,255,.44);margin-top:2px}.tg-ai-history-new{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}.tg-ai-history-empty{padding:28px 14px;text-align:center;color:rgba(255,255,255,.52);font-size:11.5px;line-height:1.5}
-@media(max-width:900px){.tg-ai-floating{right:14px;bottom:74px;width:52px;height:52px}.tg-ai-floating svg{width:28px;height:28px}.tg-ai-panel{right:8px;left:8px;bottom:132px;width:auto;height:min(74vh,650px);border-radius:18px}.tg-ai-head{padding:12px}.tg-ai-title .spark{width:36px;height:36px}.tg-ai-title-main{font-size:13px}.tg-ai-title-sub{font-size:9.5px}.tg-ai-icon-btn{width:32px;height:32px}.tg-ai-messages{padding:12px}.tg-ai-action{margin-left:10px;margin-right:10px}.tg-ai-chips{padding-left:10px;padding-right:10px}}
-@media(max-width:430px){.tg-ai-panel{right:0;left:0;bottom:0;height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}.tg-ai-floating{right:12px;bottom:68px}.tg-ai-head-actions{gap:4px}.tg-ai-icon-btn{width:31px;height:31px}.tg-ai-form{padding:10px}.tg-ai-input{font-size:14px}.tg-ai-msg{max-width:90%;font-size:13px}}
+.tg-ai-title{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.tg-ai-title .spark{width:40px;height:40px;border-radius:12px;background:rgba(232,135,30,.13);color:#E8871E;display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:visible;padding:4px;box-sizing:border-box}
+.tg-ai-title .spark svg{width:30px;height:30px;display:block;overflow:visible}
+.tg-ai-title-main{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-ai-title-sub{font-size:10px;color:rgba(255,255,255,.52);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-ai-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.tg-ai-icon-btn{border:0;background:rgba(255,255,255,.06);color:#fff;width:34px;height:34px;border-radius:10px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.tg-ai-icon-btn:hover{background:rgba(255,255,255,.10)}
+.tg-ai-body{display:flex;flex-direction:column;min-height:0;flex:1;position:relative;overflow:hidden}
+.tg-ai-messages{padding:16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;scroll-behavior:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.tg-ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}
+.tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}
+.tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}
+.tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px;flex:0 0 auto;}
+.tg-ai-chip{border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;border-radius:999px;padding:7px 10px;font-size:10.5px;cursor:pointer}
+.tg-ai-chip:hover{border-color:rgba(232,135,30,.45)}
+.tg-ai-form{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:#0A1221;flex:0 0 auto;}
+.tg-ai-input{flex:1;min-width:0;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;padding:0 12px;outline:none;font-size:13px}
+.tg-ai-input:focus{border-color:rgba(232,135,30,.55);box-shadow:0 0 0 3px rgba(232,135,30,.08)}
+.tg-ai-mic,.tg-ai-send,.tg-ai-attach{width:43px;height:43px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:0}
+.tg-ai-mic{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10)}
+.tg-ai-mic.recording{background:#C64A3B}
+.tg-ai-attach{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10);font-size:16px}
+.tg-ai-send{background:#E8871E;color:#0B1220;font-size:18px}
+.tg-ai-send:disabled,.tg-ai-mic:disabled,.tg-ai-icon-btn:disabled,.tg-ai-attach:disabled{opacity:.5;cursor:not-allowed}
+.tg-ai-status{padding:9px 16px;font-size:10.5px;color:rgba(255,255,255,.54);border-top:1px solid rgba(255,255,255,.06);background:#0D1526;flex:0 0 auto}
+.tg-ai-thinking{display:inline-flex;align-items:center;gap:7px}
+.tg-ai-thinking-dots{display:inline-flex;gap:3px}
+.tg-ai-thinking-dots i{width:5px;height:5px;border-radius:50%;background:#E8871E;animation:tgAiDot 1.1s infinite ease-in-out}
+.tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}
+.tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}
+@keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
+.tg-ai-attachment{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#101a2c;border-top:1px solid rgba(255,255,255,.06);font-size:10.5px;color:rgba(255,255,255,.75)}
+.tg-ai-attachment img{width:34px;height:34px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.12)}
+.tg-ai-attachment button{margin-left:auto;border:0;background:transparent;color:rgba(255,255,255,.65);cursor:pointer;font-size:16px}
+.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}
+.tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}
+.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07)}
+.tg-ai-action-item strong{display:block;color:#fff;margin-bottom:3px}
+.tg-ai-action-item span{display:block;color:rgba(255,255,255,.72)}
+.tg-ai-action-actions{display:flex;gap:7px}
+.tg-ai-action-actions button{border-radius:10px;padding:9px 12px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:11px}
+.tg-ai-action-actions button.primary{background:#E8871E;color:#0B1220;border-color:#E8871E;font-weight:800}
+.tg-ai-history-panel{position:absolute;inset:0;background:#0D1526;display:none;flex-direction:column;z-index:5}
+.tg-ai-history-panel.open{display:flex}
+.tg-ai-history-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tg-ai-history-title{font-size:13px;font-weight:800}
+.tg-ai-history-list{overflow:auto;flex:1;padding:8px}
+.tg-ai-history-row{display:flex;align-items:center;gap:8px;padding:10px;border-radius:11px;cursor:pointer;border:1px solid transparent}
+.tg-ai-history-row:hover{background:#131C30}
+.tg-ai-history-row.active{background:#19233A;border-color:rgba(232,135,30,.25)}
+.tg-ai-history-main{min-width:0;flex:1}
+.tg-ai-history-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-ai-history-date{font-size:9.5px;color:rgba(255,255,255,.44);margin-top:2px}
+.tg-ai-history-new{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
+.tg-ai-history-empty{padding:28px 14px;text-align:center;color:rgba(255,255,255,.52);font-size:11.5px;line-height:1.5}
+@media(max-width:900px){
+  .tg-ai-floating{right:14px;bottom:74px;width:52px;height:52px}
+  .tg-ai-floating svg{width:28px;height:28px}
+  .tg-ai-panel{right:8px;left:8px;bottom:132px;width:auto;height:min(74vh,650px);border-radius:18px}
+  .tg-ai-head{padding:12px}
+  .tg-ai-title .spark{width:36px;height:36px}
+  .tg-ai-title-main{font-size:13px}
+  .tg-ai-title-sub{font-size:9.5px}
+  .tg-ai-icon-btn{width:32px;height:32px}
+  .tg-ai-messages{padding:12px}
+  .tg-ai-action{margin-left:10px;margin-right:10px}
+  .tg-ai-chips{padding-left:10px;padding-right:10px}
+}
+@media(max-width:430px){
+  .tg-ai-panel{right:0;left:0;bottom:0;height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}
+  .tg-ai-floating{right:12px;bottom:68px}
+  .tg-ai-head-actions{gap:4px}
+  .tg-ai-icon-btn{width:31px;height:31px}
+  .tg-ai-form{padding:10px}
+  .tg-ai-input{font-size:14px}
+  .tg-ai-msg{max-width:90%;font-size:13px}
+}
 </style>
 <script type="module">
 /* =====================================================================
-   TERANGARESTO — ASSISTANT IA NATIF v3
+   TERANGARESTO — ASSISTANT IA NATIF v5
+   - Questions métier uniquement
+   - Actions confirmables sur le catalogue + horaires + livraison + réglages
+   - Multi-chats + historique + titres
+   - Pièce jointe image pour création/modification produit
+   - Activation IA persistante, sans enregistrement visible
    ===================================================================== */
 (function(){
   'use strict';
@@ -9723,11 +9791,22 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   let aiOpen=false, aiThinking=false;
   let aiRecognition=null, aiListening=false;
   let aiChats=[], activeChatId=null, pendingActions=null;
+  let pendingAttachment=null;
   const AI_CHATS_KEY='tg_ai_chats_';
   const AI_LEGACY_HISTORY_KEY='tg_ai_history_';
   const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
   const MAX_CHATS=50;
   const MAX_MESSAGES_PER_CHAT=80;
+
+  const SUGGESTED_QUESTIONS=[
+    {label:'Ventes aujourd’hui',q:'Combien ai-je vendu aujourd’hui et quel est mon chiffre d’affaires ?'},
+    {label:'Commandes récentes',q:'Quelles sont mes commandes récentes et quels sont leurs statuts ?'},
+    {label:'Stock à réapprovisionner',q:'Quels produits sont en rupture ou sous leur seuil de stock ?'},
+    {label:'Produits les plus vendus',q:'Quels sont mes produits les plus vendus sur la période actuelle ?'},
+    {label:'Comparer mes ventes',q:'Compare mes ventes de cette semaine à la semaine précédente et explique-moi l’évolution.'},
+    {label:'Abonnement restant',q:'Combien de jours reste-t-il sur mon abonnement ou mon essai ?'},
+    {label:'Booster mes ventes',q:'Donne-moi trois conseils concrets pour augmenter mes ventes à partir de mes données.'},
+  ];
 
   function getAid(){ return RESTAURANT?.id ? String(RESTAURANT.id) : 'anonymous'; }
   function getAiEnabled(){
@@ -9736,7 +9815,6 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
   function setLocalAiEnabled(v){ try{localStorage.setItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid(),v?'1':'0');}catch(e){} }
 
-  /* SVG avec une vraie marge interne : les pointes restent dans la viewBox. */
   function aiSvg(){
     return '<svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M40 7l6.4 24.8L71 40l-24.6 6.2L40 73l-6.4-26.8L9 40l24.6-8.2L40 7zM63 17l1.9 7.1L72 26l-7.1 1.9L63 35l-1.9-7.1L54 26l7.1-1.9L63 17zM16 47l1.7 6.2L24 55l-6.3 1.8L16 63l-1.8-6.2L8 55l6.2-1.8L16 47z" fill="currentColor"/></svg>';
   }
@@ -9749,7 +9827,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function fallbackTitle(question){
     const clean=String(question||'').replace(/\s+/g,' ').trim();
     if(!clean) return 'Nouveau chat';
-    const stop=new Set(['je','tu','il','elle','nous','vous','les','des','une','un','de','du','la','le','et','ou','pour','avec','dans','sur','est','sont','que','qui','quoi','comment','peux','peut','mon','ma','mes','aujourd’hui','aujourdhui','est-ce','ce','cette','ces']);
+    const stop=new Set(['je','tu','il','elle','nous','vous','les','des','une','un','de','du','la','le','et','ou','pour','avec','dans','sur','est','sont','que','qui','quoi','comment','peux','peut','mon','ma','mes','aujourd’hui','aujourdhui','est-ce','ce','cette','ces','mes','ton','tes']);
     const words=clean.replace(/[!?.,;:()]/g,'').split(' ').filter(Boolean);
     const picked=[];
     for(const w of words){ if(!stop.has(w.toLowerCase()) && !picked.includes(w)) picked.push(w); if(picked.length>=5) break; }
@@ -9760,7 +9838,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function makeNewChat(){
     const now=Date.now();
     const id='chat_'+now+'_'+Math.random().toString(36).slice(2,8);
-    return {id,title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Posez-moi une question, demandez une analyse ou demandez une modification. Toute modification importante doit être confirmée avant d’être appliquée.'}]};
+    return {id,title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Je peux analyser votre activité et vous aider à gérer votre restaurant.'}]};
   }
   function newChat(){
     const chat=makeNewChat();
@@ -9768,6 +9846,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     aiChats=aiChats.slice(0,MAX_CHATS);
     activeChatId=chat.id;
     pendingActions=null;
+    pendingAttachment=null;
     persistChats();
     return chat;
   }
@@ -9821,216 +9900,471 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }):[];
     return {id:o?.id?String(o.id):'',num:o?.num?String(o.num):'',type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items,subtotal:Number(o?.subtotal||0),deliveryFee:Number(o?.deliveryFee||0),total:Number(o?.total||0),pay:String(o?.pay||''),payStatus:String(o?.payStatus||''),status:String(o?.status||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};
   }
+
   function buildAiContext(){
     const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}})();
-    const restaurant={id:RESTAURANT?.id?String(RESTAURANT.id):'',name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),slug:String(RESTAURANT?.slug||''),type:String(RESTAURANT?.type||''),city:String(RESTAURANT?.city||''),hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours.slice(0,7):[],delivery:RESTAURANT?.delivery||{},subscriptionStatus:String(RESTAURANT?.subscriptionStatus||''),billingCycle:String(RESTAURANT?.billingCycle||''),isPublished:!!RESTAURANT?.isPublished};
+    const now=Date.now();
+    const trialDays=typeof trialDaysRemaining==='function'?Number(trialDaysRemaining()||0):(
+      RESTAURANT?.trialEndsAt ? Math.max(0,Math.ceil((Number(RESTAURANT.trialEndsAt)-now)/86400000)) : null
+    );
+    const paidDays=typeof paidDaysRemaining==='function'?Number(paidDaysRemaining()||0):(
+      RESTAURANT?.currentPeriodEnd ? Math.max(0,Math.ceil((Number(RESTAURANT.currentPeriodEnd)-now)/86400000)) : null
+    );
+
+    const restaurant={
+      id:RESTAURANT?.id?String(RESTAURANT.id):'',
+      name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),
+      slug:String(RESTAURANT?.slug||''),
+      type:String(RESTAURANT?.type||''),
+      city:String(RESTAURANT?.city||''),
+      address:String(RESTAURANT?.address||''),
+      phone:String(RESTAURANT?.phone||''),
+      hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours.slice(0,7):[],
+      delivery:RESTAURANT?.delivery||{},
+      payment_toggles:state?.toggles||{},
+      showMap:!!RESTAURANT?.showMap,
+      mapsLink:String(RESTAURANT?.mapsLink||''),
+      notificationsEnabled:!!RESTAURANT?.notificationsEnabled,
+      aiEnabled:!!RESTAURANT?.aiEnabled,
+      plan:String(state?.plan||''),
+      subscriptionStatus:String(RESTAURANT?.subscriptionStatus||''),
+      billingCycle:String(RESTAURANT?.billingCycle||''),
+      trialDaysRemaining:trialDays,
+      subscriptionDaysRemaining:paidDays,
+      trialEndsAt:RESTAURANT?.trialEndsAt?new Date(RESTAURANT.trialEndsAt).toISOString():null,
+      currentPeriodEnd:RESTAURANT?.currentPeriodEnd?new Date(RESTAURANT.currentPeriodEnd).toISOString():null,
+      isPublished:!!RESTAURANT?.isPublished
+    };
+
     const categories=Object.entries(catsState||{}).map(([key,label])=>({key:String(key),label:String(label)}));
-    const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,300).map(p=>({id:p?.id?String(p.id):'',name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(catsState?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),active:p?.active!==false,available:p?.available!==false,stock:p?.stock==null?null:Number(p.stock),threshold:p?.threshold==null?null:Number(p.threshold),variants:Array.isArray(p?.variants)?p.variants.slice(0,20):[]}));
-    const recent_orders=(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]).slice(0,200).map(safeOrder);
+    const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,300).map(p=>({
+      id:p?.id?String(p.id):'',
+      name:String(p?.name||''),
+      description:String(p?.desc||''),
+      price:Number(p?.price||0),
+      category:String(p?.cat||''),
+      category_label:String(catsState?.[p?.cat]||''),
+      prep:p?.prep==null?null:Number(p.prep),
+      active:p?.active!==false,
+      available:p?.available!==false,
+      stock:p?.stock==null?null:Number(p.stock),
+      threshold:p?.threshold==null?null:Number(p.threshold),
+      variants:Array.isArray(p?.variants)?p.variants.slice(0,20):[]
+    }));
+
+    const library=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).slice(0,120).map(p=>({
+      name:String(p?.name||''),
+      description:String(p?.desc||''),
+      price:Number(p?.price||0),
+      category:String(p?.cat||''),
+      category_label:String(catsState?.[p?.cat]||''),
+      prep:p?.prep==null?15:Number(p.prep),
+      photo:String(p?.photo||'')
+    }));
+
+    const allOrders=(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]).map(safeOrder);
+    const validOrders=allOrders.filter(o=>o.status!=='cancelled' && Number.isFinite(Number(o.total)));
+    const dFromOrder=(o)=>{
+      const d=new Date(o.createdAt||0);
+      return Number.isNaN(d.getTime())?null:d;
+    };
+    const startToday=new Date();startToday.setHours(0,0,0,0);
+    const start7=new Date(startToday);start7.setDate(start7.getDate()-6);
+    const start30=new Date(startToday);start30.setDate(start30.getDate()-29);
+    const startYear=new Date(startToday.getFullYear(),0,1);
+
+    const aggregate=(arr)=>{
+      const revenue=arr.reduce((s,o)=>s+Number(o.total||0),0);
+      const count=arr.length;
+      return {orders:count,revenue,average_order:count?Math.round(revenue/count):0};
+    };
+
+    const allAgg=aggregate(validOrders);
+    const todayAgg=aggregate(validOrders.filter(o=>{const d=dFromOrder(o);return d&&d>=startToday;}));
+    const last7Agg=aggregate(validOrders.filter(o=>{const d=dFromOrder(o);return d&&d>=start7;}));
+    const last30Agg=aggregate(validOrders.filter(o=>{const d=dFromOrder(o);return d&&d>=start30;}));
+    const yearAgg=aggregate(validOrders.filter(o=>{const d=dFromOrder(o);return d&&d>=startYear;}));
+
+    const monthMap=new Map(),yearMap=new Map(),prodAll=new Map(),prod30=new Map();
+    for(const o of validOrders){
+      const d=dFromOrder(o);if(!d)continue;
+      const year=String(d.getFullYear());
+      const month=`${year}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if(!monthMap.has(month))monthMap.set(month,{month,orders:0,revenue:0});
+      const mm=monthMap.get(month);mm.orders++;mm.revenue+=Number(o.total||0);
+      if(!yearMap.has(year))yearMap.set(year,{year,orders:0,revenue:0});
+      const yy=yearMap.get(year);yy.orders++;yy.revenue+=Number(o.total||0);
+      const in30=d>=start30;
+      for(const item of (Array.isArray(o.items)?o.items:[])){
+        const name=Array.isArray(item)?String(item[0]||'Produit'):String(item?.name||'Produit');
+        const qty=Math.max(1,Number(Array.isArray(item)?item[1]:item?.qty)||1);
+        const price=Array.isArray(item)?0:Number(item?.price||0);
+        const add=(map)=>{
+          const key=name.trim().toLowerCase();
+          const row=map.get(key)||{name,quantity:0,revenue:0};
+          row.quantity+=qty;row.revenue+=price*qty;map.set(key,row);
+        };
+        add(prodAll);if(in30)add(prod30);
+      }
+    }
+    const topProductsAll=[...prodAll.values()].sort((a,b)=>b.quantity-a.quantity).slice(0,20);
+    const topProducts30=[...prod30.values()].sort((a,b)=>b.quantity-a.quantity).slice(0,20);
+    const monthly=[...monthMap.values()].sort((a,b)=>a.month.localeCompare(b.month)).slice(-36);
+    const yearly=[...yearMap.values()].sort((a,b)=>a.year.localeCompare(b.year));
+    const sales_summary={
+      all_time:allAgg,
+      today:todayAgg,
+      last_7_days:last7Agg,
+      last_30_days:last30Agg,
+      current_year:yearAgg,
+      by_month:monthly,
+      by_year:yearly,
+      top_products_all_time:topProductsAll,
+      top_products_last_30_days:topProducts30,
+    };
+
+    const recent_orders=allOrders.slice(0,220);
     const staff=(Array.isArray(staffState)?staffState:[]).slice(0,100).map(s=>({name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions.slice(0,30):[]}));
-    const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,100).map(r=>({rating:Number(r?.rating??r?.stars??0)||0,text:String(r?.comment??r?.text??r?.message??''),createdAt:r?.created_at?String(r.created_at):(r?.createdAt instanceof Date?r.createdAt.toISOString():String(r?.createdAt||''))}));
-    const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,30).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')}));
-    return {version:'terangaresto-ai-context-v3',generated_at:new Date().toISOString(),timezone:tz,restaurant,categories,products,recent_orders,staff,reviews,payments};
+    const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,120).map(r=>({rating:Number(r?.rating??r?.stars??0)||0,text:String(r?.comment??r?.text??r?.message??''),createdAt:r?.created_at?String(r.created_at):(r?.createdAt instanceof Date?r.createdAt.toISOString():String(r?.createdAt||''))}));
+    const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,50).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')}));
+
+    return {
+      version:'terangaresto-ai-context-v5',
+      generated_at:new Date(now).toISOString(),
+      timezone:tz,
+      restaurant,
+      categories,
+      products,
+      library_products:library,
+      sales_summary,
+      recent_orders,
+      staff,
+      reviews,
+      payments
+    };
   }
 
   function showAi(){
     if(!currentUser || !viewerIsStaff || state.view!=='dashboard' || !getAiEnabled() || isAccessBlocked()) return;
     let btn=document.getElementById('tgAiFloating');
     if(!btn){
-      btn=document.createElement('button'); btn.id='tgAiFloating'; btn.className='tg-ai-floating'; btn.type='button'; btn.title='Ouvrir / fermer l’IA'; btn.setAttribute('aria-label','Ouvrir / fermer l’IA');
-      btn.innerHTML=aiSvg(); btn.onclick=toggleAi; document.body.appendChild(btn);
+      btn=document.createElement('button');btn.id='tgAiFloating';btn.className='tg-ai-floating';btn.type='button';btn.title='Ouvrir / fermer l’IA';btn.setAttribute('aria-label','Ouvrir / fermer l’IA');btn.innerHTML=aiSvg();btn.onclick=toggleAi;document.body.appendChild(btn);
     }
     btn.setAttribute('aria-expanded',aiOpen?'true':'false');
   }
   function hideAi(){
-    const b=document.getElementById('tgAiFloating'); if(b)b.remove();
-    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
-    aiOpen=false; pendingActions=null;
+    const b=document.getElementById('tgAiFloating');if(b)b.remove();
+    const p=document.getElementById('tgAiPanel');if(p)p.remove();
+    aiOpen=false;pendingActions=null;pendingAttachment=null;
   }
-  function syncAiVisibility(){ if(getAiEnabled()) showAi(); else hideAi(); }
+  function syncAiVisibility(){if(getAiEnabled())showAi();else hideAi();}
 
   function scrollChatToBottom(){
-    const list=document.getElementById('tgAiMessages');
-    if(!list) return;
-    requestAnimationFrame(()=>{
-      list.scrollTop=list.scrollHeight;
-      const last=list.lastElementChild;
-      if(last) last.scrollIntoView({block:'end',inline:'nearest'});
-    });
-    setTimeout(()=>{ if(list) list.scrollTop=list.scrollHeight; },30);
+    const list=document.getElementById('tgAiMessages');if(!list)return;
+    requestAnimationFrame(()=>{list.scrollTop=list.scrollHeight;});
+    setTimeout(()=>{if(list)list.scrollTop=list.scrollHeight;},25);
   }
 
   function openAi(){
-    if(!getAiEnabled() || !currentUser || !viewerIsStaff) return;
-    if(!aiChats.length) migrateLegacy(); else ensureActiveChat();
-    aiOpen=true;
-    renderAi(true);
+    if(!getAiEnabled()||!currentUser||!viewerIsStaff)return;
+    if(!aiChats.length)migrateLegacy();else ensureActiveChat();
+    aiOpen=true;renderAi(true);
   }
   function closeAi(){
-    aiOpen=false; pendingActions=null;
-    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
-    const b=document.getElementById('tgAiFloating'); if(b)b.setAttribute('aria-expanded','false');
+    aiOpen=false;pendingActions=null;pendingAttachment=null;
+    const p=document.getElementById('tgAiPanel');if(p)p.remove();
+    const b=document.getElementById('tgAiFloating');if(b)b.setAttribute('aria-expanded','false');
   }
-  function toggleAi(){ if(aiOpen) closeAi(); else openAi(); }
+  function toggleAi(){if(aiOpen)closeAi();else openAi();}
 
   function renderHistoryPanel(panel){
-    const list=panel.querySelector('#tgAiHistoryList'); if(!list)return;
+    const list=panel.querySelector('#tgAiHistoryList');if(!list)return;
     const sorted=[...aiChats].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
     list.innerHTML=sorted.length?sorted.map(c=>`<div class="tg-ai-history-row ${c.id===activeChatId?'active':''}" data-chat-id="${escapeText(c.id)}"><div class="tg-ai-history-main"><div class="tg-ai-history-name">${escapeText(c.title||'Nouveau chat')}</div><div class="tg-ai-history-date">${escapeText(formatChatDate(c.updatedAt||c.createdAt))} · ${(c.messages||[]).length} message${(c.messages||[]).length>1?'s':''}</div></div></div>`).join(''):`<div class="tg-ai-history-empty">Aucune conversation enregistrée pour le moment.</div>`;
-    list.querySelectorAll('[data-chat-id]').forEach(row=>row.onclick=()=>{activeChatId=row.dataset.chatId;pendingActions=null;persistChats();renderAi(true);});
+    list.querySelectorAll('[data-chat-id]').forEach(row=>row.onclick=()=>{activeChatId=row.dataset.chatId;pendingActions=null;pendingAttachment=null;persistChats();renderAi(true);});
   }
-  function openHistory(){const panel=document.getElementById('tgAiHistoryPanel');if(!panel)return;panel.classList.add('open');renderHistoryPanel(panel);}
+  function openHistory(){const p=document.getElementById('tgAiHistoryPanel');if(!p)return;p.classList.add('open');renderHistoryPanel(document.getElementById('tgAiPanel'));}
   function closeHistory(){document.getElementById('tgAiHistoryPanel')?.classList.remove('open');}
 
-  function renderPendingAction(){
-    if(!pendingActions?.length) return '';
-    const items=pendingActions.map(a=>{
-      if(a.type==='create_product'){
-        const rows=[];
-        rows.push(`<strong>Créer « ${escapeText(a.name||'Nouveau produit')} »</strong>`);
-        if(a.price!=null) rows.push(`<span>Prix : ${escapeText(fmt(Number(a.price)||0))}</span>`);
-        if(a.category_label||a.category) rows.push(`<span>Catégorie : ${escapeText(a.category_label||a.category)}</span>`);
-        if(a.prep!=null) rows.push(`<span>Préparation : ${escapeText(String(a.prep))} min</span>`);
-        if(a.stock!=null) rows.push(`<span>Stock initial : ${escapeText(String(a.stock))}</span>`);
-        rows.push(`<span>Visibilité : ${a.active===false?'Inactif':'Actif'} · Disponibilité : ${a.available===false?'Indisponible':'Disponible'}</span>`);
-        return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
-      }
+  function pendingActionLine(a){
+    if(a.type==='create_product'){
+      const rows=[`<strong>Ajouter « ${escapeText(a.name||'Produit')} »</strong>`];
+      if(a.source_template)rows.push(`<span>À partir du produit prédéfini : ${escapeText(a.source_template)}</span>`);
+      if(a.price!=null)rows.push(`<span>Prix : ${escapeText(fmt(Number(a.price)||0))}</span>`);
+      if(a.category_label||a.category)rows.push(`<span>Catégorie : ${escapeText(a.category_label||a.category)}</span>`);
+      if(a.stock!=null)rows.push(`<span>Stock initial : ${escapeText(String(a.stock))}</span>`);
+      if(a.photo_data_url)rows.push(`<span>Photo jointe : oui</span>`);
+      rows.push(`<span>Disponibilité : ${a.available===false?'Indisponible':'Disponible'}</span>`);
+      return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
+    }
+    if(a.type==='update_product'){
       const rows=[`<strong>Modifier « ${escapeText(a.product_name||'Produit')} »</strong>`];
       const ch=a.changes||{};
-      if(ch.name!=null) rows.push(`<span>Nom → ${escapeText(ch.name)}</span>`);
-      if(ch.description!=null) rows.push(`<span>Description modifiée</span>`);
-      if(ch.price!=null) rows.push(`<span>Prix → ${escapeText(fmt(Number(ch.price)||0))}</span>`);
-      if(ch.category_label!=null) rows.push(`<span>Catégorie → ${escapeText(ch.category_label)}</span>`);
-      if(ch.prep!=null) rows.push(`<span>Préparation → ${escapeText(String(ch.prep))} min</span>`);
-      if(ch.active!=null) rows.push(`<span>Visibilité → ${ch.active?'Actif':'Inactif'}</span>`);
-      if(ch.available!=null) rows.push(`<span>Disponibilité → ${ch.available?'Disponible':'Indisponible'}</span>`);
-      if(ch.stock!=null) rows.push(`<span>Stock → ${escapeText(String(ch.stock))}</span>`);
-      if(ch.threshold!=null) rows.push(`<span>Seuil → ${escapeText(String(ch.threshold))}</span>`);
+      if(ch.name!=null)rows.push(`<span>Nom → ${escapeText(ch.name)}</span>`);
+      if(ch.description!=null)rows.push(`<span>Description modifiée</span>`);
+      if(ch.price!=null)rows.push(`<span>Prix → ${escapeText(fmt(Number(ch.price)||0))}</span>`);
+      if(ch.category_label!=null)rows.push(`<span>Catégorie → ${escapeText(ch.category_label)}</span>`);
+      if(ch.prep!=null)rows.push(`<span>Préparation → ${escapeText(String(ch.prep))} min</span>`);
+      if(ch.active!=null)rows.push(`<span>Visibilité → ${ch.active?'Actif':'Inactif'}</span>`);
+      if(ch.available!=null)rows.push(`<span>Disponibilité → ${ch.available?'Disponible':'Indisponible'}</span>`);
+      if(ch.stock!=null)rows.push(`<span>Stock → ${escapeText(String(ch.stock))}</span>`);
+      if(ch.threshold!=null)rows.push(`<span>Seuil → ${escapeText(String(ch.threshold))}</span>`);
+      if(ch.photo_data_url)rows.push(`<span>Photo → nouvelle image</span>`);
       return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
-    }).join('');
-    return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${items}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
+    }
+    if(a.type==='update_hours'){
+      return `<div class="tg-ai-action-item"><strong>Modifier les horaires</strong><span>${escapeText(a.day_label||('Jour '+(Number(a.day_index)+1)))} → ${a.open===false?'Fermé':escapeText(String(a.from||''))+' à '+escapeText(String(a.to||''))}</span></div>`;
+    }
+    if(a.type==='update_delivery_settings'){
+      const rows=[`<strong>Modifier la livraison</strong>`];
+      if(a.enabled!=null)rows.push(`<span>Livraison : ${a.enabled?'activée':'désactivée'}</span>`);
+      if(a.fee!=null)rows.push(`<span>Frais par défaut : ${escapeText(fmt(Number(a.fee)||0))}</span>`);
+      if(a.min!=null)rows.push(`<span>Commande minimum : ${escapeText(fmt(Number(a.min)||0))}</span>`);
+      return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
+    }
+    if(a.type==='create_delivery_zone'){
+      return `<div class="tg-ai-action-item"><strong>Ajouter une zone</strong><span>${escapeText(a.name||'Nouvelle zone')} · ${escapeText(fmt(Number(a.fee)||0))}</span></div>`;
+    }
+    if(a.type==='update_delivery_zone'){
+      return `<div class="tg-ai-action-item"><strong>Modifier la zone</strong><span>${escapeText(a.zone_name||'Zone')} → ${escapeText(fmt(Number(a.fee)||0))}${a.enabled===false?' · désactivée':''}</span></div>`;
+    }
+    if(a.type==='remove_delivery_zone'){
+      return `<div class="tg-ai-action-item"><strong>Supprimer une zone de livraison</strong><span>${escapeText(a.zone_name||'Zone')}</span></div>`;
+    }
+    if(a.type==='update_restaurant_settings'){
+      const rows=[`<strong>Modifier les paramètres du restaurant</strong>`];
+      const f=a.changes||{};
+      if(f.name!=null)rows.push(`<span>Nom → ${escapeText(f.name)}</span>`);
+      if(f.type!=null)rows.push(`<span>Type → ${escapeText(f.type)}</span>`);
+      if(f.city!=null)rows.push(`<span>Ville → ${escapeText(f.city)}</span>`);
+      if(f.address!=null)rows.push(`<span>Adresse → ${escapeText(f.address)}</span>`);
+      if(f.phone!=null)rows.push(`<span>Téléphone → ${escapeText(f.phone)}</span>`);
+      if(f.showMap!=null)rows.push(`<span>Carte → ${f.showMap?'activée':'désactivée'}</span>`);
+      if(f.notificationsEnabled!=null)rows.push(`<span>Notifications → ${f.notificationsEnabled?'activées':'désactivées'}</span>`);
+      return `<div class="tg-ai-action-item">${rows.join('')}</div>`;
+    }
+    if(a.type==='update_payment_toggles'){
+      return `<div class="tg-ai-action-item"><strong>Modifier les moyens de paiement</strong><span>Les moyens de paiement demandés seront mis à jour.</span></div>`;
+    }
+    return '';
   }
 
-  function renderAi(keepBottom=false){
-    if(!aiOpen || !getAiEnabled()) return;
+  function renderPendingAction(){
+    if(!pendingActions?.length)return '';
+    return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${pendingActions.map(pendingActionLine).join('')}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
+  }
+
+  function renderAttachment(){
+    if(!pendingAttachment)return '';
+    return `<div class="tg-ai-attachment"><img src="${pendingAttachment.dataUrl}" alt=""><span>${escapeText(pendingAttachment.name||'Photo jointe')}</span><button type="button" id="tgAiRemoveAttachment" aria-label="Retirer la photo">×</button></div>`;
+  }
+
+  function renderAi(keepBottom=true){
+    if(!aiOpen||!getAiEnabled())return;
     const chat=ensureActiveChat();
     let panel=document.getElementById('tgAiPanel');
     if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${escapeText(chat.title||'Nouveau chat')} · réponses intelligentes</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique des chats" aria-label="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer" aria-label="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Salut">Salut</button><button class="tg-ai-chip" data-q="Quelle est la capitale du Sénégal ?">Question générale</button><button class="tg-ai-chip" data-q="Que peux-tu faire ?">Que peux-tu faire ?</button><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
-
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${escapeText(chat.title||'Nouveau chat')} · réponses intelligentes</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique des chats" aria-label="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer" aria-label="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips">${SUGGESTED_QUESTIONS.map(s=>`<button class="tg-ai-chip" data-q="${escapeText(s.q)}">${escapeText(s.label)}</button>`).join('')}</div>${renderAttachment()}<form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><input id="tgAiFileInput" type="file" accept="image/*" hidden><button class="tg-ai-attach" id="tgAiAttach" type="button" title="Joindre une photo" aria-label="Joindre une photo">📎</button><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     const list=panel.querySelector('#tgAiMessages');
-    for(const m of (chat.messages||[])){
-      const div=document.createElement('div');div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;div.textContent=m.text;list.appendChild(div);
-    }
+    for(const m of (chat.messages||[])){const div=document.createElement('div');div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;div.textContent=m.text;list.appendChild(div);}
     panel.querySelector('#tgAiClose').onclick=closeAi;
     panel.querySelector('#tgAiNewChat').onclick=()=>{newChat();renderAi(true);};
-    panel.querySelector('#tgAiHistory').onclick=()=>{openHistory();};
+    panel.querySelector('#tgAiHistory').onclick=()=>openHistory();
     panel.querySelector('#tgAiHistoryNew').onclick=()=>{newChat();closeHistory();renderAi(true);};
     panel.querySelector('#tgAiForm').onsubmit=sendAi;
     panel.querySelector('#tgAiMic').onclick=toggleMic;
+    panel.querySelector('#tgAiAttach').onclick=()=>panel.querySelector('#tgAiFileInput')?.click();
+    panel.querySelector('#tgAiRemoveAttachment')?.addEventListener('click',()=>{pendingAttachment=null;renderAi(false);});
+    panel.querySelector('#tgAiFileInput').onchange=handleAttachmentSelected;
     panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{const input=panel.querySelector('#tgAiInput');if(input){input.value=btn.dataset.q||'';input.focus();}});
-    panel.querySelector('[data-ai-action="cancel"]')?.addEventListener('click',()=>{pendingActions=null;renderAi(true);});
+    panel.querySelector('[data-ai-action="cancel"]')?.addEventListener('click',()=>{pendingActions=null;renderAi(false);});
     panel.querySelector('[data-ai-action="confirm"]')?.addEventListener('click',confirmPendingActions);
     const floating=document.getElementById('tgAiFloating');if(floating)floating.setAttribute('aria-expanded','true');
-    if(keepBottom) scrollChatToBottom(); else scrollChatToBottom();
+    if(keepBottom)scrollChatToBottom();
     setTimeout(()=>panel.querySelector('#tgAiInput')?.focus(),0);
   }
 
   function setStatus(html,show=true){const el=document.getElementById('tgAiStatus');if(!el)return;el.innerHTML=html||'';el.hidden=!show;}
-  function busy(v){const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'),n=document.getElementById('tgAiNewChat');if(s)s.disabled=v;if(m)m.disabled=v;if(n)n.disabled=v;}
+  function busy(v){const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'),n=document.getElementById('tgAiNewChat'),h=document.getElementById('tgAiHistory'),a=document.getElementById('tgAiAttach');if(s)s.disabled=v;if(m)m.disabled=v;if(n)n.disabled=v;if(h)h.disabled=v;if(a)a.disabled=v;}
+
+  async function handleAttachmentSelected(e){
+    const file=e.target.files?.[0];
+    e.target.value='';
+    if(!file)return;
+    if(!file.type.startsWith('image/')){toast('Veuillez sélectionner une image.');return;}
+    if(file.size>8*1024*1024){toast('La photo ne doit pas dépasser 8 Mo.');return;}
+    try{
+      const raw=await new Promise((resolve,reject)=>{
+        const r=new FileReader();r.onload=()=>resolve(String(r.result||''));r.onerror=()=>reject(new Error('Lecture impossible.'));r.readAsDataURL(file);
+      });
+      const optimized=typeof optimizeGalleryPhoto==='function'?await optimizeGalleryPhoto(raw,1200,0.82):raw;
+      if(!/^data:image\//i.test(optimized))throw new Error('Format image invalide.');
+      pendingAttachment={name:file.name,type:file.type,dataUrl:optimized};
+      renderAi(false);
+    }catch(err){console.error('TerangaResto IA — pièce jointe:',err);toast('La photo n’a pas pu être ajoutée.');}
+  }
 
   function normalizeAction(action){
-    if(!action||typeof action!=='object') return null;
+    if(!action||typeof action!=='object')return null;
     const type=String(action.type||'none');
-    if(type==='none') return null;
     if(type==='create_product'){
-      const a={type,name:String(action.name||action.product_name||'').trim(),description:action.description==null?null:String(action.description),price:action.price==null?null:Number(action.price),category:String(action.category||'').trim(),category_label:String(action.category_label||'').trim(),prep:action.prep==null?null:Number(action.prep),active:action.active==null?true:Boolean(action.active),available:action.available==null?true:Boolean(action.available),stock:action.stock==null?20:Number(action.stock),threshold:action.threshold==null?5:Number(action.threshold),variants:Array.isArray(action.variants)?action.variants.slice(0,20):[],summary:String(action.summary||'').trim()};
-      return Number.isFinite(a.price)&&a.price>=0&&a.name?a:null;
+      const a={type,name:String(action.name||'').trim(),source_template:String(action.source_template||'').trim(),description:action.description==null?null:String(action.description),price:action.price==null?null:Number(action.price),category:String(action.category||'').trim(),category_label:String(action.category_label||'').trim(),prep:action.prep==null?15:Number(action.prep),active:action.active==null?true:Boolean(action.active),available:action.available==null?true:Boolean(action.available),stock:action.stock==null?20:Number(action.stock),threshold:action.threshold==null?5:Number(action.threshold),variants:Array.isArray(action.variants)?action.variants.slice(0,20):[],photo_data_url:action.photo_data_url==null?null:String(action.photo_data_url),summary:String(action.summary||'').trim()};
+      if(!a.name||!Number.isFinite(a.price)||a.price<0)return null;
+      return a;
     }
     if(type==='update_product'){
       const ch=action.changes&&typeof action.changes==='object'?action.changes:{};
-      return {type,product_id:String(action.product_id||'').trim(),product_name:String(action.product_name||action.name||'').trim(),summary:String(action.summary||'').trim(),changes:{name:ch.name==null?null:String(ch.name),description:ch.description==null?null:String(ch.description),price:ch.price==null?null:Number(ch.price),category:ch.category==null?null:String(ch.category),category_label:ch.category_label==null?null:String(ch.category_label),prep:ch.prep==null?null:Number(ch.prep),active:ch.active==null?null:Boolean(ch.active),available:ch.available==null?null:Boolean(ch.available),stock:ch.stock==null?null:Number(ch.stock),threshold:ch.threshold==null?null:Number(ch.threshold)}};
+      return {type,product_id:String(action.product_id||'').trim(),product_name:String(action.product_name||action.name||'').trim(),summary:String(action.summary||'').trim(),changes:{name:ch.name==null?null:String(ch.name),description:ch.description==null?null:String(ch.description),price:ch.price==null?null:Number(ch.price),category:ch.category==null?null:String(ch.category),category_label:ch.category_label==null?null:String(ch.category_label),prep:ch.prep==null?null:Number(ch.prep),active:ch.active==null?null:Boolean(ch.active),available:ch.available==null?null:Boolean(ch.available),stock:ch.stock==null?null:Number(ch.stock),threshold:ch.threshold==null?null:Number(ch.threshold),photo_data_url:ch.photo_data_url==null?null:String(ch.photo_data_url)}};
+    }
+    if(type==='update_hours'){
+      return {type,day_index:Number(action.day_index),day_label:String(action.day_label||''),open:action.open===false?false:true,from:String(action.from||'').trim(),to:String(action.to||'').trim()};
+    }
+    if(type==='update_delivery_settings'){
+      return {type,enabled:action.enabled==null?null:Boolean(action.enabled),fee:action.fee==null?null:Number(action.fee),min:action.min==null?null:Number(action.min)};
+    }
+    if(type==='create_delivery_zone'){
+      return {type,name:String(action.name||'').trim(),fee:Number(action.fee||0),enabled:action.enabled==null?true:Boolean(action.enabled)};
+    }
+    if(type==='update_delivery_zone'){
+      return {type,zone_id:String(action.zone_id||'').trim(),zone_name:String(action.zone_name||'').trim(),fee:action.fee==null?null:Number(action.fee),enabled:action.enabled==null?null:Boolean(action.enabled)};
+    }
+    if(type==='remove_delivery_zone'){
+      return {type,zone_id:String(action.zone_id||'').trim(),zone_name:String(action.zone_name||'').trim()};
+    }
+    if(type==='update_restaurant_settings'){
+      const f=action.changes&&typeof action.changes==='object'?action.changes:{};
+      return {type,changes:{name:f.name==null?null:String(f.name),type:f.type==null?null:String(f.type),city:f.city==null?null:String(f.city),address:f.address==null?null:String(f.address),phone:f.phone==null?null:String(f.phone),showMap:f.showMap==null?null:Boolean(f.showMap),mapsLink:f.mapsLink==null?null:String(f.mapsLink),notificationsEnabled:f.notificationsEnabled==null?null:Boolean(f.notificationsEnabled)}};
+    }
+    if(type==='update_payment_toggles'){
+      return {type,changes:(action.changes&&typeof action.changes==='object')?action.changes:{}};
     }
     return null;
   }
 
+  function attachmentForRequest(){
+    if(!pendingAttachment)return null;
+    return {present:true,name:pendingAttachment.name,type:pendingAttachment.type};
+  }
+
+  async function extractFunctionError(error){
+    try{
+      if(error?.context instanceof Response){
+        const clone=error.context.clone();
+        const raw=await clone.text();
+        if(raw){
+          try{const j=JSON.parse(raw);if(j?.error)return String(j.error);}catch(e){}
+          if(raw.length<500)return raw;
+        }
+      }
+    }catch(e){}
+    const msg=String(error?.message||'');
+    return msg||'Le service IA n’a pas pu répondre pour le moment.';
+  }
+
   async function callEdge(payload){
-    if(typeof supabaseClient==='undefined' || !supabaseClient || !supabaseClient.functions || typeof supabaseClient.functions.invoke!=='function') throw new Error('Client Supabase indisponible.');
+    if(typeof supabaseClient==='undefined'||!supabaseClient?.functions||typeof supabaseClient.functions.invoke!=='function')throw new Error('Le service de connexion n’est pas disponible.');
     const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});
-    if(error) throw error;
-    if(!data?.success) throw new Error(String(data?.error||'Le service IA a renvoyé une erreur.'));
+    if(error)throw new Error(await extractFunctionError(error));
+    if(!data?.success)throw new Error(String(data?.error||'Je n’ai pas pu traiter cette demande pour le moment.'));
     return data;
   }
 
   async function askGroq(text){
     const chat=ensureActiveChat();
     const history=(chat.messages||[]).slice(-12).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
-    const payload={mode:'chat',question:text,message:text,restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',restaurant_name:RESTAURANT?.name?String(RESTAURANT.name):String(RESTO_NAME||'TerangaResto'),user_id:currentUser?.id?String(currentUser.id):'',messages:history,context:buildAiContext(),conversation_title:chat.title||''};
-    const data=await callEdge(payload);
-    const answer=String(data?.answer??'').trim();
-    if(!answer) throw new Error('Réponse IA vide.');
+    const data=await callEdge({mode:'chat',question:text,message:text,restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',restaurant_name:RESTAURANT?.name?String(RESTAURANT.name):String(RESTO_NAME||'TerangaResto'),user_id:currentUser?.id?String(currentUser.id):'',messages:history,context:buildAiContext(),attachment:attachmentForRequest(),conversation_title:chat.title||''});
+    const answer=String(data?.answer||'').trim();
+    if(!answer)throw new Error('Je n’ai pas pu formuler une réponse utile.');
     return {answer,title:String(data?.chat_title||'').trim(),actions:Array.isArray(data?.actions)?data.actions:[]};
   }
 
   async function executeAiAction(action){
     const data=await callEdge({mode:'execute_action',restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',action});
-    return data?.product||null;
+    return data?.product||data?.restaurant||data?.delivery||data?.hours||data?.result||null;
   }
 
   function applyProductRowLocally(row){
-    if(!row||typeof row!=='object') return null;
+    if(!row||typeof row!=='object')return null;
     const normalize=(r)=>({id:String(r.id||''),stock:r.stock==null?null:Number(r.stock),threshold:r.threshold==null?null:Number(r.threshold),name:String(r.name||''),desc:String(r.desc??r.description??''),price:Number(r.price||0),cat:String(r.cat??r.category??''),prep:r.prep==null?15:Number(r.prep),active:r.active!==false,available:r.available!==false,variants:Array.isArray(r.variants)?r.variants.slice(0,20):[],variantsRequired:!!(r.variants_required??r.variantsRequired),photo:r.photo||null,photos:Array.isArray(r.gallery_photos)?r.gallery_photos.slice(0,3):(Array.isArray(r.photos)?r.photos.slice(0,3):(r.photo?[r.photo]:[]))});
-    const p=normalize(row);
-    const idx=PRODUCTS.findIndex(x=>String(x.id)===p.id);
-    if(idx>=0) PRODUCTS[idx]={...PRODUCTS[idx],...p}; else PRODUCTS.push(p);
+    const p=normalize(row);const idx=PRODUCTS.findIndex(x=>String(x.id)===p.id);
+    if(idx>=0)PRODUCTS[idx]={...PRODUCTS[idx],...p};else PRODUCTS.push(p);
     return PRODUCTS.find(x=>String(x.id)===p.id)||p;
   }
 
   async function applyUpdateAction(a){
-    if(!a.product_id){
-      const p=PRODUCTS.find(x=>String(x.name||'').trim().toLowerCase()===String(a.product_name||'').trim().toLowerCase());
-      if(p)a={...a,product_id:String(p.id)};
-    }
-    if(!a.product_id) throw new Error(`Produit introuvable : ${a.product_name||'cible inconnue'}.`);
-    const row=await executeAiAction(a);
-    const p=applyProductRowLocally(row);
-    if(!p) throw new Error('Le serveur a enregistré la modification mais n’a pas renvoyé le produit mis à jour.');
+    const row=await executeAiAction(a);const p=applyProductRowLocally(row);
+    if(!p)throw new Error('La modification a été enregistrée, mais le produit mis à jour n’a pas été renvoyé.');
     return p;
   }
   async function applyCreateAction(a){
-    if(!canAddProduct()) throw new Error(`La limite de produits de votre forfait est atteinte.`);
-    const row=await executeAiAction(a);
-    const p=applyProductRowLocally(row);
-    if(!p) throw new Error('Le produit a été enregistré mais sa réponse serveur est incomplète.');
+    if(!canAddProduct())throw new Error(`La limite de produits de votre forfait est atteinte.`);
+    const wanted=String(a.source_template||'').trim().toLowerCase();
+    const template=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS.find(x=>String(x?.name||'').trim().toLowerCase()===wanted):null;
+    if(!template)throw new Error('Le produit prédéfini demandé est introuvable.');
+    const action={...a,template_snapshot:{
+      name:String(template.name||'').trim(),
+      description:String(template.desc||''),
+      category:String(template.cat||''),
+      category_label:String(catsState?.[template.cat]||''),
+      prep:template.prep==null?15:Number(template.prep),
+      variants:Array.isArray(template.variants)?template.variants.slice(0,20):[],
+      photo:String(template.photo||'')
+    }};
+    const row=await executeAiAction(action);const p=applyProductRowLocally(row);
+    if(!p)throw new Error('Le produit a été enregistré, mais les données retournées sont incomplètes.');
     return p;
   }
 
-  function refreshProductViews(){
-    if(state.view==='storefront' && typeof renderProductSections==='function') renderProductSections();
-    if(state.dashSection==='products'){
-      const list=document.getElementById('productsList');
-      if(list){list.innerHTML=productsListHtml();hydrateIcons(list);}
+  function applyRestaurantLocally(row){
+    if(row&&typeof row==='object'){
+      if(row.name!=null){RESTAURANT.name=String(row.name);if(typeof applyRestaurantName==='function')applyRestaurantName(RESTAURANT.name);}
+      if(row.type!=null)RESTAURANT.type=String(row.type);
+      if(row.city!=null)RESTAURANT.city=String(row.city);
+      if(row.address!=null)RESTAURANT.address=String(row.address);
+      if(row.phone!=null)RESTAURANT.phone=String(row.phone);
+      if(row.show_map!=null)RESTAURANT.showMap=!!row.show_map;
+      if(row.maps_link!=null)RESTAURANT.mapsLink=String(row.maps_link);
+      if(row.notifications_enabled!=null)RESTAURANT.notificationsEnabled=!!row.notifications_enabled;
     }
-    if(state.view==='dashboard' && state.dashSection!=='products' && typeof renderDashSection==='function') renderDashSection(state.dashSection);
+  }
+
+  async function applyGenericAction(a){
+    const row=await executeAiAction(a);
+    if(a.type==='update_restaurant_settings'){applyRestaurantLocally(row);return 'Paramètres du restaurant';}
+    if(a.type==='update_hours'){if(row?.hours)RESTAURANT.hours=row.hours;return `Horaires · ${a.day_label||'jour'}`;}
+    if(a.type==='update_delivery_settings'||a.type==='create_delivery_zone'||a.type==='update_delivery_zone'||a.type==='remove_delivery_zone'){
+      if(row?.delivery)RESTAURANT.delivery=row.delivery;
+      return 'Livraison';
+    }
+    if(a.type==='update_payment_toggles'){if(row?.payment_toggles)state.toggles=row.payment_toggles;return 'Moyens de paiement';}
+    return 'Modification';
+  }
+
+  function refreshSiteViews(){
+    try{
+      if(typeof renderStorefrontHero==='function')renderStorefrontHero();
+      if(typeof updateRestaurantSeo==='function')updateRestaurantSeo();
+      if(state.dashSection && typeof renderDashSection==='function')renderDashSection(state.dashSection);
+      if(state.view==='storefront'&&typeof renderProductSections==='function')renderProductSections();
+    }catch(e){console.warn('TerangaResto IA — rafraîchissement:',e);}
   }
 
   async function confirmPendingActions(){
-    if(!pendingActions?.length || aiThinking)return;
-    const actions=[...pendingActions];
-    pendingActions=null;
-    busy(true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
+    if(!pendingActions?.length||aiThinking)return;
+    const actions=[...pendingActions];pendingActions=null;busy(true);setStatus('<span class="tg-ai-thinking">Application de vos modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
     try{
       const done=[];
       for(const a of actions){
-        if(a.type==='update_product') done.push(await applyUpdateAction(a));
-        else if(a.type==='create_product') done.push(await applyCreateAction(a));
+        if(a.type==='update_product')done.push(await applyUpdateAction(a));
+        else if(a.type==='create_product')done.push(await applyCreateAction(a));
+        else done.push(await applyGenericAction(a));
       }
-      refreshProductViews();
-      addMessage('assistant',`Modifications confirmées et enregistrées dans votre catalogue.\n\n${done.map(p=>`✓ ${p.name} — ${fmt(p.price)} · ${p.active?'actif':'inactif'} · ${p.available?'disponible':'indisponible'} · stock ${p.stock==null?'—':p.stock}`).join('\n')}`);
-      setStatus('',false);renderAi(true);toast(done.length>1?`${done.length} modifications ont été enregistrées.`:'Modification enregistrée.');
+      refreshSiteViews();
+      addMessage('assistant',`C’est fait. Les modifications confirmées ont été enregistrées et synchronisées avec votre site.`);
+      setStatus('',false);renderAi(true);toast('Modifications enregistrées.');
     }catch(err){
       console.error('TerangaResto IA — action:',err);
-      addMessage('assistant',`La modification n’a pas été appliquée.\n\n${String(err?.message||'Erreur inconnue')}`);
+      addMessage('assistant',`La modification n’a pas pu être appliquée.\n\n${String(err?.message||'Le changement n’a pas pu être enregistré.')}`);
       setStatus('',false);renderAi(true);
     }finally{busy(false);}
   }
@@ -10042,22 +10376,34 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const text=(input?.value||'').trim();
     if(!text)return;
     const chat=ensureActiveChat();
-    if((chat.messages||[]).filter(m=>m.role==='user').length===0) chat.title=fallbackTitle(text);
-    aiThinking=true;busy(true);addMessage('user',text);if(input)input.value='';
-    setStatus('<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
-    renderAi(true); // repositionne immédiatement le chat sur la nouvelle question
+    if((chat.messages||[]).filter(m=>m.role==='user').length===0)chat.title=fallbackTitle(text);
+    aiThinking=true;busy(true);
+    addMessage('user',pendingAttachment?`${text}\n[Photo jointe : ${pendingAttachment.name}]`:text);
+    if(input)input.value='';
+    const sentAttachment=pendingAttachment;
+    setStatus(text.length>180?'<span class="tg-ai-thinking">Je regarde votre demande en détail <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>':'<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
+    renderAi(true);
     try{
       const result=await askGroq(text);
       const current=ensureActiveChat();
-      if(result.title && (current.messages||[]).filter(m=>m.role==='user').length<=1) current.title=result.title.slice(0,70);
-      const actions=result.actions.map(normalizeAction).filter(Boolean).slice(0,5);
+      if(result.title&&(current.messages||[]).filter(m=>m.role==='user').length<=1)current.title=result.title.slice(0,70);
+      const actions=result.actions.map(normalizeAction).filter(Boolean).slice(0,5).map(a=>{
+        if(a.type==='create_product'&&sentAttachment&&!a.photo_data_url)a.photo_data_url=sentAttachment.dataUrl;
+        if(a.type==='update_product'&&sentAttachment&&!a.changes.photo_data_url)a.changes.photo_data_url=sentAttachment.dataUrl;
+        return a;
+      });
       pendingActions=actions.length?actions:null;
       addMessage('assistant',result.answer);
-      setStatus('',false);
-      persistChats();renderAi(true);
+      pendingAttachment=null;
+      setStatus('',false);persistChats();renderAi(true);
     }catch(err){
       console.error('TerangaResto IA:',err);
-      addMessage('assistant','Le service IA n’a pas pu traiter cette demande.\n\nDétail : '+String(err?.message||'Erreur inconnue')+'\n\nAucune modification n’a été appliquée.');
+      pendingAttachment=sentAttachment||null;
+      const friendly=String(err?.message||'');
+      const normalized=/non-2xx|edge function|supabase function|fetch/i.test(friendly)
+        ? 'Je rencontre momentanément un problème de connexion avec le service IA. Réessayez dans quelques secondes.'
+        : friendly;
+      addMessage('assistant',normalized||'Je n’ai pas pu répondre à cette demande pour le moment. Réessayez.');
       setStatus('',false);renderAi(true);
     }finally{aiThinking=false;busy(false);}
   }
@@ -10077,34 +10423,18 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 
   async function toggleTerangaAI(){
     const next=!getAiEnabled();
-
-    // L'état visuel change immédiatement. Cette bascule est volontairement
-    // indépendante du mécanisme d'enregistrement des autres paramètres :
-    // aucun bandeau "Enregistrement…" ne doit apparaître ici.
-    RESTAURANT.aiEnabled=next;
-    setLocalAiEnabled(next);
-    renderDashSection('settings');
-    if(next) syncAiVisibility();
-    else { closeAi(); syncAiVisibility(); }
-
-    // Sauvegarde silencieuse et ciblée : uniquement ai_enabled.
-    // On n'utilise pas persistRestaurant() ici afin de ne pas déclencher
-    // le statut global d'enregistrement ni de dépendre de .select().
-    if(!RESTAURANT.id || typeof supabaseClient?.from!=='function') return;
+    const previous=!!getAiEnabled();
+    RESTAURANT.aiEnabled=next;setLocalAiEnabled(next);renderDashSection('settings');syncAiVisibility();
     try{
-      const {error}=await supabaseClient
-        .from('restaurants')
-        .update({ai_enabled:next})
-        .eq('id', RESTAURANT.id);
-
-      if(error){
-        console.error('TerangaResto — activation IA non synchronisée:',error);
-        // On garde l'état local immédiatement visible ; la prochaine
-        // synchronisation du restaurant pourra rétablir l'état serveur.
-        return;
-      }
+      if(typeof supabaseClient==='undefined'||!supabaseClient?.from)throw new Error('Connexion indisponible.');
+      if(!RESTAURANT?.id)throw new Error('Restaurant introuvable.');
+      const {error}=await supabaseClient.from('restaurants').update({ai_enabled:next}).eq('id',RESTAURANT.id);
+      if(error)throw error;
+      toast(next?'IA activée.':'IA désactivée.');
     }catch(error){
-      console.error('TerangaResto — activation IA non synchronisée:',error);
+      console.error('TerangaResto IA — activation:',error);
+      RESTAURANT.aiEnabled=previous;setLocalAiEnabled(previous);renderDashSection('settings');syncAiVisibility();
+      toast('L’activation de l’IA n’a pas pu être synchronisée. Vérifiez votre connexion puis réessayez.');
     }
   }
 
