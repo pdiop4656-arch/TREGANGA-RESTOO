@@ -108,6 +108,9 @@ textarea.field-input{resize:vertical; font-family:inherit;}
 /* Interrupteur ON/OFF (base manquante, restaurée) */
 .toggle{position:relative; width:44px; height:24px; border-radius:999px; background:rgba(43,24,16,.15); flex-shrink:0; transition:background .15s; cursor:pointer;}
 .toggle.on{background:var(--forest);}
+.tr-ai-toggle-button{appearance:none;-webkit-appearance:none;border:0;padding:0;margin:0;display:block;position:relative;z-index:30;pointer-events:auto;touch-action:manipulation;outline-offset:3px;}
+.tr-ai-toggle-button:focus-visible{box-shadow:0 0 0 3px rgba(232,135,30,.25);}
+.tr-ai-toggle-button .dot{pointer-events:none;}
 .toggle .dot{position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:999px; transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.2);}
 .toggle.on .dot{transform:translateX(20px);}
 
@@ -8886,7 +8889,7 @@ function settingsBodyHtml(){
           <p style="font-size:11.5px;color:rgba(255,255,255,.86);margin:3px 0 0;line-height:1.45;">Activez l’assistant IA de TerangaResto pour vos analyses et actions de gestion.</p>
         </div>
       </div>
-      <div class="toggle ${RESTAURANT.aiEnabled?'on':''}" role="switch" aria-checked="${RESTAURANT.aiEnabled?'true':'false'}" tabindex="0" onclick="toggleTerangaAI()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTerangaAI();}"><div class="dot"></div></div>
+      <button type="button" id="tgAiSettingsToggle" class="toggle tr-ai-toggle-button ${RESTAURANT.aiEnabled?'on':''}" role="switch" aria-checked="${RESTAURANT.aiEnabled?'true':'false'}" aria-label="Activer ou désactiver l’assistant IA" onclick="window.toggleTerangaAI()"><span class="dot"></span></button>
     </div>
     <p style="font-size:10.8px;color:rgba(255,255,255,.9);margin:10px 0 0;">Désactivée par défaut. Lorsqu’elle est désactivée, aucun appel IA n’est effectué.</p>
   </div>`;
@@ -9683,87 +9686,433 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 }
 </style>
 
-<style id="tg-ai-final-style">
-.tg-ai-floating{position:fixed;right:18px;bottom:20px;width:58px;height:58px;border:1px solid rgba(232,135,30,.50);border-radius:50%;display:flex;align-items:center;justify-content:center;background:#E8871E;color:#0B1220;box-shadow:0 16px 36px rgba(43,24,16,.24);cursor:pointer;z-index:1300;overflow:hidden;padding:0;box-sizing:border-box}.tg-ai-floating svg{width:34px;height:34px;display:block;overflow:visible}.tg-ai-panel{position:fixed;right:18px;bottom:90px;width:min(500px,calc(100vw - 28px));height:min(720px,calc(100vh - 118px));display:flex;flex-direction:column;background:#0D1526;color:#fff;border:1px solid rgba(232,135,30,.30);border-radius:20px;box-shadow:0 24px 70px rgba(5,10,20,.38);overflow:hidden;z-index:1299}.tg-ai-head{padding:14px 14px 14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#101a2c,#0c1424)}.tg-ai-title{display:flex;align-items:center;gap:10px;min-width:0}.tg-ai-title .spark{width:40px;height:40px;border-radius:12px;background:rgba(232,135,30,.13);color:#E8871E;display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:5px}.tg-ai-title .spark svg{width:30px;height:30px;overflow:visible}.tg-ai-title-main{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-title-sub{font-size:10px;color:rgba(255,255,255,.52);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-head-actions{display:flex;align-items:center;gap:5px}.tg-ai-icon-btn{border:0;background:rgba(255,255,255,.06);color:#fff;width:34px;height:34px;border-radius:10px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.tg-ai-body{display:flex;flex-direction:column;min-height:0;flex:1;position:relative;overflow:hidden}.tg-ai-messages{padding:16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;scroll-behavior:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.tg-ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}.tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}.tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}.tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px;flex:0 0 auto}.tg-ai-chip{border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;border-radius:999px;padding:7px 10px;font-size:10.5px;cursor:pointer}.tg-ai-form{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:#0A1221;flex:0 0 auto}.tg-ai-input{flex:1;min-width:0;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;padding:0 12px;outline:none;font-size:13px}.tg-ai-mic,.tg-ai-attach,.tg-ai-send{width:43px;height:43px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:0}.tg-ai-mic,.tg-ai-attach{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10)}.tg-ai-mic.recording{background:#C64A3B}.tg-ai-send{background:#E8871E;color:#0B1220;font-size:18px}.tg-ai-attachment{margin:0 12px 8px;padding:8px 10px;border-radius:10px;background:#131C30;border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;color:rgba(255,255,255,.80)}.tg-ai-attachment button{border:0;background:transparent;color:#fff;cursor:pointer;font-size:16px}.tg-ai-status{padding:8px 16px;font-size:10.5px;color:rgba(255,255,255,.54);border-top:1px solid rgba(255,255,255,.06);background:#0D1526}.tg-ai-thinking{display:inline-flex;align-items:center;gap:7px}.tg-ai-thinking-dots{display:inline-flex;gap:3px}.tg-ai-thinking-dots i{width:5px;height:5px;border-radius:50%;background:#E8871E;animation:tgAiDot 1.1s infinite ease-in-out}.tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}.tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}@keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}.tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07)}.tg-ai-action-item strong{display:block;color:#fff;margin-bottom:3px}.tg-ai-action-item span{display:block;color:rgba(255,255,255,.72)}.tg-ai-action-actions{display:flex;gap:7px}.tg-ai-action-actions button{border-radius:10px;padding:9px 12px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:11px}.tg-ai-action-actions button.primary{background:#E8871E;color:#0B1220;border-color:#E8871E;font-weight:800}.tg-ai-history-panel{position:absolute;inset:0;background:#0D1526;display:none;flex-direction:column;z-index:5}.tg-ai-history-panel.open{display:flex}.tg-ai-history-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}.tg-ai-history-list{overflow:auto;flex:1;padding:8px}.tg-ai-history-row{padding:10px;border-radius:11px;cursor:pointer;border:1px solid transparent}.tg-ai-history-row:hover{background:#131C30}.tg-ai-history-row.active{background:#19233A;border-color:rgba(232,135,30,.25)}.tg-ai-history-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-history-date{font-size:9.5px;color:rgba(255,255,255,.44);margin-top:2px}.tg-ai-history-empty{padding:28px 14px;text-align:center;color:rgba(255,255,255,.52);font-size:11.5px;line-height:1.5}.tg-ai-file{display:none}@media(max-width:900px){.tg-ai-floating{right:12px;bottom:70px;width:52px;height:52px}.tg-ai-floating svg{width:30px;height:30px}.tg-ai-panel{right:8px;left:8px;bottom:126px;width:auto;height:min(76vh,650px)}}@media(max-width:430px){.tg-ai-panel{right:0;left:0;bottom:0;height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}.tg-ai-floating{right:12px;bottom:68px}.tg-ai-head{padding:10px}.tg-ai-icon-btn{width:31px;height:31px}.tg-ai-messages{padding:12px}.tg-ai-form{padding:10px}.tg-ai-input{font-size:14px}.tg-ai-msg{max-width:91%;font-size:13px}}
+<style id="teranga-ai-native">
+/* ============================================================
+   TERANGARESTO — ASSISTANT IA NATIF v3
+   - bouton flottant ouvrant/fermant le chat
+   - icône SVG avec marge interne suffisante (aucun rognage)
+   - multi-chats + historique local
+   - titres de chats générés par l'IA avec secours local
+   - contexte métier réel
+   - propositions d'actions avec confirmation obligatoire
+   - application des actions via Edge Function Supabase
+   - défilement toujours positionné sur le dernier message
+   ============================================================ */
+.tr-ai-settings-card{background:linear-gradient(135deg,rgba(232,135,30,.055),rgba(255,255,255,.72));border:1px solid rgba(232,135,30,.16);}
+.tr-ai-settings-icon{width:32px;height:32px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(232,135,30,.10);flex:0 0 auto;}
+.tg-ai-floating{position:fixed;right:20px;bottom:24px;width:56px;height:56px;border:1px solid rgba(232,135,30,.50);border-radius:50%;display:flex;align-items:center;justify-content:center;background:#E8871E;color:#0B1220;box-shadow:0 16px 36px rgba(43,24,16,.24);cursor:pointer;z-index:1300;transition:transform .18s ease,box-shadow .18s ease,background .18s ease;overflow:hidden;padding:0;box-sizing:border-box;}
+.tg-ai-floating:hover{transform:translateY(-2px);box-shadow:0 20px 42px rgba(43,24,16,.30)}
+.tg-ai-floating[aria-expanded="true"]{box-shadow:0 12px 28px rgba(43,24,16,.24);}
+.tg-ai-floating svg{width:30px;height:30px;display:block;overflow:visible;flex:none;}
+.tg-ai-panel{position:fixed;right:20px;bottom:92px;width:min(470px,calc(100vw - 28px));height:min(680px,calc(100vh - 128px));display:flex;flex-direction:column;background:#0D1526;color:#fff;border:1px solid rgba(232,135,30,.30);border-radius:20px;box-shadow:0 24px 70px rgba(5,10,20,.38);overflow:hidden;z-index:1299;}
+.tg-ai-head{padding:14px 14px 14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#101a2c,#0c1424);flex:0 0 auto;}
+.tg-ai-title{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.tg-ai-title .spark{width:40px;height:40px;border-radius:12px;background:rgba(232,135,30,.13);color:#E8871E;display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;padding:4px;box-sizing:border-box}.tg-ai-title .spark svg{width:30px;height:30px;display:block;overflow:visible}.tg-ai-title-main{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-title-sub{font-size:10px;color:rgba(255,255,255,.52);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-ai-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.tg-ai-icon-btn{border:0;background:rgba(255,255,255,.06);color:#fff;width:34px;height:34px;border-radius:10px;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}.tg-ai-icon-btn:hover{background:rgba(255,255,255,.10)}
+.tg-ai-body{display:flex;flex-direction:column;min-height:0;flex:1;position:relative;overflow:hidden}.tg-ai-messages{padding:16px;display:flex;flex-direction:column;gap:9px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;scroll-behavior:smooth;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}.tg-ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}.tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}.tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}.tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px;flex:0 0 auto;}.tg-ai-chip{border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;border-radius:999px;padding:7px 10px;font-size:10.5px;cursor:pointer}.tg-ai-chip:hover{border-color:rgba(232,135,30,.45)}
+.tg-ai-form{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:#0A1221;flex:0 0 auto;}.tg-ai-input{flex:1;min-width:0;height:43px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;padding:0 12px;outline:none;font-size:13px}.tg-ai-input:focus{border-color:rgba(232,135,30,.55);box-shadow:0 0 0 3px rgba(232,135,30,.08)}.tg-ai-mic,.tg-ai-send{width:43px;height:43px;border-radius:12px;border:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;padding:0}.tg-ai-mic{background:#131C30;color:#fff;border:1px solid rgba(255,255,255,.10)}.tg-ai-mic.recording{background:#C64A3B}.tg-ai-send{background:#E8871E;color:#0B1220;font-size:18px}.tg-ai-send:disabled,.tg-ai-mic:disabled,.tg-ai-icon-btn:disabled{opacity:.5;cursor:not-allowed}
+.tg-ai-status{padding:9px 16px;font-size:10.5px;color:rgba(255,255,255,.54);border-top:1px solid rgba(255,255,255,.06);background:#0D1526;flex:0 0 auto}.tg-ai-thinking{display:inline-flex;align-items:center;gap:7px}.tg-ai-thinking-dots{display:inline-flex;gap:3px}.tg-ai-thinking-dots i{width:5px;height:5px;border-radius:50%;background:#E8871E;animation:tgAiDot 1.1s infinite ease-in-out}.tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}.tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}@keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
+.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}.tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07)}.tg-ai-action-item strong{display:block;color:#fff;margin-bottom:3px}.tg-ai-action-item span{display:block;color:rgba(255,255,255,.72)}.tg-ai-action-actions{display:flex;gap:7px}.tg-ai-action-actions button{border-radius:10px;padding:9px 12px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:11px}.tg-ai-action-actions button.primary{background:#E8871E;color:#0B1220;border-color:#E8871E;font-weight:800}
+.tg-ai-history-panel{position:absolute;inset:0;background:#0D1526;display:none;flex-direction:column;z-index:5}.tg-ai-history-panel.open{display:flex}.tg-ai-history-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08)}.tg-ai-history-title{font-size:13px;font-weight:800}.tg-ai-history-list{overflow:auto;flex:1;padding:8px}.tg-ai-history-row{display:flex;align-items:center;gap:8px;padding:10px;border-radius:11px;cursor:pointer;border:1px solid transparent}.tg-ai-history-row:hover{background:#131C30}.tg-ai-history-row.active{background:#19233A;border-color:rgba(232,135,30,.25)}.tg-ai-history-main{min-width:0;flex:1}.tg-ai-history-name{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tg-ai-history-date{font-size:9.5px;color:rgba(255,255,255,.44);margin-top:2px}.tg-ai-history-new{width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:#131C30;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}.tg-ai-history-empty{padding:28px 14px;text-align:center;color:rgba(255,255,255,.52);font-size:11.5px;line-height:1.5}
+@media(max-width:900px){.tg-ai-floating{right:14px;bottom:74px;width:52px;height:52px}.tg-ai-floating svg{width:28px;height:28px}.tg-ai-panel{right:8px;left:8px;bottom:132px;width:auto;height:min(74vh,650px);border-radius:18px}.tg-ai-head{padding:12px}.tg-ai-title .spark{width:36px;height:36px}.tg-ai-title-main{font-size:13px}.tg-ai-title-sub{font-size:9.5px}.tg-ai-icon-btn{width:32px;height:32px}.tg-ai-messages{padding:12px}.tg-ai-action{margin-left:10px;margin-right:10px}.tg-ai-chips{padding-left:10px;padding-right:10px}}
+@media(max-width:430px){.tg-ai-panel{right:0;left:0;bottom:0;height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}.tg-ai-floating{right:12px;bottom:68px}.tg-ai-head-actions{gap:4px}.tg-ai-icon-btn{width:31px;height:31px}.tg-ai-form{padding:10px}.tg-ai-input{font-size:14px}.tg-ai-msg{max-width:90%;font-size:13px}}
 </style>
 <script type="module">
+/* =====================================================================
+   TERANGARESTO — ASSISTANT IA NATIF v3
+   ===================================================================== */
 (function(){
   'use strict';
-  let aiOpen=false, aiThinking=false, aiRecognition=null, aiListening=false, aiChats=[], activeChatId=null, pendingActions=null, aiAttachment=null;
-  const AI_CHATS_KEY='tg_ai_chats_', AI_LEGACY_HISTORY_KEY='tg_ai_history_', AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_', MAX_CHATS=50, MAX_MESSAGES=80;
-  const getAid=()=>RESTAURANT?.id?String(RESTAURANT.id):'anonymous';
-  function getAiEnabled(){ if(typeof RESTAURANT?.aiEnabled==='boolean') return RESTAURANT.aiEnabled; try{return localStorage.getItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid())==='1';}catch{return false;} }
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function aiSvg(){return '<svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M40 7l6.4 24.8L71 40l-24.6 6.2L40 73l-6.4-26.8L9 40l24.6-8.2L40 7zM63 17l1.9 7.1L72 26l-7.1 1.9L63 35l-1.9-7.1L54 26l7.1-1.9L63 17zM16 47l1.7 6.2L24 55l-6.3 1.8L16 63l-1.8-6.2L8 55l6.2-1.8L16 47z" fill="currentColor"/></svg>';}
-  function chatTitleLocal(q){const w=String(q||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean).slice(0,6).join(' ');return w?(w.charAt(0).toUpperCase()+w.slice(1)).slice(0,60):'Nouveau chat';}
-  function createChat(){const n=Date.now(),c={id:'chat_'+n+'_'+Math.random().toString(36).slice(2,8),title:'Nouveau chat',createdAt:n,updatedAt:n,messages:[{role:'assistant',text:'Bonjour 👋\nJe peux analyser votre activité et vous aider à gérer votre restaurant. Les modifications importantes seront toujours proposées avec une confirmation.'}]};aiChats.unshift(c);aiChats=aiChats.slice(0,MAX_CHATS);activeChatId=c.id;persistChats();return c;}
-  function ensureChat(){if(!aiChats.length){try{const raw=localStorage.getItem(AI_CHATS_KEY+getAid());if(raw)aiChats=JSON.parse(raw).filter(c=>c&&c.id&&Array.isArray(c.messages)).slice(0,MAX_CHATS);}catch{} if(!aiChats.length){try{const raw=localStorage.getItem(AI_LEGACY_HISTORY_KEY+getAid());const old=raw?JSON.parse(raw):[];if(Array.isArray(old)&&old.length) aiChats=[{id:'legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),messages:old.map(m=>({role:m?.role==='assistant'?'assistant':'user',text:String(m?.text||'')})).filter(m=>m.text).slice(-MAX_MESSAGES)}];}catch{} }}if(!aiChats.length)return createChat();if(!activeChatId||!aiChats.some(c=>c.id===activeChatId))activeChatId=aiChats[0].id;return aiChats.find(c=>c.id===activeChatId)||aiChats[0];}
-  function persistChats(){try{localStorage.setItem(AI_CHATS_KEY+getAid(),JSON.stringify(aiChats.map(c=>({...c,messages:(c.messages||[]).slice(-MAX_MESSAGES)}))));}catch{}}
-  function addMessage(role,text){const c=ensureChat();c.messages=(c.messages||[]).slice(-MAX_MESSAGES+1);c.messages.push({role:role==='assistant'?'assistant':'user',text:String(text||'')});c.updatedAt=Date.now();persistChats();}
-  function formatDate(ts){try{return new Date(ts).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}catch{return '';}}
-  function scrollChatToBottom(){const list=document.getElementById('tgAiMessages');if(!list)return;list.scrollTop=list.scrollHeight;requestAnimationFrame(()=>{if(list)list.scrollTop=list.scrollHeight;});}
-  function safeOrder(o){return{id:o?.id?String(o.id):'',num:o?.num?String(o.num):'',type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items:Array.isArray(o?.items)?o.items.slice(0,40).map(it=>({name:String(it?.name??''),qty:Number(it?.qty||1)||1,price:Number(it?.price||0)||0})):[],subtotal:Number(o?.subtotal||0)||0,deliveryFee:Number(o?.deliveryFee||0)||0,total:Number(o?.total||0)||0,pay:String(o?.pay||''),status:String(o?.status||''),payStatus:String(o?.payStatus||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};}
-  function buildStats(){const all=Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[],now=new Date();const valid=all.filter(o=>o&&o.status!=='cancelled');const dayStart=new Date(now.getFullYear(),now.getMonth(),now.getDate());const monthStart=new Date(now.getFullYear(),now.getMonth(),1);const yearStart=new Date(now.getFullYear(),0,1);const sum=arr=>arr.reduce((s,o)=>s+(Number(o.total)||0),0);const today=valid.filter(o=>new Date(o.createdAt)>=dayStart);const month=valid.filter(o=>new Date(o.createdAt)>=monthStart);const year=valid.filter(o=>new Date(o.createdAt)>=yearStart);const top=(arr)=>{const m={};arr.forEach(o=>(o.items||[]).forEach(it=>{const k=String(it.name||'');m[k]=(m[k]||0)+(Number(it.qty)||1)}));return Object.entries(m).map(([name,qty])=>({name,qty})).sort((a,b)=>b.qty-a.qty).slice(0,20)};const monthly={};valid.filter(o=>new Date(o.createdAt)>=new Date(now.getFullYear()-1,now.getMonth(),1)).forEach(o=>{const d=new Date(o.createdAt),k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;monthly[k]=(monthly[k]||0)+(Number(o.total)||0);});return{orders_total:valid.length,revenue_total:sum(valid),orders_today:today.length,revenue_today:sum(today),orders_month:month.length,revenue_month:sum(month),orders_year:year.length,revenue_year:sum(year),average_order:valid.length?sum(valid)/valid.length:0,top_products_all:top(valid),top_products_month:top(month),top_products_year:top(year),revenue_by_month:monthly};}
-  function buildAiContext(){const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch{return'UTC';}})();const r=RESTAURANT||{};const restaurant={id:r.id?String(r.id):'',name:String(r.name||RESTO_NAME||'TerangaResto'),slug:String(r.slug||''),type:String(r.type||''),city:String(r.city||''),phone:String(r.phone||''),address:String(r.address||''),hours:Array.isArray(r.hours)?r.hours.slice(0,7):[],delivery:r.delivery||{},social:r.social||{},showMap:!!r.showMap,mapsLink:String(r.mapsLink||''),notificationsEnabled:!!r.notificationsEnabled,aiEnabled:getAiEnabled(),isPublished:!!r.isPublished,heroTitle:String(r.heroTitle||''),heroSubtitle:String(r.heroSubtitle||''),subscriptionStatus:String(r.subscriptionStatus||''),billingCycle:String(r.billingCycle||''),trialEndsAt:r.trialEndsAt?new Date(r.trialEndsAt).toISOString():null,currentPeriodEnd:r.currentPeriodEnd?new Date(r.currentPeriodEnd).toISOString():null};const categories=Object.entries(catsState||{}).map(([key,label])=>({key:String(key),label:String(label)}));const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,300).map(p=>({id:String(p.id||''),name:String(p.name||''),description:String(p.desc||''),price:Number(p.price||0),category:String(p.cat||''),category_label:String(catsState?.[p.cat]||''),prep:p.prep==null?null:Number(p.prep),active:p.active!==false,available:p.available!==false,stock:p.stock==null?null:Number(p.stock),threshold:p.threshold==null?null:Number(p.threshold),variants:Array.isArray(p.variants)?p.variants.slice(0,20):[]}));const library_products=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).slice(0,100).map(p=>({name:String(p.name||''),description:String(p.desc||''),price:Number(p.price||0),category:String(p.cat||''),category_label:String(CAT_LABELS?.[p.cat]||catsState?.[p.cat]||''),prep:p.prep==null?null:Number(p.prep),photo:String(p.photo||'')}));const staff=(Array.isArray(staffState)?staffState:[]).slice(0,100).map(s=>({id:String(s.id||''),name:String(s.name||''),role:String(s.role||''),status:String(s.status||''),permissions:Array.isArray(s.permissions)?s.permissions.slice(0,40):[]}));const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,100).map(x=>({rating:Number(x.rating??x.stars??0)||0,text:String(x.comment??x.text??x.message??''),createdAt:String(x.created_at??x.createdAt??'')}));const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,30).map(x=>({status:String(x.status||''),amount:Number(x.amount||0),plan:String(x.plan||''),billingCycle:String(x.billing_cycle??x.billingCycle??''),createdAt:String(x.created_at??x.createdAt??'')}));return{version:'terangaresto-ai-context-v5',generated_at:new Date().toISOString(),timezone:tz,restaurant,categories,products,library_products,recent_orders:(allOrdersSafe()),staff,reviews,payments,statistics:buildStats()};}
-  function allOrdersSafe(){return(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]).slice(0,400).map(safeOrder);}
-  function showAi(){if(!currentUser||!viewerIsStaff||state.view!=='dashboard'||!getAiEnabled()||isAccessBlocked())return;let b=document.getElementById('tgAiFloating');if(!b){b=document.createElement('button');b.id='tgAiFloating';b.className='tg-ai-floating';b.type='button';b.title='Ouvrir / fermer l’IA';b.setAttribute('aria-label','Ouvrir / fermer l’IA');b.innerHTML=aiSvg();b.onclick=toggleAi;document.body.appendChild(b);}b.setAttribute('aria-expanded',aiOpen?'true':'false');}
-  function hideAi(){document.getElementById('tgAiPanel')?.remove();document.getElementById('tgAiFloating')?.remove();aiOpen=false;pendingActions=null;}
-  function syncAiVisibility(){if(getAiEnabled())showAi();else hideAi();}
-  function renderHistory(panel){const list=panel.querySelector('#tgAiHistoryList');if(!list)return;const sorted=[...aiChats].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));list.innerHTML=sorted.map(c=>`<div class="tg-ai-history-row ${c.id===activeChatId?'active':''}" data-id="${esc(c.id)}"><div class="tg-ai-history-name">${esc(c.title||'Nouveau chat')}</div><div class="tg-ai-history-date">${esc(formatDate(c.updatedAt||c.createdAt))} · ${(c.messages||[]).length} messages</div></div>`).join('')||'<div class="tg-ai-history-empty">Aucune conversation pour le moment.</div>';list.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>{activeChatId=el.dataset.id;pendingActions=null;persistChats();renderAi(true);});}
-  function renderPendingAction(){if(!pendingActions?.length)return'';const items=pendingActions.map(a=>{let rows=[`<strong>${esc(a.summary||'Modification à confirmer')}</strong>`];if(a.type==='create_product'){rows.push(`<span>Produit : ${esc(a.name)}</span>`,a.price!=null?`<span>Prix : ${esc(fmt(Number(a.price)||0))}</span>`:'',a.stock!=null?`<span>Stock initial : ${esc(a.stock)}</span>`:'',a.category_label?`<span>Catégorie : ${esc(a.category_label)}</span>`:'');}else if(a.type==='update_product'){rows.push(`<span>Produit : ${esc(a.product_name)}</span>`);Object.entries(a.changes||{}).forEach(([k,v])=>{if(v!==null&&v!==undefined&&k!=='photo_data_url')rows.push(`<span>${esc(k)} → ${esc(typeof v==='boolean'?(v?'Oui':'Non'):String(v))}</span>`);});}else{if(a.day_label)rows.push(`<span>Jour : ${esc(a.day_label)}</span>`);if(a.name)rows.push(`<span>Nom : ${esc(a.name)}</span>`);if(a.fee!=null)rows.push(`<span>Frais : ${esc(fmt(Number(a.fee)||0))}</span>`);if(a.enabled!=null)rows.push(`<span>État : ${a.enabled?'Activé':'Désactivé'}</span>`);if(a.from&&a.to)rows.push(`<span>Horaires : ${esc(a.from)} – ${esc(a.to)}</span>`);}return`<div class="tg-ai-action-item">${rows.filter(Boolean).join('')}</div>`;}).join('');return`<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${items}</div><div class="tg-ai-action-actions"><button type="button" id="tgAiCancel">Annuler</button><button type="button" class="primary" id="tgAiConfirm">Confirmer</button></div></div>`;}
-  function renderAi(bottom=false){if(!aiOpen||!getAiEnabled())return;const c=ensureChat();let panel=document.getElementById('tgAiPanel');if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')} · réponses et gestion</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits dois-je réapprovisionner ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de jours me reste-t-il sur mon abonnement ou mon essai ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi trois conseils concrets pour booster mes ventes.">Booster mes ventes</button></div><div class="tg-ai-attachment" id="tgAiAttachmentBar" style="display:${aiAttachment?'flex':'none'}"><span>📷 ${esc(aiAttachment?.name||'Photo jointe')}</span><button id="tgAiRemoveAttachment" type="button">×</button></div><form class="tg-ai-form"><input class="tg-ai-file" id="tgAiFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="tg-ai-attach" id="tgAiAttach" type="button" title="Ajouter une photo">📎</button><input class="tg-ai-input" id="tgAiInput" placeholder="Posez votre question…" autocomplete="off"><button class="tg-ai-mic" id="tgAiMic" type="button" title="Parler">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" title="Envoyer">➤</button></form><div class="tg-ai-status" id="tgAiStatus"></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><strong>Historique</strong><button class="tg-ai-icon-btn" id="tgAiHistoryClose">×</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;const form=panel.querySelector('.tg-ai-form');form.onsubmit=sendAi;panel.querySelector('#tgAiClose').onclick=toggleAi;panel.querySelector('#tgAiNewChat').onclick=()=>{createChat();aiAttachment=null;renderAi(true);};panel.querySelector('#tgAiHistory').onclick=()=>{const h=panel.querySelector('#tgAiHistoryPanel');h.classList.add('open');renderHistory(h);};panel.querySelector('#tgAiHistoryClose').onclick=()=>panel.querySelector('#tgAiHistoryPanel').classList.remove('open');panel.querySelector('#tgAiAttach').onclick=()=>panel.querySelector('#tgAiFile').click();panel.querySelector('#tgAiFile').onchange=handleAttachment;panel.querySelector('#tgAiRemoveAttachment').onclick=()=>{aiAttachment=null;renderAi(false);};panel.querySelector('#tgAiMic').onclick=toggleMic;panel.querySelectorAll('.tg-ai-chip').forEach(b=>b.onclick=()=>{const i=panel.querySelector('#tgAiInput');i.value=b.dataset.q||'';i.focus();});const msgs=panel.querySelector('#tgAiMessages');msgs.innerHTML=(c.messages||[]).map(m=>`<div class="tg-ai-msg ${m.role==='assistant'?'ai':'user'}">${esc(m.text)}</div>`).join('');const cancel=panel.querySelector('#tgAiCancel');const confirm=panel.querySelector('#tgAiConfirm');if(cancel)cancel.onclick=()=>{pendingActions=null;renderAi(true);};if(confirm)confirm.onclick=confirmPendingActions;if(bottom)scrollChatToBottom();else scrollChatToBottom();}
-  function setStatus(html){const e=document.getElementById('tgAiStatus');if(e)e.innerHTML=html||'';}
-  function busy(v){aiThinking=!!v;const s=document.getElementById('tgAiSend');if(s)s.disabled=!!v;const m=document.getElementById('tgAiMic');if(m)m.disabled=!!v;}
-  async function handleAttachment(e){const file=e.target.files?.[0];if(!file)return;if(!/^image\/(png|jpeg|webp)$/i.test(file.type)){addMessage('assistant','Cette image n’est pas prise en charge. Utilisez une image PNG, JPEG ou WebP.');renderAi(true);return;}try{const data=await compressImage(file,1200,0.78);aiAttachment={name:file.name,type:file.type,dataUrl:data,present:true};renderAi(false);}catch{addMessage('assistant','Je n’ai pas pu préparer cette photo. Réessayez avec une image plus légère.');renderAi(true);}finally{e.target.value='';}}
-  function compressImage(file,maxSide,q){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,maxSide/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',q));};img.onerror=reject;img.src=r.result;};r.onerror=reject;r.readAsDataURL(file);});}
-  function normalizeAction(a){if(!a||typeof a!=='object'||!a.type)return null;const x=JSON.parse(JSON.stringify(a));if(x.type==='update_product'){x.product_id=String(x.product_id||'').trim();x.product_name=String(x.product_name||'').trim();x.changes=x.changes||{};if(aiAttachment?.dataUrl&&!x.changes.photo_data_url)x.changes.photo_data_url=aiAttachment.dataUrl;return x;}if(x.type==='create_product'){if(aiAttachment?.dataUrl)x.photo_data_url=aiAttachment.dataUrl;const t=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).find(p=>String(p.name||'').trim().toLowerCase()===String(x.source_template||x.name||'').trim().toLowerCase());if(t){x.source_template=t.name;x.name=t.name;x.description=(x.description??t.desc??'');x.category=x.category||t.cat;x.category_label=x.category_label||CAT_LABELS?.[t.cat]||catsState?.[t.cat]||'';x.prep=x.prep??t.prep??20;x.template_snapshot={name:t.name,description:t.desc||'',category:t.cat,category_label:CAT_LABELS?.[t.cat]||catsState?.[t.cat]||'',prep:t.prep??20,photo:t.photo||''};}return x;}return x;}
-  async function callEdge(payload){try{const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});if(!error&&data?.success)return data;let detail='';if(error?.context?.json){try{const d=await error.context.json();detail=d?.error||'';}catch{}}throw new Error(detail||'Le service IA est momentanément indisponible. Réessayez dans quelques instants.');}catch(e){console.error('TerangaResto IA',e);throw new Error('Je n’ai pas pu traiter cette demande pour le moment. Réessayez dans quelques instants.');}}
-  async function askAi(text){const c=ensureChat();const history=(c.messages||[]).slice(-16).map(m=>({role:m.role,content:m.text}));return await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages:history,context:buildAiContext(),attachment:aiAttachment?{present:true,name:aiAttachment.name,type:aiAttachment.type}:null,conversation_title:c.title});}
-  async function executeAiAction(a){return await callEdge({mode:'execute_action',restaurant_id:String(RESTAURANT?.id||''),action:a});}
-  async function confirmPendingActions(){if(!pendingActions?.length||aiThinking)return;const acts=[...pendingActions];pendingActions=null;busy(true);setStatus('<span class="tg-ai-thinking">Application en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>');try{for(const a of acts)await executeAiAction(a);await loadRestaurantCore(RESTAURANT.id);await loadRestaurantSecondaryData(RESTAURANT.id);if(typeof loadRestaurantPublicImagesFast==='function')await loadRestaurantPublicImagesFast(RESTAURANT.id);if(state.view==='dashboard')renderDashSection(state.dashSection);if(state.view==='storefront')renderProductSections();addMessage('assistant','C’est fait. Les modifications confirmées ont été enregistrées et les informations affichées sur votre site ont été mises à jour.');aiAttachment=null;setStatus('');renderAi(true);}catch(e){console.error(e);addMessage('assistant','La modification n’a pas pu être appliquée. Vérifiez les informations demandées puis réessayez.');setStatus('');renderAi(true);}finally{busy(false);}}
-  async function sendAi(e){e?.preventDefault();if(aiThinking)return;const input=document.getElementById('tgAiInput');const text=String(input?.value||'').trim();if(!text)return;const c=ensureChat();if((c.messages||[]).filter(m=>m.role==='user').length===0)c.title=chatTitleLocal(text);addMessage('user',text);if(input)input.value='';busy(true);setStatus('<span class="tg-ai-thinking">Analyse de votre demande <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>');renderAi(true);try{const data=await askAi(text);const current=ensureChat();if(data.chat_title&&current.messages.filter(m=>m.role==='user').length<=1)current.title=String(data.chat_title).slice(0,60);const actions=(Array.isArray(data.actions)?data.actions:[]).map(normalizeAction).filter(Boolean);pendingActions=actions.length?actions:null;addMessage('assistant',String(data.answer||'Je n’ai pas cette information dans les données disponibles pour le moment. Désolé.'));persistChats();setStatus('');renderAi(true);}catch(err){addMessage('assistant',String(err?.message||'Je n’ai pas pu traiter cette demande pour le moment. Réessayez dans quelques instants.'));setStatus('');renderAi(true);}finally{busy(false);}}
-  function toggleMic(){const C=window.SpeechRecognition||window.webkitSpeechRecognition;if(!C){addMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur.');renderAi(true);return;}const m=document.getElementById('tgAiMic');if(aiListening){aiRecognition?.stop();return;}aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.onstart=()=>{aiListening=true;if(m)m.textContent='■';setStatus('Parlez…')};aiRecognition.onresult=e=>{const v=e.results?.[0]?.[0]?.transcript||'';const i=document.getElementById('tgAiInput');if(i){i.value=v;i.focus();}};aiRecognition.onend=()=>{aiListening=false;if(m)m.textContent='🎙';setStatus('')};aiRecognition.onerror=()=>{aiListening=false;if(m)m.textContent='🎙';setStatus('')};aiRecognition.start();}
-  function openAi(){if(!getAiEnabled()||!currentUser||!viewerIsStaff)return;ensureChat();aiOpen=true;renderAi(true);showAi();}
-  function closeAi(){aiOpen=false;pendingActions=null;document.getElementById('tgAiPanel')?.remove();const b=document.getElementById('tgAiFloating');if(b)b.setAttribute('aria-expanded','false');}
-  function toggleAi(){if(aiOpen)closeAi();else openAi();}
-  async function toggleTerangaAI(){
-    const next=!getAiEnabled();
 
-    // L'état visuel change immédiatement. Cette bascule est volontairement
-    // indépendante du mécanisme d'enregistrement des autres paramètres :
-    // aucun bandeau "Enregistrement…" ne doit apparaître ici.
-    RESTAURANT.aiEnabled=next;
-    setLocalAiEnabled(next);
-    renderDashSection('settings');
-    if(next) syncAiVisibility();
-    else { closeAi(); syncAiVisibility(); }
+  let aiOpen=false, aiThinking=false;
+  let aiRecognition=null, aiListening=false;
+  let aiChats=[], activeChatId=null, pendingActions=null;
+  const AI_CHATS_KEY='tg_ai_chats_';
+  const AI_LEGACY_HISTORY_KEY='tg_ai_history_';
+  const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
+  const MAX_CHATS=50;
+  const MAX_MESSAGES_PER_CHAT=80;
 
-    // Sauvegarde silencieuse et ciblée : uniquement ai_enabled.
-    // On n'utilise pas persistRestaurant() ici afin de ne pas déclencher
-    // le statut global d'enregistrement ni de dépendre de .select().
-    if(!RESTAURANT.id || typeof supabaseClient?.from!=='function') return;
+  function getAid(){ return RESTAURANT?.id ? String(RESTAURANT.id) : 'anonymous'; }
+  function getAiEnabled(){
+    if(typeof RESTAURANT?.aiEnabled==='boolean') return RESTAURANT.aiEnabled;
+    try{return localStorage.getItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid())==='1';}catch(e){return false;}
+  }
+  function setLocalAiEnabled(v){ try{localStorage.setItem(AI_ENABLED_FALLBACK_KEY+'_'+getAid(),v?'1':'0');}catch(e){} }
+
+  /* SVG avec une vraie marge interne : les pointes restent dans la viewBox. */
+  function aiSvg(){
+    return '<svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M40 7l6.4 24.8L71 40l-24.6 6.2L40 73l-6.4-26.8L9 40l24.6-8.2L40 7zM63 17l1.9 7.1L72 26l-7.1 1.9L63 35l-1.9-7.1L54 26l7.1-1.9L63 17zM16 47l1.7 6.2L24 55l-6.3 1.8L16 63l-1.8-6.2L8 55l6.2-1.8L16 47z" fill="currentColor"/></svg>';
+  }
+  function escapeText(v){ return String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function formatChatDate(ts){
+    const d=new Date(ts||Date.now());
+    if(Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+  function fallbackTitle(question){
+    const clean=String(question||'').replace(/\s+/g,' ').trim();
+    if(!clean) return 'Nouveau chat';
+    const stop=new Set(['je','tu','il','elle','nous','vous','les','des','une','un','de','du','la','le','et','ou','pour','avec','dans','sur','est','sont','que','qui','quoi','comment','peux','peut','mon','ma','mes','aujourd’hui','aujourdhui','est-ce','ce','cette','ces']);
+    const words=clean.replace(/[!?.,;:()]/g,'').split(' ').filter(Boolean);
+    const picked=[];
+    for(const w of words){ if(!stop.has(w.toLowerCase()) && !picked.includes(w)) picked.push(w); if(picked.length>=5) break; }
+    const base=(picked.length?picked:words).slice(0,5).join(' ');
+    return base.charAt(0).toUpperCase()+base.slice(1);
+  }
+
+  function makeNewChat(){
+    const now=Date.now();
+    const id='chat_'+now+'_'+Math.random().toString(36).slice(2,8);
+    return {id,title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis l’IA TerangaResto. Posez-moi une question, demandez une analyse ou demandez une modification. Toute modification importante doit être confirmée avant d’être appliquée.'}]};
+  }
+  function newChat(){
+    const chat=makeNewChat();
+    aiChats.unshift(chat);
+    aiChats=aiChats.slice(0,MAX_CHATS);
+    activeChatId=chat.id;
+    pendingActions=null;
+    persistChats();
+    return chat;
+  }
+  function migrateLegacy(){
     try{
-      const {error}=await supabaseClient
-        .from('restaurants')
-        .update({ai_enabled:next})
-        .eq('id', RESTAURANT.id);
-
-      if(error){
-        console.error('TerangaResto — activation IA non synchronisée:',error);
-        // On garde l'état local immédiatement visible ; la prochaine
-        // synchronisation du restaurant pourra rétablir l'état serveur.
+      const raw=localStorage.getItem(AI_CHATS_KEY+getAid());
+      if(raw){
+        const parsed=JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length){
+          aiChats=parsed.filter(x=>x&&x.id&&Array.isArray(x.messages)).map(c=>({...c,messages:c.messages.slice(-MAX_MESSAGES_PER_CHAT)})).slice(0,MAX_CHATS);
+          activeChatId=aiChats[0]?.id||null;
+          return;
+        }
+      }
+      const legacyRaw=localStorage.getItem(AI_LEGACY_HISTORY_KEY+getAid());
+      const legacy=legacyRaw?JSON.parse(legacyRaw):[];
+      if(Array.isArray(legacy) && legacy.length){
+        const normalized=legacy.map(m=>({role:m?.role==='assistant'?'assistant':'user',text:String(m?.text??'')})).filter(m=>m.text).slice(-MAX_MESSAGES_PER_CHAT);
+        aiChats=[{id:'chat_legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),messages:normalized.length?normalized:[{role:'assistant',text:'Bonjour 👋'}]}];
+        activeChatId=aiChats[0].id;
+        persistChats();
         return;
       }
-    }catch(error){
-      console.error('TerangaResto — activation IA non synchronisée:',error);
-    }
+    }catch(e){ aiChats=[]; activeChatId=null; }
+    if(!aiChats.length) newChat();
   }
+  function persistChats(){
+    try{
+      const safe=aiChats.map(c=>({...c,messages:(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT)}));
+      localStorage.setItem(AI_CHATS_KEY+getAid(),JSON.stringify(safe));
+    }catch(e){}
+  }
+  function activeChat(){ return aiChats.find(c=>c.id===activeChatId)||aiChats[0]||null; }
+  function ensureActiveChat(){
+    if(!aiChats.length) newChat();
+    if(!activeChatId || !aiChats.some(c=>c.id===activeChatId)) activeChatId=aiChats[0].id;
+    return activeChat();
+  }
+  function addMessage(role,text){
+    const chat=ensureActiveChat();
+    chat.messages=(chat.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
+    chat.messages.push({role:role==='assistant'?'assistant':'user',text:String(text??'')});
+    chat.updatedAt=Date.now();
+    persistChats();
+  }
+
+  function safeOrder(o){
+    const items=Array.isArray(o?.items)?o.items.slice(0,50).map(it=>{
+      if(Array.isArray(it)) return {name:String(it[0]??''),qty:Number(it[1]??1)||1};
+      return {productId:it?.productId?String(it.productId):'',name:String(it?.name??''),variant:it?.variant?String(it.variant):null,price:Number(it?.price||0),qty:Number(it?.qty||1)||1};
+    }):[];
+    return {id:o?.id?String(o.id):'',num:o?.num?String(o.num):'',type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items,subtotal:Number(o?.subtotal||0),deliveryFee:Number(o?.deliveryFee||0),total:Number(o?.total||0),pay:String(o?.pay||''),payStatus:String(o?.payStatus||''),status:String(o?.status||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};
+  }
+  function buildAiContext(){
+    const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}})();
+    const restaurant={id:RESTAURANT?.id?String(RESTAURANT.id):'',name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),slug:String(RESTAURANT?.slug||''),type:String(RESTAURANT?.type||''),city:String(RESTAURANT?.city||''),phone:String(RESTAURANT?.phone||''),address:String(RESTAURANT?.address||''),hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours.slice(0,7):[],delivery:RESTAURANT?.delivery||{},subscriptionStatus:String(RESTAURANT?.subscriptionStatus||''),billingCycle:String(RESTAURANT?.billingCycle||''),trialEndsAt:RESTAURANT?.trialEndsAt||null,currentPeriodEnd:RESTAURANT?.currentPeriodEnd||null,lastRenewedAt:RESTAURANT?.lastRenewedAt||null,isPublished:!!RESTAURANT?.isPublished,showMap:!!RESTAURANT?.showMap,mapsLink:String(RESTAURANT?.mapsLink||''),notificationsEnabled:!!RESTAURANT?.notificationsEnabled};
+    const categories=Object.entries(catsState||{}).map(([key,label])=>({key:String(key),label:String(label)}));
+    const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).slice(0,300).map(p=>({id:p?.id?String(p.id):'',name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(catsState?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),active:p?.active!==false,available:p?.available!==false,stock:p?.stock==null?null:Number(p.stock),threshold:p?.threshold==null?null:Number(p.threshold),variants:Array.isArray(p?.variants)?p.variants.slice(0,20):[],variantsRequired:!!p?.variantsRequired}));
+    const library_products=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).slice(0,200).map(p=>({name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(CAT_LABELS?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),photo:String(p?.photo||'')}));
+    const allOrders=Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[];
+    const validOrders=allOrders.filter(o=>String(o?.status||'')!=='cancelled');
+    const now=new Date();
+    const y=now.getFullYear(),m=now.getMonth(),d=now.getDate();
+    const orderDate=o=>{const raw=o?.createdAt||o?.created_at; const dt=raw instanceof Date?raw:new Date(raw); return Number.isNaN(dt.getTime())?null:dt;};
+    const rev=arr=>arr.reduce((sum,o)=>sum+(Number(o?.total)||0),0);
+    const countItems=arr=>{const map={};arr.forEach(o=>(Array.isArray(o?.items)?o.items:[]).forEach(it=>{const name=String(Array.isArray(it)?it[0]:it?.name||'').trim();const qty=Number(Array.isArray(it)?it[1]:it?.qty||1)||1;if(name)map[name]=(map[name]||0)+qty;}));return Object.entries(map).map(([name,qty])=>({name,quantity:qty})).sort((a,b)=>b.quantity-a.quantity).slice(0,20);};
+    const todayOrders=validOrders.filter(o=>{const dt=orderDate(o);return dt&&dt.getFullYear()===y&&dt.getMonth()===m&&dt.getDate()===d;});
+    const monthOrders=validOrders.filter(o=>{const dt=orderDate(o);return dt&&dt.getFullYear()===y&&dt.getMonth()===m;});
+    const yearOrders=validOrders.filter(o=>{const dt=orderDate(o);return dt&&dt.getFullYear()===y;});
+    const monthly={}; validOrders.forEach(o=>{const dt=orderDate(o);if(dt){const k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;monthly[k]=(monthly[k]||0)+(Number(o.total)||0);}});
+    const yearly={}; validOrders.forEach(o=>{const dt=orderDate(o);if(dt){const k=String(dt.getFullYear());yearly[k]=(yearly[k]||0)+(Number(o.total)||0);}});
+    const low_stock=products.filter(p=>p.stock!=null&&p.stock<=p.threshold).map(p=>({name:p.name,stock:p.stock,threshold:p.threshold,status:p.stock===0?'Rupture':'Stock faible'}));
+    const statistics={availableOrderCount:validOrders.length,totalRevenue:rev(validOrders),today:{orders:todayOrders.length,revenue:rev(todayOrders),averageTicket:todayOrders.length?rev(todayOrders)/todayOrders.length:0,topProducts:countItems(todayOrders)},month:{orders:monthOrders.length,revenue:rev(monthOrders),averageTicket:monthOrders.length?rev(monthOrders)/monthOrders.length:0,topProducts:countItems(monthOrders)},year:{orders:yearOrders.length,revenue:rev(yearOrders),averageTicket:yearOrders.length?rev(yearOrders)/yearOrders.length:0,topProducts:countItems(yearOrders)},monthlyRevenue:monthly,yearlyRevenue:yearly,topProductsAll:countItems(validOrders),topProductsMonth:countItems(monthOrders),topProductsYear:countItems(yearOrders),low_stock};
+    const recent_orders=allOrders.slice(0,400).map(safeOrder);
+    const staff=(Array.isArray(staffState)?staffState:[]).slice(0,100).map(s=>({id:s?.id?String(s.id):'',name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions.slice(0,30):[]}));
+    const reviews=(Array.isArray(REVIEWS)?REVIEWS:[]).slice(0,100).map(r=>({rating:Number(r?.rating??r?.stars??0)||0,text:String(r?.comment??r?.text??r?.message??''),createdAt:r?.created_at?String(r.created_at):(r?.createdAt instanceof Date?r.createdAt.toISOString():String(r?.createdAt||''))}));
+    const payments=(Array.isArray(paymentsHistory)?paymentsHistory:[]).slice(0,30).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')}));
+    return {version:'terangaresto-ai-context-v5',generated_at:new Date().toISOString(),timezone:tz,restaurant,categories,products,library_products,statistics,recent_orders,staff,reviews,payments};
+  }
+
+  function showAi(){
+    if(!currentUser || !viewerIsStaff || state.view!=='dashboard' || !getAiEnabled() || isAccessBlocked()) return;
+    let btn=document.getElementById('tgAiFloating');
+    if(!btn){
+      btn=document.createElement('button'); btn.id='tgAiFloating'; btn.className='tg-ai-floating'; btn.type='button'; btn.title='Ouvrir / fermer l’IA'; btn.setAttribute('aria-label','Ouvrir / fermer l’IA');
+      btn.innerHTML=aiSvg(); btn.onclick=toggleAi; document.body.appendChild(btn);
+    }
+    btn.setAttribute('aria-expanded',aiOpen?'true':'false');
+  }
+  function hideAi(){
+    const b=document.getElementById('tgAiFloating'); if(b)b.remove();
+    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
+    aiOpen=false; pendingActions=null;
+  }
+  function syncAiVisibility(){ if(getAiEnabled()) showAi(); else hideAi(); }
+
+  function scrollChatToBottom(){
+    const list=document.getElementById('tgAiMessages');
+    if(!list) return;
+    requestAnimationFrame(()=>{ list.scrollTop=list.scrollHeight; });
+    setTimeout(()=>{ if(list) list.scrollTop=list.scrollHeight; },30);
+  }
+
+  function openAi(){
+    if(!getAiEnabled() || !currentUser || !viewerIsStaff) return;
+    if(!aiChats.length) migrateLegacy(); else ensureActiveChat();
+    aiOpen=true;
+    renderAi(true);
+  }
+  function closeAi(){
+    aiOpen=false; pendingActions=null;
+    const p=document.getElementById('tgAiPanel'); if(p)p.remove();
+    const b=document.getElementById('tgAiFloating'); if(b)b.setAttribute('aria-expanded','false');
+  }
+  function toggleAi(){ if(aiOpen) closeAi(); else openAi(); }
+
+  function renderHistoryPanel(panel){
+    const list=panel.querySelector('#tgAiHistoryList'); if(!list)return;
+    const sorted=[...aiChats].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+    list.innerHTML=sorted.length?sorted.map(c=>`<div class="tg-ai-history-row ${c.id===activeChatId?'active':''}" data-chat-id="${escapeText(c.id)}"><div class="tg-ai-history-main"><div class="tg-ai-history-name">${escapeText(c.title||'Nouveau chat')}</div><div class="tg-ai-history-date">${escapeText(formatChatDate(c.updatedAt||c.createdAt))} · ${(c.messages||[]).length} message${(c.messages||[]).length>1?'s':''}</div></div></div>`).join(''):`<div class="tg-ai-history-empty">Aucune conversation enregistrée pour le moment.</div>`;
+    list.querySelectorAll('[data-chat-id]').forEach(row=>row.onclick=()=>{activeChatId=row.dataset.chatId;pendingActions=null;persistChats();renderAi(true);});
+  }
+  function openHistory(){const panel=document.getElementById('tgAiHistoryPanel');if(!panel)return;panel.classList.add('open');renderHistoryPanel(panel);}
+  function closeHistory(){document.getElementById('tgAiHistoryPanel')?.classList.remove('open');}
+
+  function renderPendingAction(){
+    if(!pendingActions?.length) return '';
+    const items=pendingActions.map(a=>`<div class="tg-ai-action-item"><strong>${escapeText(a.summary||a.type)}</strong></div>`).join('');
+    return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${items}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
+  }
+
+  function renderAi(keepBottom=false){
+    if(!aiOpen || !getAiEnabled()) return;
+    const chat=ensureActiveChat();
+    let panel=document.getElementById('tgAiPanel');
+    if(!panel){panel=document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';document.body.appendChild(panel);}
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${escapeText(chat.title||'Nouveau chat')} · réponses intelligentes</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique des chats" aria-label="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer" aria-label="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPendingAction()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets pour booster mes ventes.">Booster mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler à l’IA">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button" title="Nouveau chat" aria-label="Nouveau chat">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+
+    const list=panel.querySelector('#tgAiMessages');
+    for(const m of (chat.messages||[])){
+      const div=document.createElement('div');div.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;div.textContent=m.text;list.appendChild(div);
+    }
+    panel.querySelector('#tgAiClose').onclick=closeAi;
+    panel.querySelector('#tgAiNewChat').onclick=()=>{newChat();renderAi(true);};
+    panel.querySelector('#tgAiHistory').onclick=()=>{openHistory();};
+    panel.querySelector('#tgAiHistoryNew').onclick=()=>{newChat();closeHistory();renderAi(true);};
+    panel.querySelector('#tgAiForm').onsubmit=sendAi;
+    panel.querySelector('#tgAiMic').onclick=toggleMic;
+    panel.querySelectorAll('.tg-ai-chip').forEach(btn=>btn.onclick=()=>{const input=panel.querySelector('#tgAiInput');if(input){input.value=btn.dataset.q||'';input.focus();}});
+    panel.querySelector('[data-ai-action="cancel"]')?.addEventListener('click',()=>{pendingActions=null;renderAi(true);});
+    panel.querySelector('[data-ai-action="confirm"]')?.addEventListener('click',confirmPendingActions);
+    const floating=document.getElementById('tgAiFloating');if(floating)floating.setAttribute('aria-expanded','true');
+    if(keepBottom) scrollChatToBottom(); else scrollChatToBottom();
+    setTimeout(()=>panel.querySelector('#tgAiInput')?.focus(),0);
+  }
+
+  function setStatus(html,show=true){const el=document.getElementById('tgAiStatus');if(!el)return;el.innerHTML=html||'';el.hidden=!show;}
+  function busy(v){const s=document.getElementById('tgAiSend'),m=document.getElementById('tgAiMic'),n=document.getElementById('tgAiNewChat');if(s)s.disabled=v;if(m)m.disabled=v;if(n)n.disabled=v;}
+
+  function normalizeAction(action){
+    if(!action||typeof action!=='object') return null;
+    const type=String(action.type||'none').trim();
+    if(!type||type==='none') return null;
+    const out={type,summary:String(action.summary||'').trim()};
+    if(!out.summary) return null;
+    if(type==='create_product') return {...out,source_template:String(action.source_template||'').trim(),name:String(action.name||action.product_name||'').trim(),description:action.description==null?null:String(action.description),price:action.price==null?null:Number(action.price),category:String(action.category||'').trim(),category_label:String(action.category_label||'').trim(),prep:action.prep==null?null:Number(action.prep),active:action.active==null?true:Boolean(action.active),available:action.available==null?true:Boolean(action.available),stock:action.stock==null?null:Number(action.stock),threshold:action.threshold==null?5:Number(action.threshold),variants:Array.isArray(action.variants)?action.variants.slice(0,20):[],photo_data_url:action.photo_data_url==null?null:String(action.photo_data_url),template_snapshot:action.template_snapshot&&typeof action.template_snapshot==='object'?action.template_snapshot:null};
+    if(type==='update_product'){
+      const ch=action.changes&&typeof action.changes==='object'?action.changes:{};
+      return {...out,product_id:String(action.product_id||'').trim(),product_name:String(action.product_name||action.name||'').trim(),changes:{name:ch.name==null?null:String(ch.name),description:ch.description==null?null:String(ch.description),price:ch.price==null?null:Number(ch.price),category:ch.category==null?null:String(ch.category),category_label:ch.category_label==null?null:String(ch.category_label),prep:ch.prep==null?null:Number(ch.prep),active:ch.active==null?null:Boolean(ch.active),available:ch.available==null?null:Boolean(ch.available),stock:ch.stock==null?null:Number(ch.stock),threshold:ch.threshold==null?null:Number(ch.threshold),photo_data_url:ch.photo_data_url==null?null:String(ch.photo_data_url),variants:Array.isArray(ch.variants)?ch.variants.slice(0,20):null,variants_required:ch.variants_required==null?null:Boolean(ch.variants_required)}};
+    }
+    if(type==='delete_product') return {...out,product_id:String(action.product_id||'').trim(),product_name:String(action.product_name||'').trim()};
+    if(type==='update_hours') return {...out,day_index:Number(action.day_index),day_label:String(action.day_label||'').trim(),open:Boolean(action.open),from:String(action.from||'').trim(),to:String(action.to||'').trim()};
+    if(type==='update_delivery_settings') return {...out,enabled:action.enabled==null?null:Boolean(action.enabled),fee:action.fee==null?null:Number(action.fee),min:action.min==null?null:Number(action.min),own_enabled:action.own_enabled==null?null:Boolean(action.own_enabled),own_cash_on_delivery:action.own_cash_on_delivery==null?null:Boolean(action.own_cash_on_delivery),express_enabled:action.express_enabled==null?null:Boolean(action.express_enabled),express_fee:action.express_fee==null?null:Number(action.express_fee)};
+    if(type==='create_delivery_zone') return {...out,name:String(action.name||'').trim(),fee:Number(action.fee??0),enabled:action.enabled==null?true:Boolean(action.enabled)};
+    if(type==='update_delivery_zone') return {...out,zone_id:String(action.zone_id||'').trim(),name:action.name==null?null:String(action.name).trim(),fee:action.fee==null?null:Number(action.fee),enabled:action.enabled==null?null:Boolean(action.enabled)};
+    if(type==='remove_delivery_zone') return {...out,zone_id:String(action.zone_id||'').trim()};
+    if(type==='update_restaurant_settings') return {...out,name:action.name==null?null:String(action.name).trim(),type_name:action.type_name==null?(action.type==null?null:String(action.type).trim()):String(action.type_name).trim(),city:action.city==null?null:String(action.city).trim(),phone:action.phone==null?null:String(action.phone).trim(),address:action.address==null?null:String(action.address).trim(),hero_title:action.hero_title==null?null:String(action.hero_title),hero_subtitle:action.hero_subtitle==null?null:String(action.hero_subtitle)};
+    if(type==='update_payment_toggles') return {...out,toggles:action.toggles&&typeof action.toggles==='object'?action.toggles:{}};
+    if(type==='update_social') return {...out,network:String(action.network||'').trim().toLowerCase(),enabled:action.enabled==null?null:Boolean(action.enabled),value:action.value==null?null:String(action.value)};
+    if(type==='update_map') return {...out,show_map:action.show_map==null?null:Boolean(action.show_map),maps_link:action.maps_link==null?null:String(action.maps_link)};
+    if(type==='update_notifications') return {...out,enabled:Boolean(action.enabled)};
+    if(type==='publish_site') return {...out,published:Boolean(action.published)};
+    if(type==='update_category') return {...out,operation:String(action.operation||'').trim().toLowerCase(),category_key:String(action.category_key||'').trim(),label:action.label==null?null:String(action.label).trim(),new_key:action.new_key==null?null:String(action.new_key).trim()};
+    if(type==='update_staff') return {...out,staff_id:String(action.staff_id||'').trim(),name:action.name==null?null:String(action.name),role:action.role==null?null:String(action.role),status:action.status==null?null:String(action.status),permissions:Array.isArray(action.permissions)?action.permissions.slice(0,40):null};
+    return null;
+  }
+
+  async function callEdge(payload){
+    if(typeof supabaseClient==='undefined' || !supabaseClient || !supabaseClient.functions || typeof supabaseClient.functions.invoke!=='function') throw new Error('Client Supabase indisponible.');
+    const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body:payload});
+    if(error) throw error;
+    if(!data?.success) throw new Error(String(data?.error||'Le service IA a renvoyé une erreur.'));
+    return data;
+  }
+
+  async function askGroq(text){
+    const chat=ensureActiveChat();
+    const history=(chat.messages||[]).slice(-12).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const payload={mode:'chat',question:text,message:text,restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',restaurant_name:RESTAURANT?.name?String(RESTAURANT.name):String(RESTO_NAME||'TerangaResto'),user_id:currentUser?.id?String(currentUser.id):'',messages:history,context:buildAiContext(),conversation_title:chat.title||''};
+    const data=await callEdge(payload);
+    const answer=String(data?.answer??'').trim();
+    if(!answer) throw new Error('Réponse IA vide.');
+    return {answer,title:String(data?.chat_title||'').trim(),actions:Array.isArray(data?.actions)?data.actions:[]};
+  }
+
+  async function executeAiAction(action){
+    let prepared={...(action||{})};
+    if(prepared.type==='create_product'){
+      if(!prepared.template_snapshot && prepared.source_template){
+        const tpl=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).find(x=>String(x?.name||'').trim().toLowerCase()===String(prepared.source_template||'').trim().toLowerCase());
+        if(tpl) prepared.template_snapshot={name:tpl.name,description:tpl.desc||'',price:Number(tpl.price||0),category:tpl.cat||'',category_label:CAT_LABELS?.[tpl.cat]||'',prep:Number(tpl.prep||15),photo:tpl.photo||null};
+      }
+      if(!prepared.name && prepared.template_snapshot?.name) prepared.name=prepared.template_snapshot.name;
+      if((prepared.description==null||prepared.description==='') && prepared.template_snapshot?.description!=null) prepared.description=prepared.template_snapshot.description;
+      if(!prepared.category && prepared.template_snapshot?.category) prepared.category=prepared.template_snapshot.category;
+      if(!prepared.category_label && prepared.template_snapshot?.category_label) prepared.category_label=prepared.template_snapshot.category_label;
+      if(prepared.photo_data_url==null && aiAttachment?.data_url) prepared.photo_data_url=aiAttachment.data_url;
+    }
+    if(prepared.type==='update_product' && prepared.changes && prepared.changes.photo_data_url==null && aiAttachment?.data_url){
+      prepared.changes={...prepared.changes,photo_data_url:aiAttachment.data_url};
+    }
+    const data=await callEdge({mode:'execute_action',restaurant_id:RESTAURANT?.id?String(RESTAURANT.id):'',action:prepared});
+    return data?.result||data?.product||null;
+  }
+
+  function applyProductRowLocally(row){
+    if(!row||typeof row!=='object') return null;
+    const normalize=(r)=>({id:String(r.id||''),stock:r.stock==null?null:Number(r.stock),threshold:r.threshold==null?null:Number(r.threshold),name:String(r.name||''),desc:String(r.desc??r.description??''),price:Number(r.price||0),cat:String(r.cat??r.category??''),prep:r.prep==null?15:Number(r.prep),active:r.active!==false,available:r.available!==false,variants:Array.isArray(r.variants)?r.variants.slice(0,20):[],variantsRequired:!!(r.variants_required??r.variantsRequired),photo:r.photo||null,photos:Array.isArray(r.gallery_photos)?r.gallery_photos.slice(0,3):(Array.isArray(r.photos)?r.photos.slice(0,3):(r.photo?[r.photo]:[]))});
+    const p=normalize(row);
+    const idx=PRODUCTS.findIndex(x=>String(x.id)===p.id);
+    if(idx>=0) PRODUCTS[idx]={...PRODUCTS[idx],...p}; else PRODUCTS.push(p);
+    return PRODUCTS.find(x=>String(x.id)===p.id)||p;
+  }
+
+  async function applyConfirmedAction(a){
+    const data=await executeAiAction(a);
+    return data;
+  }
+
+  function refreshProductViews(){
+    if(state.view==='storefront' && typeof renderProductSections==='function') renderProductSections();
+    if(state.dashSection==='products'){
+      const list=document.getElementById('productsList');
+      if(list){list.innerHTML=productsListHtml();hydrateIcons(list);}
+    }
+    if(state.view==='dashboard' && state.dashSection!=='products' && typeof renderDashSection==='function') renderDashSection(state.dashSection);
+  }
+
+  async function confirmPendingActions(){
+    if(!pendingActions?.length||aiThinking)return;
+    const actions=[...pendingActions];
+    pendingActions=null;
+    aiThinking=true;busy(true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);renderAi(true);
+    try{
+      for(const a of actions) await applyConfirmedAction(a);
+      await loadRestaurantCore(RESTAURANT.id);
+      if(currentUser){ await loadRestaurantSecondaryData(RESTAURANT.id); }
+      if(typeof loadRestaurantPublicImagesFast==='function') await loadRestaurantPublicImagesFast(RESTAURANT.id);
+      addMessage('assistant',actions.length>1?'Modifications confirmées et enregistrées.':'Modification confirmée et enregistrée.');
+      setStatus('',false);persistChats();renderDashSection(state.dashSection);renderAi(true);toast(actions.length>1?'Modifications enregistrées.':'Modification enregistrée.');
+    }catch(err){
+      console.error('TerangaResto IA action:',err);
+      addMessage('assistant','La modification n’a pas pu être appliquée. Vérifiez les informations demandées puis réessayez.');
+      setStatus('',false);renderAi(true);
+    }finally{aiThinking=false;busy(false);}
+  }
+
+  async function sendAi(e){
+    e.preventDefault();
+    if(aiThinking)return;
+    const input=document.getElementById('tgAiInput');
+    const text=(input?.value||'').trim();
+    if(!text)return;
+    const chat=ensureActiveChat();
+    if((chat.messages||[]).filter(m=>m.role==='user').length===0) chat.title=fallbackTitle(text);
+    aiThinking=true;busy(true);addMessage('user',text);if(input)input.value='';
+    setStatus('<span class="tg-ai-thinking">Analyse en cours <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
+    renderAi(true); // repositionne immédiatement le chat sur la nouvelle question
+    try{
+      const result=await askGroq(text);
+      const current=ensureActiveChat();
+      if(result.title && (current.messages||[]).filter(m=>m.role==='user').length<=1) current.title=result.title.slice(0,70);
+      const actions=result.actions.map(normalizeAction).filter(Boolean).slice(0,5);
+      pendingActions=actions.length?actions:null;
+      addMessage('assistant',result.answer);
+      setStatus('',false);
+      persistChats();renderAi(true);
+    }catch(err){
+      console.error('TerangaResto IA:',err);
+      addMessage('assistant','Je n’ai pas pu traiter cette demande pour le moment. Réessayez dans quelques instants.');
+      setStatus('',false);renderAi(true);
+    }finally{aiThinking=false;busy(false);}
+  }
+
+  function toggleMic(){
+    const C=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!C){addMessage('assistant','La saisie vocale n’est pas disponible dans ce navigateur. Vous pouvez toujours écrire votre question.');renderAi(true);return;}
+    const mic=document.getElementById('tgAiMic');
+    if(aiListening){aiRecognition?.stop();return;}
+    aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;
+    aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');if(mic)mic.textContent='■';setStatus('Parlez…',true)};
+    aiRecognition.onresult=(e)=>{const v=e.results?.[0]?.[0]?.transcript||'';const input=document.getElementById('tgAiInput');if(input){input.value=v;input.focus();}};
+    aiRecognition.onerror=()=>{setStatus('',false)};
+    aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');if(mic)mic.textContent='🎙';setStatus('',false)};
+    aiRecognition.start();
+  }
+
+  async function toggleTerangaAI(){
+    if(window.__tgAiToggleInFlight) return;
+    window.__tgAiToggleInFlight=true;
+    const previous=getAiEnabled();
+    const next=!previous;
+    RESTAURANT.aiEnabled=next;
+    setLocalAiEnabled(next);
+    const toggle=document.getElementById('tgAiSettingsToggle');
+    if(toggle){toggle.classList.toggle('on',next);toggle.setAttribute('aria-checked',next?'true':'false');}
+    if(next) syncAiVisibility(); else {closeAi();syncAiVisibility();}
+    try{
+      if(!RESTAURANT.id) throw new Error('Restaurant introuvable.');
+      const {error}=await supabaseClient.from('restaurants').update({ai_enabled:next}).eq('id',RESTAURANT.id);
+      if(error) throw error;
+      toast(next?'IA activée.':'IA désactivée.');
+    }catch(error){
+      console.error('TerangaResto — activation IA:',error);
+      RESTAURANT.aiEnabled=previous;
+      setLocalAiEnabled(previous);
+      const t=document.getElementById('tgAiSettingsToggle');
+      if(t){t.classList.toggle('on',previous);t.setAttribute('aria-checked',previous?'true':'false');}
+      syncAiVisibility();
+      toast('L’activation de l’IA n’a pas pu être enregistrée. Réessayez.');
+    }finally{window.__tgAiToggleInFlight=false;}
+  }
+
   window.openAi=openAi;window.closeAi=closeAi;window.toggleAi=toggleAi;window.toggleTerangaAI=toggleTerangaAI;
-  window.addEventListener('hashchange',syncAiVisibility);window.addEventListener('popstate',syncAiVisibility);document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen)closeAi();});setTimeout(syncAiVisibility,300);
+  window.addEventListener('hashchange',syncAiVisibility);
+  window.addEventListener('popstate',syncAiVisibility);
+  const origSetDashSection=window.setDashSection;
+  if(typeof origSetDashSection==='function')window.setDashSection=function(){const r=origSetDashSection.apply(this,arguments);setTimeout(syncAiVisibility,0);return r;};
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&aiOpen)closeAi();});
+  setTimeout(syncAiVisibility,300);
 })();
 </script>
-
-
 
 </body>
 </html>
