@@ -9854,7 +9854,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     if(!aiOpen||!enabled())return;
     const c=ensureChat(), old=document.getElementById('tgAiPanel');
     const panel=old||document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPending()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi 3 conseils concrets pour augmenter mes ventes.">Booster mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div>${renderPending()}<div class="tg-ai-chips"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     if(!old)document.body.appendChild(panel);
     const list=panel.querySelector('#tgAiMessages');for(const m of (c.messages||[])){const d=document.createElement('div');d.className=`tg-ai-msg ${m.role==='assistant'?'ai':'user'}`;d.textContent=m.text;list.appendChild(d);}
     panel.querySelector('#tgAiClose').onclick=closeAi;
@@ -9923,9 +9923,24 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     if(library&&/(ajouter|ajoute|creer|créer).*produit/.test(q)&&price!=null&&stock!=null)actions.push({type:'create_product',summary:`Ajouter ${library.name} à ${price.toLocaleString('fr-FR')} FCFA avec ${stock} en stock.`,source_template:library.name,name:library.name,description:library.desc||'',price,stock,category:library.cat,category_label:catsState?.[library.cat]||library.cat,prep:Number(library.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
     if(product&&price!=null&&/prix/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q))actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
     if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer)/.test(q))actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
-    const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]],day=days.find(([d])=>q.includes(d));
+    const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]];
+    const mentionedDays=days.filter(([d])=>q.includes(d));
+    const day=mentionedDays[0];
     const tm=q.match(/(?:de|a|à)?\s*(\d{1,2})\s*h?\s*(\d{0,2})?\s*(?:a|à|jusqua|jusqu'a|au|et|-)\s*(\d{1,2})\s*h?\s*(\d{0,2})?/);
-    if(day&&/horaire|heure|ouvre|ouvert|ferme|fermer/.test(q)&&tm){const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;actions.push({type:'update_hours',summary:`Mettre ${day[0]} de ${f} à ${t}.`,day_index:day[1],day_label:day[0],open:true,from:f,to:t});}
+    if(mentionedDays.length&&/(horaire|heure|ouvre|ouvert|ferme|fermer|activer|désactiver|desactiver)/.test(q)&&tm){
+      const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;
+      mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Mettre ${label} de ${f} à ${t}.`,day_index:index,day_label:label,open:true,from:f,to:t}));
+    }
+    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm){
+      mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
+    }
+    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure)/.test(q)){
+      mentionedDays.forEach(([label,index])=>{
+        const h=RESTAURANT?.hours?.[index]||{}, end=String(h.to||'');
+        const mm=end.match(/^(\d{2}):(\d{2})$/);
+        if(mm){let mins=Number(mm[1])*60+Number(mm[2])+60; mins=Math.min(mins,23*60+59); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(h.from||'11:00'),to:t});}
+      });
+    }
     const zones=Array.isArray(RESTAURANT?.delivery?.zones)?RESTAURANT.delivery.zones:[],zone=zones.map(z=>({z,n:String(z?.name||'').toLowerCase()})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.z, zfee=q.match(/(?:prix|frais|tarif)\D{0,25}(\d{2,7})/);
     if(zone&&zfee&&/(modifier|changer|mettre|fixer)/.test(q)&&/zone|livraison/.test(q))actions.push({type:'update_delivery_zone',summary:`Modifier ${zone.name} à ${Number(zfee[1]).toLocaleString('fr-FR')} FCFA.`,zone_id:String(zone.id),name:zone.name,fee:Number(zfee[1])});
     return actions.slice(0,8);
@@ -9942,8 +9957,16 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
   async function ask(text){
     const c=ensureChat(), messages=(c.messages||[]).slice(-16).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
-    const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:buildContext(),conversation_title:c.title||''});
-    const fallbackActions=localActionFallback(text);if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai préparé la modification demandée. Confirmez pour l’appliquer.';}
+    const localContext=buildContext();
+    const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
+    const fallbackActions=localActionFallback(text);
+    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé la modification correspondante. Confirmez pour l’appliquer.';}
+    if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){
+      const qn=text.toLowerCase();
+      if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn)){
+        result.answer='En résumé : je peux vous conseiller sur vos ventes, vos produits, vos prix, votre livraison, votre menu et votre communication. Commencez par mettre en avant vos meilleures ventes, éviter les ruptures, proposer des formules simples et relancer vos clients avec des offres ciblées.';
+      }
+    }
     return result;
   }
   async function applyAction(a){
@@ -10021,7 +10044,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
     addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
-    const long=text.length>120?'Analyse détaillée de votre demande…':'Analyse de votre demande…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);
+    const long=text.length>120?'Je réfléchis à votre demande…':'Je réfléchis…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);
     try{
       const result=await ask(text), current=ensureChat();
       if(result.chat_title&&current.messages.filter(m=>m.role==='user').length<=1)current.title=String(result.chat_title).slice(0,60);
