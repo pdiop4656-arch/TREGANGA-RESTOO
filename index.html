@@ -9730,8 +9730,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 @keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
 .tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}
 .tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}
-.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
-.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07)}
+.tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;max-height:300px;overflow:auto;padding-right:2px;overscroll-behavior:contain}
+.tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07);min-width:0;overflow-wrap:anywhere}
 .tg-ai-action-item strong{display:block;color:#fff;margin-bottom:3px}
 .tg-ai-action-item span{display:block;color:rgba(255,255,255,.72)}
 .tg-ai-action-actions{display:flex;gap:7px}
@@ -9760,7 +9760,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   .tg-ai-title-sub{font-size:9.5px}
   .tg-ai-icon-btn{width:32px;height:32px}
   .tg-ai-messages{padding:12px}
-  .tg-ai-action{margin-left:10px;margin-right:10px}
+  .tg-ai-action{margin-left:10px;margin-right:10px}.tg-ai-action-list{max-height:34vh}
   .tg-ai-chips{padding-left:10px;padding-right:10px}
 }
 @media(max-width:430px){
@@ -9904,7 +9904,6 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
       if(a.type==='create_product'){
         const tpl=LIBRARY_ITEMS.find(x=>String(x.name).trim().toLowerCase()===a.source_template.trim().toLowerCase());if(!tpl)continue;
         a.template_snapshot={name:tpl.name,description:tpl.desc||'',price:Number(tpl.price||0),category:String(tpl.cat||''),category_label:String(catsState?.[tpl.cat]||tpl.cat||''),prep:Number(tpl.prep||15),photo:String(tpl.photo||'')};
-        if(attachment?.dataUrl&&!a.photo_data_url)a.photo_data_url=attachment.dataUrl;
         if(!Number.isFinite(a.price)||!Number.isFinite(a.stock)||a.price<0||a.stock<0)continue;
         a.name=tpl.name;a.description=tpl.desc||a.description;a.category=tpl.cat;a.category_label=catsState?.[tpl.cat]||tpl.cat||'';a.prep=Number(tpl.prep||15);
       }
@@ -9918,9 +9917,15 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const products=Array.isArray(PRODUCTS)?PRODUCTS:[], libs=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[];
     const findByName=(list)=>list.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const product=findByName(products), library=findByName(libs);
+    const prior=(c=>{try{const chat=ensureChat();return (chat.messages||[]).slice(-12).map(m=>String(m.text||'')).join(' ')}catch(e){return ''}})();
+    const priorNorm=prior.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const libraryFromHistory=library||libs.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&priorNorm.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const price=(()=>{const m=q.match(/(?:prix|a|à|pour|tarif|frais)\D{0,35}(\d{2,7})\s*(?:fcfa|f|fr)?/);return m?Number(m[1]):null})();
     const stock=(()=>{const m=q.match(/(?:stock|stocks|quantite|quantité|nombre)\D{0,25}(\d{1,6})/);return m?Number(m[1]):null})();
-    if(library&&/(ajouter|ajoute|creer|créer).*produit/.test(q)&&price!=null&&stock!=null)actions.push({type:'create_product',summary:`Ajouter ${library.name} à ${price.toLocaleString('fr-FR')} FCFA avec ${stock} en stock.`,source_template:library.name,name:library.name,description:library.desc||'',price,stock,category:library.cat,category_label:catsState?.[library.cat]||library.cat,prep:Number(library.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
+    const shortNums=[...q.matchAll(/\b(\d{1,8})\b/g)].map(m=>Number(m[1])).filter(Number.isFinite);
+    const fallbackPrice=price!=null?price:shortNums.find(n=>n>=100);
+    const fallbackStock=stock!=null?stock:shortNums.find(n=>n<100);
+    if(libraryFromHistory&&/(ajouter|ajoute|creer|créer).*produit|ajoute|ajouter/.test(priorNorm+' '+q)&&fallbackPrice!=null&&fallbackStock!=null)actions.push({type:'create_product',summary:`Ajouter ${libraryFromHistory.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:libraryFromHistory.name,name:libraryFromHistory.name,description:libraryFromHistory.desc||'',price:fallbackPrice,stock:fallbackStock,category:libraryFromHistory.cat,category_label:catsState?.[libraryFromHistory.cat]||libraryFromHistory.cat,prep:Number(libraryFromHistory.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
     if(product&&price!=null&&/prix/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q))actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
     if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer)/.test(q))actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
     const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]];
@@ -9956,7 +9961,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }catch(e){console.error('TerangaResto IA',e);return {success:false,answer:'En résumé : je n’ai pas cette information dans les données disponibles pour le moment. Désolé.',actions:[],chat_title:'TerangaResto'};}
   }
   async function ask(text){
-    const c=ensureChat(), messages=(c.messages||[]).slice(-16).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const localContext=buildContext();
     const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
     const fallbackActions=localActionFallback(text);
@@ -9991,7 +9996,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     else if(type==='delete_category'&&d.key){delete catsState[d.key];}
     else if((type==='update_staff'||type==='create_staff')&&d.id){const i=staffState.findIndex(s=>String(s.id)===String(d.id));if(i>=0)staffState[i]={...staffState[i],...d};else staffState.push(d);}
     else if(type==='delete_staff'&&d.id){const i=staffState.findIndex(s=>String(s.id)===String(d.id));if(i>=0)staffState.splice(i,1);}
-    else if(type==='update_gallery'&&d.social)RESTAURANT.social=d.social;
+    else if(type==='update_gallery'&&d.social){RESTAURANT.social=d.social;try{RESTAURANT.galleryPhotos=Array.isArray(d.social.galleryPhotos)?d.social.galleryPhotos:RESTAURANT.galleryPhotos;}catch(e){}}
     else if(type==='update_order_status'&&d.id){const i=DEMO_ORDERS.findIndex(o=>String(o.id)===String(d.id));if(i>=0)DEMO_ORDERS[i]={...DEMO_ORDERS[i],status:d.status,payStatus:d.pay_status??DEMO_ORDERS[i].payStatus};}
   }
 
