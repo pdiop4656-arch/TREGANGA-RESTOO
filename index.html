@@ -2898,15 +2898,14 @@ function setRestaurantSaveState(state){
     btn.style.pointerEvents = state === 'saving' ? 'none' : '';
     btn.innerHTML = state === 'saving'
       ? '<span class="tg-save-spinner" aria-hidden="true"></span> Enregistrement…'
-      : state === 'saved'
-        ? '<span style="font-size:16px;line-height:1">✓</span> Enregistré'
-        : 'Enregistrer';
+      : 'Enregistrer';
   }
+  // Aucun message de statut n'est affiché à côté du bouton Enregistrer.
+  // Le fonctionnement de la sauvegarde reste inchangé : seule l'affichage du texte
+  // de succès/erreur est neutralisé pour éviter tout message trompeur dans cette zone.
   if(status){
-    status.textContent = state === 'saving' ? 'Enregistrement en cours…'
-      : state === 'saved' ? '✅ Modifications enregistrées avec succès.'
-      : state === 'error' ? '❌ Échec de l’enregistrement.' : '';
-    status.style.color = state === 'error' ? 'var(--terracotta)' : 'var(--ink-soft)';
+    status.textContent = '';
+    status.style.display = 'none';
   }
 }
 
@@ -8827,7 +8826,7 @@ function dashSettings(){
     ${['Général','Horaires & IA','Livraison','Réseaux & carte','Domaine'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="display:none"></span></div>`;
 }
 
 function settingsBodyHtml(){
