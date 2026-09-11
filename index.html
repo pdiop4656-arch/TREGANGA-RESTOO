@@ -347,6 +347,61 @@ button,a,input,select,textarea{font-family:inherit;}
 }
 #domainOfferRuleNote{overflow-wrap:anywhere;}
 </style>
+
+<style id="tg-mobile-final-polish">
+@media (max-width: 820px){
+  input, textarea, select,
+  .field-input, .tg-ai-input {
+    font-size: 16px !important;
+  }
+  .tg-ai-input {
+    min-height: 43px;
+  }
+  .tg-ai-form {
+    gap: 7px;
+  }
+  .tg-ai-mic,
+  .tg-ai-send {
+    width: 43px;
+    min-width: 43px;
+    height: 43px;
+    flex: 0 0 43px;
+  }
+  .tg-ai-mic {
+    background: #3b82f6 !important;
+    border-color: rgba(255,255,255,.18) !important;
+    color: #fff !important;
+  }
+  .tg-ai-mic.recording {
+    background: #c64a3b !important;
+  }
+
+  /* Keep the two delivery amounts aligned even when the second label wraps. */
+  #settingsBody .tg-delivery-main-grid > div {
+    min-width: 0;
+  }
+  #settingsBody .tg-delivery-main-grid .field-label {
+    min-height: 40px;
+    display: flex;
+    align-items: flex-start;
+  }
+  #settingsBody .tg-delivery-main-grid .field-input {
+    margin-top: 0;
+  }
+}
+@media (max-width: 420px){
+  #settingsBody .tg-delivery-main-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  #settingsBody .tg-delivery-main-grid .field-label {
+    font-size: 13px;
+    line-height: 1.28;
+    min-height: 42px;
+  }
+}
+</style>
+
 </head>
 <body>
 
@@ -2898,14 +2953,14 @@ function setRestaurantSaveState(state){
     btn.style.pointerEvents = state === 'saving' ? 'none' : '';
     btn.innerHTML = state === 'saving'
       ? '<span class="tg-save-spinner" aria-hidden="true"></span> Enregistrement…'
-      : 'Enregistrer';
+      : state === 'saved'
+        ? '<span style="font-size:16px;line-height:1">✓</span> Enregistré'
+        : 'Enregistrer';
   }
-  // Aucun message de statut n'est affiché à côté du bouton Enregistrer.
-  // Le fonctionnement de la sauvegarde reste inchangé : seule l'affichage du texte
-  // de succès/erreur est neutralisé pour éviter tout message trompeur dans cette zone.
   if(status){
     status.textContent = '';
-    status.style.display = 'none';
+    status.style.color = '';
+    status.setAttribute('aria-hidden','true');
   }
 }
 
@@ -2954,18 +3009,19 @@ async function persistRestaurant(){
       hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
     };
 
-    // Vérification fiable : demander explicitement l'id de la ligne réellement mise à jour.
-    // Ne pas utiliser `count` comme preuve de succès : selon les politiques/RLS et
-    // la configuration PostgREST, le count peut être nul même lorsque l'UPDATE est accepté.
-    const {data:updatedRows,error} = await supabaseClient
+    const {data,error} = await supabaseClient
       .from('restaurants')
       .update(payload)
       .eq('id', RESTAURANT.id)
-      .select('id');
+      .select('id')
+      .maybeSingle();
 
-    const updatedRow = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
-    if(error || !updatedRow?.id){
-      console.error('TerangaResto — sauvegarde:', error || 'Aucune ligne confirmée après la mise à jour');
+    // Un enregistrement n'est considéré comme réussi que si la requête
+    // n'a retourné aucune erreur ET qu'elle confirme bien la ligne modifiée.
+    // Cela évite les faux positifs/negatifs lorsque la requête aboutit sans
+    // retourner de ligne (ex. ligne introuvable ou accès non confirmé).
+    if(error || !data?.id){
+      console.error('TerangaResto — sauvegarde:', error || 'Aucune ligne confirmée après enregistrement');
       setRestaurantSaveState('error');
       return false;
     }
@@ -3195,7 +3251,7 @@ function renderStorefrontGateOverlay(){
           </div>
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
           <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
             <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
             <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
@@ -4591,7 +4647,6 @@ function setView(view){
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
   if(view==='dashboard') {
     renderDashSection(state.dashSection); renderPlanBadgeAndBanner(); renderSidebarLogo(); refreshNotifDot(); renderRoleSimBanner(); renderDashNav(); requestNotificationPermissionOnce();
-    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
     // Marqueur local (jamais une donnée sensible, juste "cette
     // personne a déjà atteint son tableau de bord sur cet appareil")
     // — permet, au prochain chargement de page, de savoir s'il faut
@@ -7680,7 +7735,7 @@ async function toggleCategoryHomeVisibility(key){
     catsHomeVisible[key] = previous;
     document.getElementById('catList').innerHTML = renderCatList();
     hydrateIcons();
-    toast('❌ Échec de l’enregistrement.');
+    toast('❌ La modification n’a pas pu être enregistrée.');
     return;
   }
   toast('✅ Modifications enregistrées avec succès.');
@@ -8826,7 +8881,7 @@ function dashSettings(){
     ${['Général','Horaires & IA','Livraison','Réseaux & carte','Domaine'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
   <div class="card" style="padding:22px;max-width:640px;" id="settingsBody">${settingsBodyHtml()}</div>
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="display:none"></span></div>`;
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;"><button id="settingsSaveBtn" class="btn btn-secondary btn-lg" onclick="saveSettings()">${ic('save',16)} Enregistrer</button><span id="settingsSaveStatus" aria-live="polite" style="font-size:12px;color:var(--ink-soft);"></span></div>`;
 }
 
 function settingsBodyHtml(){
@@ -8927,7 +8982,7 @@ function settingsBodyHtml(){
       <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
     </div>
     ${RESTAURANT.delivery.enabled?`
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+    <div class="grid tg-delivery-main-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
       <div><label class="field-label">Frais de livraison (FCFA)</label><input class="field-input" id="setDeliveryFee" type="number" value="${RESTAURANT.delivery.fee}"></div>
       <div><label class="field-label">Commande minimum (FCFA)</label><input class="field-input" id="setDeliveryMin" type="number" value="${RESTAURANT.delivery.min}"></div>
     </div>
@@ -9866,32 +9921,42 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function scrollBottom(){const l=document.getElementById('tgAiMessages');if(l)requestAnimationFrame(()=>{l.scrollTop=l.scrollHeight;});}
 
   let activeSpeechButton=null;
-  function cleanTextForSpeech(text){
-    let s=String(text||'');
-    s=s.replace(/\[([^\]]+)\]\([^)]*\)/g,' $1 ');
-    s=s.replace(/https?:\/\/\S+/gi,' ');
-    s=s.replace(/```[\s\S]*?```/g,' ');
-    s=s.replace(/[*_`~^#]/g,' ');
-    s=s.replace(/^[\s]*[-+•●▪▫◦–—]+[\s]*/gm,'');
-    s=s.replace(/[\u2022\u2023\u25E6\u25AA\u25AB\u25CF\u25CB\u25A0\u25A1\u2190-\u21FF]/gu,' ');
-    try{s=s.replace(/\p{Extended_Pictographic}/gu,' ');}catch(_e){}
-    s=s.replace(/[\/\\|{}[\]<>*=+]+/g,' ');
-    s=s.replace(/[：:;]+/g,', ');
-    s=s.replace(/\s+/g,' ').trim();
-    return s;
-  }
   function stopAiSpeech(){try{window.speechSynthesis?.cancel();}catch(e){}if(activeSpeechButton){activeSpeechButton.textContent='🔊';activeSpeechButton.classList.remove('active');activeSpeechButton.title='Lire la réponse';activeSpeechButton=null;}}
-  function speakAiText(text,button){
-    if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
-    if(activeSpeechButton===button){stopAiSpeech();return;}
-    stopAiSpeech();
-    const spoken=cleanTextForSpeech(text);
-    if(!spoken)return;
-    const u=new SpeechSynthesisUtterance(spoken);u.lang='fr-FR';u.rate=1;u.pitch=1;u.volume=1;
-    u.onstart=()=>{activeSpeechButton=button;button.textContent='⏹';button.classList.add('active');button.title='Arrêter la lecture';};
-    u.onend=()=>{if(activeSpeechButton===button){button.textContent='🔊';button.classList.remove('active');button.title='Lire la réponse';activeSpeechButton=null;}};
-    u.onerror=u.onend;window.speechSynthesis.speak(u);
-  }
+  function cleanAiSpeechText(text){
+  let s=String(text||'');
+  s=s.replace(/```[\s\S]*?```/g,' ').replace(/`([^`]*)`/g,'$1');
+  s=s.replace(/!\[[^\]]*\]\([^)]*\)/g,' ').replace(/\[[^\]]*\]\([^)]*\)/g,' ');
+  s=s.replace(/https?:\/\/\S+/gi,' ');
+  s=s.replace(/(^|\n)\s{0,3}#{1,6}\s*/g,'$1');
+  s=s.replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1');
+  s=s.replace(/\*([^*]+)\*/g,'$1').replace(/_([^_]+)_/g,'$1');
+  s=s.replace(/(^|\n)\s*[-*•·▪◦]\s+/g,'$1');
+  s=s.replace(/(^|\s)[•▪◦·](?=\s|$)/g,'$1');
+  s=s.replace(/[→←⇒⇐↔↕]/g,' ');
+  s=s.replace(/[😀-🙏🌀-🫿☀-⛿]/gu,' ');
+  s=s.replace(/\s*[:;|/\\]+\s*/g,' ');
+  s=s.replace(/\s*[-–—]+\s*/g,' ');
+  s=s.replace(/\s*[+×=]+\s*/g,' ');
+  s=s.replace(/\s{2,}/g,' ').trim();
+  return s;
+}
+function speakAiText(text,button){
+  if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
+  if(activeSpeechButton===button){stopAiSpeech();return;}
+  stopAiSpeech();
+  const spoken=cleanAiSpeechText(text);
+  if(!spoken)return;
+  const u=new SpeechSynthesisUtterance(spoken);
+  u.lang='fr-FR';u.rate=1;u.pitch=1;u.volume=1;
+  const voices=window.speechSynthesis.getVoices?window.speechSynthesis.getVoices():[];
+  const ember=voices.find(v=>/ember/i.test(String(v.name||'')));
+  const french=voices.find(v=>/^fr(-|_)/i.test(String(v.lang||''))||/french|français/i.test(String(v.name||'')));
+  if(ember)u.voice=ember;else if(french)u.voice=french;
+  u.onstart=()=>{activeSpeechButton=button;button.textContent='⏹';button.classList.add('active');button.title='Arrêter la lecture';};
+  u.onend=()=>{if(activeSpeechButton===button){button.textContent='🔊';button.classList.remove('active');button.title='Lire la réponse';activeSpeechButton=null;}};
+  u.onerror=u.onend;
+  window.speechSynthesis.speak(u);
+}
   function setLiveProcessing(html,show=true){const el=document.getElementById('tgAiLive');if(el){el.innerHTML=html||'';el.hidden=!show;}}
   function revealSuggestions(){const c=document.getElementById('tgAiChips'),b=document.getElementById('tgAiSuggestionsToggle');if(c)c.style.display='flex';if(b)b.style.display='none';}
 
@@ -9918,7 +9983,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const c=ensureChat(), old=document.getElementById('tgAiPanel');
     const panel=old||document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';
     const showSuggestions=(c.messages||[]).filter(m=>m.role==='user').length===0;
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     if(!old)document.body.appendChild(panel);
     const list=panel.querySelector('#tgAiMessages');for(let idx=0;idx<(c.messages||[]).length;idx++){const m=c.messages[idx];if(m.role==='assistant'){const w=document.createElement('div');w.className='tg-ai-msg-wrap';const d=document.createElement('div');d.className='tg-ai-msg ai';d.textContent=m.text;w.appendChild(d);const b=document.createElement('button');b.type='button';b.className='tg-ai-read';b.dataset.aiReadIndex=String(idx);b.title='Lire la réponse';b.setAttribute('aria-label','Lire la réponse');b.textContent='🔊';w.appendChild(b);list.appendChild(w);}else{const d=document.createElement('div');d.className='tg-ai-msg user';d.textContent=m.text;list.appendChild(d);}}
     panel.querySelector('#tgAiClose').onclick=closeAi;
@@ -10023,13 +10088,13 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
       // En exécution d'action, un échec doit rester un échec : il ne faut
       // jamais transformer un human_message d'erreur en success=true.
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
-        return {success:false,error:data?.error||error?.message||'WRITE',human_message:String(data?.human_message||'Échec de l’enregistrement.')};
+        return {success:false,error:data?.error||error?.message||'WRITE',human_message:String(data?.human_message||'La modification n’a pas pu être enregistrée.')};
       }
       if(data?.human_message)return {success:true,answer:String(data.human_message),actions:[],chat_title:'TerangaResto'};
       return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
     }catch(e){
       console.error('TerangaResto IA',e);
-      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'Échec de l’enregistrement.'};
+      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
       return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
     }
   }
@@ -10098,10 +10163,10 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
       setLiveProcessing('',false);
     }catch(err){
       console.error('ai action',err);
-      addMessage('assistant','❌ Échec de l’enregistrement.');
+      addMessage('assistant','❌ La modification n’a pas pu être enregistrée.');
       renderAi(true);
-      setStatus('',false);
-      setLiveProcessing('',false);
+      setStatus('<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
+      setLiveProcessing('<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
     }finally{aiThinking=false;busy(false);}
   }
 
@@ -10158,21 +10223,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const mic=document.getElementById('tgAiMic');if(aiListening){aiRecognition?.stop();return;}
     aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;
     aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');setStatus('Parlez…',true)};
-    aiRecognition.onresult=e=>{
-      const v=String(e.results?.[0]?.[0]?.transcript||'').trim();
-      const i=document.getElementById('tgAiInput');
-      if(i&&v){
-        const start=Number.isFinite(i.selectionStart)?i.selectionStart:i.value.length;
-        const end=Number.isFinite(i.selectionEnd)?i.selectionEnd:i.value.length;
-        const current=String(i.value||'');
-        const left=current.slice(0,start), right=current.slice(end);
-        const separator=left && !/\s$/.test(left) ? ' ' : '';
-        const value=left+separator+v+(right && !/^\s/.test(right) ? ' ' : '')+right;
-        i.value=value;i.focus();
-        const caret=(left+separator+v).length;
-        try{i.setSelectionRange(caret,caret);}catch(_e){}
-      }
-    };
+    aiRecognition.onresult=e=>{const v=String(e.results?.[0]?.[0]?.transcript||'').trim();const i=document.getElementById('tgAiInput');if(i&&v){const before=String(i.value||'').trim();i.value=before?(before+' '+v):v;i.focus();try{i.setSelectionRange(i.value.length,i.value.length);}catch(_e){}}};
     aiRecognition.onerror=()=>setStatus('',false);aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');setStatus('',false)};aiRecognition.start();
   }
 
