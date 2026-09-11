@@ -402,9 +402,6 @@ button,a,input,select,textarea{font-family:inherit;}
 }
 </style>
 
-<style id="teranga-login-no-interstitial-final">
-#authCheckSplash{display:none!important;}
-</style>
 </head>
 <body>
 
@@ -472,7 +469,30 @@ button,a,input,select,textarea{font-family:inherit;}
   <div id="tgFastLoaderDots" aria-hidden="true"><span></span><span></span><span></span></div>
 </div>
 
-
+<!-- Écran de vérification neutre — affiché UNIQUEMENT si cet appareil a
+     déjà atteint un tableau de bord auparavant (voir tg_returning_user),
+     pendant que restoreSession() revalide la vraie session. Sans lui,
+     la page d'accueil publique (active par défaut dans le HTML tant que
+     rien ne dit le contraire) serait révélée une fraction de seconde à
+     chaque actualisation d'un utilisateur déjà connecté. -->
+<div id="authCheckSplash" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#FBF3E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;">
+  <div style="width:32px;height:32px;border:3px solid rgba(43,24,16,.12);border-top-color:#c96a12;border-radius:999px;animation:icSpin 0.8s linear infinite;"></div>
+  <p style="font-family:'Manrope',sans-serif;font-size:12.5px;color:#8a7466;margin-top:16px;">Vérification de votre session…</p>
+</div>
+<script>
+  // Doit rester la toute première chose exécutée dans <body> : décide,
+  // AVANT que la page d'accueil générale n'ait la moindre chance d'être
+  // peinte à l'écran, laquelle des deux situations s'applique — jamais
+  // les deux en même temps. Reflète exactement l'ordre de priorité
+  // réel utilisé par restoreSession() (session existante d'abord, lien
+  // direct vers un restaurant ensuite).
+  /* Une session existante ne doit jamais afficher l'écran "Vérification de votre session". */
+  if(/[?&]resto=/.test(location.search) ||
+            (location.hostname.endsWith('.terangaresto.com') &&
+             location.hostname !== 'www.terangaresto.com')){
+    document.getElementById('restoSplash').classList.remove('hidden');
+  }
+</script>
 
 <header class="gnav" id="platformHeader">
   <div class="gnav-inner">
@@ -3231,7 +3251,7 @@ function renderStorefrontGateOverlay(){
           </div>
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
           <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
             <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
             <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
@@ -3414,176 +3434,22 @@ function renderRestaurantNotFound(){
    (restoreSession, etc.) : revalidation en direct, nécessaire quand on
    ne sait pas encore avec certitude si une session existe. */
 async function findMyRestaurantId(p_knownUserId){
-  const uid = String(p_knownUserId || '').trim();
-  if(uid){
-    const resolved = await resolveAuthenticatedRestaurant(uid);
-    return resolved?.id || null;
+  let user;
+  if(p_knownUserId){
+    user = {id: p_knownUserId};
+  } else {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    user = userData ? userData.user : null;
+    if(user) currentUser = user;
   }
-  const { data:userData } = await supabaseClient.auth.getUser();
-  const user = userData?.user || null;
   if(!user) return null;
-  currentUser = user;
-  const resolved = await resolveAuthenticatedRestaurant(user.id);
-  return resolved?.id || null;
-}
-
-
-/* ---------------- COMPTE AUTHENTIFIÉ — RÉSOLUTION STRICTE ----------------
-   Le restaurant affiché après connexion est TOUJOURS résolu depuis
-   l'utilisateur Supabase réellement authentifié. Aucun identifiant
-   restaurant stocké dans le navigateur ne peut choisir le compte affiché. */
-async function resolveAuthenticatedRestaurant(userId){
-  const uid = String(userId || '').trim();
-  if(!uid) return null;
-
-  const [{data:owned, error:ownedError}, {data:staffRow, error:staffError}] = await Promise.all([
-    supabaseClient.from('restaurants')
-      .select('id')
-      .eq('owner_id', uid)
-      .limit(1)
-      .maybeSingle(),
-    supabaseClient.from('staff')
-      .select('restaurant_id')
-      .eq('user_id', uid)
-      .eq('status','Actif')
-      .limit(1)
-      .maybeSingle(),
+  const [{data:owned}, {data:staffRow}] = await Promise.all([
+    supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle(),
+    supabaseClient.from('staff').select('restaurant_id').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle(),
   ]);
-
-  if(ownedError) console.warn('Résolution restaurant propriétaire:', ownedError.message);
-  if(staffError) console.warn('Résolution restaurant membre du personnel:', staffError.message);
-
-  if(owned?.id) return {id: owned.id, role:'owner'};
-  if(staffRow?.restaurant_id) return {id: staffRow.restaurant_id, role:'staff'};
-  return null;
+  if(owned) return owned.id;
+  return staffRow ? staffRow.restaurant_id : null;
 }
-
-/* Charge uniquement l'identité du restaurant + abonnement. Le dashboard
-   peut donc s'ouvrir dès que le restaurant réel est identifié. */
-async function loadAuthenticatedRestaurantIdentity(restaurantId){
-  const rid = String(restaurantId || '').trim();
-  if(!rid) return false;
-
-  const {data:r, error} = await supabaseClient.from('restaurants')
-    .select(
-      'id,created_at,name,slug,type,logo_data_url,cover_data_url,primary_color,' +
-      'secondary_color,text_color,address,city,phone,hours,delivery,social,' +
-      'show_map,maps_link,notifications_enabled,ai_enabled,' +
-      'order_notification_email,order_notification_email_verified,order_notification_email_pending,' +
-      'is_published,hero_title,hero_subtitle,subscription_status,billing_cycle,' +
-      'trial_ends_at,current_period_end,last_renewed_at,plan,payment_toggles'
-    )
-    .eq('id',rid)
-    .single();
-
-  if(error || !r){
-    console.error('Chargement identité restaurant:', error?.message || 'restaurant introuvable');
-    return false;
-  }
-
-  // Purge immédiate des données en mémoire d'un éventuel ancien compte.
-  DEMO_ORDERS.length = 0;
-  staffState.length = 0;
-  paymentsHistory = [];
-  REVIEWS = [];
-  PRODUCTS.length = 0;
-  catsState = {};
-  catsHomeVisible = {};
-  variantsSelectedProduct = null;
-  abonSelectedPlan = null;
-  abonSelectedCycle = null;
-
-  RESTAURANT.id = r.id;
-  RESTAURANT.created = true;
-  RESTAURANT.createdAt = new Date(r.created_at).getTime();
-  RESTAURANT.name = r.name;
-  RESTAURANT.slug = r.slug;
-  RESTAURANT.type = r.type;
-  RESTAURANT.logoDataUrl = r.logo_data_url;
-  RESTAURANT.coverDataUrl = r.cover_data_url;
-  RESTAURANT.primary = r.primary_color;
-  RESTAURANT.secondary = r.secondary_color;
-  RESTAURANT.textColor = r.text_color;
-  RESTAURANT.address = r.address;
-  RESTAURANT.city = r.city;
-  RESTAURANT.phone = r.phone;
-  RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
-  RESTAURANT.delivery = (r.delivery && Object.keys(r.delivery).length) ? r.delivery : defaultDelivery();
-  if(!Array.isArray(RESTAURANT.delivery.zones) || !RESTAURANT.delivery.zones.length){
-    RESTAURANT.delivery.zones = [{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
-  }
-  RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
-  RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.social.galleryPhotos)
-    ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
-  RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
-  RESTAURANT.showMap = r.show_map;
-  RESTAURANT.mapsLink = r.maps_link;
-  RESTAURANT.notificationsEnabled = r.notifications_enabled;
-  RESTAURANT.aiEnabled = (r.ai_enabled === null || r.ai_enabled === undefined) ? true : !!r.ai_enabled;
-  if(r.ai_enabled === null || r.ai_enabled === undefined){
-    try{ supabaseClient.from('restaurants').update({ai_enabled:true}).eq('id',rid).then(()=>{}).catch(()=>{}); }catch(e){}
-  }
-  RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
-  RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
-  RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
-  RESTAURANT.isPublished = !!r.is_published;
-  RESTAURANT.heroTitle = r.hero_title || '';
-  RESTAURANT.heroSubtitle = r.hero_subtitle || '';
-  RESTAURANT.subscriptionStatus = r.subscription_status || 'trialing';
-  RESTAURANT.billingCycle = r.billing_cycle || 'monthly';
-  RESTAURANT.trialEndsAt = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : null;
-  RESTAURANT.currentPeriodEnd = r.current_period_end ? new Date(r.current_period_end).getTime() : null;
-  RESTAURANT.lastRenewedAt = r.last_renewed_at ? new Date(r.last_renewed_at).getTime() : null;
-  state.plan = r.plan || 'free';
-  state.toggles = Object.assign(
-    {wave:false,orange_money:false,cash:true,on_delivery:true,wave_link:'',orange_money_link:''},
-    r.payment_toggles || {}
-  );
-
-  applyRestaurantName(r.name);
-  applyThemeColors(r.primary_color, r.secondary_color, r.text_color);
-  if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
-
-  if(!!currentUser && computeEffectiveSubscriptionStatus() !== (r.subscription_status || 'trialing')){
-    supabaseClient.rpc('sync_my_subscription_expiry').then(({error:syncError})=>{
-      if(syncError) console.error('sync_my_subscription_expiry:', syncError.message);
-    });
-  }
-
-  return true;
-}
-
-/* Hydratation secondaire : aucune étape bloquante pour l'accès au compte. */
-function hydrateAuthenticatedRestaurant(restaurantId){
-  const rid = String(restaurantId || '').trim();
-  if(!rid) return;
-
-  Promise.all([
-    supabaseClient.from('categories').select('*').eq('restaurant_id',rid).order('sort_order'),
-    supabaseClient.from('products').select('*').eq('restaurant_id',rid).order('created_at')
-  ]).then(([catsRes,prodsRes])=>{
-    if(String(RESTAURANT.id)!==rid) return;
-
-    catsState = {};
-    catsHomeVisible = {};
-    (catsRes?.data || []).forEach(c=>{
-      catsState[c.key]=c.label;
-      catsHomeVisible[c.key]=c.visible_on_home !== false;
-    });
-
-    PRODUCTS.length=0;
-    (prodsRes?.data || []).forEach(p=>PRODUCTS.push({
-      id:p.id,name:p.name,desc:p.desc,price:Number(p.price),cat:p.cat,prep:p.prep,
-      active:p.active,available:p.available,photo:p.photo,variants:p.variants||[],
-      variantsRequired:!!p.variants_required,stock:p.stock,threshold:p.threshold
-    }));
-
-    if(state.view==='dashboard') renderDashSection(state.dashSection);
-  }).catch(e=>console.error('Hydratation cœur dashboard:',e));
-
-  loadRestaurantSecondaryData(rid).catch(e=>console.error('Hydratation secondaire dashboard:',e));
-}
-
 
 /* Empêche définitivement le bug "affiche le restaurant le plus
    récemment créé" : SANS lien direct (?resto=slug) ET sans compte
@@ -3594,45 +3460,65 @@ function hydrateAuthenticatedRestaurant(restaurantId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    currentUser=session ? session.user : null;
+    const {data:{session}} = await supabaseClient.auth.getSession();
+    currentUser = session ? session.user : null;
 
     if(currentUser){
-      const desiredSection=requestedDashSection() || 'overview';
-      viewerIsStaff=true;
-      state.dashSection=desiredSection;
+      const desiredSection = requestedDashSection() || 'overview';
+      const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
+      let rid = null;
+      try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
+
+      /* Ne jamais afficher un tableau de bord intermédiaire.
+         On charge d'abord le restaurant de l'utilisateur, puis seulement
+         après succès on affiche le VRAI tableau de bord avec ses données. */
+      viewerIsStaff = true;
+      state.dashSection = desiredSection;
       hideRestoSplash();
       hideAuthCheckSplash();
 
-      // Session persistante : on garde la session Supabase, mais on
-      // résout toujours le restaurant depuis l'identité réelle.
-      const resolved=await resolveAuthenticatedRestaurant(currentUser.id);
-
-      if(resolved?.id){
-        const identityOk=await loadAuthenticatedRestaurantIdentity(resolved.id);
-        if(identityOk){
-          setView('dashboard');
-          setDashSection(desiredSection);
-          if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-          hydrateAuthenticatedRestaurant(resolved.id);
-          return;
+      /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
+      if(rid){
+        try{
+          const ok = await loadRestaurantCore(rid);
+          if(ok){
+            setView('dashboard');
+            setDashSection(desiredSection);
+            if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+            loadRestaurantSecondaryData(rid);
+            return;
+          }
+        }catch(e){
+          console.warn('Chargement direct du restaurant mémorisé:', e);
         }
       }
 
-      viewerIsStaff=false;
+      /* Premier passage ou restaurant mémorisé devenu inaccessible :
+         seulement ici on retrouve l'association propriétaire/personnel. */
+      rid = await findMyRestaurantId(currentUser.id);
+      if(rid){
+        try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
+        await loadRestaurantCore(rid);
+        setView('dashboard');
+        setDashSection(desiredSection);
+        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+        loadRestaurantSecondaryData(rid);
+        return;
+      }
+
+      viewerIsStaff = false;
       setView('landing');
-    }else{
+    } else {
       hideAuthCheckSplash();
     }
 
-    const pendingOtp=loadPendingOnboarding();
+    const pendingOtp = loadPendingOnboarding();
     if(!currentUser && pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
-      Object.assign(obState,pendingOtp);
-      otpPendingEmail=pendingOtp.pendingEmail;
-      otpPendingName=pendingOtp.accountName || '';
-      otpPendingSource='onboarding';
-      hideRestoSplash();
-      hideAuthCheckSplash();
+      Object.assign(obState, pendingOtp);
+      otpPendingEmail = pendingOtp.pendingEmail;
+      otpPendingName = pendingOtp.accountName || '';
+      otpPendingSource = 'onboarding';
+      hideRestoSplash(); hideAuthCheckSplash();
       setView('onboarding');
       renderOnboardingOtpScreen();
       return;
@@ -3640,11 +3526,14 @@ async function restoreSession(){
 
     if(await tryResumePendingOnboarding()) return;
 
-    const restoSlug=restaurantSlugFromLocation();
+    try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
+    hideAuthCheckSplash();
+
+    const restoSlug = restaurantSlugFromLocation();
     if(restoSlug){
       restoSplashProgress(45);
-      const found=await loadRestaurantBySlug(restoSlug);
-      viewerIsStaff=false;
+      const found = await loadRestaurantBySlug(restoSlug);
+      viewerIsStaff = false;
       if(found){
         setView('storefront');
         hideRestoSplash();
@@ -3657,9 +3546,10 @@ async function restoreSession(){
 
     hideRestoSplash();
   }catch(e){
-    console.error('Restauration session:',e);
-    currentUser=null;
-    viewerIsStaff=false;
+    console.error('Restauration session:', e);
+    currentUser = null;
+    viewerIsStaff = false;
+    try{ localStorage.removeItem('tg_returning_user'); }catch(_e){}
     hideAuthCheckSplash();
     hideRestoSplash();
   }
@@ -3707,15 +3597,15 @@ function setLoginVerifying(on, btnId, label){
   const btn = document.getElementById(btnId || 'loginSubmitBtn');
   if(!btn) return;
   if(on){
+    btn.dataset.originalLabel = btn.innerHTML;
     btn.disabled = true;
-    btn.style.opacity = '.72';
-    btn.style.cursor = 'wait';
-    btn.setAttribute('aria-busy','true');
+    btn.style.opacity = '.7';
+    btn.innerHTML = `${ic('loader',15,{className:'spin'})} ${label || 'Vérification de vos informations…'}`;
+    hydrateIcons(btn);
   } else {
     btn.disabled = false;
     btn.style.opacity = '';
-    btn.style.cursor = '';
-    btn.removeAttribute('aria-busy');
+    if(btn.dataset.originalLabel) btn.innerHTML = btn.dataset.originalLabel;
   }
 }
 
@@ -3776,81 +3666,81 @@ function setLoginTab(tab){
 }
 
 function showDashboardBootScreen(section='overview'){
-  // Compatibilité avec les anciens appels : aucun écran intermédiaire.
   viewerIsStaff = true;
   state.dashSection = DASH_URL_ALIASES[section] ? section : 'overview';
   setView('dashboard');
-  setDashSection(state.dashSection);
+  const el = document.getElementById('dashContent');
+  if(el){
+    el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('loader',28,{className:'spin',stroke:'var(--amber-deep)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Chargement de votre espace…</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Connexion réussie. Vos données arrivent…</p></div>`;
+    hydrateIcons(el);
+  }
 }
 
 async function submitLogin(){
-  const email = document.getElementById('loginEmail')?.value.trim().toLowerCase();
-  const password = document.getElementById('loginPassword')?.value || '';
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
   if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
-
   setLoginVerifying(true);
-  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
+  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
 
-  if(error){
-    setLoginVerifying(false);
-    toast(supabaseErrorFr(error,'Connexion impossible.'));
-    return;
-  }
+  currentUser = data.user;
+  simulatedRole = null;
+  const desiredSection = requestedDashSection() || 'overview';
+  const lastRidKey = 'tg_last_restaurant_' + String(data.user.id);
+  let rid = null;
+  try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
-  const userId=data?.user?.id;
-  if(!userId){
-    setLoginVerifying(false);
-    toast('Connexion impossible : compte utilisateur introuvable.');
-    return;
-  }
-
-  currentUser=data.user;
-  simulatedRole=null;
-  viewerIsStaff=true;
-  state.dashSection=requestedDashSection() || 'overview';
+  /* Ne ferme pas la connexion et n'affiche pas un faux tableau de bord
+     avant que le restaurant réel soit chargé. */
+  viewerIsStaff = true;
+  state.dashSection = desiredSection;
 
   try{
-    // SOURCE DE VÉRITÉ : l'utilisateur Supabase actuellement connecté.
-    // Aucun restaurant_id du navigateur n'est consulté pour choisir le compte.
-    const resolved=await resolveAuthenticatedRestaurant(userId);
+    /* Compte déjà connu : on charge directement le restaurant mémorisé. */
+    if(rid){
+      const ok = await loadRestaurantCore(rid);
+      if(ok){
+        setLoginVerifying(false);
+        closeLogin();
+        hideRestoSplash();
+        hideAuthCheckSplash();
+        setView('dashboard');
+        setDashSection(desiredSection);
+        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+        loadRestaurantSecondaryData(rid);
+        return;
+      }
+    }
 
-    if(!resolved?.id){
-      viewerIsStaff=false;
-      setLoginVerifying(false);
+    rid = await findMyRestaurantId(data.user.id);
+    if(!rid){
+      viewerIsStaff = false;
       setView('landing');
       openLogin('login');
       toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
+      startOnboarding();
       return;
     }
 
-    const identityOk=await loadAuthenticatedRestaurantIdentity(resolved.id);
-    if(!identityOk){
-      viewerIsStaff=false;
-      setLoginVerifying(false);
-      setView('landing');
-      openLogin('login');
-      toast('Impossible de charger votre restaurant. Réessayez.');
-      return;
-    }
-
+    try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
+    await loadRestaurantCore(rid);
     setLoginVerifying(false);
     closeLogin();
     hideRestoSplash();
     hideAuthCheckSplash();
     setView('dashboard');
-    setDashSection(state.dashSection);
+    setDashSection(desiredSection);
     if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-
-    // Catégories, produits, commandes, paiements, avis et personnel
-    // continuent de se charger sans bloquer l'entrée sur le bon compte.
-    hydrateAuthenticatedRestaurant(resolved.id);
+    loadRestaurantSecondaryData(rid);
+    toast('Connecté — bienvenue sur votre tableau de bord.');
   }catch(e){
-    console.error('Connexion — résolution du restaurant:',e);
-    viewerIsStaff=false;
+    console.error('Connexion — chargement du restaurant:', e);
+    viewerIsStaff = false;
     setLoginVerifying(false);
     setView('landing');
     openLogin('login');
-    toast('Impossible de charger votre restaurant. Vérifiez votre connexion Internet puis réessayez.');
+    toast('Impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
   }
 }
 
@@ -3921,21 +3811,7 @@ async function submitInviteAccept(){
 
 async function signOutSupabase(){
   await supabaseClient.auth.signOut();
-  currentUser=null;
-  viewerIsStaff=false;
-  simulatedRole=null;
-  unsubscribeOrdersRealtime();
-  unsubscribeReviewsRealtime();
-  DEMO_ORDERS.length=0;
-  staffState.length=0;
-  paymentsHistory=[];
-  REVIEWS=[];
-  PRODUCTS.length=0;
-  catsState={};
-  catsHomeVisible={};
-  variantsSelectedProduct=null;
-  abonSelectedPlan=null;
-  abonSelectedCycle=null;
+  currentUser = null;
 }
 </script>
 
@@ -4776,6 +4652,7 @@ function setView(view){
     // — permet, au prochain chargement de page, de savoir s'il faut
     // afficher un écran de vérification neutre plutôt que la page
     // d'accueil publique pendant que la session est revalidée.
+    try{ localStorage.setItem('tg_returning_user','1'); }catch(e){}
   }
   if(view==='pricing') renderPricing();
   if(view==='storefront') { renderStorefrontHero(); renderProductSections(); updateFloatingCartButton(); renderStorefrontGateOverlay(); renderTrackOrderButton(); }
@@ -6993,6 +6870,7 @@ async function logoutDashboard(){
   unsubscribeOrdersRealtime();
   unsubscribeReviewsRealtime();
   viewerIsStaff = false;
+  try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
   setView('landing');
   toast('Déconnecté.');
 }
