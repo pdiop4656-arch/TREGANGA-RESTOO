@@ -9949,9 +9949,9 @@ function speakAiText(text,button){
   const u=new SpeechSynthesisUtterance(spoken);
   u.lang='fr-FR';u.rate=1;u.pitch=1;u.volume=1;
   const voices=window.speechSynthesis.getVoices?window.speechSynthesis.getVoices():[];
-  const ember=voices.find(v=>/ember/i.test(String(v.name||'')));
+  const sage=voices.find(v=>/\bsage\b/i.test(String(v.name||'')));
   const french=voices.find(v=>/^fr(-|_)/i.test(String(v.lang||''))||/french|français/i.test(String(v.name||'')));
-  if(ember)u.voice=ember;else if(french)u.voice=french;
+  if(sage)u.voice=sage;else if(french)u.voice=french;
   u.onstart=()=>{activeSpeechButton=button;button.textContent='⏹';button.classList.add('active');button.title='Arrêter la lecture';};
   u.onend=()=>{if(activeSpeechButton===button){button.textContent='🔊';button.classList.remove('active');button.title='Lire la réponse';activeSpeechButton=null;}};
   u.onerror=u.onend;
