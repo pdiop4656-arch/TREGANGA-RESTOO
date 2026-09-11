@@ -3251,7 +3251,7 @@ function renderStorefrontGateOverlay(){
           </div>
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
           <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
             <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
             <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
@@ -3468,21 +3468,18 @@ async function restoreSession(){
       const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
       let rid = null;
       try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
-
-      /* Ne jamais afficher un tableau de bord intermédiaire.
-         On charge d'abord le restaurant de l'utilisateur, puis seulement
-         après succès on affiche le VRAI tableau de bord avec ses données. */
       viewerIsStaff = true;
       state.dashSection = desiredSection;
-      hideRestoSplash();
-      hideAuthCheckSplash();
 
-      /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
+      // Session persistante : si ce navigateur connaît déjà le restaurant,
+      // montrer immédiatement la coque du dashboard puis charger les données.
       if(rid){
+        hideRestoSplash();
+        hideAuthCheckSplash();
+        showDashboardBootScreen(desiredSection);
         try{
           const ok = await loadRestaurantCore(rid);
           if(ok){
-            setView('dashboard');
             setDashSection(desiredSection);
             if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
             loadRestaurantSecondaryData(rid);
@@ -3493,17 +3490,24 @@ async function restoreSession(){
         }
       }
 
-      /* Premier passage ou restaurant mémorisé devenu inaccessible :
-         seulement ici on retrouve l'association propriétaire/personnel. */
+      // Premier passage ou association mémorisée devenue inaccessible.
       rid = await findMyRestaurantId(currentUser.id);
       if(rid){
         try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-        await loadRestaurantCore(rid);
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantSecondaryData(rid);
-        return;
+        hideRestoSplash();
+        hideAuthCheckSplash();
+        showDashboardBootScreen(desiredSection);
+        try{
+          const ok = await loadRestaurantCore(rid);
+          if(ok){
+            setDashSection(desiredSection);
+            if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+            loadRestaurantSecondaryData(rid);
+            return;
+          }
+        }catch(e){
+          console.warn('Chargement du restaurant du compte:', e);
+        }
       }
 
       viewerIsStaff = false;
@@ -3600,7 +3604,7 @@ function setLoginVerifying(on, btnId, label){
     btn.dataset.originalLabel = btn.innerHTML;
     btn.disabled = true;
     btn.style.opacity = '.7';
-    btn.innerHTML = `${ic('loader',15,{className:'spin'})} ${label || 'Vérification de vos informations…'}`;
+    btn.innerHTML = `${ic('loader',15,{className:'spin'})} ${label || 'Connexion…'}`;
     hydrateIcons(btn);
   } else {
     btn.disabled = false;
@@ -3676,13 +3680,47 @@ function showDashboardBootScreen(section='overview'){
   }
 }
 
+async function openDashboardForRestaurant(rid, desiredSection='overview', options={}){
+  if(!rid) return false;
+  const section = DASH_URL_ALIASES[desiredSection] ? desiredSection : 'overview';
+
+  // Authentification déjà réussie : afficher immédiatement la coque du
+  // tableau de bord. Les données cœur sont chargées juste après, sans
+  // maintenir la modale de connexion ouverte pendant les requêtes réseau.
+  showDashboardBootScreen(section);
+  closeLogin();
+  hideRestoSplash();
+  hideAuthCheckSplash();
+
+  try{
+    const ok = await loadRestaurantCore(rid);
+    if(!ok) return false;
+    try{
+      localStorage.setItem('tg_last_restaurant_' + String(currentUser?.id || ''), String(rid));
+    }catch(e){}
+    setDashSection(section);
+    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+    loadRestaurantSecondaryData(rid);
+    if(options.toast) toast(options.toast);
+    return true;
+  }catch(e){
+    console.error('Ouverture du tableau de bord:', e);
+    return false;
+  }
+}
+
 async function submitLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
-  setLoginVerifying(true);
+
+  setLoginVerifying(true, 'loginSubmitBtn', 'Connexion…');
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
+  if(error){
+    setLoginVerifying(false);
+    toast(supabaseErrorFr(error,'Connexion impossible.'));
+    return;
+  }
 
   currentUser = data.user;
   simulatedRole = null;
@@ -3691,53 +3729,37 @@ async function submitLogin(){
   let rid = null;
   try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
-  /* Ne ferme pas la connexion et n'affiche pas un faux tableau de bord
-     avant que le restaurant réel soit chargé. */
+  // La vérification des identifiants est terminée. On retire immédiatement
+  // l'état d'attente de la modale et on affiche la coque du dashboard.
+  setLoginVerifying(false);
   viewerIsStaff = true;
   state.dashSection = desiredSection;
 
-  try{
-    /* Compte déjà connu : on charge directement le restaurant mémorisé. */
-    if(rid){
-      const ok = await loadRestaurantCore(rid);
-      if(ok){
-        setLoginVerifying(false);
-        closeLogin();
-        hideRestoSplash();
-        hideAuthCheckSplash();
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantSecondaryData(rid);
-        return;
-      }
-    }
+  if(rid){
+    const ok = await openDashboardForRestaurant(rid, desiredSection, {
+      toast: 'Connecté — bienvenue sur votre tableau de bord.'
+    });
+    if(ok) return;
+  }
 
-    rid = await findMyRestaurantId(data.user.id);
-    if(!rid){
-      viewerIsStaff = false;
-      setView('landing');
-      openLogin('login');
-      toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
-      startOnboarding();
-      return;
-    }
-
-    try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-    await loadRestaurantCore(rid);
-    setLoginVerifying(false);
-    closeLogin();
-    hideRestoSplash();
-    hideAuthCheckSplash();
-    setView('dashboard');
-    setDashSection(desiredSection);
-    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-    loadRestaurantSecondaryData(rid);
-    toast('Connecté — bienvenue sur votre tableau de bord.');
-  }catch(e){
-    console.error('Connexion — chargement du restaurant:', e);
+  // Premier accès ou restaurant mémorisé devenu inaccessible : retrouver
+  // l'association réelle propriétaire/personnel, puis ouvrir le dashboard.
+  rid = await findMyRestaurantId(data.user.id);
+  if(!rid){
     viewerIsStaff = false;
-    setLoginVerifying(false);
+    setView('landing');
+    openLogin('login');
+    toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
+    startOnboarding();
+    return;
+  }
+
+  try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
+  const ok = await openDashboardForRestaurant(rid, desiredSection, {
+    toast: 'Connecté — bienvenue sur votre tableau de bord.'
+  });
+  if(!ok){
+    viewerIsStaff = false;
     setView('landing');
     openLogin('login');
     toast('Impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
