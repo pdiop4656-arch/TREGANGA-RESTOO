@@ -10082,48 +10082,23 @@ function speakAiText(text,button){
 
   async function callEdge(body){
     try{
-      if(!supabaseClient?.functions?.invoke) return {success:false,error:'ACCESS',answer:'',actions:[],human_message:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?'};
-
-      const invokeChat=async(payload)=>await supabaseClient.functions.invoke('ai-agency',{body:payload});
-      let payload=body;
-      let {data,error}=await invokeChat(payload);
+      if(!supabaseClient?.functions?.invoke) throw new Error('ACCESS');
+      const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body});
       if(data?.success===true)return data;
-
-      // Le mode chat est le seul à pouvoir être relancé : une nouvelle tentative
-      // évite qu'une session/restauration de restaurant transitoire masque une
-      // capacité IA déjà disponible. Les actions d'écriture ne sont jamais rejouées.
-      if(body?.mode==='chat'){
-        try{
-          let rid=String(body?.restaurant_id||'');
-          if(currentUser?.id && (!rid || !RESTAURANT?.id)){
-            const recovered=await findMyRestaurantId(String(currentUser.id));
-            if(recovered) rid=String(recovered);
-          }
-          payload={...body,restaurant_id:rid};
-          if(rid){
-            const retry=await invokeChat(payload);
-            if(retry?.data?.success===true)return retry.data;
-            if(retry?.data) { data=retry.data; error=retry.error; }
-          }
-        }catch(retryError){
-          console.warn('TerangaResto IA — nouvelle tentative chat:',retryError);
-        }
-      }
-
-      // IMPORTANT : une erreur backend ne doit jamais être transformée en
-      // success=true. Le message de secours n'est utilisé qu'après un véritable
-      // échec du traitement IA.
-      const human=String(data?.human_message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?');
+      const message=String(data?.human_message||error?.message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?');
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
-        return {success:false,error:data?.error||error?.message||'WRITE',human_message:human};
+        return {success:false,error:data?.error||error?.message||'WRITE',human_message:message};
       }
-      return {success:false,error:data?.error||error?.message||'ACCESS',answer:'',actions:[],chat_title:'TerangaResto',human_message:human};
+      return {success:false,error:data?.error||error?.message||'ACCESS',answer:'',actions:[],chat_title:'TerangaResto',human_message:message};
     }catch(e){
       console.error('TerangaResto IA',e);
-      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
+      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
+        return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
+      }
       return {success:false,error:'ACCESS',answer:'',actions:[],chat_title:'TerangaResto',human_message:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?'};
     }
   }
+
   async function ask(text){
     const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const localContext=buildContext();
@@ -10223,7 +10198,6 @@ function speakAiText(text,button){
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
     addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
-    const startedAt=performance.now();
     const long=text.length>120?'Je réfléchis à votre demande…':'Je réfléchis…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span><small>Je prépare votre réponse.</small>`,true);
     try{
       const result=await ask(text), current=ensureChat();
@@ -10232,9 +10206,7 @@ function speakAiText(text,button){
       // Même en cas de réponse très rapide, garder l'état de réflexion visible
       // un court instant afin que l'utilisateur voie clairement que la demande
       // a bien été prise en charge.
-      const elapsed=performance.now()-startedAt, wait=Math.max(0,420-elapsed);
-      if(wait) await new Promise(r=>setTimeout(r,wait));
-      await addAssistantAnimated(String(result.answer||'Je vais vous aider à partir des informations disponibles.'));
+      await addAssistantAnimated(String(result.answer||result.human_message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?'));
       // Fin du traitement : le bandeau disparaît immédiatement.
       setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }catch(err){
