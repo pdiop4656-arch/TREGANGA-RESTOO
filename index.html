@@ -3251,7 +3251,7 @@ function renderStorefrontGateOverlay(){
           </div>
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
           <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
             <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
             <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
@@ -10090,48 +10090,20 @@ function speakAiText(text,button){
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
         return {success:false,error:data?.error||error?.message||'WRITE',human_message:String(data?.human_message||'La modification n’a pas pu être enregistrée.')};
       }
-      return {success:false,error:data?.error||error?.message||'ACCESS',answer:String(data?.human_message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?'),actions:[],chat_title:'TerangaResto'};
+      if(data?.human_message)return {success:true,answer:String(data.human_message),actions:[],chat_title:'TerangaResto'};
+      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
     }catch(e){
       console.error('TerangaResto IA',e);
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
-      return {success:false,error:'ACCESS',answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
+      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
     }
   }
-  async function tryDomainLookup(question){
-    const raw=String(question||'').trim();
-    // Uniquement une demande de recherche de disponibilité/prix d'un domaine.
-    const domainMatch=raw.match(/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:[a-z]{2,63}))\b/i);
-    if(!domainMatch) return null;
-    const qn=raw.toLowerCase();
-    if(!/(domaine|domain|disponible|disponibilite|disponibilité|prix|cout|coût|tarif|chercher|cherche|recherche|acheter|acheter ce domaine)/i.test(qn)) return null;
-    if(!RESTAURANT?.id) return null;
-    const query=domainNormalizeName(domainMatch[1]);
-    try{
-      const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{action:'search',operation:'search',query,search:query,domain:query,restaurant_id:String(RESTAURANT.id),exact:true});
-      const rows=extractDomainRows(data).filter(r=>domainNormalizeName(r.domain)===query);
-      if(rows.length){
-        const r=rows[0];
-        const price=domainPriceNumber(r.price);
-        if(r.available===false) return {answer:`En résumé : ${query} n’est pas disponible actuellement.`,actions:[]};
-        return {answer:`En résumé : ${query} est disponible${Number.isFinite(price)?` au prix de ${domainFormatPrice(price)}`:' ; le prix n’est pas encore communiqué'}.`,actions:[]};
-      }
-      // Le service peut répondre par une liste de variantes. On ne prétend jamais qu'un domaine exact est disponible sans réponse explicite.
-      return {answer:`En résumé : je n’ai pas reçu de résultat fiable pour ${query}. Je ne vais pas inventer sa disponibilité ou son prix.`,actions:[]};
-    }catch(e){
-      console.warn('Recherche domaine IA:',e);
-      return {answer:`Je n’ai pas pu vérifier ${query} maintenant.`,actions:[]};
-    }
-  }
-
   async function ask(text){
-    const domainResult=await tryDomainLookup(text);
-    if(domainResult) return {...domainResult,chat_title:'TerangaResto'};
     const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const localContext=buildContext();
     const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
-    // Le backend ai-agency est la seule source d'autorité pour les actions.
-    // Aucun ancien sujet du navigateur ne peut donc contaminer une nouvelle demande.
-    result.actions=Array.isArray(result.actions)?result.actions:[];
+    const fallbackActions=localActionFallback(text);
+    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé la modification correspondante. Confirmez pour l’appliquer.';}
     if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){
       const qn=text.toLowerCase();
       if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn)){
