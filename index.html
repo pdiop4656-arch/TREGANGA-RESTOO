@@ -16,7 +16,7 @@
 <!-- Le thème public "Classic" utilise des icônes FontAwesome (fa-solid,
      fa-regular) dans ses boutons (panier, "+", localisation, menu...) —
      cette feuille de style n'était jamais chargée, ce qui rendait ces
-     icônes invisibles (élément vide) sans casser la mise en page. -->a
+     icônes invisibles (élément vide) sans casser la mise en page. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 :root{
@@ -9797,7 +9797,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 .tg-ai-msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.55}
 .tg-ai-msg.ai{align-self:flex-start;background:#19233A;border:1px solid rgba(255,255,255,.06)}.tg-ai-msg-wrap{display:flex;flex-direction:column;align-items:flex-start;max-width:88%}.tg-ai-msg-wrap .tg-ai-msg{max-width:100%}.tg-ai-read{margin:4px 0 0 8px;width:30px;height:28px;border:1px solid rgba(255,255,255,.10);border-radius:9px;background:#131C30;color:#fff;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}.tg-ai-read.active{background:#E8871E;color:#0B1220;border-color:#E8871E}.tg-ai-live{margin:0 12px 4px;padding:6px 9px;border-radius:10px;background:rgba(25,35,58,.92);color:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.08);font-size:10px;font-weight:700;display:flex;align-items:center;gap:7px;box-shadow:none;min-height:28px;box-sizing:border-box;max-width:calc(100% - 24px)}.tg-ai-live small{font-weight:600;color:rgba(255,255,255,.48);display:block;margin-top:1px}.tg-ai-live strong{font-weight:800}.tg-ai-live .tg-ai-thinking-dots i{background:#E8871E}.tg-ai-live[hidden]{display:none}
 .tg-ai-msg.user{align-self:flex-end;background:#E8871E;color:#0B1220}
-.tg-ai-msg.ai.typing::after{content:'';display:none}
+.tg-ai-msg.ai.typing::after{content:'▌';display:inline-block;margin-left:2px;opacity:.75;animation:tgAiCaret .8s steps(1,end) infinite}
 @keyframes tgAiCaret{0%,49%{opacity:.75}50%,100%{opacity:0}}
 .tg-ai-msg-meta{font-size:10px;color:rgba(255,255,255,.45);margin:0 14px -2px}
 .tg-ai-chips{display:flex;gap:7px;flex-wrap:wrap;padding:0 12px 10px;flex:0 0 auto}
@@ -9983,7 +9983,7 @@ function speakAiText(text,button){
     const c=ensureChat(), old=document.getElementById('tgAiPanel');
     const panel=old||document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';
     const showSuggestions=(c.messages||[]).filter(m=>m.role==='user').length===0;
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     if(!old)document.body.appendChild(panel);
     const list=panel.querySelector('#tgAiMessages');for(let idx=0;idx<(c.messages||[]).length;idx++){const m=c.messages[idx];if(m.role==='assistant'){const w=document.createElement('div');w.className='tg-ai-msg-wrap';const d=document.createElement('div');d.className='tg-ai-msg ai';d.textContent=m.text;w.appendChild(d);const b=document.createElement('button');b.type='button';b.className='tg-ai-read';b.dataset.aiReadIndex=String(idx);b.title='Lire la réponse';b.setAttribute('aria-label','Lire la réponse');b.textContent='🔊';w.appendChild(b);list.appendChild(w);}else{const d=document.createElement('div');d.className='tg-ai-msg user';d.textContent=m.text;list.appendChild(d);}}
     panel.querySelector('#tgAiClose').onclick=closeAi;
@@ -10027,15 +10027,6 @@ function speakAiText(text,button){
     return null;
   }
 
-  function dedupeClientActions(actions){
-    const seen=new Set(), out=[];
-    for(const a of Array.isArray(actions)?actions:[]){
-      const key=JSON.stringify({type:a?.type||'',product:a?.product_id||a?.product_name||'',day:a?.day_index??'',zone:a?.zone_id||a?.name||'',changes:a?.changes||{},enabled:a?.enabled??'',fee:a?.fee??'',min:a?.min??'',from:a?.from||'',to:a?.to||''});
-      if(seen.has(key)) continue; seen.add(key); out.push(a);
-    }
-    return out.slice(0,8);
-  }
-
   function enrichActions(actions){
     const out=[];
     for(const raw of Array.isArray(actions)?actions:[]){const a=normalizeAction(raw);if(!a)continue;
@@ -10055,99 +10046,98 @@ function speakAiText(text,button){
     const products=Array.isArray(PRODUCTS)?PRODUCTS:[], libs=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[];
     const findByName=(list)=>list.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const product=findByName(products), library=findByName(libs);
+    const prior=(c=>{try{const chat=ensureChat();return (chat.messages||[]).slice(-12).map(m=>String(m.text||'')).join(' ')}catch(e){return ''}})();
+    const priorNorm=prior.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const libraryFromHistory=library||libs.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&priorNorm.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const price=(()=>{const m=q.match(/(?:prix|a|à|pour|tarif|frais)\D{0,35}(\d{2,7})\s*(?:fcfa|f|fr)?/);return m?Number(m[1]):null})();
     const stock=(()=>{const m=q.match(/(?:stock|stocks|quantite|quantité|nombre)\D{0,25}(\d{1,6})/);return m?Number(m[1]):null})();
     const shortNums=[...q.matchAll(/\b(\d{1,8})\b/g)].map(m=>Number(m[1])).filter(Number.isFinite);
     const fallbackPrice=price!=null?price:shortNums.find(n=>n>=100);
     const fallbackStock=stock!=null?stock:shortNums.find(n=>n<100);
-
-    if(library&&/(ajouter|ajoute|creer|créer|créé)\b/.test(q)&&fallbackPrice!=null&&fallbackStock!=null){
-      actions.push({type:'create_product',summary:`Ajouter ${library.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:library.name,name:library.name,description:library.desc||'',price:fallbackPrice,stock:fallbackStock,category:library.cat,category_label:catsState?.[library.cat]||library.cat,prep:Number(library.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
-    }
-    if(product&&price!=null&&/prix|tarif/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q)) actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
-    if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer|restocker)/.test(q)) actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
-
+    if(libraryFromHistory&&/(ajouter|ajoute|creer|créer).*produit|ajoute|ajouter/.test(priorNorm+' '+q)&&fallbackPrice!=null&&fallbackStock!=null)actions.push({type:'create_product',summary:`Ajouter ${libraryFromHistory.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:libraryFromHistory.name,name:libraryFromHistory.name,description:libraryFromHistory.desc||'',price:fallbackPrice,stock:fallbackStock,category:libraryFromHistory.cat,category_label:catsState?.[libraryFromHistory.cat]||libraryFromHistory.cat,prep:Number(libraryFromHistory.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
+    if(product&&price!=null&&/prix/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q))actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
+    if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer)/.test(q))actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
     const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]];
-    const mentionedDays=days.filter(([d])=>new RegExp(`\\b${d}\\b`).test(q));
+    const mentionedDays=days.filter(([d])=>q.includes(d));
+    const day=mentionedDays[0];
     const tm=q.match(/(?:de|a|à)?\s*(\d{1,2})\s*h?\s*(\d{0,2})?\s*(?:a|à|jusqua|jusqu'a|au|et|-)\s*(\d{1,2})\s*h?\s*(\d{0,2})?/);
     if(mentionedDays.length&&/(horaire|heure|ouvre|ouvert|ferme|fermer|activer|désactiver|desactiver)/.test(q)&&tm){
       const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;
       mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Mettre ${label} de ${f} à ${t}.`,day_index:index,day_label:label,open:true,from:f,to:t}));
     }
-    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter)/.test(q)&&!tm){
+    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm){
       mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
     }
-    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure|chaque une heure)/.test(q)){
+    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure)/.test(q)){
       mentionedDays.forEach(([label,index])=>{
-        const hh=RESTAURANT?.hours?.[index]||{}, end=String(hh.to||''), mm=end.match(/^(\d{2}):(\d{2})$/);
-        if(mm){let mins=Math.min(23*60+59,Number(mm[1])*60+Number(mm[2])+60); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(hh.from||'11:00'),to:t});}
+        const h=RESTAURANT?.hours?.[index]||{}, end=String(h.to||'');
+        const mm=end.match(/^(\d{2}):(\d{2})$/);
+        if(mm){let mins=Number(mm[1])*60+Number(mm[2])+60; mins=Math.min(mins,23*60+59); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(h.from||'11:00'),to:t});}
       });
     }
-
-    // Livraison : ne génère que des actions de livraison.
-    if(/\blivraison\b|\bexpress\b/.test(q)){
-      if(/\b(activer|active|allumer)\b/.test(q)) actions.push({type:'update_delivery_settings',summary:'Activer la livraison.',enabled:true});
-      if(/\b(desactiver|désactiver|couper|arreter|arrêter)\b/.test(q)) actions.push({type:'update_delivery_settings',summary:'Désactiver la livraison.',enabled:false});
-      const fee=q.match(/(?:frais|prix|tarif)\D{0,20}(\d{1,7})/); if(fee)actions.push({type:'update_delivery_settings',summary:`Fixer les frais de livraison à ${Number(fee[1]).toLocaleString('fr-FR')} FCFA.`,fee:Number(fee[1])});
-      const min=q.match(/(?:minimum(?: de commande)?|commande minimum)\D{0,20}(\d{1,7})/); if(min)actions.push({type:'update_delivery_settings',summary:`Fixer le minimum de commande à ${Number(min[1]).toLocaleString('fr-FR')} FCFA.`,min:Number(min[1])});
-    }
-    if(/\b(publier|publie|mettre.*en ligne|mettre.*visible)\b/.test(q)&&!product)actions.push({type:'publish_site',summary:'Publier le site.',published:true});
-    if(/\b(depublier|dépublier|dépublie|retirer.*ligne|masquer.*site)\b/.test(q)&&!product)actions.push({type:'publish_site',summary:'Dépublier le site.',published:false});
+    const zones=Array.isArray(RESTAURANT?.delivery?.zones)?RESTAURANT.delivery.zones:[],zone=zones.map(z=>({z,n:String(z?.name||'').toLowerCase()})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.z, zfee=q.match(/(?:prix|frais|tarif)\D{0,25}(\d{2,7})/);
+    if(zone&&zfee&&/(modifier|changer|mettre|fixer)/.test(q)&&/zone|livraison/.test(q))actions.push({type:'update_delivery_zone',summary:`Modifier ${zone.name} à ${Number(zfee[1]).toLocaleString('fr-FR')} FCFA.`,zone_id:String(zone.id),name:zone.name,fee:Number(zfee[1])});
     return actions.slice(0,8);
-  }
-
-
-  function domainQueryFromText(text){
-    const q=String(text||'').trim();
-    const m=q.match(/\b([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:com|net|org|sn|fr|co|io|shop|store|online|africa|xyz|site|me|app|tech))\b/i);
-    if(!m) return null;
-    if(!/(cherche|recherche|disponible|disponibilite|disponibilité|prix|cout|coût|combien|domain|nom de domaine|acheter)/i.test(q)) return null;
-    return domainNormalizeName(m[1]);
-  }
-  async function searchDomainForAi(text){
-    const query=domainQueryFromText(text);
-    if(!query) return null;
-    try{
-      const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{action:'search',operation:'search',query,search:query,domain:query,restaurant_id:String(RESTAURANT?.id||'')});
-      const rows=extractDomainRows(data);
-      const exact=rows.find(r=>domainNormalizeName(r.domain)===query) || rows[0];
-      if(!exact) return `En résumé : je n’ai trouvé aucun résultat pour ${query}.`;
-      const available=exact.available!==false;
-      const p=domainPriceNumber(exact.price);
-      if(!available) return `En résumé : ${query} n’est pas disponible actuellement.`;
-      return `En résumé : ${query} est disponible. Son prix affiché est ${Number.isFinite(p)?domainFormatPrice(p):'indisponible'} sur votre service de domaines.`;
-    }catch(e){
-      return `En résumé : je n’ai pas pu vérifier ${query} pour le moment. Réessayez dans un instant.`;
-    }
   }
 
   async function callEdge(body){
     try{
-      if(!supabaseClient?.functions?.invoke) throw new Error('ACCESS');
+      if(!supabaseClient?.functions?.invoke)return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[]};
       const {data,error}=await supabaseClient.functions.invoke('ai-agency',{body});
       if(data?.success===true)return data;
-      const message=String(data?.human_message||error?.message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?');
+      // En exécution d'action, un échec doit rester un échec : il ne faut
+      // jamais transformer un human_message d'erreur en success=true.
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
-        return {success:false,error:data?.error||error?.message||'WRITE',human_message:message};
+        return {success:false,error:data?.error||error?.message||'WRITE',human_message:String(data?.human_message||'La modification n’a pas pu être enregistrée.')};
       }
-      return {success:false,error:data?.error||error?.message||'ACCESS',answer:'',actions:[],chat_title:'TerangaResto',human_message:message};
+      return {success:false,error:data?.error||error?.message||'ACCESS',answer:String(data?.human_message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?'),actions:[],chat_title:'TerangaResto'};
     }catch(e){
       console.error('TerangaResto IA',e);
-      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
-        return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
+      if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
+      return {success:false,error:'ACCESS',answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
+    }
+  }
+  async function tryDomainLookup(question){
+    const raw=String(question||'').trim();
+    // Uniquement une demande de recherche de disponibilité/prix d'un domaine.
+    const domainMatch=raw.match(/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:[a-z]{2,63}))\b/i);
+    if(!domainMatch) return null;
+    const qn=raw.toLowerCase();
+    if(!/(domaine|domain|disponible|disponibilite|disponibilité|prix|cout|coût|tarif|chercher|cherche|recherche|acheter|acheter ce domaine)/i.test(qn)) return null;
+    if(!RESTAURANT?.id) return null;
+    const query=domainNormalizeName(domainMatch[1]);
+    try{
+      const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{action:'search',operation:'search',query,search:query,domain:query,restaurant_id:String(RESTAURANT.id),exact:true});
+      const rows=extractDomainRows(data).filter(r=>domainNormalizeName(r.domain)===query);
+      if(rows.length){
+        const r=rows[0];
+        const price=domainPriceNumber(r.price);
+        if(r.available===false) return {answer:`En résumé : ${query} n’est pas disponible actuellement.`,actions:[]};
+        return {answer:`En résumé : ${query} est disponible${Number.isFinite(price)?` au prix de ${domainFormatPrice(price)}`:' ; le prix n’est pas encore communiqué'}.`,actions:[]};
       }
-      return {success:false,error:'ACCESS',answer:'',actions:[],chat_title:'TerangaResto',human_message:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?'};
+      // Le service peut répondre par une liste de variantes. On ne prétend jamais qu'un domaine exact est disponible sans réponse explicite.
+      return {answer:`En résumé : je n’ai pas reçu de résultat fiable pour ${query}. Je ne vais pas inventer sa disponibilité ou son prix.`,actions:[]};
+    }catch(e){
+      console.warn('Recherche domaine IA:',e);
+      return {answer:`Je n’ai pas pu vérifier ${query} maintenant.`,actions:[]};
     }
   }
 
   async function ask(text){
-    const domainAnswer=await searchDomainForAi(text);
-    if(domainAnswer)return {success:true,answer:domainAnswer,actions:[],chat_title:ensureChat().title};
-    const c=ensureChat(), messages=(c.messages||[]).slice(-50).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const domainResult=await tryDomainLookup(text);
+    if(domainResult) return {...domainResult,chat_title:'TerangaResto'};
+    const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const localContext=buildContext();
     const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
-    const fallbackActions=localActionFallback(text);
-    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé uniquement les modifications demandées. Confirmez pour l’appliquer.';}
+    // Le backend ai-agency est la seule source d'autorité pour les actions.
+    // Aucun ancien sujet du navigateur ne peut donc contaminer une nouvelle demande.
+    result.actions=Array.isArray(result.actions)?result.actions:[];
+    if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){
+      const qn=text.toLowerCase();
+      if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn)){
+        result.answer='En résumé : je peux vous conseiller sur vos ventes, vos produits, vos prix, votre livraison, votre menu et votre communication. Commencez par mettre en avant vos meilleures ventes, éviter les ruptures, proposer des formules simples et relancer vos clients avec des offres ciblées.';
+      }
+    }
     return result;
   }
   async function applyAction(a){
@@ -10209,33 +10199,25 @@ function speakAiText(text,button){
   }
 
   function addAssistantAnimated(text){
-    const full=String(text??'');
     const c=ensureChat();
+    c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
+    const m={role:'assistant',text:''};
+    c.messages.push(m);c.updatedAt=Date.now();renderAi(true);
     const list=document.getElementById('tgAiMessages');
-    if(!list){ addMessage('assistant',full); renderAi(true); return Promise.resolve(); }
-    const d=document.createElement('div');
-    d.className='tg-ai-msg ai';
-    d.textContent='';
-    list.appendChild(d);
-    const chars=Math.max(2, Math.min(14, Math.ceil(full.length/170)));
-    let index=0;
-    return new Promise(resolve=>{
-      const step=()=>{
-        index=Math.min(full.length,index+chars);
-        d.textContent=full.slice(0,index);
-        scrollChatToBottom?.();
-        if(index<full.length){
-          setTimeout(step,12);
-        }else{
-          c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
-          c.messages.push({role:'assistant',text:full});
-          c.updatedAt=Date.now();
-          persistChats();
-          resolve();
-        }
-      };
-      step();
+    const nodes=list?.querySelectorAll('.tg-ai-msg.ai');
+    const node=nodes?.[nodes.length-1];
+    if(node)node.classList.add('typing');
+    const full=String(text??'');
+    if(!node){m.text=full;persistChats();return Promise.resolve();}
+    let i=0;
+    const step=()=>new Promise(resolve=>{
+      const n=Math.max(1, Math.ceil(full.length/90));
+      const tick=()=>{
+        i=Math.min(full.length,i+n);m.text=full.slice(0,i);node.textContent=m.text;scrollBottom();
+        if(i<full.length) setTimeout(tick,16); else {node.classList.remove('typing');c.updatedAt=Date.now();persistChats();resolve();}
+      };tick();
     });
+    return step();
   }
 
   async function sendAi(e){
@@ -10243,20 +10225,24 @@ function speakAiText(text,button){
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
     addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
-    setStatus('<span class="tg-ai-thinking"><span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
-    renderAi(true);setLiveProcessing('',false);
+    const startedAt=performance.now();
+    const long=text.length>120?'Je réfléchis à votre demande…':'Je réfléchis…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span><small>Je prépare votre réponse.</small>`,true);
     try{
       const result=await ask(text), current=ensureChat();
       if(result.chat_title&&current.messages.filter(m=>m.role==='user').length<=1)current.title=String(result.chat_title).slice(0,60);
-      pendingActions=dedupeClientActions(enrichActions(Array.isArray(result.actions)?result.actions:[]));
-      setStatus('',false);
-      await addAssistantAnimated(String(result.answer||result.human_message||'Je n’ai pas pu traiter cette demande pour le moment.'));
-      renderAi(true);
+      pendingActions=enrichActions(result.actions);
+      // Même en cas de réponse très rapide, garder l'état de réflexion visible
+      // un court instant afin que l'utilisateur voie clairement que la demande
+      // a bien été prise en charge.
+      const elapsed=performance.now()-startedAt, wait=Math.max(0,420-elapsed);
+      if(wait) await new Promise(r=>setTimeout(r,wait));
+      await addAssistantAnimated(String(result.answer||'Je vais vous aider à partir des informations disponibles.'));
+      // Fin du traitement : le bandeau disparaît immédiatement.
+      setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }catch(err){
       console.error('TerangaResto IA',err);
-      setStatus('',false);
-      await addAssistantAnimated('Je rencontre momentanément un problème pour répondre. Réessayez.');
-      renderAi(true);
+      await addAssistantAnimated('Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?');
+      setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }finally{aiThinking=false;busy(false);}
   }
 
