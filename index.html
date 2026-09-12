@@ -10068,7 +10068,7 @@ function speakAiText(text,button){
     if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm){
       mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
     }
-    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure)/.test(q)){
+    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure|chaque une heure)/.test(q)){
       mentionedDays.forEach(([label,index])=>{
         const h=RESTAURANT?.hours?.[index]||{}, end=String(h.to||'');
         const mm=end.match(/^(\d{2}):(\d{2})$/);
@@ -10105,12 +10105,6 @@ function speakAiText(text,button){
     const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
     const fallbackActions=localActionFallback(text);
     if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé la modification correspondante. Confirmez pour l’appliquer.';}
-    if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){
-      const qn=text.toLowerCase();
-      if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn)){
-        result.answer='En résumé : je peux vous conseiller sur vos ventes, vos produits, vos prix, votre livraison, votre menu et votre communication. Commencez par mettre en avant vos meilleures ventes, éviter les ruptures, proposer des formules simples et relancer vos clients avec des offres ciblées.';
-      }
-    }
     return result;
   }
   async function applyAction(a){
@@ -10198,7 +10192,7 @@ function speakAiText(text,button){
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
     addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
-    const long=text.length>120?'Je réfléchis à votre demande…':'Je réfléchis…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span><small>Je prépare votre réponse.</small>`,true);
+    const long='Je traite votre demande…';setStatus(`<span class="tg-ai-thinking">${long}</span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long}</span>`,true);
     try{
       const result=await ask(text), current=ensureChat();
       if(result.chat_title&&current.messages.filter(m=>m.role==='user').length<=1)current.title=String(result.chat_title).slice(0,60);
@@ -10206,7 +10200,7 @@ function speakAiText(text,button){
       // Même en cas de réponse très rapide, garder l'état de réflexion visible
       // un court instant afin que l'utilisateur voie clairement que la demande
       // a bien été prise en charge.
-      await addAssistantAnimated(String(result.answer||result.human_message||'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?'));
+      addMessage('assistant',String(result.answer||result.human_message||'Je n’ai pas pu traiter cette demande pour le moment. Réessayez ou précisez simplement ce que vous souhaitez faire.'));
       // Fin du traitement : le bandeau disparaît immédiatement.
       setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }catch(err){
