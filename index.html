@@ -16,7 +16,7 @@
 <!-- Le thème public "Classic" utilise des icônes FontAwesome (fa-solid,
      fa-regular) dans ses boutons (panier, "+", localisation, menu...) —
      cette feuille de style n'était jamais chargée, ce qui rendait ces
-     icônes invisibles (élément vide) sans casser la mise en page. -->
+     icônes invisibles (élément vide) sans casser la mise en page. -->a
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 :root{
@@ -9983,7 +9983,7 @@ function speakAiText(text,button){
     const c=ensureChat(), old=document.getElementById('tgAiPanel');
     const panel=old||document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';
     const showSuggestions=(c.messages||[]).filter(m=>m.role==='user').length===0;
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     if(!old)document.body.appendChild(panel);
     const list=panel.querySelector('#tgAiMessages');for(let idx=0;idx<(c.messages||[]).length;idx++){const m=c.messages[idx];if(m.role==='assistant'){const w=document.createElement('div');w.className='tg-ai-msg-wrap';const d=document.createElement('div');d.className='tg-ai-msg ai';d.textContent=m.text;w.appendChild(d);const b=document.createElement('button');b.type='button';b.className='tg-ai-read';b.dataset.aiReadIndex=String(idx);b.title='Lire la réponse';b.setAttribute('aria-label','Lire la réponse');b.textContent='🔊';w.appendChild(b);list.appendChild(w);}else{const d=document.createElement('div');d.className='tg-ai-msg user';d.textContent=m.text;list.appendChild(d);}}
     panel.querySelector('#tgAiClose').onclick=closeAi;
@@ -10027,6 +10027,15 @@ function speakAiText(text,button){
     return null;
   }
 
+  function dedupeClientActions(actions){
+    const seen=new Set(), out=[];
+    for(const a of Array.isArray(actions)?actions:[]){
+      const key=JSON.stringify({type:a?.type||'',product:a?.product_id||a?.product_name||'',day:a?.day_index??'',zone:a?.zone_id||a?.name||'',changes:a?.changes||{},enabled:a?.enabled??'',fee:a?.fee??'',min:a?.min??'',from:a?.from||'',to:a?.to||''});
+      if(seen.has(key)) continue; seen.add(key); out.push(a);
+    }
+    return out.slice(0,8);
+  }
+
   function enrichActions(actions){
     const out=[];
     for(const raw of Array.isArray(actions)?actions:[]){const a=normalizeAction(raw);if(!a)continue;
@@ -10046,38 +10055,70 @@ function speakAiText(text,button){
     const products=Array.isArray(PRODUCTS)?PRODUCTS:[], libs=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[];
     const findByName=(list)=>list.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const product=findByName(products), library=findByName(libs);
-    const prior=(c=>{try{const chat=ensureChat();return (chat.messages||[]).slice(-12).map(m=>String(m.text||'')).join(' ')}catch(e){return ''}})();
-    const priorNorm=prior.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const libraryFromHistory=library||libs.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&priorNorm.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const price=(()=>{const m=q.match(/(?:prix|a|à|pour|tarif|frais)\D{0,35}(\d{2,7})\s*(?:fcfa|f|fr)?/);return m?Number(m[1]):null})();
     const stock=(()=>{const m=q.match(/(?:stock|stocks|quantite|quantité|nombre)\D{0,25}(\d{1,6})/);return m?Number(m[1]):null})();
     const shortNums=[...q.matchAll(/\b(\d{1,8})\b/g)].map(m=>Number(m[1])).filter(Number.isFinite);
     const fallbackPrice=price!=null?price:shortNums.find(n=>n>=100);
     const fallbackStock=stock!=null?stock:shortNums.find(n=>n<100);
-    if(libraryFromHistory&&/(ajouter|ajoute|creer|créer).*produit|ajoute|ajouter/.test(priorNorm+' '+q)&&fallbackPrice!=null&&fallbackStock!=null)actions.push({type:'create_product',summary:`Ajouter ${libraryFromHistory.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:libraryFromHistory.name,name:libraryFromHistory.name,description:libraryFromHistory.desc||'',price:fallbackPrice,stock:fallbackStock,category:libraryFromHistory.cat,category_label:catsState?.[libraryFromHistory.cat]||libraryFromHistory.cat,prep:Number(libraryFromHistory.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
-    if(product&&price!=null&&/prix/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q))actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
-    if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer)/.test(q))actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
+
+    if(library&&/(ajouter|ajoute|creer|créer|créé)\b/.test(q)&&fallbackPrice!=null&&fallbackStock!=null){
+      actions.push({type:'create_product',summary:`Ajouter ${library.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:library.name,name:library.name,description:library.desc||'',price:fallbackPrice,stock:fallbackStock,category:library.cat,category_label:catsState?.[library.cat]||library.cat,prep:Number(library.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
+    }
+    if(product&&price!=null&&/prix|tarif/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q)) actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
+    if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer|restocker)/.test(q)) actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
+
     const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]];
-    const mentionedDays=days.filter(([d])=>q.includes(d));
-    const day=mentionedDays[0];
+    const mentionedDays=days.filter(([d])=>new RegExp(`\\b${d}\\b`).test(q));
     const tm=q.match(/(?:de|a|à)?\s*(\d{1,2})\s*h?\s*(\d{0,2})?\s*(?:a|à|jusqua|jusqu'a|au|et|-)\s*(\d{1,2})\s*h?\s*(\d{0,2})?/);
     if(mentionedDays.length&&/(horaire|heure|ouvre|ouvert|ferme|fermer|activer|désactiver|desactiver)/.test(q)&&tm){
       const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;
       mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Mettre ${label} de ${f} à ${t}.`,day_index:index,day_label:label,open:true,from:f,to:t}));
     }
-    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm){
+    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter)/.test(q)&&!tm){
       mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
     }
     if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure|chaque une heure)/.test(q)){
       mentionedDays.forEach(([label,index])=>{
-        const h=RESTAURANT?.hours?.[index]||{}, end=String(h.to||'');
-        const mm=end.match(/^(\d{2}):(\d{2})$/);
-        if(mm){let mins=Number(mm[1])*60+Number(mm[2])+60; mins=Math.min(mins,23*60+59); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(h.from||'11:00'),to:t});}
+        const hh=RESTAURANT?.hours?.[index]||{}, end=String(hh.to||''), mm=end.match(/^(\d{2}):(\d{2})$/);
+        if(mm){let mins=Math.min(23*60+59,Number(mm[1])*60+Number(mm[2])+60); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(hh.from||'11:00'),to:t});}
       });
     }
-    const zones=Array.isArray(RESTAURANT?.delivery?.zones)?RESTAURANT.delivery.zones:[],zone=zones.map(z=>({z,n:String(z?.name||'').toLowerCase()})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.z, zfee=q.match(/(?:prix|frais|tarif)\D{0,25}(\d{2,7})/);
-    if(zone&&zfee&&/(modifier|changer|mettre|fixer)/.test(q)&&/zone|livraison/.test(q))actions.push({type:'update_delivery_zone',summary:`Modifier ${zone.name} à ${Number(zfee[1]).toLocaleString('fr-FR')} FCFA.`,zone_id:String(zone.id),name:zone.name,fee:Number(zfee[1])});
+
+    // Livraison : ne génère que des actions de livraison.
+    if(/\blivraison\b|\bexpress\b/.test(q)){
+      if(/\b(activer|active|allumer)\b/.test(q)) actions.push({type:'update_delivery_settings',summary:'Activer la livraison.',enabled:true});
+      if(/\b(desactiver|désactiver|couper|arreter|arrêter)\b/.test(q)) actions.push({type:'update_delivery_settings',summary:'Désactiver la livraison.',enabled:false});
+      const fee=q.match(/(?:frais|prix|tarif)\D{0,20}(\d{1,7})/); if(fee)actions.push({type:'update_delivery_settings',summary:`Fixer les frais de livraison à ${Number(fee[1]).toLocaleString('fr-FR')} FCFA.`,fee:Number(fee[1])});
+      const min=q.match(/(?:minimum(?: de commande)?|commande minimum)\D{0,20}(\d{1,7})/); if(min)actions.push({type:'update_delivery_settings',summary:`Fixer le minimum de commande à ${Number(min[1]).toLocaleString('fr-FR')} FCFA.`,min:Number(min[1])});
+    }
+    if(/\b(publier|publie|mettre.*en ligne|mettre.*visible)\b/.test(q)&&!product)actions.push({type:'publish_site',summary:'Publier le site.',published:true});
+    if(/\b(depublier|dépublier|dépublie|retirer.*ligne|masquer.*site)\b/.test(q)&&!product)actions.push({type:'publish_site',summary:'Dépublier le site.',published:false});
     return actions.slice(0,8);
+  }
+
+
+  function domainQueryFromText(text){
+    const q=String(text||'').trim();
+    const m=q.match(/\b([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:com|net|org|sn|fr|co|io|shop|store|online|africa|xyz|site|me|app|tech))\b/i);
+    if(!m) return null;
+    if(!/(cherche|recherche|disponible|disponibilite|disponibilité|prix|cout|coût|combien|domain|nom de domaine|acheter)/i.test(q)) return null;
+    return domainNormalizeName(m[1]);
+  }
+  async function searchDomainForAi(text){
+    const query=domainQueryFromText(text);
+    if(!query) return null;
+    try{
+      const data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{action:'search',operation:'search',query,search:query,domain:query,restaurant_id:String(RESTAURANT?.id||'')});
+      const rows=extractDomainRows(data);
+      const exact=rows.find(r=>domainNormalizeName(r.domain)===query) || rows[0];
+      if(!exact) return `En résumé : je n’ai trouvé aucun résultat pour ${query}.`;
+      const available=exact.available!==false;
+      const p=domainPriceNumber(exact.price);
+      if(!available) return `En résumé : ${query} n’est pas disponible actuellement.`;
+      return `En résumé : ${query} est disponible. Son prix affiché est ${Number.isFinite(p)?domainFormatPrice(p):'indisponible'} sur votre service de domaines.`;
+    }catch(e){
+      return `En résumé : je n’ai pas pu vérifier ${query} pour le moment. Réessayez dans un instant.`;
+    }
   }
 
   async function callEdge(body){
@@ -10100,11 +10141,13 @@ function speakAiText(text,button){
   }
 
   async function ask(text){
-    const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
+    const domainAnswer=await searchDomainForAi(text);
+    if(domainAnswer)return {success:true,answer:domainAnswer,actions:[],chat_title:ensureChat().title};
+    const c=ensureChat(), messages=(c.messages||[]).slice(-50).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
     const localContext=buildContext();
     const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
     const fallbackActions=localActionFallback(text);
-    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé la modification correspondante. Confirmez pour l’appliquer.';}
+    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé uniquement les modifications demandées. Confirmez pour l’appliquer.';}
     return result;
   }
   async function applyAction(a){
@@ -10166,10 +10209,33 @@ function speakAiText(text,button){
   }
 
   function addAssistantAnimated(text){
-    // Compatibilité interne : réponse affichée d'un seul coup, sans effet typewriter.
-    addMessage('assistant',String(text??''));
-    renderAi(true);
-    return Promise.resolve();
+    const full=String(text??'');
+    const c=ensureChat();
+    const list=document.getElementById('tgAiMessages');
+    if(!list){ addMessage('assistant',full); renderAi(true); return Promise.resolve(); }
+    const d=document.createElement('div');
+    d.className='tg-ai-msg ai';
+    d.textContent='';
+    list.appendChild(d);
+    const chars=Math.max(2, Math.min(14, Math.ceil(full.length/170)));
+    let index=0;
+    return new Promise(resolve=>{
+      const step=()=>{
+        index=Math.min(full.length,index+chars);
+        d.textContent=full.slice(0,index);
+        scrollChatToBottom?.();
+        if(index<full.length){
+          setTimeout(step,12);
+        }else{
+          c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
+          c.messages.push({role:'assistant',text:full});
+          c.updatedAt=Date.now();
+          persistChats();
+          resolve();
+        }
+      };
+      step();
+    });
   }
 
   async function sendAi(e){
@@ -10177,22 +10243,20 @@ function speakAiText(text,button){
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
     addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
-    const long='Je traite votre demande…';setStatus(`<span class="tg-ai-thinking">${long}</span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long}</span>`,true);
+    setStatus('<span class="tg-ai-thinking"><span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
+    renderAi(true);setLiveProcessing('',false);
     try{
       const result=await ask(text), current=ensureChat();
       if(result.chat_title&&current.messages.filter(m=>m.role==='user').length<=1)current.title=String(result.chat_title).slice(0,60);
-      pendingActions=enrichActions(result.actions);
-      // Même en cas de réponse très rapide, garder l'état de réflexion visible
-      // un court instant afin que l'utilisateur voie clairement que la demande
-      // a bien été prise en charge.
-      addMessage('assistant',String(result.answer||result.human_message||'Je n’ai pas pu traiter cette demande pour le moment. Réessayez ou précisez simplement ce que vous souhaitez faire.'));
-      // Fin du traitement : le bandeau disparaît immédiatement.
-      setStatus('',false);setLiveProcessing('',false);renderAi(true);
+      pendingActions=dedupeClientActions(enrichActions(Array.isArray(result.actions)?result.actions:[]));
+      setStatus('',false);
+      await addAssistantAnimated(String(result.answer||result.human_message||'Je n’ai pas pu traiter cette demande pour le moment.'));
+      renderAi(true);
     }catch(err){
       console.error('TerangaResto IA',err);
-      addMessage('assistant','Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande afin que je puisse mieux vous répondre ?');
+      setStatus('',false);
+      await addAssistantAnimated('Je rencontre momentanément un problème pour répondre. Réessayez.');
       renderAi(true);
-      setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }finally{aiThinking=false;busy(false);}
   }
 
