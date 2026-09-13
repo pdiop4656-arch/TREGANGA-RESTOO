@@ -3251,7 +3251,7 @@ function renderStorefrontGateOverlay(){
           </div>
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible car l'abonnement du propriétaire a expiré.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
           <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
             <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
             <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
@@ -5262,6 +5262,162 @@ let otpPendingName = '';
 let otpPendingSource = 'onboarding';
 let otpResendTimer = 0;
 let otpResendInterval = null;
+
+/* ---------------- VÉRIFICATION E-MAIL DU COMPTE ----------------
+   Après la création du compte, si Supabase demande une confirmation
+   d'e-mail, l'utilisateur reste dans l'assistant et saisit directement
+   le code reçu par e-mail. Aucun lien e-mail n'est nécessaire pour
+   continuer l'onboarding. */
+function renderOnboardingOtpScreen(){
+  const card = document.getElementById('obCard');
+  if(!card) return;
+
+  const email = otpPendingEmail || obState.pendingEmail || obState.accountEmail || '';
+  card.innerHTML = `
+    <div class="text-center">
+      <div style="display:flex;justify-content:center;color:var(--amber-deep);margin-bottom:12px;">${ic('mail',42)}</div>
+      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">Vérifiez votre e-mail</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin:0 auto 6px;max-width:390px;">
+        Un code de vérification à 8 chiffres a été envoyé à
+        <strong>${escapeHtml(email)}</strong>.
+      </p>
+      <p style="font-size:12px;color:var(--ink-faint);margin:0 auto 18px;max-width:390px;">
+        Entrez le code reçu pour continuer la création de votre compte.
+      </p>
+      <input
+        id="onboardingOtpInput"
+        class="field-input"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="8"
+        pattern="[0-9]{8}"
+        placeholder="00000000"
+        style="text-align:center;letter-spacing:.28em;font-size:24px;font-weight:800;max-width:280px;margin:0 auto 12px;"
+        oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)"
+        onkeydown="if(event.key==='Enter') verifyOnboardingOtp()">
+      <button id="verifyOnboardingOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyOnboardingOtp()">
+        Vérifier le code
+      </button>
+      <button id="resendOnboardingOtpBtn" class="btn btn-ghost w-full" style="margin-top:6px;" onclick="resendOnboardingConfirmationEmail()">
+        <span id="resendOnboardingOtpLabel">Renvoyer le code</span>
+      </button>
+      <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="renderOnboarding()">
+        Retour
+      </button>
+    </div>`;
+  hydrateIcons(card);
+  requestAnimationFrame(()=>document.getElementById('onboardingOtpInput')?.focus());
+}
+
+function startOnboardingOtpResendCountdown(seconds){
+  if(otpResendInterval) clearInterval(otpResendInterval);
+  otpResendTimer = Math.max(0, Number(seconds)||0);
+  const tick = () => {
+    const btn = document.getElementById('resendOnboardingOtpBtn');
+    const label = document.getElementById('resendOnboardingOtpLabel');
+    if(!btn || !label){
+      if(otpResendInterval) clearInterval(otpResendInterval);
+      otpResendInterval = null;
+      return;
+    }
+    if(otpResendTimer > 0){
+      btn.disabled = true;
+      btn.style.opacity = '.55';
+      label.textContent = `Renvoyer le code (${otpResendTimer}s)`;
+      otpResendTimer--;
+    }else{
+      btn.disabled = false;
+      btn.style.opacity = '';
+      label.textContent = 'Renvoyer le code';
+      clearInterval(otpResendInterval);
+      otpResendInterval = null;
+    }
+  };
+  tick();
+  if(otpResendTimer > 0) otpResendInterval = setInterval(tick, 1000);
+}
+
+async function resendSignupOtp(){
+  const email = (otpPendingEmail || obState.pendingEmail || obState.accountEmail || '').trim().toLowerCase();
+  if(!email){ toast("Adresse e-mail introuvable."); return false; }
+
+  const btn = document.getElementById('resendOnboardingOtpBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.7'; }
+  const {error} = await supabaseClient.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo:getPublicSiteOrigin() }
+  });
+  if(error){
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; }
+    toast(supabaseErrorFr(error,'Impossible de renvoyer le code.'));
+    return false;
+  }
+  startOnboardingOtpResendCountdown(30);
+  toast('Un nouveau code de vérification a été envoyé à votre adresse e-mail.', true);
+  return true;
+}
+
+async function verifyOnboardingOtp(){
+  const token = (document.getElementById('onboardingOtpInput')?.value || '').trim();
+  if(!/^\\d{8}$/.test(token)){
+    toast('Entrez le code de vérification à 8 chiffres reçu par e-mail.');
+    return;
+  }
+
+  const email = (otpPendingEmail || obState.pendingEmail || obState.accountEmail || '').trim().toLowerCase();
+  if(!email){
+    toast("Adresse e-mail introuvable.");
+    return;
+  }
+
+  const btn = document.getElementById('verifyOnboardingOtpBtn');
+  if(btn){
+    btn.disabled = true;
+    btn.style.opacity = '.7';
+    btn.textContent = 'Vérification…';
+  }
+
+  try{
+    const {data, error} = await supabaseClient.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+
+    if(error || !data?.user){
+      if(btn){
+        btn.disabled = false;
+        btn.style.opacity = '';
+        btn.textContent = 'Vérifier le code';
+      }
+      toast(supabaseErrorFr(error,'Code incorrect ou expiré.'));
+      return;
+    }
+
+    currentUser = data.user;
+    otpPendingEmail = email;
+    obState.emailConfirmationPending = false;
+    obState.pendingEmail = email;
+    obState.step = 1;
+
+    if(otpResendInterval) clearInterval(otpResendInterval);
+    otpResendInterval = null;
+    otpResendTimer = 0;
+
+    savePendingOnboarding();
+    renderOnboarding();
+    toast(ic('checkCircle',14)+' E-mail vérifié — poursuivez la création de votre restaurant.', true);
+  }catch(e){
+    console.error('Vérification e-mail du compte:', e);
+    if(btn){
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.textContent = 'Vérifier le code';
+    }
+    toast('Impossible de vérifier le code. Vérifiez le code reçu puis réessayez.');
+  }
+}
 function savePendingOnboarding(){
   try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
 }
@@ -5341,7 +5497,7 @@ async function obNext(){
       toast(error ? supabaseErrorFr(error,'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
       return;
     }
-    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();return;}
+    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();startOnboardingOtpResendCountdown(30);return;}
     currentUser=data.user; o.emailConfirmationPending=false;
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
