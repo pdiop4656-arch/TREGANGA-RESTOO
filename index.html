@@ -2338,6 +2338,9 @@ async function loadRestaurantCore(restaurantId){
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
   abonSelectedCycle = null;
+  // Les produits/catégories viennent d'être chargés depuis Supabase :
+  // le bandeau d'abonnement doit refléter immédiatement les vrais compteurs.
+  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   return true;
 }
 
@@ -2390,6 +2393,7 @@ async function loadRestaurantSecondaryData(restaurantId){
   if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers','staff','payments','abonnement'].includes(state.dashSection)){
     renderDashSection(state.dashSection);
   }
+  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   refreshNotifDot();
 }
 
@@ -2404,6 +2408,56 @@ async function loadRestaurantIntoState(restaurantId){
     DEMO_ORDERS.length = 0; staffState.length = 0; paymentsHistory = []; REVIEWS = [];
   }
   return true;
+}
+
+/* ---------------- REALTIME — SITE PUBLIC ----------------
+   Toute modification publique (restaurant, catégories, produits) est
+   répercutée automatiquement dans une boutique déjà ouverte. Un seul canal
+   public actif à la fois, toujours filtré sur le restaurant courant. */
+let publicRestaurantRealtimeChannel = null;
+let publicRestaurantRealtimeReloadTimer = null;
+let publicRestaurantRealtimeRestaurantId = null;
+function unsubscribePublicRestaurantRealtime(){
+  if(publicRestaurantRealtimeChannel){
+    try{ supabaseClient.removeChannel(publicRestaurantRealtimeChannel); }catch(e){}
+    publicRestaurantRealtimeChannel = null;
+  }
+  publicRestaurantRealtimeRestaurantId = null;
+  if(publicRestaurantRealtimeReloadTimer){
+    clearTimeout(publicRestaurantRealtimeReloadTimer);
+    publicRestaurantRealtimeReloadTimer = null;
+  }
+}
+function schedulePublicRestaurantRealtimeReload(restaurantId){
+  if(publicRestaurantRealtimeReloadTimer) clearTimeout(publicRestaurantRealtimeReloadTimer);
+  publicRestaurantRealtimeReloadTimer = setTimeout(async ()=>{
+    publicRestaurantRealtimeReloadTimer = null;
+    if(state.view!=='storefront' || viewerIsStaff || String(RESTAURANT.id)!==String(restaurantId)) return;
+    try{
+      const ok = await loadRestaurantPublicFast(restaurantId);
+      if(ok && state.view==='storefront'){
+        renderStorefrontHero();
+        renderProductSections();
+        updateFloatingCartButton();
+        renderStorefrontGateOverlay();
+        renderTrackOrderButton();
+      }
+    }catch(e){
+      console.warn('Synchronisation temps réel de la boutique publique:', e);
+    }
+  }, 40);
+}
+function subscribeToPublicRestaurantRealtime(restaurantId){
+  if(!restaurantId) return;
+  if(publicRestaurantRealtimeChannel && String(publicRestaurantRealtimeRestaurantId)===String(restaurantId)) return;
+  unsubscribePublicRestaurantRealtime();
+  publicRestaurantRealtimeRestaurantId = restaurantId;
+  publicRestaurantRealtimeChannel = supabaseClient
+    .channel('public-storefront-'+restaurantId)
+    .on('postgres_changes', {event:'*', schema:'public', table:'restaurants', filter:`id=eq.${restaurantId}`}, ()=>schedulePublicRestaurantRealtimeReload(restaurantId))
+    .on('postgres_changes', {event:'*', schema:'public', table:'categories', filter:`restaurant_id=eq.${restaurantId}`}, ()=>schedulePublicRestaurantRealtimeReload(restaurantId))
+    .on('postgres_changes', {event:'*', schema:'public', table:'products', filter:`restaurant_id=eq.${restaurantId}`}, ()=>schedulePublicRestaurantRealtimeReload(restaurantId))
+    .subscribe();
 }
 
 /* ---------------- REALTIME — nouvelles commandes ----------------
@@ -3362,6 +3416,9 @@ async function loadRestaurantPublicFast(restaurantId){
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
   abonSelectedCycle = null;
+
+  // La boutique publique reste synchronisée avec Supabase tant qu'elle est ouverte.
+  subscribeToPublicRestaurantRealtime(restaurantId);
 
   // Seules la couverture et les photos produits restent différées ; le logo
   // est déjà disponible pour le premier rendu.
@@ -4727,6 +4784,7 @@ function setView(view){
     openLogin('login');
     return;
   }
+  if(view!=='storefront') unsubscribePublicRestaurantRealtime();
   state.view = view;
   // Site public du restaurant totalement indépendant de la plateforme :
   // le header TerangaResto (logo, Connexion, Créer, navigation) est
@@ -8100,6 +8158,7 @@ function deleteProduct(id){
   const idx = PRODUCTS.indexOf(p); PRODUCTS.splice(idx,1);
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
+  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   toast('Produit supprimé.');
   deleteProductRow(id);
 }
@@ -8231,6 +8290,7 @@ async function saveProductForm(){
   closeProductForm();
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
+  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   await persistProduct(p);
 }
 
@@ -8299,12 +8359,14 @@ function toggleLibraryItem(i){
     const p = PRODUCTS.find(x=>x.name.trim().toLowerCase()===item.name.trim().toLowerCase());
     PRODUCTS.splice(PRODUCTS.indexOf(p),1);
     toast(`${item.name} retiré de votre restaurant.`);
+    if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
     deleteProductRow(p.id);
   } else {
     if(!canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
     const p = {id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5};
     PRODUCTS.push(p);
     toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
+    if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
     persistProduct(p);
   }
   renderLibraryList();
@@ -8322,6 +8384,7 @@ async function addCategory(){
   input.value='';
   document.getElementById('catList').innerHTML = renderCatList();
   toast('Catégorie ajoutée');
+  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   if(RESTAURANT.id){
     const {data,error} = await supabaseClient.from('categories').insert({
       restaurant_id: RESTAURANT.id, key, label, sort_order: Object.keys(catsState).length-1,
