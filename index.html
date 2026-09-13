@@ -3047,17 +3047,50 @@ async function persistRestaurant(){
   }
 }
 
+let publishActionInFlight = false;
+
 async function togglePublish(){
+  if(publishActionInFlight || !RESTAURANT.id) return;
+
+  const nextPublished = !RESTAURANT.isPublished;
   const previous = RESTAURANT.isPublished;
-  RESTAURANT.isPublished = !RESTAURANT.isPublished;
+  publishActionInFlight = true;
+
+  // La publication est volontairement indépendante des autres sauvegardes
+  // de paramètres : elle écrit uniquement is_published pour éviter qu'une
+  // autre sauvegarde en cours ne remette l'ancien état.
+  RESTAURANT.isPublished = nextPublished;
   renderDashSection('settings');
-  const saved = await persistRestaurant();
-  if(saved){
-    toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
-  }else{
+  renderStorefrontGateOverlay();
+
+  const {data, error} = await supabaseClient
+    .from('restaurants')
+    .update({is_published: nextPublished})
+    .eq('id', RESTAURANT.id)
+    .select('id,is_published')
+    .maybeSingle();
+
+  if(error || !data?.id || Boolean(data.is_published) !== nextPublished){
     RESTAURANT.isPublished = previous;
     renderDashSection('settings');
+    renderStorefrontGateOverlay();
+    toast("La modification de publication n'a pas pu être enregistrée.");
+    publishActionInFlight = false;
+    return;
   }
+
+  // Reprend exactement la valeur confirmée par la base.
+  RESTAURANT.isPublished = !!data.is_published;
+  renderDashSection('settings');
+  renderStorefrontGateOverlay();
+
+  toast(
+    RESTAURANT.isPublished
+      ? 'Votre site est maintenant publié — visible par vos clients.'
+      : 'Votre site est repassé en brouillon — plus visible par vos clients.'
+  );
+
+  publishActionInFlight = false;
 }
 async function activateCustomDomainAfterConfirmation(domain){
   const clean = String(domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase();
