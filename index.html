@@ -2373,6 +2373,12 @@ async function loadRestaurantSecondaryData(restaurantId){
   paymentsHistory = (paymentsRes && paymentsRes.data) || [];
   REVIEWS = (reviewsRes && reviewsRes.data) || [];
 
+  const latestConfirmedPayment = paymentsHistory.find(p => p && (p.status === 'confirmed' || p.status === 'paid') && (p.billing_cycle === 'annual' || p.billing_cycle === 'monthly'));
+  if(latestConfirmedPayment){
+    RESTAURANT.billingCycle = latestConfirmedPayment.billing_cycle;
+    if(abonSelectedCycle === null) abonSelectedCycle = latestConfirmedPayment.billing_cycle;
+  }
+
   subscribeToOrdersRealtime(restaurantId);
   subscribeToReviewsRealtime(restaurantId);
 
@@ -2381,7 +2387,7 @@ async function loadRestaurantSecondaryData(restaurantId){
   // visible pour qu'elle reflète les vrais chiffres, exactement le
   // même principe que le rafraîchissement déjà utilisé pour une
   // nouvelle commande en temps réel.
-  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers','staff','payments'].includes(state.dashSection)){
+  if(state.view==='dashboard' && ['overview','orders','pos','analytics','accounting','customers','staff','payments','abonnement'].includes(state.dashSection)){
     renderDashSection(state.dashSection);
   }
   refreshNotifDot();
@@ -4683,12 +4689,14 @@ function renderPlanBadgeAndBanner(){
   const daysLeft = trialDaysRemaining();
   const periodLeft = periodDaysRemaining();
   const planLabel = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  const cycleLabelTop = RESTAURANT.billingCycle === 'annual' ? 'Annuel' : 'Mensuel';
+  const showPaidCycle = state.plan==='starter' || state.plan==='pro';
   if(badge) badge.innerHTML =
-    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — en attente de paiement</span>`
+    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — ${showPaidCycle ? cycleLabelTop+' — ' : ''}en attente de paiement</span>`
     : status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
-    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}</span>`
-    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j</span>`
-    : `<span class="pill pill-terracotta">Expiré</span>`;
+    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}${showPaidCycle ? ' — '+cycleLabelTop : ''}</span>`
+    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j${showPaidCycle ? ' — '+cycleLabelTop : ''}</span>`
+    : `<span class="pill pill-terracotta">Expiré${showPaidCycle ? ' — '+cycleLabelTop : ''}</span>`;
 
   const banner = document.getElementById('planBanner');
   if(!banner) return;
@@ -5008,7 +5016,7 @@ const FAQ_ITEMS = [
   ['Combien de temps faut-il pour créer mon site ?', "La plupart des restaurateurs terminent la configuration initiale — nom, thème, premiers produits — en moins de 10 minutes. Vous pourrez toujours l'enrichir ensuite."],
   ['Puis-je utiliser un QR Code ?', "Oui. Chaque restaurant reçoit automatiquement son propre QR Code, généré dès la publication, pointant directement vers votre site public."],
   ['Comment recevoir les commandes ?', "Les commandes arrivent en temps réel dans la section Commandes de votre tableau de bord, avec une notification à chaque nouvelle commande."],
-  ['Quels moyens de paiement sont disponibles ?', "Wave, Orange Money, carte bancaire, espèces et paiement à la livraison. Vous choisissez ceux que vous acceptez depuis Paramètres → Paiements."],
+  ['Quels moyens de paiement sont disponibles ?', "Wave, Orange Money, espèces et paiement à la livraison. Les moyens disponibles dépendent du forfait et des réglages du restaurant."],
   ['Puis-je modifier mon menu ?', "Oui, à tout moment. Ajoutez, modifiez, désactivez ou supprimez vos produits et catégories depuis la section Produits."],
   ['Puis-je changer mon thème ?', "Oui. Depuis Paramètres → Thème, votre choix s'applique immédiatement à votre site public."],
   ['Puis-je utiliser TerangaResto depuis mon téléphone ?', "Oui, le tableau de bord est pensé mobile en priorité : vous pouvez gérer commandes, produits et paramètres entièrement depuis votre smartphone."],
@@ -5246,8 +5254,10 @@ async function loadRestaurantPublicGateState(slug){
     RESTAURANT.created = true;
     RESTAURANT.name = 'Ce restaurant';
     RESTAURANT.slug = slug;
-    RESTAURANT.isPublished = true;
-    RESTAURANT.subscriptionStatus = 'expired';
+    // Un slug non lisible par RLS ne permet pas de conclure que l'abonnement est expiré.
+    // Le statut réel ne doit être défini que lorsque la ligne du restaurant est réellement chargée.
+    RESTAURANT.isPublished = false;
+    RESTAURANT.subscriptionStatus = 'trialing';
     RESTAURANT.trialEndsAt = null;
     RESTAURANT.currentPeriodEnd = null;
     RESTAURANT.logoDataUrl = '';
@@ -5746,8 +5756,8 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
   RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
   RESTAURANT.orderNotificationEmailPending = '';
-  // Un restaurant nouvellement créé doit être accessible immédiatement
-  // depuis son lien public et son QR Code.
+  // Un restaurant nouvellement créé est publié automatiquement.
+  // Le restaurateur peut ensuite le dépublier depuis Paramètres.
   RESTAURANT.isPublished = true;
   RESTAURANT.aiEnabled = true;
   await persistRestaurant();
@@ -5998,11 +6008,20 @@ function obStepHtml(){
     </div>
     <p class="field-label">Moyens de paiement acceptés par vos clients</p>
     <div class="flex-col gap-2">
-      ${['cash','on_delivery','wave','orange_money'].map(m=>`
-        <div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:12px;padding:9px 12px;">
-          ${paymentMark(m,26)}<span style="flex:1;font-size:13px;">${PAYMENT_LABELS[m]}</span>
-          <div class="toggle ${o.paymentToggles[m]?'on':''}" onclick='obTogglePayMethod("${m}")'><div class="dot"></div></div>
-        </div>`).join('')}
+      ${['cash','on_delivery','wave','orange_money'].map(m=>{
+        const premiumOnly = m==='wave' || m==='orange_money';
+        const enabled = !!o.paymentToggles[m];
+        return `
+        <div class="card" style="border:1px solid var(--cream-line);border-radius:12px;padding:12px 14px;">
+          <div class="flex items-center gap-3">
+            ${paymentMark(m,26)}
+            <span style="flex:1;font-size:13px;font-weight:600;">${PAYMENT_LABELS[m]}</span>
+            <div class="toggle ${premiumOnly ? '' : (enabled?'on':'')}" style="${premiumOnly?'opacity:.55;cursor:not-allowed;':''}" ${premiumOnly ? 'aria-disabled="true" title="Réservé au forfait Premium"' : `onclick='obTogglePayMethod("${m}")'`}><div class="dot"></div></div>
+            <span style="font-size:11px;color:${premiumOnly?'var(--ink-faint)':'var(--forest)'};font-weight:600;">${premiumOnly?'Premium uniquement':'Activé'}</span>
+          </div>
+          ${premiumOnly ? `<div style="margin:10px 0 0 38px;padding:9px 12px;border-radius:10px;background:rgba(232,135,30,.07);border:1px solid rgba(232,135,30,.22);font-size:11.5px;line-height:1.45;color:var(--ink-soft);">${ic('lock',13,{stroke:'var(--amber-deep)'})}<span style="margin-left:6px;">Réservé aux restaurants avec un abonnement Premium. Cette option pourra être activée depuis votre espace après activation de Premium.</span></div>` : ''}
+        </div>`;
+      }).join('')}
     </div>
     ${obNav(true)}`;
 
@@ -6016,12 +6035,9 @@ function obStepHtml(){
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Choisissez votre cycle. L'annuel économise 16 %. Le domaine personnalisé est offert uniquement avec Premium annuel.</p>
-    <div class="flex items-center justify-center gap-3" style="margin:0 0 16px;">
-      <span style="font-size:12px;font-weight:600;color:${cycle==='monthly'?'var(--ink)':'var(--ink-faint)'};">Mensuel</span>
-      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:${cycle==='annual'?'var(--amber-deep)':'var(--ink)'};">
-        <span style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;transform:${cycle==='annual'?'translateX(24px)':'translateX(0)'};"></span>
-      </button>
-      <span style="font-size:12px;font-weight:600;color:${cycle==='annual'?'var(--ink)':'var(--ink-faint)'};">Annuel <span class="pricing-discount-badge" style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></span>
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:4px;box-shadow:0 4px 14px rgba(43,24,16,.06);width:max-content;max-width:100%;margin-left:auto;margin-right:auto;">
+      <button type="button" aria-pressed="${cycle==='monthly'}" onclick="obField('billing','monthly');renderOnboarding();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'var(--ink)'};border-radius:999px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;">Mensuel</button>
+      <button type="button" aria-pressed="${cycle==='annual'}" onclick="obField('billing','annual');renderOnboarding();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'var(--ink)'};border-radius:999px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'#d7ddd7'};border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
     </div>
     <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
       ${plans.map(p=>{
@@ -6096,7 +6112,7 @@ function pickOnboardingGallery(index){
   });
 }
 
-function obTogglePayMethod(m){ obState.paymentToggles[m] = !obState.paymentToggles[m]; renderOnboarding(); }
+function obTogglePayMethod(m){ if(m==='wave' || m==='orange_money') return; obState.paymentToggles[m] = !obState.paymentToggles[m]; renderOnboarding(); }
 
 function obNav(showBack){
   return `<div class="flex gap-3" style="margin-top:22px;">
@@ -9549,10 +9565,11 @@ const SUBSCRIPTION_STATUS_TONE = {
 
 function dashAbonnement(){
   if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
-  if(abonSelectedCycle===null) abonSelectedCycle = 'monthly';
+  if(abonSelectedCycle===null) abonSelectedCycle = (RESTAURANT.billingCycle === 'annual' ? 'annual' : 'monthly');
   const status = computeEffectiveSubscriptionStatus();
   const paidActive = isPaidPlanActive();
   const planName = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
+  const cycleLabel = RESTAURANT.billingCycle==='annual' ? 'Annuel' : 'Mensuel';
   const planLabel = (state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} (en attente de paiement)` : planName;
   return `
   
@@ -9563,7 +9580,7 @@ function dashAbonnement(){
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Gérez le forfait de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
   <div class="card" style="padding:18px;max-width:560px;margin-bottom:16px;">
     <div class="flex justify-between items-center">
-      <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p></div>
+      <div><p style="font-size:12px;color:var(--ink-soft);">Forfait actuel</p><p class="font-display" style="font-size:19px;">${planLabel}</p>${(state.plan==='starter'||state.plan==='pro') && (status==='active'||status==='cancelled') ? `<p style="font-size:11.5px;color:var(--ink-faint);margin-top:2px;">Cycle : ${cycleLabel}</p>` : ''}</div>
       <span class="pill ${SUBSCRIPTION_STATUS_TONE[status]||'pill-neutral'}">${SUBSCRIPTION_STATUS_LABELS[status]||status}</span>
     </div>
     <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
