@@ -3644,7 +3644,7 @@ function setLoginTab(tab){
       <div id="signupPwStrength" style="margin-bottom:10px;"></div>
       <label class="field-label">Confirmer le mot de passe</label>
       <input class="field-input" id="signupPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;">
-      <button class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
+      <button id="signupSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitSignup()">Créer mon compte</button>
       <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Une fois le compte créé, vous continuez vers la création de votre restaurant.</p>`;
   } else {
     body.innerHTML = `
@@ -3673,6 +3673,101 @@ function showDashboardBootScreen(section='overview'){
   if(el){
     el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('loader',28,{className:'spin',stroke:'var(--amber-deep)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Chargement de votre espace…</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Connexion réussie. Vos données arrivent…</p></div>`;
     hydrateIcons(el);
+  }
+}
+
+
+async function submitSignup(){
+  const name = (document.getElementById('signupName')?.value || '').trim();
+  const email = (document.getElementById('signupEmail')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('signupPassword')?.value || '';
+  const password2 = document.getElementById('signupPassword2')?.value || '';
+
+  if(!name || !email || !password || !password2){
+    toast('Complétez toutes les informations pour créer votre compte.');
+    return;
+  }
+
+  const pwError = validateStrongPassword(password);
+  if(pwError){
+    toast(pwError);
+    return;
+  }
+
+  if(password !== password2){
+    toast('Les deux mots de passe ne correspondent pas.');
+    return;
+  }
+
+  const btn = document.getElementById('signupSubmitBtn');
+  setLoginVerifying(true, 'signupSubmitBtn', 'Création de votre compte…');
+
+  try{
+    const {data, error} = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options:{
+        data:{name},
+        emailRedirectTo:getPublicSiteOrigin()
+      }
+    });
+
+    const signupAlreadyExists =
+      !!(data?.user &&
+         Array.isArray(data.user.identities) &&
+         data.user.identities.length === 0);
+
+    if(error || signupAlreadyExists){
+      setLoginVerifying(false, 'signupSubmitBtn');
+      toast(
+        signupAlreadyExists
+          ? 'Ce compte existe déjà. Connectez-vous avec cet e-mail.'
+          : supabaseErrorFr(error, 'Impossible de créer ce compte.')
+      );
+      return;
+    }
+
+    // Le compte vient d'être créé : on prépare exactement le même
+    // parcours d'onboarding que celui du bouton "Créer mon restaurant".
+    Object.assign(obState, {
+      step: 0,
+      accountName: name,
+      accountEmail: email,
+      accountPassword: password,
+      emailConfirmationPending: !data.session,
+      pendingEmail: email
+    });
+
+    otpPendingEmail = email;
+    otpPendingName = name;
+    otpPendingSource = 'onboarding';
+
+    if(!data.session){
+      savePendingOnboarding();
+      setLoginVerifying(false, 'signupSubmitBtn');
+      closeLogin();
+      setView('onboarding');
+      renderOnboardingOtpScreen();
+      startOnboardingOtpResendCountdown(30);
+      return;
+    }
+
+    currentUser = data.user;
+    obState.emailConfirmationPending = false;
+    obState.pendingEmail = email;
+
+    setLoginVerifying(false, 'signupSubmitBtn');
+    closeLogin();
+    setView('onboarding');
+    obState.step = 1;
+    savePendingOnboarding();
+    renderOnboarding();
+    toast(ic('checkCircle',14)+' Compte créé — poursuivez la création de votre restaurant.', true);
+
+  }catch(e){
+    console.error('Création du compte:', e);
+    setLoginVerifying(false, 'signupSubmitBtn');
+    toast('Impossible de créer votre compte. Vérifiez votre connexion Internet puis réessayez.');
   }
 }
 
