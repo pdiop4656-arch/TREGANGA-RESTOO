@@ -3048,49 +3048,33 @@ async function persistRestaurant(){
 }
 
 let publishActionInFlight = false;
-
 async function togglePublish(){
   if(publishActionInFlight || !RESTAURANT.id) return;
-
   const nextPublished = !RESTAURANT.isPublished;
   const previous = RESTAURANT.isPublished;
   publishActionInFlight = true;
-
-  // La publication est volontairement indépendante des autres sauvegardes
-  // de paramètres : elle écrit uniquement is_published pour éviter qu'une
-  // autre sauvegarde en cours ne remette l'ancien état.
   RESTAURANT.isPublished = nextPublished;
   renderDashSection('settings');
   renderStorefrontGateOverlay();
-
-  const {data, error} = await supabaseClient
+  const {data,error} = await supabaseClient
     .from('restaurants')
     .update({is_published: nextPublished})
     .eq('id', RESTAURANT.id)
     .select('id,is_published')
     .maybeSingle();
-
-  if(error || !data?.id || Boolean(data.is_published) !== nextPublished){
-    RESTAURANT.isPublished = previous;
+  if(error || !data?.id || Boolean(data.is_published)!==nextPublished){
+    RESTAURANT.isPublished=previous;
     renderDashSection('settings');
     renderStorefrontGateOverlay();
     toast("La modification de publication n'a pas pu être enregistrée.");
-    publishActionInFlight = false;
+    publishActionInFlight=false;
     return;
   }
-
-  // Reprend exactement la valeur confirmée par la base.
-  RESTAURANT.isPublished = !!data.is_published;
+  RESTAURANT.isPublished=!!data.is_published;
   renderDashSection('settings');
   renderStorefrontGateOverlay();
-
-  toast(
-    RESTAURANT.isPublished
-      ? 'Votre site est maintenant publié — visible par vos clients.'
-      : 'Votre site est repassé en brouillon — plus visible par vos clients.'
-  );
-
-  publishActionInFlight = false;
+  toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  publishActionInFlight=false;
 }
 async function activateCustomDomainAfterConfirmation(domain){
   const clean = String(domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase();
@@ -3214,7 +3198,7 @@ function isRestaurantLiveClientSide(){
   const status = computeEffectiveSubscriptionStatus();
   if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
   if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
-  if(status === 'pending_payment') return true; // le site public reste accessible pendant la finalisation du paiement
+  if(status === 'pending_payment') return false; // paiement non confirmé : aucune mise en ligne publique
   return false; // 'expired' ou toute autre valeur : indisponible
 }
 function isStorefrontGated(){
@@ -7289,8 +7273,22 @@ function domainFormatPrice(value){
 
 async function appelerFonctionDomaine(nom, corps){
   const {data,error}=await supabaseClient.functions.invoke(nom,{body:corps});
-  if(error) throw new Error(error.message || 'Erreur du service domaine.');
-  if(data?.error) throw new Error(typeof data.error==='string' ? data.error : (data.error.message || 'Erreur du service domaine.'));
+  if(error){
+    let detail='';
+    try{
+      const ctx=error.context;
+      if(ctx && typeof ctx.json==='function'){
+        const payload=await ctx.json();
+        detail=typeof payload==='string' ? payload : (payload?.error?.message || payload?.message || payload?.error || '');
+      }
+    }catch(e){}
+    const message=String(detail || error.message || 'Erreur du service domaine.').trim();
+    throw new Error(message || 'Le service de recherche de domaines est temporairement indisponible.');
+  }
+  if(data?.error){
+    const detail=typeof data.error==='string' ? data.error : (data.error.message || data.message || '');
+    throw new Error(String(detail || 'Le service de recherche de domaines est temporairement indisponible.'));
+  }
   return data;
 }
 
@@ -7380,10 +7378,19 @@ async function lancerRechercheDomaine(){
         body.tlds=tlds;
       }
 
-      const data=await appelerFonctionDomaine(
-        DOMAIN_EDGE_SEARCH,
-        body
-      );
+      let data;
+      try{
+        data = await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH, body);
+      }catch(firstError){
+        /* Certains déploiements historiques de la fonction n'acceptent que
+         * action + query. La seconde tentative est strictement une recherche
+         * en lecture seule et ne modifie aucune donnée. */
+        if(batch===0){
+          data = await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH, {action:'search', query});
+        }else{
+          throw firstError;
+        }
+      }
 
       if(!tlds && Array.isArray(data?.tlds)){
         tlds=data.tlds;
