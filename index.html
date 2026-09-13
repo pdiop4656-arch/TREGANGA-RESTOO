@@ -2195,9 +2195,8 @@ function publicRestaurantUrl(slug){
   if(custom) return `https://${custom}`;
   const clean = String(slug || '').trim().toLowerCase();
   if(!clean) return PRODUCTION_SITE_ORIGIN;
-  // URL publique canonique : un sous-domaine par restaurant.
-  // Requiert le wildcard *.terangaresto.com côté Vercel/DNS pour être joignable.
-  return `https://${clean}.terangaresto.com`;
+  // URL publique immédiate et autonome : elle n'exige pas de wildcard DNS.
+  return `${getPublicSiteOrigin()}/?resto=${encodeURIComponent(clean)}`;
 }
 
 // Support futur des liens par sous-domaine si *.terangaresto.com est
@@ -2331,6 +2330,7 @@ async function loadRestaurantCore(restaurantId){
     active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
     variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
   }));
+  renderPlanBadgeAndBanner();
 
   // Réinitialise les sélections d'écran qui pointaient peut-être vers
   // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
@@ -2338,7 +2338,7 @@ async function loadRestaurantCore(restaurantId){
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
   abonSelectedCycle = null;
-  if(state.view==='dashboard' && typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
+  renderPlanBadgeAndBanner();
   return true;
 }
 
@@ -3050,31 +3050,35 @@ async function persistRestaurant(){
 let publishActionInFlight = false;
 async function togglePublish(){
   if(publishActionInFlight || !RESTAURANT.id) return;
-  const nextPublished = !RESTAURANT.isPublished;
-  const previous = RESTAURANT.isPublished;
   publishActionInFlight = true;
-  RESTAURANT.isPublished = nextPublished;
-  renderDashSection('settings');
-  renderStorefrontGateOverlay();
-  const {data,error} = await supabaseClient
-    .from('restaurants')
-    .update({is_published: nextPublished})
-    .eq('id', RESTAURANT.id)
-    .select('id,is_published')
-    .maybeSingle();
-  if(error || !data?.id || Boolean(data.is_published)!==nextPublished){
-    RESTAURANT.isPublished=previous;
+  clearTimeout(restaurantSaveTimer);
+  try{
+    if(restaurantSaveInFlight){ try{ await restaurantSaveInFlight; }catch(e){} }
+    const previous = RESTAURANT.isPublished;
+    const nextPublished = !previous;
+    RESTAURANT.isPublished = nextPublished;
     renderDashSection('settings');
     renderStorefrontGateOverlay();
-    toast("La modification de publication n'a pas pu être enregistrée.");
-    publishActionInFlight=false;
-    return;
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .update({is_published:nextPublished})
+      .eq('id',RESTAURANT.id)
+      .select('id,is_published')
+      .maybeSingle();
+    if(error || !data?.id || Boolean(data.is_published)!==nextPublished){
+      RESTAURANT.isPublished = previous;
+      renderDashSection('settings');
+      renderStorefrontGateOverlay();
+      toast("La modification de publication n'a pas pu être enregistrée.");
+      return;
+    }
+    RESTAURANT.isPublished = Boolean(data.is_published);
+    renderDashSection('settings');
+    renderStorefrontGateOverlay();
+    toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
+  } finally {
+    publishActionInFlight = false;
   }
-  RESTAURANT.isPublished=!!data.is_published;
-  renderDashSection('settings');
-  renderStorefrontGateOverlay();
-  toast(RESTAURANT.isPublished ? 'Votre site est maintenant publié — visible par vos clients.' : 'Votre site est repassé en brouillon — plus visible par vos clients.');
-  publishActionInFlight=false;
 }
 async function activateCustomDomainAfterConfirmation(domain){
   const clean = String(domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase();
@@ -3121,11 +3125,13 @@ async function persistProduct(p){
     const {error} = await supabaseClient.from('products').update(payload).eq('id', p.id);
     if(error){ toast('❌ Le produit n’a pas pu être mis à jour.'); return false; }
   }
+  renderPlanBadgeAndBanner();
   return true;
 }
 async function deleteProductRow(id){
   if(!RESTAURANT.id || String(id).startsWith('p_')) return;
   const {error} = await supabaseClient.from('products').delete().eq('id', id);
+  renderPlanBadgeAndBanner();
   if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 
@@ -3198,7 +3204,7 @@ function isRestaurantLiveClientSide(){
   const status = computeEffectiveSubscriptionStatus();
   if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
   if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
-  if(status === 'pending_payment') return false; // paiement non confirmé : aucune mise en ligne publique
+  if(status === 'pending_payment') return false; // aucun site payant n'est public avant confirmation réelle du paiement
   return false; // 'expired' ou toute autre valeur : indisponible
 }
 function isStorefrontGated(){
@@ -3233,33 +3239,15 @@ function renderStorefrontGateOverlay(){
     const status = computeEffectiveSubscriptionStatus();
     const unpublished = !RESTAURANT.isPublished;
 
-    if(status === 'expired'){
+    if(unpublished){
       overlay.innerHTML = `
         <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
           <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
             ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
           </div>
-          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Cette boutique n'est pas encore disponible.</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
-          <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
-            <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
-            <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
-          </div>
-          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
-          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
-            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
-          </a>
-        </div>`;
-    } else if(unpublished){
-      overlay.innerHTML = `
-        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
-          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
-            ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
-          </div>
-          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas encore disponible pour l'instant.</h1>
-          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce restaurant n'a pas encore publié son site web.</p>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">${escapeHtml(RESTO_NAME)} prépare encore son site. Revenez bientôt.</p>
           <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
           <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
             <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
@@ -3279,6 +3267,24 @@ function renderStorefrontGateOverlay(){
             <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
           </a>
         </div>`;
+    } else {
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Abonnement expiré</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Le site de ce restaurant est actuellement indisponible.</p>
+          <div style="margin:24px auto 0;max-width:380px;padding:16px 18px;border-radius:16px;background:#FFF8EF;border:1px solid #F0DEC5;text-align:left;">
+            <div style="font-weight:800;color:#4A2A1D;font-size:14px;">Toutes les données sont conservées</div>
+            <div style="margin-top:6px;font-size:13px;line-height:1.55;color:#7A665B;">Les produits, menus, commandes et informations du restaurant restent en sécurité. Pour réactiver le site, le propriétaire doit renouveler son abonnement.</div>
+          </div>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
     }
     hydrateIcons(overlay);
   } else if(overlay){
@@ -3293,52 +3299,44 @@ function renderStorefrontGateOverlay(){
    On charge d'abord uniquement les données nécessaires au premier affichage,
    puis les images (logo/couverture/photos produits) en arrière-plan.
    Le chemin propriétaire/dashboard reste inchangé. */
-let publicStorefrontRealtimeChannel = null;
-let publicStorefrontRealtimeTimer = null;
+let publicRealtimeChannel = null;
+let publicRealtimeRefreshTimer = null;
+let publicRealtimeRestaurantId = null;
 
-function unsubscribePublicStorefrontRealtime(){
-  if(publicStorefrontRealtimeTimer){ clearTimeout(publicStorefrontRealtimeTimer); publicStorefrontRealtimeTimer=null; }
-  if(publicStorefrontRealtimeChannel){
-    supabaseClient.removeChannel(publicStorefrontRealtimeChannel);
-    publicStorefrontRealtimeChannel=null;
-  }
+function unsubscribePublicRealtime(){
+  if(publicRealtimeRefreshTimer){ clearTimeout(publicRealtimeRefreshTimer); publicRealtimeRefreshTimer=null; }
+  if(publicRealtimeChannel){ supabaseClient.removeChannel(publicRealtimeChannel); publicRealtimeChannel=null; }
+  publicRealtimeRestaurantId = null;
 }
-
-function schedulePublicStorefrontRealtimeRefresh(restaurantId){
-  if(publicStorefrontRealtimeTimer) clearTimeout(publicStorefrontRealtimeTimer);
-  publicStorefrontRealtimeTimer=setTimeout(async()=>{
-    publicStorefrontRealtimeTimer=null;
-    if(state.view!=='storefront' || String(RESTAURANT.id||'')!==String(restaurantId||'')) return;
-    try{
-      await loadRestaurantPublicFast(restaurantId);
+function schedulePublicRealtimeRefresh(restaurantId){
+  if(!restaurantId || state.view!=='storefront') return;
+  clearTimeout(publicRealtimeRefreshTimer);
+  publicRealtimeRefreshTimer=setTimeout(async()=>{
+    publicRealtimeRefreshTimer=null;
+    if(state.view!=='storefront' || publicRealtimeRestaurantId!==restaurantId) return;
+    const ok=await loadRestaurantPublicFast(restaurantId,true);
+    if(ok){
       renderStorefrontHero();
       renderProductSections();
-      renderStorefrontGateOverlay();
       updateFloatingCartButton();
+      renderStorefrontGateOverlay();
       renderTrackOrderButton();
-      hydrateIcons();
-    }catch(e){
-      console.warn('Actualisation publique en temps réel:',e);
     }
-  },60);
+  },120);
 }
-
-function subscribePublicStorefrontRealtime(restaurantId){
-  unsubscribePublicStorefrontRealtime();
-  if(!restaurantId) return;
-  publicStorefrontRealtimeChannel=supabaseClient
+function subscribeToPublicRealtime(restaurantId){
+  if(publicRealtimeChannel && publicRealtimeRestaurantId===restaurantId) return;
+  unsubscribePublicRealtime();
+  publicRealtimeRestaurantId=restaurantId;
+  publicRealtimeChannel=supabaseClient
     .channel('public-storefront-'+restaurantId)
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'DELETE',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'DELETE',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'restaurants',filter:`id=eq.${restaurantId}`},()=>schedulePublicStorefrontRealtimeRefresh(restaurantId))
+    .on('postgres_changes',{event:'*',schema:'public',table:'restaurants',filter:`id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
+    .on('postgres_changes',{event:'*',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
+    .on('postgres_changes',{event:'*',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .subscribe();
 }
 
-async function loadRestaurantPublicFast(restaurantId){
+async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false){
   const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
@@ -3420,11 +3418,10 @@ async function loadRestaurantPublicFast(restaurantId){
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  subscribePublicStorefrontRealtime(restaurantId);
-
   // Seules la couverture et les photos produits restent différées ; le logo
   // est déjà disponible pour le premier rendu.
   loadRestaurantPublicImagesFast(restaurantId);
+  if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
   return true;
 }
 
@@ -4618,6 +4615,7 @@ const DISCONTINUED_PAYMENT_METHODS = ['card'];
 function availablePaymentMethods(){
   const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
   return enabled.filter(m=>{
+    if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()) return false;
     if(m === 'wave' && !isSafeHttpUrl(state.toggles.wave_link)) return false;
     if(m === 'orange_money' && !isSafeHttpUrl(state.toggles.orange_money_link)) return false;
     if(m !== 'on_delivery') return true;
@@ -4748,12 +4746,11 @@ function renderPlanBadgeAndBanner(){
   const daysLeft = trialDaysRemaining();
   const periodLeft = periodDaysRemaining();
   const planLabel = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
-  const cycleLabel = RESTAURANT.billingCycle === 'annual' ? 'Annuel' : 'Mensuel';
   if(badge) badge.innerHTML =
-    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — ${cycleLabel} — en attente de paiement</span>`
+    status==='pending_payment' ? `<span class="pill pill-amber">${planLabel} — en attente de paiement</span>`
     : status==='trialing' ? `<span class="pill pill-amber">Essai — ${daysLeft}j</span>`
-    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel} — ${cycleLabel}</span>`
-    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j — ${cycleLabel}</span>`
+    : status==='active' ? `<span class="pill ${state.plan==='pro'?'pill-forest':'pill-amber'}">Plan ${planLabel}</span>`
+    : status==='cancelled' ? `<span class="pill pill-neutral">Annulé — ${periodLeft}j</span>`
     : `<span class="pill pill-terracotta">Expiré</span>`;
 
   const banner = document.getElementById('planBanner');
@@ -4774,7 +4771,7 @@ function renderPlanBadgeAndBanner(){
 
 /* ---------------- VIEW SWITCHING ---------------- */
 function setView(view){
-  if(view!=='storefront') unsubscribePublicStorefrontRealtime();
+  if(view!=='storefront') unsubscribePublicRealtime();
   // Garde d'accès au tableau de bord : ne jamais rendre le vrai
   // contenu du dashboard pour quelqu'un qui n'est pas authentifié comme
   // propriétaire/personnel du restaurant actuellement chargé — sinon un
@@ -5313,12 +5310,8 @@ async function loadRestaurantPublicGateState(slug){
     RESTAURANT.created = true;
     RESTAURANT.name = 'Ce restaurant';
     RESTAURANT.slug = slug;
-    // Le slug existe mais la boutique n'est pas publiquement lisible :
-    // ce cas correspond au brouillon / à la dépublication, pas à une
-    // expiration. Le message d'expiration ne doit apparaître que lorsque
-    // l'état réel d'abonnement chargé depuis Supabase est 'expired'.
-    RESTAURANT.isPublished = false;
-    RESTAURANT.subscriptionStatus = 'trialing';
+    RESTAURANT.isPublished = true;
+    RESTAURANT.subscriptionStatus = 'expired';
     RESTAURANT.trialEndsAt = null;
     RESTAURANT.currentPeriodEnd = null;
     RESTAURANT.logoDataUrl = '';
@@ -6070,16 +6063,12 @@ function obStepHtml(){
     <p class="field-label">Moyens de paiement acceptés par vos clients</p>
     <div class="flex-col gap-2">
       ${['cash','on_delivery','wave','orange_money'].map(m=>{
-        const premiumOnly = PRO_ONLY_METHODS.includes(m);
-        const enabled = !!o.paymentToggles[m] && !premiumOnly;
-        return `
-        <div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:12px;padding:10px 12px;${premiumOnly?'background:rgba(232,135,30,.035);':''}">
-          ${paymentMark(m,26)}
-          <div style="flex:1;min-width:0;">
-            <p style="font-size:13px;font-weight:600;">${PAYMENT_LABELS[m]} ${premiumOnly ? `<span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Premium uniquement</span>` : ''}</p>
-            ${premiumOnly ? `<p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">Disponible uniquement avec un abonnement Premium.</p>` : `<p style="font-size:11.5px;color:var(--ink-faint);margin-top:3px;">${m==='cash'?'Paiement en espèces.':'Le client paie à la réception de sa commande.'}</p>`}
-          </div>
-          <div class="toggle ${enabled?'on':''}" style="${premiumOnly?'opacity:.55;cursor:not-allowed;':''}" onclick="${premiumOnly ? `obTogglePayMethod('${m}');return false;` : `obTogglePayMethod('${m}');`}"><div class="dot"></div></div>
+        const premiumOnly = m==='wave' || m==='orange_money';
+        const locked = premiumOnly;
+        if(locked) o.paymentToggles[m]=false;
+        return `<div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:12px;padding:9px 12px;${locked?'opacity:.82;':''}">
+          ${paymentMark(m,26)}<span style="flex:1;font-size:13px;">${PAYMENT_LABELS[m]}${locked?` <span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Premium</span>`:''}</span>
+          <div class="toggle ${o.paymentToggles[m]?'on':''}" style="${locked?'cursor:not-allowed;':''}" onclick='obTogglePayMethod("${m}")'><div class="dot"></div></div>
         </div>`;
       }).join('')}
     </div>
@@ -6095,9 +6084,12 @@ function obStepHtml(){
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Choisissez votre cycle. L'annuel économise 16 %. Le domaine personnalisé est offert uniquement avec Premium annuel.</p>
-    <div role="group" aria-label="Choisir la période de facturation" style="margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;display:flex;align-items:center;justify-content:center;width:max-content;max-width:100%;margin-left:auto;margin-right:auto;box-shadow:0 4px 14px rgba(43,24,16,.06);">
-      <button type="button" aria-pressed="${cycle==='monthly'}" onclick="obField('billing','monthly');renderOnboarding();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
-      <button type="button" aria-pressed="${cycle==='annual'}" onclick="obField('billing','annual');renderOnboarding();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span class="pricing-discount-badge" style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
+    <div class="flex items-center justify-center gap-3" style="margin:0 0 16px;">
+      <span style="font-size:12px;font-weight:600;color:${cycle==='monthly'?'var(--ink)':'var(--ink-faint)'};">Mensuel</span>
+      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:${cycle==='annual'?'var(--amber-deep)':'var(--ink)'};">
+        <span style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;transform:${cycle==='annual'?'translateX(24px)':'translateX(0)'};"></span>
+      </button>
+      <span style="font-size:12px;font-weight:600;color:${cycle==='annual'?'var(--ink)':'var(--ink-faint)'};">Annuel <span class="pricing-discount-badge" style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></span>
     </div>
     <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
       ${plans.map(p=>{
@@ -6121,12 +6113,14 @@ function obStepHtml(){
     const planName = o.plan==='pro' ? 'Premium' : 'Starter';
     const cycle = o.billing==='annual' ? 'annual' : 'monthly';
     const price = priceForPlanCycle(o.plan, cycle);
+    const cycleLabel = cycle==='annual' ? 'Annuel' : 'Mensuel';
+    const cyclePrice = cycle==='annual' ? `${fmt(price)} / an` : `${fmt(price)} / mois`;
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement — Forfait ${planName}</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — ${fmt(price)} ${cycle==='annual'?'/an':'/mois'}</p>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — <b>${cycleLabel}</b> · ${cyclePrice}</p>
     <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
       <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${cyclePrice}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
     </div>
     <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
     <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
@@ -6174,8 +6168,10 @@ function pickOnboardingGallery(index){
 }
 
 function obTogglePayMethod(m){
-  if(PRO_ONLY_METHODS.includes(m)){
-    toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+' est réservé au forfait Premium.', true);
+  if(m==='wave' || m==='orange_money'){
+    obState.paymentToggles[m]=false;
+    toast(ic('lock',14)+' '+PAYMENT_LABELS[m]+' nécessite le forfait Premium.', true);
+    renderOnboarding();
     return;
   }
   obState.paymentToggles[m] = !obState.paymentToggles[m];
@@ -7273,22 +7269,8 @@ function domainFormatPrice(value){
 
 async function appelerFonctionDomaine(nom, corps){
   const {data,error}=await supabaseClient.functions.invoke(nom,{body:corps});
-  if(error){
-    let detail='';
-    try{
-      const ctx=error.context;
-      if(ctx && typeof ctx.json==='function'){
-        const payload=await ctx.json();
-        detail=typeof payload==='string' ? payload : (payload?.error?.message || payload?.message || payload?.error || '');
-      }
-    }catch(e){}
-    const message=String(detail || error.message || 'Erreur du service domaine.').trim();
-    throw new Error(message || 'Le service de recherche de domaines est temporairement indisponible.');
-  }
-  if(data?.error){
-    const detail=typeof data.error==='string' ? data.error : (data.error.message || data.message || '');
-    throw new Error(String(detail || 'Le service de recherche de domaines est temporairement indisponible.'));
-  }
+  if(error) throw new Error(error.message || 'Erreur du service domaine.');
+  if(data?.error) throw new Error(typeof data.error==='string' ? data.error : (data.error.message || 'Erreur du service domaine.'));
   return data;
 }
 
@@ -7378,19 +7360,10 @@ async function lancerRechercheDomaine(){
         body.tlds=tlds;
       }
 
-      let data;
-      try{
-        data = await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH, body);
-      }catch(firstError){
-        /* Certains déploiements historiques de la fonction n'acceptent que
-         * action + query. La seconde tentative est strictement une recherche
-         * en lecture seule et ne modifie aucune donnée. */
-        if(batch===0){
-          data = await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH, {action:'search', query});
-        }else{
-          throw firstError;
-        }
-      }
+      const data=await appelerFonctionDomaine(
+        DOMAIN_EDGE_SEARCH,
+        body
+      );
 
       if(!tlds && Array.isArray(data?.tlds)){
         tlds=data.tlds;
@@ -8176,7 +8149,6 @@ function toggleProductActive(id){
   const p = PRODUCTS.find(x=>x.id===id); p.active = !p.active;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
-  if(typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   toast(p.active ? `${p.name} est de nouveau visible sur le site public.` : `${p.name} est masqué du site public.`);
   persistProduct(p);
 }
@@ -8184,7 +8156,6 @@ function toggleProductAvailable(id){
   const p = PRODUCTS.find(x=>x.id===id); p.available = !p.available;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
-  if(typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   persistProduct(p);
 }
 function deleteProduct(id){
@@ -8193,7 +8164,6 @@ function deleteProduct(id){
   const idx = PRODUCTS.indexOf(p); PRODUCTS.splice(idx,1);
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
-  if(typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   toast('Produit supprimé.');
   deleteProductRow(id);
 }
@@ -8325,7 +8295,6 @@ async function saveProductForm(){
   closeProductForm();
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
-  if(typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
   await persistProduct(p);
 }
 
@@ -8399,7 +8368,6 @@ function toggleLibraryItem(i){
     if(!canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
     const p = {id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5};
     PRODUCTS.push(p);
-    if(typeof renderPlanBadgeAndBanner==='function') renderPlanBadgeAndBanner();
     toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
     persistProduct(p);
   }
@@ -8430,6 +8398,7 @@ async function addCategory(){
       return;
     }
     toast('✅ Catégorie enregistrée avec succès.');
+    renderPlanBadgeAndBanner();
   }
 }
 
@@ -8513,7 +8482,7 @@ function dashAccounting(){
   <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;align-items:stretch;">
     <div class="stat-card">${icBadge('wallet',{size:34,bg:'var(--forest-soft)',color:'var(--forest)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${fmt(grossRevenue)}</p><p style="font-size:11px;color:var(--ink-soft);">Chiffre d'affaires brut</p></div>
     <div class="stat-card">${icBadge('receipt',{size:34,bg:'rgba(43,24,16,.06)',color:'var(--ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${validOrders.length}</p><p style="font-size:11px;color:var(--ink-soft);">Transactions</p></div>
-    <div class="stat-card">${icBadge('card',{size:34,bg:'rgba(232,135,30,.12)',color:'var(--amber-ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${state.plan==='pro'?fmt(PREMIUM_PRICE):'0 FCFA'}</p><p style="font-size:11px;color:var(--ink-soft);">Coût abonnement (${state.plan==='pro'?'Premium':'Gratuit'}) /mois</p></div>
+    <div class="stat-card">${icBadge('card',{size:34,bg:'rgba(232,135,30,.12)',color:'var(--amber-ink)'})}<p class="font-tabular" style="font-size:19px;font-weight:700;margin-top:8px;">${state.plan==='pro'?fmt(priceForPlanCycle('pro',RESTAURANT.billingCycle)):state.plan==='starter'?fmt(priceForPlanCycle('starter',RESTAURANT.billingCycle)):'0 FCFA'}</p><p style="font-size:11px;color:var(--ink-soft);">Coût abonnement (${state.plan==='pro'?'Premium':state.plan==='starter'?'Starter':'Gratuit'}) ${RESTAURANT.billingCycle==='annual'?' /an':' /mois'}</p></div>
   </div>
   <div class="card" style="padding:18px;margin-bottom:18px;">
     <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Revenus par moyen de paiement</h2>
@@ -9661,7 +9630,7 @@ const SUBSCRIPTION_STATUS_TONE = {
 
 function dashAbonnement(){
   if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
-  if(abonSelectedCycle===null) abonSelectedCycle = (state.plan==='starter'||state.plan==='pro') ? (RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly') : 'monthly';
+  if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const status = computeEffectiveSubscriptionStatus();
   const paidActive = isPaidPlanActive();
   const planName = state.plan==='pro' ? 'Premium' : state.plan==='starter' ? 'Starter' : 'Gratuit';
@@ -9693,7 +9662,7 @@ function dashAbonnement(){
 }
 
 function abonCardHtml(){
-  if(abonSelectedCycle===null) abonSelectedCycle=(state.plan==='starter'||state.plan==='pro') ? (RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly') : 'monthly';
+  if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(abonSelectedPlan, cycle);
   return `
