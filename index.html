@@ -6084,12 +6084,9 @@ function obStepHtml(){
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Choisissez votre cycle. L'annuel économise 16 %. Le domaine personnalisé est offert uniquement avec Premium annuel.</p>
-    <div class="flex items-center justify-center gap-3" style="margin:0 0 16px;">
-      <span style="font-size:12px;font-weight:600;color:${cycle==='monthly'?'var(--ink)':'var(--ink-faint)'};">Mensuel</span>
-      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" style="position:relative;width:52px;height:28px;border:0;border-radius:999px;background:${cycle==='annual'?'var(--amber-deep)':'var(--ink)'};">
-        <span style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:999px;background:#fff;transition:transform .2s;transform:${cycle==='annual'?'translateX(24px)':'translateX(0)'};"></span>
-      </button>
-      <span style="font-size:12px;font-weight:600;color:${cycle==='annual'?'var(--ink)':'var(--ink-faint)'};">Annuel <span class="pricing-discount-badge" style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></span>
+    <div role="group" aria-label="Choisir le cycle de facturation" style="margin:0 auto 16px;display:flex;align-items:stretch;justify-content:center;width:min(100%,360px);border:1px solid var(--cream-line);border-radius:999px;background:#fff;padding:4px;box-shadow:0 4px 14px rgba(43,24,16,.05);">
+      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" aria-pressed="${cycle==='monthly'?'true':'false'}" style="flex:1;min-width:0;border:0;border-radius:999px;padding:10px 12px;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'var(--ink-soft)'};font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;">Mensuel</button>
+      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" aria-pressed="${cycle==='annual'?'true':'false'}" style="flex:1.25;min-width:0;border:0;border-radius:999px;padding:10px 10px;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'var(--ink-soft)'};font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;">Annuel <span style="color:${cycle==='annual'?'#fff':'#008000'};font-size:10.5px;font-weight:700;">Économisez 16 %</span></button>
     </div>
     <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
       ${plans.map(p=>{
