@@ -4846,7 +4846,7 @@ function renderPasswordRecoveryCodeScreen(){
       <h2 class="font-display" style="font-size:20px;margin-bottom:8px;">Réinitialiser le mot de passe</h2>
       <p style="font-size:13px;color:var(--ink-soft);max-width:390px;margin:0 auto 6px;">Un code de réinitialisation a été envoyé à <strong>${escapeHtml(passwordRecoveryEmail)}</strong>.</p>
       <p style="font-size:12px;color:var(--ink-faint);max-width:390px;margin:0 auto 16px;">Entrez d’abord le code reçu par e-mail. Vous pourrez choisir votre nouveau mot de passe uniquement après vérification du code.</p>
-      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter') verifyPasswordRecoveryOtp()">
+      <input id="recoveryOtpInput" class="field-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="Code reçu" style="text-align:center;letter-spacing:.25em;font-size:24px;font-weight:800;max-width:260px;margin:0 auto 12px;" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter') verifyPasswordRecoveryOtp()">
       <button id="verifyRecoveryOtpBtn" class="btn btn-secondary btn-lg w-full" onclick="verifyPasswordRecoveryOtp()">Vérifier le code</button>
       <button id="resendRecoveryOtpBtn" class="btn btn-ghost w-full" style="margin-top:6px;" onclick="resendPasswordRecoveryOtp()"><span id="resendRecoveryOtpLabel">Renvoyer le code</span></button>
       <button class="btn btn-ghost w-full" style="margin-top:6px;" onclick="setLoginTab('login')">Retour à la connexion</button>
@@ -5455,7 +5455,7 @@ async function resendSignupOtp(){
 
 async function verifyOnboardingOtp(){
   const token = (document.getElementById('onboardingOtpInput')?.value || '').trim();
-  if(!/^\\d{8}$/.test(token)){
+  if(!/^\d{8}$/.test(token)){
     toast('Entrez le code de vérification à 8 chiffres reçu par e-mail.');
     return;
   }
@@ -5477,7 +5477,7 @@ async function verifyOnboardingOtp(){
     const {data, error} = await supabaseClient.auth.verifyOtp({
       email,
       token,
-      type: 'email'
+      type: 'signup'
     });
 
     if(error || !data?.user){
