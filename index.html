@@ -486,8 +486,6 @@ button,a,input,select,textarea{font-family:inherit;}
   // les deux en même temps. Reflète exactement l'ordre de priorité
   // réel utilisé par restoreSession() (session existante d'abord, lien
   // direct vers un restaurant ensuite).
-  /* L'utilisateur qui revient sur son espace ne doit jamais voir la page
-     publique une fraction de seconde pendant la revalidation de session. */
   const __hasReturningDashboard = (()=>{
     try{return localStorage.getItem('tg_returning_user')==='1';}catch(e){return false;}
   })();
@@ -2252,23 +2250,14 @@ let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/perso
    qui n'a de toute façon jamais chargé la partie secondaire
    (isLoggedIn=false). Les chemins de connexion appellent maintenant
    directement les deux phases séparément. */
-async function loadRestaurantCore(restaurantId,{deferCatalog=false}={}){
-  /* En retour sur le dashboard, seules les données réellement nécessaires
-     au premier affichage bloquent l'entrée. Catégories/produits sont
-     chargés juste après, sans supprimer aucune donnée ni fonctionnalité. */
-  let r, cats, prods;
-  if(deferCatalog){
-    const res = await supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single();
-    r = res.data;
-    if(res.error && !r) return false;
-  }else{
-    [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
-      supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single(),
-      supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
-      supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
-    ]);
-    if(!r) return false;
-  }
+async function loadRestaurantCore(restaurantId, fastDashboard=false){
+  const restaurantPromise = supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single();
+  const catalogPromise = Promise.all([
+    supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
+  ]);
+  const {data:r} = await restaurantPromise;
+  if(!r) return false;
 
   RESTAURANT.id = r.id;
   RESTAURANT.created = true;
@@ -2296,7 +2285,6 @@ async function loadRestaurantCore(restaurantId,{deferCatalog=false}={}){
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   RESTAURANT.aiEnabled = (r.ai_enabled === null || r.ai_enabled === undefined) ? true : !!r.ai_enabled;
-  if(r.ai_enabled === null || r.ai_enabled === undefined){ try{ supabaseClient.from('restaurants').update({ai_enabled:true}).eq('id',restaurantId).then(()=>{}).catch(()=>{}); }catch(e){} }
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
   RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
   RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
@@ -2338,15 +2326,28 @@ async function loadRestaurantCore(restaurantId,{deferCatalog=false}={}){
   // plus tôt dans le même onglet.
   catsState = {};
   catsHomeVisible = {};
-  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
-
-  PRODUCTS.length = 0;
-  (prods||[]).forEach(p => PRODUCTS.push({
-    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
-    active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
-    variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
-  }));
-  renderPlanBadgeAndBanner();
+  const applyCatalog = (cats,prods)=>{
+    catsState = {};
+    catsHomeVisible = {};
+    (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
+    PRODUCTS.length = 0;
+    (prods||[]).forEach(p => PRODUCTS.push({
+      id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+      active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
+      variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
+    }));
+    renderPlanBadgeAndBanner();
+  };
+  if(fastDashboard){
+    catalogPromise.then(([catsRes,prodsRes])=>{
+      applyCatalog(catsRes?.data,prodsRes?.data);
+      variantsSelectedProduct = null;
+      if(state.view==='dashboard') renderDashSection(state.dashSection);
+    }).catch(e=>console.warn('Chargement différé du catalogue:',e));
+  }else{
+    const [{data:cats},{data:prods}] = await catalogPromise;
+    applyCatalog(cats,prods);
+  }
 
   // Réinitialise les sélections d'écran qui pointaient peut-être vers
   // un produit/forfait d'un AUTRE restaurant chargé plus tôt dans le
@@ -3021,7 +3022,6 @@ async function persistRestaurant(){
       hours:RESTAURANT.hours, delivery:RESTAURANT.delivery, social:RESTAURANT.social,
       payment_toggles:state.toggles, show_map:RESTAURANT.showMap, maps_link:RESTAURANT.mapsLink,
       notifications_enabled:RESTAURANT.notificationsEnabled,
-      ai_enabled:!!RESTAURANT.aiEnabled,
       plan:state.plan, is_published:RESTAURANT.isPublished,
       hero_title:RESTAURANT.heroTitle||null, hero_subtitle:RESTAURANT.heroSubtitle||null,
     };
@@ -3429,66 +3429,30 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
 
   catsState = {};
   catsHomeVisible = {};
+  (cats||[]).forEach(c => {
+    catsState[c.key] = c.label;
+    catsHomeVisible[c.key] = c.visible_on_home !== false;
+  });
+
   PRODUCTS.length = 0;
-  if(!deferCatalog){
-    (cats||[]).forEach(c => {
-      catsState[c.key] = c.label;
-      catsHomeVisible[c.key] = c.visible_on_home !== false;
+  (prods||[]).forEach(p => {
+    const productPhotos = normalizeProductPhotos(p.gallery_photos, p.photo);
+    PRODUCTS.push({
+      id:p.id, name:p.name, desc:p.desc, price:Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0, cat:p.cat, prep:p.prep,
+      active:p.active, available:p.available, photo:productPhotos[0]||'', photos:productPhotos, variants:p.variants||[],
+      variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
     });
-    (prods||[]).forEach(p => {
-      const productPhotos = normalizeProductPhotos(p.gallery_photos, p.photo);
-      PRODUCTS.push({
-        id:p.id, name:p.name, desc:p.desc, price:Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0, cat:p.cat, prep:p.prep,
-        active:p.active, available:p.available, photo:productPhotos[0]||'', photos:productPhotos, variants:p.variants||[],
-        variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
-      });
-    });
-  }
+  });
 
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
   abonSelectedCycle = null;
-
-  if(deferCatalog){
-    void loadRestaurantCatalogDeferred(restaurantId);
-  }
 
   // Seules la couverture et les photos produits restent différées ; le logo
   // est déjà disponible pour le premier rendu.
   loadRestaurantPublicImagesFast(restaurantId);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
   return true;
-}
-
-async function loadRestaurantCatalogDeferred(restaurantId){
-  try{
-    const [{data:cats},{data:prods}] = await Promise.all([
-      supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
-      supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
-    ]);
-    catsState = {};
-    catsHomeVisible = {};
-    (cats||[]).forEach(c => {
-      catsState[c.key] = c.label;
-      catsHomeVisible[c.key] = c.visible_on_home !== false;
-    });
-    PRODUCTS.length = 0;
-    (prods||[]).forEach(p => {
-      const productPhotos = normalizeProductPhotos(p.gallery_photos, p.photo);
-      PRODUCTS.push({
-        id:p.id, name:p.name, desc:p.desc, price:Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0, cat:p.cat, prep:p.prep,
-        active:p.active, available:p.available, photo:productPhotos[0]||'', photos:productPhotos, variants:p.variants||[],
-        variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
-      });
-    });
-    if(state.view === 'dashboard'){
-      renderDashSection(state.dashSection);
-      renderSidebarLogo();
-      refreshNotifDot();
-    }
-  }catch(e){
-    console.warn('Chargement différé du catalogue du restaurant:', e);
-  }
 }
 
 async function loadRestaurantPublicImagesFast(restaurantId){
@@ -3606,7 +3570,7 @@ async function restoreSession(){
       /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
       if(rid){
         try{
-          const ok = await loadRestaurantCore(rid,{deferCatalog:true});
+          const ok = await loadRestaurantCore(rid,true);
           if(ok){
             hideAuthCheckSplash();
             hideRestoSplash();
@@ -3626,7 +3590,7 @@ async function restoreSession(){
       rid = await findMyRestaurantId(currentUser.id);
       if(rid){
         try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-        await loadRestaurantCore(rid,{deferCatalog:true});
+        await loadRestaurantCore(rid,true);
         hideAuthCheckSplash();
         hideRestoSplash();
         setView('dashboard');
@@ -3637,7 +3601,6 @@ async function restoreSession(){
       }
 
       viewerIsStaff = false;
-      hideAuthCheckSplash();
       setView('landing');
     } else {
       hideAuthCheckSplash();
@@ -3925,7 +3888,7 @@ async function submitLogin(){
   try{
     /* Compte déjà connu : on charge directement le restaurant mémorisé. */
     if(rid){
-      const ok = await loadRestaurantCore(rid);
+      const ok = await loadRestaurantCore(rid,true);
       if(ok){
         setLoginVerifying(false);
         closeLogin();
@@ -3950,7 +3913,7 @@ async function submitLogin(){
     }
 
     try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-    await loadRestaurantCore(rid);
+    await loadRestaurantCore(rid,true);
     setLoginVerifying(false);
     closeLogin();
     hideRestoSplash();
@@ -4014,7 +3977,7 @@ async function submitInviteAccept(){
   setSimulatedRole(accepted.role, accepted.permissions);
   state.dashSection = requestedDashSection() || 'overview';
   try{
-    await loadRestaurantCore(accepted.restaurant_id);
+    await loadRestaurantCore(accepted.restaurant_id,true);
     viewerIsStaff = true;
     setLoginVerifying(false,'inviteSubmitBtn');
     closeLogin();
@@ -5638,10 +5601,6 @@ async function verifyOnboardingOtp(){
     }
 
     currentUser = data.user;
-    try{
-      const {data:sessionData}=await supabaseClient.auth.getSession();
-      if(sessionData?.session?.user) currentUser=sessionData.session.user;
-    }catch(e){}
     otpPendingEmail = email;
     obState.emailConfirmationPending = false;
     obState.pendingEmail = email;
@@ -5664,16 +5623,11 @@ async function verifyOnboardingOtp(){
     toast('Impossible de vérifier le code. Vérifiez le code reçu puis réessayez.');
   }
 }
-let onboardingSaveTimer = null;
 function savePendingOnboarding(){
   try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
 }
-function queuePendingOnboardingSave(){
-  clearTimeout(onboardingSaveTimer);
-  onboardingSaveTimer = setTimeout(()=>savePendingOnboarding(), 120);
-}
 function savePendingOnboardingIfNeeded(){
-  savePendingOnboarding();
+  if(obState.emailConfirmationPending) savePendingOnboarding();
 }
 function loadPendingOnboarding(){
   try{
@@ -5705,17 +5659,16 @@ async function tryResumePendingOnboarding(){
   closeLogin();
   setView('onboarding');
 
-  // Reprendre exactement à l'étape sauvegardée, avec les informations déjà saisies.
+  // Reprendre exactement à l'étape enregistrée, sans retour forcé à l'étape 2.
   obState.step = Math.max(0, Math.min(6, Number(obState.step)||0));
   savePendingOnboarding();
   renderOnboarding();
-  toast(ic('checkCircle',14)+' E-mail confirmé — reprise de votre création là où vous vous étiez arrêté.', true);
+  toast(ic('checkCircle',14)+' E-mail confirmé — poursuivez la création de votre restaurant.', true);
   resumingOnboarding = false;
   return true;
 }
 
 function startOnboarding(presetPlan){
-  clearPendingOnboarding();
   Object.assign(obState, {
     step:0, accountName:'', accountEmail:'', accountPassword:'',
     restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
@@ -5730,44 +5683,36 @@ function startOnboarding(presetPlan){
   setView('onboarding');
 }
 
-function obField(key,val){ obState[key]=val; queuePendingOnboardingSave(); }
+function obField(key,val){ obState[key]=val; savePendingOnboarding(); }
 function obGoStep(i){ obState.step=i; savePendingOnboarding(); renderOnboarding(); }
 
 async function obNext(){
   const o = obState;
   if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
-  if(o.step===0){
-    // Une session déjà confirmée ne doit jamais relancer la création du compte.
-    if(!currentUser){
-      try{
-        const {data:sessionData}=await supabaseClient.auth.getUser();
-        if(sessionData?.user) currentUser=sessionData.user;
-      }catch(e){}
+  if(o.step===0 && !currentUser){
+    if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+    setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
+    const email=o.accountEmail.trim().toLowerCase();
+    const name=o.accountName.trim();
+    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
+    setLoginVerifying(false,'obNextBtn');
+    const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+    if(error || signupAlreadyExists){
+      toast(error ? supabaseErrorFr(error,'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
+      return;
     }
-    if(!currentUser){
-      if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
-      setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
-      const email=o.accountEmail.trim().toLowerCase();
-      const name=o.accountName.trim();
-      const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
-      setLoginVerifying(false,'obNextBtn');
-      const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
-      if(error || signupAlreadyExists){
-        toast(error ? supabaseErrorFr(error,'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
-        return;
-      }
-      if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();startOnboardingOtpResendCountdown(30);return;}
-      currentUser=data.user; o.emailConfirmationPending=false;
-    }
+    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();startOnboardingOtpResendCountdown(30);return;}
+    currentUser=data.user; o.emailConfirmationPending=false;
+    savePendingOnboarding();
   }
   if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
   // Le nom commercial peut être identique à celui d'un autre restaurant.
   // Seul le sous-domaine public doit être unique (géré automatiquement
   // par resolveUniqueSlugForCreation()).
   if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
-  if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboardingIfNeeded(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
+  if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboarding(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
   o.step++;
-  savePendingOnboardingIfNeeded();
+  savePendingOnboarding();
   renderOnboarding();
 }
 function obPrev(){
@@ -5912,12 +5857,16 @@ async function createRestaurantFromOnboarding(){
   RESTAURANT.orderNotificationEmail = (currentUser?.email || '').toLowerCase();
   RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
   RESTAURANT.orderNotificationEmailPending = '';
-  // Un restaurant nouvellement créé doit être accessible immédiatement
-  // depuis son lien public et son QR Code.
+
+  // Publication réelle en base avant d'ouvrir le tableau de bord.
   RESTAURANT.isPublished = true;
   RESTAURANT.aiEnabled = true;
-
-  // Publication initiale : enregistrée et vérifiée avant de déclarer le restaurant prêt.
+  // Si aucune couverture n'a été fournie pendant l'inscription, utiliser
+  // une couverture existante de la bibliothèque intégrée. Une couverture
+  // choisie par le restaurateur reste prioritaire.
+  if(!RESTAURANT.coverDataUrl && Array.isArray(LIBRARY_ITEMS) && LIBRARY_ITEMS[0]?.photo){
+    RESTAURANT.coverDataUrl = LIBRARY_ITEMS[0].photo;
+  }
   const {data:publishedRow,error:publishError} = await supabaseClient
     .from('restaurants')
     .update({is_published:true, ai_enabled:true})
@@ -5931,25 +5880,24 @@ async function createRestaurantFromOnboarding(){
   }
   RESTAURANT.isPublished = true;
 
-  // Le restaurant principal est prêt : le tableau de bord peut s'afficher sans attendre les opérations secondaires.
+  // Zéro produit créé automatiquement pour un nouveau restaurant.
+  PRODUCTS.length = 0;
+
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
   subscribeToReviewsRealtime(RESTAURANT.id);
 
+  // Les écritures secondaires continuent après l'ouverture du vrai tableau de bord.
   void (async()=>{
-    try{ await persistRestaurant(); }catch(e){ console.warn('Sauvegarde secondaire du restaurant:',e); }
-
-    // Catégories par défaut, créées en arrière-plan une seule fois.
+    await persistRestaurant();
     const catRows = Object.entries(catsState).map(([key,label],i) => ({
       restaurant_id: RESTAURANT.id, key, label, sort_order:i,
     }));
     if(catRows.length){
       const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
-      if(catErr) console.warn('Catégories par défaut non enregistrées:',catErr);
+      if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
     }
-
-    // Aucun produit n'est créé automatiquement. Le restaurateur choisit lui-même son catalogue.
-  })();
+  })().catch(e=>console.warn('Données secondaires de création du restaurant:',e));
 
   return restaurantRow;
 }
@@ -6025,9 +5973,6 @@ async function finishOnboarding(){
   clearPendingOnboarding();
   setView('dashboard');
   setDashSection('overview');
-  // Les données secondaires continuent de charger sans bloquer le vrai tableau de bord.
-  void loadRestaurantSecondaryData(RESTAURANT.id).catch(e=>console.warn('Chargement secondaire après création:',e));
-  renderPlanBadgeAndBanner();
   toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
 }
 
@@ -10690,12 +10635,10 @@ function speakAiText(text,button){
   async function toggleTerangaAI(ev){
     ev?.preventDefault?.();ev?.stopPropagation?.();
     const toggle=document.getElementById('tgAiSettingsToggle');const previous=enabled();const next=!previous;
-    if(!RESTAURANT?.id){
-      RESTAURANT.aiEnabled=next;saveEnabledLocal(next);
-      if(toggle){toggle.classList.toggle('on',next);toggle.setAttribute('aria-checked',next?'true':'false');}
-      if(next)showAi();else{closeAi();syncVisibility();}
-      return;
-    }
+    RESTAURANT.aiEnabled=next;saveEnabledLocal(next);
+    if(toggle){toggle.classList.toggle('on',next);toggle.setAttribute('aria-checked',next?'true':'false');}
+    if(next)showAi();else{closeAi();syncVisibility();}
+    if(!RESTAURANT?.id){return;}
     try{
       const {data,error}=await supabaseClient
         .from('restaurants')
@@ -10703,18 +10646,14 @@ function speakAiText(text,button){
         .eq('id',RESTAURANT.id)
         .select('id,ai_enabled')
         .maybeSingle();
-      if(error || !data?.id || Boolean(data.ai_enabled)!==next) throw (error || new Error('IA_SYNC'));
-      RESTAURANT.aiEnabled=next;
-      saveEnabledLocal(next);
-      if(toggle){toggle.classList.toggle('on',next);toggle.setAttribute('aria-checked',next?'true':'false');}
-      if(next)showAi();else{closeAi();syncVisibility();}
+      if(error || !data?.id || Boolean(data.ai_enabled)!==next) throw new Error(error?.message || 'SYNC');
+      RESTAURANT.aiEnabled=Boolean(data.ai_enabled);
+      saveEnabledLocal(RESTAURANT.aiEnabled);
     }catch(e){
-      RESTAURANT.aiEnabled=previous;
-      saveEnabledLocal(previous);
+      RESTAURANT.aiEnabled=previous;saveEnabledLocal(previous);
       if(toggle){toggle.classList.toggle('on',previous);toggle.setAttribute('aria-checked',previous?'true':'false');}
       if(previous)showAi();else{closeAi();syncVisibility();}
       console.warn('ai_enabled',e);
-      toast('Impossible d’enregistrer ce réglage pour le moment.');
     }
   }
 
