@@ -3253,6 +3253,20 @@ function renderStorefrontGateOverlay(){
             <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
           </a>
         </div>`;
+    } else if(status === 'unavailable'){
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('lock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible pour l'instant.</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce restaurant n'est pas accessible publiquement pour le moment.</p>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
     } else if(status === 'pending_payment'){
       overlay.innerHTML = `
         <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
@@ -4536,9 +4550,21 @@ function monthlyEquivalent(plan, cycle='monthly'){
    quelqu'un revient. ---------------- */
 function computeEffectiveSubscriptionStatus(){
   const now = Date.now();
-  if(RESTAURANT.subscriptionStatus==='trialing' && RESTAURANT.trialEndsAt && now > RESTAURANT.trialEndsAt){
-    RESTAURANT.subscriptionStatus = 'expired';
-  } else if((RESTAURANT.subscriptionStatus==='active' || RESTAURANT.subscriptionStatus==='cancelled') && RESTAURANT.currentPeriodEnd && now > RESTAURANT.currentPeriodEnd){
+  // Règle absolue de l'essai Gratuit : tant que la vraie date de fin
+  // d'essai est dans le futur, le site est en essai — même si une ancienne
+  // valeur 'expired' est restée enregistrée par erreur. L'expiration n'est
+  // prononcée qu'une fois la date réellement dépassée.
+  if(RESTAURANT.trialEndsAt){
+    if(now < RESTAURANT.trialEndsAt && (state.plan==='free' || !state.plan)){
+      RESTAURANT.subscriptionStatus = 'trialing';
+      return 'trialing';
+    }
+    if(now >= RESTAURANT.trialEndsAt && (RESTAURANT.subscriptionStatus==='trialing' || (state.plan==='free' || !state.plan))){
+      RESTAURANT.subscriptionStatus = 'expired';
+      return 'expired';
+    }
+  }
+  if((RESTAURANT.subscriptionStatus==='active' || RESTAURANT.subscriptionStatus==='cancelled') && RESTAURANT.currentPeriodEnd && now > RESTAURANT.currentPeriodEnd){
     RESTAURANT.subscriptionStatus = 'expired';
   }
   return RESTAURANT.subscriptionStatus;
@@ -5311,7 +5337,9 @@ async function loadRestaurantPublicGateState(slug){
     RESTAURANT.name = 'Ce restaurant';
     RESTAURANT.slug = slug;
     RESTAURANT.isPublished = true;
-    RESTAURANT.subscriptionStatus = 'expired';
+    // Existence du slug confirmée, mais l'état public réel n'est pas
+    // suffisamment déterminé ici : ne jamais inventer 'expired'.
+    RESTAURANT.subscriptionStatus = 'unavailable';
     RESTAURANT.trialEndsAt = null;
     RESTAURANT.currentPeriodEnd = null;
     RESTAURANT.logoDataUrl = '';
@@ -5814,6 +5842,12 @@ async function createRestaurantFromOnboarding(){
   // depuis son lien public et son QR Code.
   RESTAURANT.isPublished = true;
   RESTAURANT.aiEnabled = true;
+  // Si aucune couverture n'a été fournie pendant l'inscription, utiliser
+  // une couverture existante de la bibliothèque intégrée. Une couverture
+  // choisie par le restaurateur reste prioritaire.
+  if(!RESTAURANT.coverDataUrl && Array.isArray(LIBRARY_ITEMS) && LIBRARY_ITEMS[0]?.photo){
+    RESTAURANT.coverDataUrl = LIBRARY_ITEMS[0].photo;
+  }
   await persistRestaurant();
   viewerIsStaff = true;
   subscribeToOrdersRealtime(RESTAURANT.id);
@@ -5825,6 +5859,41 @@ async function createRestaurantFromOnboarding(){
   if(catRows.length){
     const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
     if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
+  }
+
+  // Un nouveau restaurant commence avec 3 produits de démonstration
+  // provenant exclusivement de la bibliothèque déjà présente dans ce fichier.
+  // Ils deviennent de vraies copies indépendantes dans le catalogue du restaurant.
+  const defaultProductTemplates = Array.isArray(LIBRARY_ITEMS) ? LIBRARY_ITEMS.slice(0,3) : [];
+  if(defaultProductTemplates.length){
+    const defaultProductRows = defaultProductTemplates.map((item,i) => ({
+      restaurant_id: RESTAURANT.id,
+      cat: item.cat,
+      name: item.name,
+      desc: item.desc || '',
+      price: Number(item.price)||0,
+      prep: Number(item.prep)||15,
+      active: true,
+      available: true,
+      photo: item.photo || null,
+      gallery_photos: item.photo ? [item.photo] : [],
+      variants: [],
+      variants_required: false,
+      stock: 20,
+      threshold: 5,
+    }));
+    const {data:defaultProducts,error:defaultProductsErr} = await supabaseClient.from('products').insert(defaultProductRows).select();
+    if(defaultProductsErr){
+      toast('Produits par défaut non enregistrés : ' + defaultProductsErr.message);
+    } else if(Array.isArray(defaultProducts)){
+      PRODUCTS.length = 0;
+      defaultProducts.forEach(p => PRODUCTS.push({
+        id:p.id,name:p.name,desc:p.desc,price:Number(p.price),cat:p.cat,prep:p.prep,
+        active:p.active,available:p.available,photo:p.photo,photos:normalizeProductPhotos(p.gallery_photos,p.photo),
+        variants:p.variants||[],variantsRequired:!!p.variants_required,stock:p.stock,threshold:p.threshold
+      }));
+      renderPlanBadgeAndBanner();
+    }
   }
 
   return restaurantRow;
