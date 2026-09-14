@@ -5649,7 +5649,6 @@ function clearPendingOnboarding(){
    terminer automatiquement la création. Après confirmation, on revient
    à l'étape Restaurant (2/7) et le parcours continue normalement. */
 async function tryResumePendingOnboarding(){
-  if(window.restaurantCreationInFlight) return true;
   if(!currentUser) return false;
   if(resumingOnboarding) return true;
   const saved = loadPendingOnboarding();
@@ -5735,9 +5734,6 @@ function obPrev(){
    résolution de slug et l'appel RPC. Renvoie la ligne restaurant créée,
    ou null si quelque chose a échoué (déjà annoncé via toast). */
 async function createRestaurantFromOnboarding(){
-  if(window.restaurantCreationInFlight) return null;
-  window.restaurantCreationInFlight = true;
-  try{
   // Source de vérité pour owner_id : jamais la variable JS `currentUser`
   // (qui peut être en retard d'une frappe sur la vraie session — c'est
   // exactement ce qui provoquait "new row violates row-level security
@@ -5912,9 +5908,6 @@ async function createRestaurantFromOnboarding(){
   })().catch(e=>console.warn('Données secondaires de création du restaurant:',e));
 
   return restaurantRow;
-  }finally{
-    window.restaurantCreationInFlight = false;
-  }
 }
 
 /* Écran affiché tant que l'e-mail n'est pas confirmé : les données
@@ -5981,17 +5974,30 @@ async function finishOnboarding(){
   }
   const btn = document.getElementById('obFinishBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
+
+  const existingRid = currentUser?.id ? await findMyRestaurantId(currentUser.id) : null;
+  if(existingRid){
+    try{ localStorage.setItem('tg_last_restaurant_'+String(currentUser.id), String(existingRid)); }catch(e){}
+    const ok = await loadRestaurantCore(existingRid,true);
+    if(ok){
+      viewerIsStaff = true;
+      loadRestaurantSecondaryData(existingRid);
+      if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
+      clearPendingOnboarding();
+      setView('dashboard');
+      setDashSection('overview');
+      toast(ic('checkCircle',15)+` Votre restaurant existant est maintenant accessible depuis le tableau de bord.`, true);
+      return;
+    }
+  }
+
   const row = await createRestaurantFromOnboarding();
   if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
   if(!row) return;
 
   clearPendingOnboarding();
-  hideRestoSplash();
-  hideAuthCheckSplash();
   setView('dashboard');
   setDashSection('overview');
-  if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-  loadRestaurantSecondaryData(RESTAURANT.id);
   toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
 }
 
@@ -9316,6 +9322,7 @@ function settingsBodyHtml(){
             <p style="font-size:11px;color:var(--ink-faint);">${RESTAURANT.isPublished?'Visible par vos clients.':'Invisible pour vos clients tant que non publié.'}</p>
           </div>
         </div>
+        <button class="btn ${RESTAURANT.isPublished?'btn-outline':'btn-secondary'} btn-sm" onclick="togglePublish()">${RESTAURANT.isPublished?'Dépublier':'Publier'}</button>
       </div>
       ${RESTAURANT.isPublished?`<div style="border-top:1px solid var(--cream-line);margin-top:12px;padding-top:12px;display:flex;align-items:center;gap:10px;">
         ${ic('link',16,{stroke:'var(--forest)'})}
