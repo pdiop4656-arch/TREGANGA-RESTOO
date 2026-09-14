@@ -5877,7 +5877,7 @@ async function createRestaurantFromOnboarding(){
   }
   const {data:publishedRow,error:publishError} = await supabaseClient
     .from('restaurants')
-    .update({is_published:true, ai_enabled:true})
+    .update({is_published:true})
     .eq('id',RESTAURANT.id)
     .select('id,is_published')
     .maybeSingle();
