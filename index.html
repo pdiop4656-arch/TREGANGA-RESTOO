@@ -3374,7 +3374,11 @@ function subscribeToPublicRealtime(restaurantId){
 }
 
 async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false){
-  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+  /* Premier passage volontairement léger :
+     - restaurant + catégories = données nécessaires pour afficher la boutique ;
+     - produits, couverture et photos = chargement secondaire, après le premier rendu.
+     Aucun message d'erreur/expiration n'est affiché pendant cette phase. */
+  const [{data:r}, {data:cats}] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
@@ -3385,10 +3389,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
     ).eq('id', restaurantId).single(),
     supabaseClient.from('categories').select(
       'key,label,visible_on_home,sort_order'
-    ).eq('restaurant_id', restaurantId).order('sort_order'),
-    supabaseClient.from('products').select(
-      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
-    ).eq('restaurant_id', restaurantId).order('created_at')
+    ).eq('restaurant_id', restaurantId).order('sort_order')
   ]);
 
   if(!r) return false;
@@ -3397,8 +3398,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  // Le logo fait partie des données critiques du premier affichage : il
-  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  // Le logo fait partie des données critiques du premier affichage.
   RESTAURANT.logoDataUrl = r.logo_data_url || '';
   RESTAURANT.coverDataUrl = '';
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
@@ -3441,25 +3441,47 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
     catsHomeVisible[c.key] = c.visible_on_home !== false;
   });
 
+  /* Le premier affichage ne dépend plus du chargement des produits.
+     Les produits sont récupérés immédiatement après, en arrière-plan,
+     sans bloquer l'ouverture de la boutique. */
   PRODUCTS.length = 0;
-  (prods||[]).forEach(p => {
-    const productPhotos = normalizeProductPhotos(p.gallery_photos, p.photo);
-    PRODUCTS.push({
-      id:p.id, name:p.name, desc:p.desc, price:Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0, cat:p.cat, prep:p.prep,
-      active:p.active, available:p.available, photo:productPhotos[0]||'', photos:productPhotos, variants:p.variants||[],
-      variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
-    });
-  });
-
   variantsSelectedProduct = null;
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  // Seules la couverture et les photos produits restent différées ; le logo
-  // est déjà disponible pour le premier rendu.
-  loadRestaurantPublicImagesFast(restaurantId);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
+  loadRestaurantPublicSecondaryData(restaurantId);
   return true;
+}
+
+async function loadRestaurantPublicSecondaryData(restaurantId){
+  try{
+    const {data:prods} = await supabaseClient.from('products').select(
+      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
+    ).eq('restaurant_id', restaurantId).order('created_at');
+
+    PRODUCTS.length = 0;
+    (prods||[]).forEach(p => {
+      PRODUCTS.push({
+        id:p.id, name:p.name, desc:p.desc, price:Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0, cat:p.cat, prep:p.prep,
+        active:p.active, available:p.available, photo:'', photos:[], variants:p.variants||[],
+        variantsRequired:!!p.variants_required, stock:p.stock, threshold:p.threshold
+      });
+    });
+
+    if(state.view === 'storefront'){
+      renderStorefrontHero();
+      renderProductSections();
+      updateFloatingCartButton();
+      renderStorefrontGateOverlay();
+    }
+
+    /* La couverture et les photos arrivent après les données de produits,
+       toujours sans bloquer le premier affichage. */
+    await loadRestaurantPublicImagesFast(restaurantId);
+  }catch(e){
+    console.warn('Chargement secondaire des produits du restaurant:', e);
+  }
 }
 
 async function loadRestaurantPublicImagesFast(restaurantId){
@@ -3484,7 +3506,6 @@ async function loadRestaurantPublicImagesFast(restaurantId){
       }
     });
 
-    // Update only the storefront after the public page is already visible.
     if(state.view === 'storefront'){
       renderStorefrontHero();
       renderProductSections();
@@ -3493,7 +3514,6 @@ async function loadRestaurantPublicImagesFast(restaurantId){
     console.warn('Chargement différé des images du restaurant:', e);
   }
 }
-
 
 /* Lien de restaurant qui ne correspond à rien de réel (mauvais slug,
    restaurant supprimé...). Remplace tout — y compris l'en-tête
@@ -5840,36 +5860,19 @@ async function createRestaurantFromOnboarding(){
   // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
   // on gère aussi le cas où PostgREST le renverrait dans un tableau
   // d'un élément, selon la version.
-  let restaurantRow = Array.isArray(data) ? data[0] : data;
+  const restaurantRow = Array.isArray(data) ? data[0] : data;
 
-  // Une RPC peut avoir créé le restaurant côté serveur alors que la réponse
-  // HTTP est vide, retardée ou revenue en erreur après l'écriture. Avant
-  // d'afficher un faux échec, on vérifie toujours la vraie base avec le
-  // compte actuellement authentifié et le slug choisi.
   if(error || !restaurantRow){
-    try{
-      const {data:confirmedRow,error:confirmError}=await supabaseClient
-        .from('restaurants')
-        .select('id,created_at,name,slug')
-        .eq('id', restaurantRow?.id || '')
-        .maybeSingle();
-      if(!confirmError && confirmedRow?.id) restaurantRow=confirmedRow;
-    }catch(e){}
-  }
-  if(error || !restaurantRow){
-    try{
-      const {data:confirmedRow,error:confirmError}=await supabaseClient
-        .from('restaurants')
-        .select('id,created_at,name,slug,owner_id')
-        .eq('owner_id',user.id)
-        .eq('slug',RESTAURANT.slug)
-        .maybeSingle();
-      if(!confirmError && confirmedRow?.id) restaurantRow=confirmedRow;
-    }catch(e){}
-  }
-
-  if(!restaurantRow){
-    // Le message d'échec n'apparaît qu'après une vérification réelle de la base.
+    // On ne prétend JAMAIS que la création a réussi si Supabase l'a
+    // refusée — pas de redirection vers le tableau de bord, pas de
+    // toast de succès qui écraserait visuellement ce message d'erreur.
+    // Le message affiché au client ne mentionne jamais "Supabase" —
+    // c'est un détail d'infrastructure interne, pas quelque chose que
+    // l'utilisateur a besoin de voir. Les fonctions RPC (comme
+    // create_my_restaurant) renvoient déjà des messages rédigés pour
+    // être lus directement par une personne (ex: "Ce compte a déjà un
+    // restaurant."), donc on les affiche tels quels plutôt que de les
+    // envelopper dans une phrase technique.
     RESTAURANT.created = false;
     toast(error ? supabaseErrorFr(error,"Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.") : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
     return null;
@@ -5983,23 +5986,6 @@ function validateStrongPassword(pw){
 }
 
 
-function showOnboardingCreateLoader(){
-  let el=document.getElementById('onboardingCreateLoader');
-  if(!el){
-    el=document.createElement('div');
-    el.id='onboardingCreateLoader';
-    el.setAttribute('aria-live','polite');
-    el.innerHTML=`<div style="width:30px;height:30px;border:3px solid rgba(43,24,16,.12);border-top-color:#c96a12;border-radius:50%;animation:icSpin .8s linear infinite;"></div><div style="margin-top:12px;font-size:12.5px;color:#8a7466;">Création de votre restaurant…</div>`;
-    Object.assign(el.style,{position:'fixed',inset:'0',zIndex:'99997',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'rgba(251,243,228,.94)',backdropFilter:'blur(2px)',WebkitBackdropFilter:'blur(2px)',textAlign:'center',padding:'24px'});
-    document.body.appendChild(el);
-  }else{
-    el.style.display='flex';
-  }
-}
-function hideOnboardingCreateLoader(){
-  const el=document.getElementById('onboardingCreateLoader');
-  if(el) el.style.display='none';
-}
 async function finishOnboarding(){
   if(obState.emailConfirmationPending){
     savePendingOnboarding();
@@ -6007,10 +5993,8 @@ async function finishOnboarding(){
     return;
   }
   const btn = document.getElementById('obFinishBtn');
-  showOnboardingCreateLoader();
   if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
   const row = await createRestaurantFromOnboarding();
-  hideOnboardingCreateLoader();
   if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
   if(!row) return;
 
