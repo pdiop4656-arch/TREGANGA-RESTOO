@@ -7406,7 +7406,7 @@ async function lancerRechercheDomaine(){
     const cacheRaw=localStorage.getItem('tg_domain_search_cache_'+query);
     const cache=cacheRaw ? JSON.parse(cacheRaw) : null;
     if(cache && Array.isArray(cache.results) && Date.now()-Number(cache.ts||0)<60000){
-      domainSearchResults=cache.results.slice(0,5).map((r,i)=>({...r,_i:i}));
+      domainSearchResults=cache.results.map((r,i)=>({...r,_i:i}));
     }
   }catch(e){}
 
@@ -7417,66 +7417,88 @@ async function lancerRechercheDomaine(){
   }
 
   try{
-    /* Une seule requête réseau au premier lot : 5 résultats affichés
-       immédiatement. Aucun enchaînement de lots n'est lancé sur la recherche
-       normale, ce qui évite les attentes cumulées et les appels Edge inutiles. */
-    let tlds=null;
-    const body={
-      action:'search',
-      operation:'search',
-      query,
-      search:query,
-      domain:query,
-      restaurant_id:RESTAURANT.id,
-      batch:0,
-      limit:5
+    const seen=new Set(domainSearchResults.map(r=>String(r?.domain||'').toLowerCase()).filter(Boolean));
+    let batch=0;
+    let hasMore=true;
+    let firstVisibleBatch=!domainSearchResults.length;
+
+    const fetchDomainBatch=async(batchIndex)=>{
+      const body={
+        action:'search',
+        operation:'search',
+        query,
+        search:query,
+        domain:query,
+        restaurant_id:RESTAURANT.id,
+        batch:batchIndex,
+        limit:5
+      };
+      try{
+        return await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,body);
+      }catch(firstError){
+        return await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{
+          action:'search',
+          query,
+          restaurant_id:RESTAURANT.id,
+          batch:batchIndex,
+          limit:5
+        });
+      }
     };
 
-    let data;
-    try{
-      data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,body);
-    }catch(firstError){
-      /* Compatibilité : certains déploiements de la fonction n'acceptent
-         que le payload minimal. Un seul second essai est effectué uniquement
-         si le premier appel échoue. */
-      data=await appelerFonctionDomaine(DOMAIN_EDGE_SEARCH,{
-        action:'search',
-        query,
-        restaurant_id:RESTAURANT.id,
-        limit:5
-      });
+    const appendBatch=async(batchIndex)=>{
+      const data=await fetchDomainBatch(batchIndex);
+      const rows=extractDomainRows(data);
+      const fresh=[];
+      for(const row of rows){
+        const key=String(row?.domain||'').toLowerCase();
+        if(!key || seen.has(key)) continue;
+        seen.add(key);
+        fresh.push(row);
+        if(fresh.length>=5) break;
+      }
+
+      if(fresh.length){
+        const previousCount=domainSearchResults.length;
+        domainSearchResults.push(...fresh.map((r,i)=>({...r,_i:previousCount+i})));
+        renderDomainSearchResults();
+        try{
+          localStorage.setItem(
+            'tg_domain_search_cache_'+query,
+            JSON.stringify({ts:Date.now(),results:domainSearchResults})
+          );
+        }catch(e){}
+      }
+
+      hasMore = fresh.length===5;
+      return fresh.length;
+    };
+
+    /* Premier bloc : 5 domaines visibles immédiatement. */
+    if(firstVisibleBatch){
+      const firstCount=await appendBatch(0);
+      if(!firstCount){
+        if(box) box.innerHTML='<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
+        toast('Aucun domaine disponible pour cette recherche.');
+        hasMore=false;
+      }
+    }else{
+      /* Le cache est affiché immédiatement ; on reprend au bloc suivant. */
+      batch=Math.max(0,Math.ceil(domainSearchResults.length/5));
+      hasMore=true;
     }
 
-    if(Array.isArray(data?.tlds) && data.tlds.length) tlds=data.tlds;
-
-    const rows=extractDomainRows(data);
-    const seen=new Set();
-    const fresh=[];
-    for(const row of rows){
-      const key=String(row?.domain||'').toLowerCase();
-      if(!key || seen.has(key)) continue;
-      seen.add(key);
-      fresh.push(row);
-      if(fresh.length>=5) break;
+    /* Précharge automatiquement le bloc suivant pendant que l'utilisateur
+       consulte le précédent. Chaque bloc reste limité à 5 domaines. */
+    while(hasMore){
+      if(firstVisibleBatch) firstVisibleBatch=false;
+      else batch += 1;
+      const count=await appendBatch(batch);
+      if(count<5) break;
+      await new Promise(resolve=>setTimeout(resolve,0));
     }
-
-    if(fresh.length){
-      domainSearchResults=fresh.map((r,i)=>({...r,_i:i}));
-      renderDomainSearchResults();
-      try{
-        localStorage.setItem(
-          'tg_domain_search_cache_'+query,
-          JSON.stringify({ts:Date.now(),results:fresh})
-        );
-      }catch(e){}
-    }else if(!domainSearchResults.length){
-      if(box) box.innerHTML='<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
-      toast('Aucun domaine disponible pour cette recherche.');
-    }
-
   }catch(e){
     console.error('recherche-domaines:',e);
-
     if(domainSearchResults.length){
       renderDomainSearchResults();
     }else{
@@ -7487,7 +7509,6 @@ async function lancerRechercheDomaine(){
     domainSearchBusy=false;
   }
 }
-
 
 function purchaseDomainByIndex(index){
   const row=domainSearchResults[Number(index)];
