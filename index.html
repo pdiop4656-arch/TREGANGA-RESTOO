@@ -5844,21 +5844,37 @@ async function createRestaurantFromOnboarding(){
   // La RPC renvoie un objet unique (type composite, pas SETOF) — mais
   // on gère aussi le cas où PostgREST le renverrait dans un tableau
   // d'un élément, selon la version.
-  const restaurantRow = Array.isArray(data) ? data[0] : data;
+  let restaurantRow = Array.isArray(data) ? data[0] : data;
+
+  // Certaines versions de la fonction RPC peuvent confirmer l'insertion
+  // sans renvoyer directement la ligne créée. Dans ce cas, on récupère
+  // immédiatement la ligne réellement créée avec l'utilisateur connecté
+  // et le slug choisi. Cela évite de considérer une création réussie
+  // comme un échec simplement parce que la réponse RPC est vide.
+  if(!error && !restaurantRow){
+    // La réponse de la RPC peut arriver sans le payload de la ligne alors
+    // que l'insertion vient juste d'être validée. On attend uniquement la
+    // confirmation réelle de cette même ligne, sans quitter l'écran de
+    // création ni afficher une fausse erreur pendant ce court intervalle.
+    for(let check=0; check<6 && !restaurantRow; check++){
+      if(check>0) await new Promise(resolve=>setTimeout(resolve,500));
+      const {data:createdRow,error:createdRowError} = await supabaseClient
+        .from('restaurants')
+        .select('id,created_at,name,slug,type,primary_color,secondary_color,text_color,address,city,phone,hours,delivery,social,is_published')
+        .eq('owner_id', user.id)
+        .eq('slug', RESTAURANT.slug)
+        .maybeSingle();
+      if(!createdRowError && createdRow?.id) restaurantRow = createdRow;
+    }
+  }
 
   if(error || !restaurantRow){
-    // On ne prétend JAMAIS que la création a réussi si Supabase l'a
-    // refusée — pas de redirection vers le tableau de bord, pas de
-    // toast de succès qui écraserait visuellement ce message d'erreur.
-    // Le message affiché au client ne mentionne jamais "Supabase" —
-    // c'est un détail d'infrastructure interne, pas quelque chose que
-    // l'utilisateur a besoin de voir. Les fonctions RPC (comme
-    // create_my_restaurant) renvoient déjà des messages rédigés pour
-    // être lus directement par une personne (ex: "Ce compte a déjà un
-    // restaurant."), donc on les affiche tels quels plutôt que de les
-    // envelopper dans une phrase technique.
     RESTAURANT.created = false;
-    toast(error ? supabaseErrorFr(error,"Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.") : "Le restaurant n'a pas pu être enregistré. Réessayez dans un instant.");
+    if(error){
+      toast(supabaseErrorFr(error,"Le restaurant n'a pas pu être enregistré. Réessayez dans un instant."));
+    }else{
+      toast("La création n'a pas encore été confirmée. Gardez cette page ouverte et réessayez dans un instant.");
+    }
     return null;
   }
 
@@ -5982,9 +5998,12 @@ async function finishOnboarding(){
   const btn = document.getElementById('obFinishBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
   const row = await createRestaurantFromOnboarding();
-  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
-  if(!row) return;
+  if(!row){
+    if(btn){ btn.disabled = false; btn.textContent = 'Créer mon restaurant'; }
+    return;
+  }
 
+  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
   clearPendingOnboarding();
   hideRestoSplash();
   hideAuthCheckSplash();
