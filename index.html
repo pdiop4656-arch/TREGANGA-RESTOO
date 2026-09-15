@@ -7438,6 +7438,9 @@ async function lancerRechercheDomaine(){
     let batch=0;
     let hasMore=true;
     let firstVisibleBatch=!domainSearchResults.length;
+    let pendingDomainRows=[];
+    let currentBackendHasMore=false;
+    let currentBackendNextBatch=null;
 
     const fetchDomainBatch=async(batchIndex)=>{
       const body={
@@ -7464,17 +7467,22 @@ async function lancerRechercheDomaine(){
     };
 
     const appendBatch=async(batchIndex)=>{
-      const data=await fetchDomainBatch(batchIndex);
-      const rows=extractDomainRows(data);
-      const fresh=[];
-      for(const row of rows){
-        const key=String(row?.domain||'').toLowerCase();
-        if(!key || seen.has(key)) continue;
-        seen.add(key);
-        fresh.push(row);
-        if(fresh.length>=5) break;
+      if(!pendingDomainRows.length){
+        const data=await fetchDomainBatch(batchIndex);
+        const rows=extractDomainRows(data);
+        const fresh=[];
+        for(const row of rows){
+          const key=String(row?.domain||'').toLowerCase();
+          if(!key || seen.has(key)) continue;
+          seen.add(key);
+          fresh.push(row);
+        }
+        pendingDomainRows.push(...fresh);
+        currentBackendHasMore=data?.has_more === true;
+        currentBackendNextBatch=Number.isFinite(Number(data?.next_batch)) ? Number(data.next_batch) : null;
       }
 
+      const fresh=pendingDomainRows.splice(0,5);
       if(fresh.length){
         const previousCount=domainSearchResults.length;
         domainSearchResults.push(...fresh.map((r,i)=>({...r,_i:previousCount+i})));
@@ -7487,18 +7495,24 @@ async function lancerRechercheDomaine(){
         }catch(e){}
       }
 
-      hasMore = fresh.length===5;
-      return fresh.length;
+      const continueCurrentBatch=pendingDomainRows.length>0;
+      return {
+        count:fresh.length,
+        hasMore:continueCurrentBatch || currentBackendHasMore,
+        nextBatch:continueCurrentBatch ? batchIndex : currentBackendNextBatch,
+      };
     };
 
     /* Premier bloc : 5 domaines visibles immédiatement. */
     if(firstVisibleBatch){
-      const firstCount=await appendBatch(0);
-      if(!firstCount){
+      const firstResult=await appendBatch(0);
+      hasMore=firstResult.hasMore;
+      if(!firstResult.count && !hasMore){
         if(box) box.innerHTML='<p style="font-size:12.5px;color:rgba(255,255,255,.70);">Aucun domaine disponible pour cette recherche.</p>';
         toast('Aucun domaine disponible pour cette recherche.');
         hasMore=false;
       }
+      if(hasMore && firstResult.nextBatch !== null) batch=firstResult.nextBatch;
     }else{
       /* Le cache est affiché immédiatement ; on reprend au bloc suivant. */
       batch=Math.max(0,Math.ceil(domainSearchResults.length/5));
@@ -7508,12 +7522,11 @@ async function lancerRechercheDomaine(){
     /* Précharge automatiquement le bloc suivant pendant que l'utilisateur
        consulte le précédent. Chaque bloc reste limité à 5 domaines. */
     while(hasMore){
-      if(firstVisibleBatch) firstVisibleBatch=false;
-      else batch += 1;
-      const count=await appendBatch(batch);
-      if(count<5) break;
-      await new Promise(resolve=>setTimeout(resolve,0));
+      const result=await appendBatch(batch);
+      hasMore=result.hasMore;
+      if(hasMore && result.nextBatch !== null) batch=result.nextBatch;
     }
+
   }catch(e){
     console.error('recherche-domaines:',e);
     if(domainSearchResults.length){
