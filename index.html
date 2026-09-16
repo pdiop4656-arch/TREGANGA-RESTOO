@@ -3763,14 +3763,8 @@ function setLoginTab(tab){
       <input class="field-input" id="inviteEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
       <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
-      <label class="field-label">Choisissez un mot de passe</label>
-      <div style="position:relative;">
-        <input class="field-input" id="invitePasswordInput" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'invitePwStrength')">
-        <button type="button" onclick="togglePasswordVisibility('invitePasswordInput',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
-      </div>
-      <div id="invitePwStrength" style="margin-bottom:16px;"></div>
       <button id="inviteSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Ce mot de passe crée votre compte TerangaResto (ou vous y connecte s'il existe déjà).</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Votre e-mail et votre code sont vérifiés de manière sécurisée avant l'accès à l'espace invité.</p>`;
   }
   hydrateIcons(body);
 }
@@ -3953,82 +3947,65 @@ async function submitLogin(){
 }
 
 async function submitInviteAccept(){
-  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
-  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-  const password = document.getElementById('invitePasswordInput').value;
-  if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
-  const invitePwValidation = validateStrongPassword(password);
-  if(invitePwValidation){ toast(invitePwValidation); return; }
+  const email = document.getElementById('inviteEmail')?.value.trim().toLowerCase() || '';
+  const code = document.getElementById('inviteCode')?.value.trim().toUpperCase() || '';
+  if(!email || !code){
+    toast('Complétez l’e-mail et le code d’invitation.');
+    return;
+  }
 
   setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
 
-  // Vérification e-mail + code via une fonction dédiée (RPC) : la
-  // personne n'a pas encore de compte, donc pas de session permettant
-  // à RLS de l'identifier — voir find_staff_invite dans supabase_schema.sql.
-  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
-  const match = (matchRows && matchRows[0]) || null;
-  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast("E-mail ou code d'invitation incorrect."); return; }
-  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
-  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
-
-  // Compte du membre du personnel : on tente une inscription, et si
-  // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
-  let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
-  if(signErr || !signData?.user || !signData?.session){
-    const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){
-      setLoginVerifying(false,'inviteSubmitBtn');
-      toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant ou compte non confirmé.'));
-      return;
-    }
-    signData = inData;
-  }
-  if(!signData?.session || !signData?.user){
-    setLoginVerifying(false,'inviteSubmitBtn');
-    toast('Impossible d’authentifier votre compte avec ces identifiants.');
-    return;
-  }
-  currentUser = signData.user;
-
-  // Acceptation réelle (RPC accept_staff_invite) : le statut passe à
-  // Actif (ce code ne pourra plus jamais être réutilisé) et le compte
-  // est lié à cette ligne "staff" — le rôle + les permissions EXACTES
-  // choisies par l'administrateur pour CETTE invitation sont conservés,
-  // jamais les permissions par défaut d'un autre rôle.
-  const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
-  const accepted = (acceptRows && acceptRows[0]) || match;
-  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de finaliser l’acceptation : ' + supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.')); return; }
-
-  // Même règle ici : aucun tableau de bord intermédiaire n'est affiché.
-  // Le compte est authentifié, mais l'espace réel n'apparaît qu'après
-  // chargement complet du restaurant concerné.
-  const access = await resolveRealAccess(accepted.restaurant_id);
-  if(!access || access.kind !== 'staff'){
-    setLoginVerifying(false,'inviteSubmitBtn');
-    toast('Invitation acceptée, mais l’accès personnel n’a pas pu être confirmé.');
-    return;
-  }
-  viewerIsStaff = true;
-  state.dashSection = requestedDashSection() || firstAllowedSection();
   try{
-    await loadRestaurantCore(accepted.restaurant_id,true);
+    const {data:result, error:functionError} = await supabaseClient.functions.invoke('accept-staff-invite', {
+      body:{ email, code }
+    });
+
+    if(functionError){
+      throw functionError;
+    }
+
+    if(!result?.session?.access_token || !result?.session?.refresh_token || !result?.restaurant_id){
+      throw new Error('Réponse d’acceptation incomplète.');
+    }
+
+    const {data:sessionData, error:sessionError} = await supabaseClient.auth.setSession({
+      access_token: result.session.access_token,
+      refresh_token: result.session.refresh_token
+    });
+
+    if(sessionError || !sessionData?.session?.user){
+      throw sessionError || new Error('La session invitée n’a pas pu être établie.');
+    }
+
+    currentUser = sessionData.session.user;
     viewerIsStaff = true;
-    setLoginVerifying(false,'inviteSubmitBtn');
+
+    // Relecture obligatoire depuis Supabase après authentification :
+    // restaurant_id, rôle et permissions ne viennent jamais du navigateur.
+    const access = await resolveRealAccess(result.restaurant_id);
+    if(!access || access.kind !== 'staff'){
+      await signOutSupabase();
+      throw new Error('L’accès personnel associé à cette invitation n’a pas pu être confirmé.');
+    }
+
+    state.dashSection = firstAllowedSection();
+
+    await loadRestaurantCore(access.restaurantId, true);
+    setLoginVerifying(false, 'inviteSubmitBtn');
     closeLogin();
     hideRestoSplash();
     hideAuthCheckSplash();
     setView('dashboard');
-    setDashSection(requestedDashSection() || 'overview');
-    toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
-    loadRestaurantSecondaryData(accepted.restaurant_id);
+    setDashSection(firstAllowedSection());
+    try{ localStorage.setItem('tg_last_restaurant_' + String(currentUser.id), String(access.restaurantId)); }catch(e){}
+    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+    loadRestaurantSecondaryData(access.restaurantId);
+    toast(`Invitation acceptée — bienvenue, accès ${access.role}.`);
   }catch(e){
-    console.error('Invitation — chargement du restaurant:', e);
-    viewerIsStaff = false;
-    const el = document.getElementById('dashContent');
-    if(el){
-      el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('alertTriangle',28,{stroke:'var(--terracotta)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Impossible de charger votre espace</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Vérifiez votre connexion Internet puis réessayez.</p></div>`;
-      hydrateIcons(el);
-    }
+    console.error('Acceptation invitation:', e);
+    setLoginVerifying(false, 'inviteSubmitBtn');
+    toast(supabaseErrorFr(e, 'E-mail ou code d’invitation incorrect.'));
   }
 }
 
@@ -4369,19 +4346,21 @@ function firstAllowedSection(){
   return list[0];
 }
 async function setSimulatedRole(role, permissions){
-  // Un compte staff ne peut jamais choisir son rôle depuis le client.
-  // Relecture de l'accès réel depuis Supabase avant toute modification.
-  if(viewerIsStaff && RESTAURANT.id){
-    const access = await resolveRealAccess(RESTAURANT.id);
+  // Un compte staff ne peut jamais choisir, réinitialiser ou simuler son rôle depuis le client.
+  // Relecture obligatoire de l'accès réel depuis Supabase avant toute modification.
+  if(viewerIsStaff || realAccessKind === 'staff'){
+    const access = RESTAURANT.id ? await resolveRealAccess(RESTAURANT.id) : null;
     if(access?.kind === 'staff'){
       simulatedRole = access.role;
       simulatedPermissions = access.permissions.slice();
       renderDashNav();
       renderRoleSimBanner();
       if(state.view === 'dashboard') setDashSection(firstAllowedSection());
-      toast(`Votre rôle ${access.role} est verrouillé par votre accès personnel.`, false);
       return;
     }
+    simulatedRole = null;
+    simulatedPermissions = null;
+    return;
   }
   simulatedRole = role || null;
   simulatedPermissions = role ? (permissions || null) : null;
@@ -9122,12 +9101,6 @@ function dashStaff(){
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Personnel</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">Invitez des membres de votre équipe et définissez précisément ce qu'ils peuvent voir.</p>
-  <div class="card" style="padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-    ${ic('info',14,{stroke:'var(--ink-faint)'})}
-    <span style="font-size:11.5px;color:var(--ink-faint);">Démo — aucun e-mail réel n'est envoyé ici. Aperçu par rôle :</span>
-    ${STAFF_ROLES.filter(r=>r!=='Administrateur').map(r=>`<button class="btn btn-outline btn-sm" onclick="setSimulatedRole('${r}')">${r}</button>`).join('')}
-  </div>
-
   <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
     <p style="font-size:13px;font-weight:600;margin-bottom:10px;">${ic('plus',14)} Inviter une personne</p>
     <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
