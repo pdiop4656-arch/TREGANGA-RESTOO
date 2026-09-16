@@ -3579,6 +3579,8 @@ async function restoreSession(){
         try{
           const ok = await loadRestaurantCore(rid,true);
           if(ok){
+            const access = await resolveRealAccess(rid);
+            if(access){
             hideAuthCheckSplash();
             hideRestoSplash();
             setView('dashboard');
@@ -3586,6 +3588,7 @@ async function restoreSession(){
             if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
             loadRestaurantSecondaryData(rid);
             return;
+            }
           }
         }catch(e){
           console.warn('Chargement direct du restaurant mémorisé:', e);
@@ -3598,6 +3601,12 @@ async function restoreSession(){
       if(rid){
         try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
         await loadRestaurantCore(rid,true);
+        const access = await resolveRealAccess(rid);
+        if(!access){
+          viewerIsStaff = false;
+          setView('landing');
+          return;
+        }
         hideAuthCheckSplash();
         hideRestoSplash();
         setView('dashboard');
@@ -3881,7 +3890,6 @@ async function submitLogin(){
   if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
 
   currentUser = data.user;
-  simulatedRole = null;
   const desiredSection = requestedDashSection() || 'overview';
   const lastRidKey = 'tg_last_restaurant_' + String(data.user.id);
   let rid = null;
@@ -3897,6 +3905,8 @@ async function submitLogin(){
     if(rid){
       const ok = await loadRestaurantCore(rid,true);
       if(ok){
+        const access = await resolveRealAccess(rid);
+        if(access){
         setLoginVerifying(false);
         closeLogin();
         hideRestoSplash();
@@ -3906,6 +3916,7 @@ async function submitLogin(){
         if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
         loadRestaurantSecondaryData(rid);
         return;
+        }
       }
     }
 
@@ -3921,6 +3932,7 @@ async function submitLogin(){
 
     try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
     await loadRestaurantCore(rid,true);
+    await resolveRealAccess(rid);
     setLoginVerifying(false);
     closeLogin();
     hideRestoSplash();
@@ -3962,10 +3974,19 @@ async function submitInviteAccept(){
   // Compte du membre du personnel : on tente une inscription, et si
   // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
   let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
-  if(signErr){
+  if(signErr || !signData?.user || !signData?.session){
     const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant.')); return; }
+    if(inErr){
+      setLoginVerifying(false,'inviteSubmitBtn');
+      toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant ou compte non confirmé.'));
+      return;
+    }
     signData = inData;
+  }
+  if(!signData?.session || !signData?.user){
+    setLoginVerifying(false,'inviteSubmitBtn');
+    toast('Impossible d’authentifier votre compte avec ces identifiants.');
+    return;
   }
   currentUser = signData.user;
 
@@ -3981,8 +4002,14 @@ async function submitInviteAccept(){
   // Même règle ici : aucun tableau de bord intermédiaire n'est affiché.
   // Le compte est authentifié, mais l'espace réel n'apparaît qu'après
   // chargement complet du restaurant concerné.
-  setSimulatedRole(accepted.role, accepted.permissions);
-  state.dashSection = requestedDashSection() || 'overview';
+  const access = await resolveRealAccess(accepted.restaurant_id);
+  if(!access || access.kind !== 'staff'){
+    setLoginVerifying(false,'inviteSubmitBtn');
+    toast('Invitation acceptée, mais l’accès personnel n’a pas pu être confirmé.');
+    return;
+  }
+  viewerIsStaff = true;
+  state.dashSection = requestedDashSection() || firstAllowedSection();
   try{
     await loadRestaurantCore(accepted.restaurant_id,true);
     viewerIsStaff = true;
@@ -4275,19 +4302,87 @@ const ROLE_SECTIONS = {
   'Cuisine': ['orders'],
 };
 let simulatedRole = null; // null = Administrateur (propriétaire), sinon un des STAFF_ROLES
-let simulatedPermissions = null; // liste de sections spécifique à LA personne (si personnalisée à l'invitation), sinon null = utilise les sections par défaut du rôle
+let simulatedPermissions = null; // permissions réellement associées au rôle affiché
+let realAccessRole = 'Administrateur';
+let realAccessPermissions = null;
+let realAccessKind = 'owner'; // 'owner' ou 'staff' — déterminé depuis Supabase
+
+async function resolveRealAccess(restaurantId){
+  const userId = (await supabaseClient.auth.getUser()).data?.user?.id;
+  if(!userId || !restaurantId) return null;
+
+  const {data:staffRow, error:staffErr} = await supabaseClient
+    .from('staff')
+    .select('restaurant_id,role,permissions,status,user_id')
+    .eq('restaurant_id', restaurantId)
+    .eq('user_id', userId)
+    .eq('status', 'Actif')
+    .maybeSingle();
+
+  if(!staffErr && staffRow){
+    realAccessKind = 'staff';
+    realAccessRole = staffRow.role || 'Caissier';
+    realAccessPermissions = Array.isArray(staffRow.permissions) && staffRow.permissions.length
+      ? staffRow.permissions.slice()
+      : (ROLE_SECTIONS[realAccessRole] || ['orders']).slice();
+    simulatedRole = realAccessRole;
+    simulatedPermissions = realAccessPermissions.slice();
+    return {kind:'staff', role:realAccessRole, permissions:realAccessPermissions.slice(), restaurantId};
+  }
+
+  const {data:ownerRow, error:ownerErr} = await supabaseClient
+    .from('restaurants')
+    .select('owner_id')
+    .eq('id', restaurantId)
+    .maybeSingle();
+
+  if(!ownerErr && ownerRow?.owner_id === userId){
+    realAccessKind = 'owner';
+    realAccessRole = 'Administrateur';
+    realAccessPermissions = null;
+    simulatedRole = null;
+    simulatedPermissions = null;
+    return {kind:'owner', role:'Administrateur', permissions:null, restaurantId};
+  }
+
+  realAccessKind = null;
+  realAccessRole = null;
+  realAccessPermissions = null;
+  simulatedRole = null;
+  simulatedPermissions = null;
+  return null;
+}
 
 function canSeeSection(key){
+  if(realAccessKind === 'staff'){
+    const perms = realAccessPermissions || ROLE_SECTIONS[realAccessRole] || [];
+    return perms.includes(key);
+  }
   if(!simulatedRole) return true;
   if(simulatedPermissions) return simulatedPermissions.includes(key);
   return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
 }
 function firstAllowedSection(){
+  if(realAccessKind === 'staff') return (realAccessPermissions || ROLE_SECTIONS[realAccessRole] || ['orders'])[0];
   if(!simulatedRole) return 'overview';
   const list = simulatedPermissions || ROLE_SECTIONS[simulatedRole] || ['orders'];
   return list[0];
 }
-function setSimulatedRole(role, permissions){
+async function setSimulatedRole(role, permissions){
+  // Un compte staff ne peut jamais choisir son rôle depuis le client.
+  // Relecture de l'accès réel depuis Supabase avant toute modification.
+  if(viewerIsStaff && RESTAURANT.id){
+    const access = await resolveRealAccess(RESTAURANT.id);
+    if(access?.kind === 'staff'){
+      simulatedRole = access.role;
+      simulatedPermissions = access.permissions.slice();
+      renderDashNav();
+      renderRoleSimBanner();
+      if(state.view === 'dashboard') setDashSection(firstAllowedSection());
+      toast(`Votre rôle ${access.role} est verrouillé par votre accès personnel.`, false);
+      return;
+    }
+  }
   simulatedRole = role || null;
   simulatedPermissions = role ? (permissions || null) : null;
   toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
@@ -4299,11 +4394,7 @@ function setSimulatedRole(role, permissions){
 function renderRoleSimBanner(){
   const el = document.getElementById('roleSimBanner');
   if(!el) return;
-  el.innerHTML = simulatedRole ? `<div style="background:rgba(232,135,30,.12);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-    ${ic('userGroup',15)}Aperçu — vous visualisez le tableau de bord comme <b>${simulatedRole}</b>, avec ses permissions réelles.
-    <a href="#" onclick="setSimulatedRole(null);return false;" style="text-decoration:underline;font-weight:600;margin-left:auto;">Revenir à Administrateur</a>
-  </div>` : '';
-  hydrateIcons(el);
+  el.innerHTML = '';
 }
 
 let dashPeriod = 'today';
@@ -5046,7 +5137,6 @@ async function saveRecoveredPassword(){
   }
 
   currentUser=sessionAfterUpdate.session.user||currentUser;
-  simulatedRole=null;
   viewerIsStaff=true;
   const desiredSection=requestedDashSection()||'overview';
   state.dashSection=desiredSection;
@@ -5070,7 +5160,8 @@ async function saveRecoveredPassword(){
 
     try{ localStorage.setItem(lastRidKey,String(rid)); }catch(e){}
     if(!restaurantLoaded) restaurantLoaded=await loadRestaurantCore(rid,true);
-    if(!restaurantLoaded){
+    const access = restaurantLoaded ? await resolveRealAccess(rid) : null;
+    if(!restaurantLoaded || !access){
       viewerIsStaff=false;
       if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
       toast('Mot de passe modifié, mais votre restaurant est impossible à charger.');
@@ -7388,6 +7479,10 @@ function markNotifsSeen(){
 }
 async function logoutDashboard(){
   simulatedRole = null;
+  simulatedPermissions = null;
+  realAccessKind = 'owner';
+  realAccessRole = 'Administrateur';
+  realAccessPermissions = null;
   await signOutSupabase();
   unsubscribeOrdersRealtime();
   unsubscribeReviewsRealtime();
@@ -9030,7 +9125,7 @@ function dashStaff(){
   <div class="card" style="padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     ${ic('info',14,{stroke:'var(--ink-faint)'})}
     <span style="font-size:11.5px;color:var(--ink-faint);">Démo — aucun e-mail réel n'est envoyé ici. Aperçu par rôle :</span>
-    ${STAFF_ROLES.map(r=>`<button class="btn btn-outline btn-sm" onclick="setSimulatedRole('${r}')">${r}</button>`).join('')}
+    ${STAFF_ROLES.filter(r=>r!=='Administrateur').map(r=>`<button class="btn btn-outline btn-sm" onclick="setSimulatedRole('${r}')">${r}</button>`).join('')}
   </div>
 
   <div class="card" style="padding:16px;max-width:680px;margin-bottom:20px;">
