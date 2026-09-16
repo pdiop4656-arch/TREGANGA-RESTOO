@@ -2192,6 +2192,18 @@ const RESTAURANT_SUBDOMAIN_BASE = "https://terangaresto.com";
 function getPublicSiteOrigin(){
   return /(^|\.)terangaresto\.com$/i.test(location.hostname) ? PRODUCTION_SITE_ORIGIN : location.origin;
 }
+/* Auth e-mail callback : point d'entrée unique sur le domaine public officiel. */
+function getAuthRedirectUrl(){
+  return PRODUCTION_SITE_ORIGIN + '/';
+}
+function logAuthError(step, fn, error, email=''){
+  if(!error) return;
+  console.error('[TerangaResto][Supabase Auth]', {
+    step, function:fn, email:email || '',
+    code:error?.code ?? null, message:error?.message ?? String(error),
+    status:error?.status ?? null, name:error?.name ?? null
+  });
+}
 function publicRestaurantUrl(slug){
   const custom = (typeof RESTAURANT !== 'undefined' && RESTAURANT.social && RESTAURANT.social.custom_domain_status==='active')
     ? String(RESTAURANT.social.custom_domain || '').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'')
@@ -3545,41 +3557,29 @@ function renderRestaurantNotFound(){
 async function resolveCurrentAccess(p_knownUserId){
   let user;
   if(p_knownUserId){
-    user = {id: p_knownUserId};
-  } else {
-    const { data: userData } = await supabaseClient.auth.getUser();
-    user = userData ? userData.user : null;
-    if(user) currentUser = user;
+    user={id:p_knownUserId};
+  }else{
+    const {data:userData,error:userError}=await supabaseClient.auth.getUser();
+    if(userError){ logAuthError('resolveCurrentAccess:getUser','auth.getUser',userError,''); return null; }
+    user=userData?userData.user:null;
+    if(user) currentUser=user;
   }
   if(!user) return null;
 
-  const [{data:owned}, {data:staffRow}] = await Promise.all([
-    supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle(),
-    supabaseClient.from('staff').select('id,restaurant_id,name,email,role,permissions,status').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle(),
+  const [ownerResult,staffResult]=await Promise.all([
+    supabaseClient.from('restaurants').select('id').eq('owner_id',user.id).limit(1).maybeSingle(),
+    supabaseClient.from('staff').select('id,restaurant_id,name,email,role,permissions,status').eq('user_id',user.id).eq('status','Actif').limit(1).maybeSingle(),
   ]);
+  if(ownerResult.error) console.error('[TerangaResto][Access]',{function:'resolveCurrentAccess',step:'owner_lookup',userId:user.id,code:ownerResult.error.code??null,message:ownerResult.error.message??String(ownerResult.error),status:ownerResult.error.status??null});
+  if(staffResult.error) console.error('[TerangaResto][Access]',{function:'resolveCurrentAccess',step:'staff_lookup',userId:user.id,code:staffResult.error.code??null,message:staffResult.error.message??String(staffResult.error),status:staffResult.error.status??null});
 
-  if(owned){
-    return {
-      kind:'owner',
-      restaurantId:owned.id,
-      role:'Administrateur',
-      permissions:null,
-      staffId:null,
-    };
+  if(ownerResult.data){
+    return {kind:'owner',restaurantId:ownerResult.data.id,role:'Administrateur',permissions:null,staffId:null};
   }
-
-  if(staffRow){
-    return {
-      kind:'staff',
-      restaurantId:staffRow.restaurant_id,
-      role:staffRow.role || 'Caissier',
-      permissions:Array.isArray(staffRow.permissions) ? staffRow.permissions : (Array.isArray(staffRow.permissions?.sections) ? staffRow.permissions.sections : null),
-      staffId:staffRow.id,
-      name:staffRow.name,
-      email:staffRow.email,
-    };
+  if(staffResult.data){
+    const s=staffResult.data;
+    return {kind:'staff',restaurantId:s.restaurant_id,role:s.role||'Caissier',permissions:Array.isArray(s.permissions)?s.permissions:(Array.isArray(s.permissions?.sections)?s.permissions.sections:null),staffId:s.id,name:s.name,email:s.email};
   }
-
   return null;
 }
 
@@ -3597,7 +3597,8 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    const {data:{session}} = await supabaseClient.auth.getSession();
+    const {data:{session},error:sessionError} = await supabaseClient.auth.getSession();
+    if(sessionError){ logAuthError('restoreSession:getSession','auth.getSession',sessionError,''); }
     currentUser = session ? session.user : null;
 
     if(currentUser){
@@ -3832,7 +3833,7 @@ async function submitSignup(){
       password,
       options:{
         data:{name},
-        emailRedirectTo:getPublicSiteOrigin()
+        emailRedirectTo:getAuthRedirectUrl()
       }
     });
 
@@ -3842,6 +3843,7 @@ async function submitSignup(){
          data.user.identities.length === 0);
 
     if(error || signupAlreadyExists){
+      if(error) logAuthError('signupSubmit:signUp','auth.signUp',error,email);
       setLoginVerifying(false, 'signupSubmitBtn');
       toast(
         signupAlreadyExists
@@ -3901,7 +3903,7 @@ async function submitLogin(){
   if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
   setLoginVerifying(true);
   const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
+  if(error){ logAuthError('submitLogin:signInWithPassword','auth.signInWithPassword',error,email); setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
 
   currentUser = data.user;
   const access=await resolveCurrentAccess(data.user.id);
@@ -3956,138 +3958,103 @@ function readPendingStaffInvite(){
     if(!raw) return null;
     const data=JSON.parse(raw);
     if(!data?.email || !data?.code) return null;
-    if(data.expiresAt && Date.now()>Number(data.expiresAt)) return null;
+    if(data.expiresAt && Date.now()>Number(data.expiresAt)){ localStorage.removeItem('tg_pending_staff_invite'); return null; }
     return data;
-  }catch(e){ return null; }
+  }catch(e){ console.error('[TerangaResto][Invitation]',{function:'readPendingStaffInvite',step:'local_read',message:e?.message||String(e)}); return null; }
 }
 function savePendingStaffInvite(data){
-  try{ localStorage.setItem('tg_pending_staff_invite',JSON.stringify(data)); }catch(e){}
+  try{ localStorage.setItem('tg_pending_staff_invite',JSON.stringify(data)); return true; }
+  catch(e){ console.error('[TerangaResto][Invitation]',{function:'savePendingStaffInvite',step:'local_save',message:e?.message||String(e)}); return false; }
 }
-function clearPendingStaffInvite(){
-  try{ localStorage.removeItem('tg_pending_staff_invite'); }catch(e){}
-}
+function clearPendingStaffInvite(){ try{ localStorage.removeItem('tg_pending_staff_invite'); }catch(e){} }
 
 async function finalizePendingStaffInvite(){
   if(pendingStaffInviteBusy) return false;
   const pending=readPendingStaffInvite();
   if(!pending) return false;
   pendingStaffInviteBusy=true;
+  const email=String(pending.email||'').toLowerCase();
   try{
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    if(!session?.user?.email || session.user.email.toLowerCase()!==String(pending.email).toLowerCase()){
-      clearPendingStaffInvite();
+    const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+    if(sessionError){ logAuthError('finalizePendingStaffInvite:getSession','auth.getSession',sessionError,email); return false; }
+    if(!session?.user?.email) return false;
+    if(session.user.email.toLowerCase()!==email){
+      console.error('[TerangaResto][Invitation]',{function:'finalizePendingStaffInvite',step:'session_identity_mismatch',invitationEmail:email,sessionEmail:session.user.email});
+      toast('Cette invitation correspond à une autre adresse e-mail que celle de la session actuellement ouverte.');
       return false;
     }
 
     const {data:matchRows,error:findErr}=await supabaseClient.rpc('find_staff_invite',{p_email:pending.email,p_code:pending.code});
+    if(findErr){ console.error('[TerangaResto][Invitation]',{function:'find_staff_invite',step:'finalize_pending_lookup',email,code:findErr.code??null,message:findErr.message??String(findErr),status:findErr.status??null}); return false; }
     const match=(matchRows&&matchRows[0])||null;
-    if(findErr || !match){
-      clearPendingStaffInvite();
-      toast('E-mail ou code d’invitation incorrect.');
-      return false;
-    }
-    if(match.expires_at && Date.now()>new Date(match.expires_at).getTime()){
-      clearPendingStaffInvite();
-      toast('Cette invitation a expiré.');
-      return false;
-    }
+    if(!match){ clearPendingStaffInvite(); toast('E-mail ou code d’invitation incorrect.'); return false; }
+    if(match.expires_at && Date.now()>new Date(match.expires_at).getTime()){ clearPendingStaffInvite(); toast('Cette invitation a expiré.'); return false; }
 
     if(match.status!=='Actif'){
       const {error:acceptErr}=await supabaseClient.rpc('accept_staff_invite',{p_staff_id:match.id,p_code:pending.code});
-      if(acceptErr){
-        toast('Impossible de finaliser l’acceptation : '+supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.'));
-        return false;
-      }
+      if(acceptErr){ console.error('[TerangaResto][Invitation]',{function:'accept_staff_invite',step:'activate_invitation',email,code:acceptErr.code??null,message:acceptErr.message??String(acceptErr),status:acceptErr.status??null}); toast(supabaseErrorFr(acceptErr,'Impossible de finaliser l’acceptation. Réessayez dans quelques instants.')); return false; }
     }
 
-    clearPendingStaffInvite();
-    currentUser=session.user;
     const access=await resolveCurrentAccess(session.user.id);
     if(!access || access.kind!=='staff'){
-      toast('L’invitation a été acceptée, mais votre espace personnel n’a pas été trouvé.');
+      console.error('[TerangaResto][Invitation]',{function:'resolveCurrentAccess',step:'post_accept_access_resolution',email,userId:session.user.id,staffId:match.id});
+      toast('L’invitation a été acceptée, mais votre espace personnel n’a pas encore pu être chargé. Réessayez.');
       return false;
     }
-    applyRealAccess(access);
-    renderDashNav();
-    renderRoleSimBanner();
+
     const rid=access.restaurantId;
-    const lastRidKey='tg_last_restaurant_'+String(session.user.id);
-    try{ localStorage.setItem(lastRidKey,String(rid)); }catch(e){}
-    viewerIsStaff=true;
-    state.dashSection=requestedDashSection()||firstAllowedSection();
-    await loadRestaurantCore(rid,true);
-    closeLogin();
-    hideRestoSplash();
-    hideAuthCheckSplash();
-    setView('dashboard');
-    setDashSection(requestedDashSection()||firstAllowedSection());
+    const loaded=await loadRestaurantCore(rid,true);
+    if(!loaded){ console.error('[TerangaResto][Invitation]',{function:'loadRestaurantCore',step:'post_accept_restaurant_load',email,userId:session.user.id,restaurantId:rid}); viewerIsStaff=false; toast('Invitation acceptée, mais le restaurant associé n’a pas pu être chargé. Réessayez.'); return false; }
+
+    clearPendingStaffInvite();
+    currentUser=session.user; applyRealAccess(access); renderDashNav(); renderRoleSimBanner();
+    try{ localStorage.setItem('tg_last_restaurant_'+String(session.user.id),String(rid)); }catch(e){}
+    viewerIsStaff=true; state.dashSection=requestedDashSection()||firstAllowedSection();
+    closeLogin(); hideRestoSplash(); hideAuthCheckSplash(); setView('dashboard'); setDashSection(requestedDashSection()||firstAllowedSection());
     loadRestaurantSecondaryData(rid);
     toast(`Invitation acceptée — bienvenue ${access.name||pending.email}, accès ${access.role}.`);
     return true;
-  }catch(e){
-    console.error('Finalisation de l’invitation:',e);
-    return false;
-  }finally{
-    pendingStaffInviteBusy=false;
-  }
+  }catch(e){ console.error('[TerangaResto][Invitation]',{function:'finalizePendingStaffInvite',step:'unexpected_exception',email,message:e?.message||String(e),name:e?.name||null}); return false; }
+  finally{ pendingStaffInviteBusy=false; }
 }
-
-async function tryFinalizePendingStaffInvite(){
-  if(!readPendingStaffInvite()) return false;
-  return await finalizePendingStaffInvite();
-}
+async function tryFinalizePendingStaffInvite(){ if(!readPendingStaffInvite()) return false; return await finalizePendingStaffInvite(); }
 
 async function submitInviteAccept(){
-  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
-  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
+  const email=document.getElementById('inviteEmail').value.trim().toLowerCase();
+  const code=document.getElementById('inviteCode').value.trim().toUpperCase();
   if(!email || !code){ toast('Complétez l’e-mail et le code d’invitation.'); return; }
+  setLoginVerifying(true,'inviteSubmitBtn','Vérification de votre invitation…');
 
-  setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
+  let match=null;
+  try{
+    const {data:matchRows,error:findErr}=await supabaseClient.rpc('find_staff_invite',{p_email:email,p_code:code});
+    if(findErr){ console.error('[TerangaResto][Invitation]',{function:'find_staff_invite',step:'submit_invite_lookup',email,code:findErr.code??null,message:findErr.message??String(findErr),status:findErr.status??null}); setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(findErr,'Impossible de vérifier l’invitation. Réessayez dans quelques instants.')); return; }
+    match=(matchRows&&matchRows[0])||null;
+  }catch(e){ console.error('[TerangaResto][Invitation]',{function:'find_staff_invite',step:'submit_invite_lookup_exception',email,message:e?.message||String(e),name:e?.name||null}); setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de vérifier l’invitation. Vérifiez votre connexion puis réessayez.'); return; }
 
-  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
-  const match = (matchRows && matchRows[0]) || null;
-  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast('E-mail ou code d’invitation incorrect.'); return; }
-  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
-  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
+  if(!match){ setLoginVerifying(false,'inviteSubmitBtn'); toast('E-mail ou code d’invitation incorrect.'); return; }
+  if(match.status==='Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
+  if(match.expires_at && Date.now()>new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
 
-  const {data:{session}}=await supabaseClient.auth.getSession();
+  const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+  if(sessionError){ logAuthError('submitInviteAccept:getSession','auth.getSession',sessionError,email); setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de vérifier votre session. Réessayez.'); return; }
   if(session?.user){
-    if(String(session.user.email||'').toLowerCase()!==email){
-      setLoginVerifying(false,'inviteSubmitBtn');
-      toast('Une autre session est déjà connectée sur cet appareil. Déconnectez-vous avant d’accepter cette invitation.');
-      return;
-    }
-    savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000});
-    const done=await finalizePendingStaffInvite();
-    setLoginVerifying(false,'inviteSubmitBtn');
-    if(!done) clearPendingStaffInvite();
-    return;
+    if(String(session.user.email||'').toLowerCase()!==email){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Une autre session est déjà connectée sur cet appareil. Déconnectez-vous avant d’accepter cette invitation.'); return; }
+    if(!savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000})){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de conserver votre invitation sur cet appareil.'); return; }
+    await finalizePendingStaffInvite(); setLoginVerifying(false,'inviteSubmitBtn'); return;
   }
 
-  savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000});
-
-  const {error}=await supabaseClient.auth.signInWithOtp({
-    email,
-    options:{
-      shouldCreateUser:true,
-      emailRedirectTo:getPublicSiteOrigin(),
-      data:{invitation_code:code,invitation_role:match.role,restaurant_name:RESTO_NAME}
-    }
-  });
-
-  setLoginVerifying(false,'inviteSubmitBtn');
-  if(error){
-    clearPendingStaffInvite();
-    toast(supabaseErrorFr(error,'Impossible d’envoyer le lien d’authentification.'));
-    return;
-  }
-
-  closeLogin();
-  toast('Un lien de connexion sécurisé a été envoyé à votre adresse e-mail. Ouvrez-le pour accéder automatiquement à votre espace.');
+  if(!savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000})){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de préparer l’authentification sur cet appareil. Réessayez.'); return; }
+  try{
+    const {error}=await supabaseClient.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:getAuthRedirectUrl(),data:{invitation_code:code,invitation_role:match.role,restaurant_name:RESTO_NAME}}});
+    if(error){ logAuthError('submitInviteAccept:signInWithOtp','auth.signInWithOtp',error,email); setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(error,'Impossible d’envoyer le lien d’authentification. Vérifiez la configuration e-mail Supabase puis réessayez.')); return; }
+  }catch(e){ console.error('[TerangaResto][Supabase Auth]',{step:'submitInviteAccept:signInWithOtp',function:'auth.signInWithOtp',email,code:e?.code??null,message:e?.message??String(e),status:e?.status??null,name:e?.name??null}); setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible d’envoyer le lien d’authentification. Vérifiez votre connexion puis réessayez.'); return; }
+  setLoginVerifying(false,'inviteSubmitBtn'); closeLogin(); toast('Un lien de connexion sécurisé a été envoyé à votre adresse e-mail. Ouvrez-le pour accéder automatiquement à votre espace.');
 }
 
 async function signOutSupabase(){
-  await supabaseClient.auth.signOut();
+  const {error}=await supabaseClient.auth.signOut();
+  if(error) logAuthError('signOutSupabase','auth.signOut',error,currentUser?.email||'');
   currentUser = null;
 }
 </script>
@@ -5053,8 +5020,9 @@ async function resendPasswordRecoveryOtp(){
      Gmail ou un outil de sécurité. Le compte doit déjà exister. */
   const {error}=await supabaseClient.auth.signInWithOtp({
     email: passwordRecoveryEmail,
-    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+    options: { shouldCreateUser:false, emailRedirectTo:getAuthRedirectUrl() }
   });
+  if(error) logAuthError('resendPasswordRecovery:signInWithOtp','auth.signInWithOtp',error,passwordRecoveryEmail);
   if(error){
     if(btn){btn.disabled=false;btn.style.opacity='';}
     toast(supabaseErrorFr(error,'Impossible de renvoyer le code de réinitialisation.'));
@@ -5079,8 +5047,9 @@ async function sendPasswordReset(){
      changement de mot de passe. Aucun nouveau compte n'est créé. */
   const {error} = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+    options: { shouldCreateUser:false, emailRedirectTo:getAuthRedirectUrl() }
   });
+  if(error) logAuthError('requestPasswordReset:signInWithOtp','auth.signInWithOtp',error,email);
   setLoginVerifying(false, 'loginSubmitBtn');
   if(error){ toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.')); return; }
   passwordRecoveryEmail = email;
@@ -5138,6 +5107,7 @@ async function verifyPasswordRecoveryOtp(){
   const btn=document.getElementById('verifyRecoveryOtpBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
   const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'email'});
+  if(error) logAuthError('verifyPasswordRecoveryOtp:verifyOtp','auth.verifyOtp',error,passwordRecoveryEmail);
   if(error){
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
     toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
@@ -5155,18 +5125,21 @@ async function saveRecoveredPassword(){
   const validation=validateStrongPassword(pw);
   if(validation){toast(validation);return;}
   if(pw!==pw2){toast('Les mots de passe ne correspondent pas.');return;}
-  const {data:sessionData}=await supabaseClient.auth.getSession();
+  const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+  if(sessionError) logAuthError('saveRecoveredPassword:getSession','auth.getSession',sessionError,passwordRecoveryEmail);
   if(!sessionData?.session){toast('Le code de réinitialisation n’est plus valide. Demandez un nouveau code.');return;}
   const btn=document.getElementById('saveRecoveryBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
   const {error}=await supabaseClient.auth.updateUser({password:pw});
+  if(error) logAuthError('saveRecoveredPassword:updateUser','auth.updateUser',error,passwordRecoveryEmail);
   if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
 
   /* Le changement de mot de passe ne nécessite pas de nouvelle connexion :
      le client Supabase conserve/rafraîchit la session authentifiée. On la
      revalide ici avant de rechercher le restaurant, afin de ne jamais
      rediriger vers un tableau de bord sans session exploitable. */
-  const {data:sessionAfterUpdate}=await supabaseClient.auth.getSession();
+  const {data:sessionAfterUpdate,error:sessionAfterUpdateError}=await supabaseClient.auth.getSession();
+  if(sessionAfterUpdateError) logAuthError('saveRecoveredPassword:getSessionAfterUpdate','auth.getSession',sessionAfterUpdateError,passwordRecoveryEmail);
   if(!sessionAfterUpdate?.session){
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
     toast('Votre session de récupération a expiré. Demandez un nouveau code.');
@@ -5753,7 +5726,7 @@ async function resendSignupOtp(){
   const {error} = await supabaseClient.auth.resend({
     type: 'signup',
     email,
-    options: { emailRedirectTo:getPublicSiteOrigin() }
+    options: { emailRedirectTo:getAuthRedirectUrl() }
   });
   if(error){
     if(btn){ btn.disabled = false; btn.style.opacity = ''; }
@@ -5791,6 +5764,7 @@ async function verifyOnboardingOtp(){
       token,
       type: 'signup'
     });
+    if(error) logAuthError('verifyOnboardingOtp:verifyOtp','auth.verifyOtp',error,email);
 
     if(error || !data?.user){
       if(btn){
@@ -5896,7 +5870,8 @@ async function obNext(){
     setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
     const email=o.accountEmail.trim().toLowerCase();
     const name=o.accountName.trim();
-    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
+    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getAuthRedirectUrl()}});
+    if(error) logAuthError('submitOnboarding:signUp','auth.signUp',error,email);
     setLoginVerifying(false,'obNextBtn');
     const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
     if(error || signupAlreadyExists){
@@ -9323,9 +9298,10 @@ async function inviteStaff(){
 
   const {error: inviteEmailError} = await supabaseClient.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+    options: { shouldCreateUser: true, emailRedirectTo:getAuthRedirectUrl(), data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
   });
   if(inviteEmailError){
+    logAuthError('inviteStaff:signInWithOtp','auth.signInWithOtp',inviteEmailError,email);
     staffState.push(s);
     refreshStaffLists();
     renderDashSection('staff');
@@ -9346,9 +9322,10 @@ async function resendInvite(i){
   if(!s) return;
   const {error} = await supabaseClient.auth.signInWithOtp({
     email: s.email,
-    options: { shouldCreateUser: true, data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
+    options: { shouldCreateUser: true, emailRedirectTo:getAuthRedirectUrl(), data: { invitation_code: s.code, invitation_role: s.role, restaurant_name: RESTO_NAME } }
   });
   if(error){
+    logAuthError('resendInvite:signInWithOtp','auth.signInWithOtp',error,s.email);
     toast(supabaseErrorFr(error,'Impossible de renvoyer l’e-mail d’invitation.'));
     return;
   }
