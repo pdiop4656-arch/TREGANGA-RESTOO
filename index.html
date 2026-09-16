@@ -5025,9 +5025,66 @@ async function saveRecoveredPassword(){
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
   const {error}=await supabaseClient.auth.updateUser({password:pw});
   if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
-  passwordRecoveryEmail='';
-  toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
-  closeLogin();
+
+  /* Le changement de mot de passe ne nécessite pas de nouvelle connexion :
+     le client Supabase conserve/rafraîchit la session authentifiée. On la
+     revalide ici avant de rechercher le restaurant, afin de ne jamais
+     rediriger vers un tableau de bord sans session exploitable. */
+  const {data:sessionAfterUpdate}=await supabaseClient.auth.getSession();
+  if(!sessionAfterUpdate?.session){
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast('Votre session de récupération a expiré. Demandez un nouveau code.');
+    return;
+  }
+
+  currentUser=sessionAfterUpdate.session.user||currentUser;
+  simulatedRole=null;
+  viewerIsStaff=true;
+  const desiredSection=requestedDashSection()||'overview';
+  state.dashSection=desiredSection;
+  const lastRidKey='tg_last_restaurant_'+String(currentUser.id);
+  let rid=null;
+  let restaurantLoaded=false;
+  try{ rid=localStorage.getItem(lastRidKey)||null; }catch(e){}
+
+  try{
+    if(rid){
+      restaurantLoaded=await loadRestaurantCore(rid,true);
+      if(!restaurantLoaded) rid=null;
+    }
+    if(!rid) rid=await findMyRestaurantId(currentUser.id);
+    if(!rid){
+      viewerIsStaff=false;
+      if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+      toast('Mot de passe modifié, mais aucun restaurant n’a été trouvé pour ce compte.');
+      return;
+    }
+
+    try{ localStorage.setItem(lastRidKey,String(rid)); }catch(e){}
+    if(!restaurantLoaded) restaurantLoaded=await loadRestaurantCore(rid,true);
+    if(!restaurantLoaded){
+      viewerIsStaff=false;
+      if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+      toast('Mot de passe modifié, mais votre restaurant est impossible à charger.');
+      return;
+    }
+
+    passwordRecoveryEmail='';
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
+    closeLogin();
+    hideRestoSplash();
+    hideAuthCheckSplash();
+    setView('dashboard');
+    setDashSection(desiredSection);
+    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+    loadRestaurantSecondaryData(rid);
+  }catch(e){
+    console.error('Récupération du mot de passe — chargement du restaurant:',e);
+    viewerIsStaff=false;
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast('Mot de passe modifié, mais impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
+  }
 }
 function showPasswordRecoveryFormFromSession(session){
   if(!session) return;
@@ -6009,6 +6066,14 @@ async function finishOnboarding(){
    subscription_status à 'active' — jamais avant, jamais parce que ce
    bouton a simplement été cliqué. Réutilise l'infrastructure PayTech
    déjà déployée (fonction Edge "paytech-checkout"), sans la modifier. */
+function isMobilePayTechDevice(){
+  try{
+    return window.matchMedia('(max-width: 767px)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  }catch(e){
+    return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+  }
+}
+
 async function createRestaurantAndPay(){
   if(obState.emailConfirmationPending){
     savePendingOnboarding();
@@ -6018,6 +6083,24 @@ async function createRestaurantAndPay(){
   const planName = obState.plan==='pro' ? 'Premium' : 'Starter';
   const cycle = obState.billing === 'annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(obState.plan, cycle);
+  const mobilePayTech = isMobilePayTechDevice();
+  const paymentMethod = mobilePayTech ? String(obState.paymentMethod||'').trim() : '';
+  const customerName = mobilePayTech ? String(obState.accountName||'').trim() : '';
+  const customerPhone = mobilePayTech ? String(obState.phone||'').replace(/\D/g,'') : '';
+  if(mobilePayTech){
+    if(!['Wave','Orange Money'].includes(paymentMethod)){
+      toast('Choisissez Wave ou Orange Money pour continuer.');
+      return;
+    }
+    if(!customerName){
+      toast('Veuillez renseigner votre nom complet.');
+      return;
+    }
+    if(!customerPhone){
+      toast('Veuillez renseigner votre numéro de téléphone.');
+      return;
+    }
+  }
   const btn = document.getElementById('obPayBtn');
   if(btn){ btn.disabled = true; btn.innerHTML = 'Création de votre restaurant…'; }
 
@@ -6033,10 +6116,15 @@ async function createRestaurantAndPay(){
   // Le montant réellement facturé est déterminé côté serveur par
   // paytech-checkout à partir de "plan" (le forfait explicitement
   // choisi ici, jamais une valeur fixe côté client) — cette fonction
-  // Edge n'est pas modifiée depuis ce fichier, elle est seulement
-  // appelée avec le bon forfait.
+  // La fonction Edge valide toujours le forfait et son montant côté serveur ;
+  // le parcours mobile lui transmet en plus le moyen et les informations client.
   const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-    body: { restaurant_id: RESTAURANT.id, plan: obState.plan, billing_cycle: cycle },
+    body: {
+      restaurant_id: RESTAURANT.id,
+      plan: obState.plan,
+      billing_cycle: cycle,
+      ...(mobilePayTech ? { target_payment: paymentMethod, customer_name: customerName, customer_phone: customerPhone } : {}),
+    },
   });
   if(error || !data || !data.redirect_url){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"réponse invalide du serveur.") : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
@@ -6209,14 +6297,26 @@ function obStepHtml(){
     const price = priceForPlanCycle(o.plan, cycle);
     const cycleLabel = cycle==='annual' ? 'Annuel' : 'Mensuel';
     const cyclePrice = cycle==='annual' ? `${fmt(price)} / an` : `${fmt(price)} / mois`;
+    const mobilePayTech = isMobilePayTechDevice();
     return `
     <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement — Forfait ${planName}</h2>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — <b>${cycleLabel}</b> · ${cyclePrice}</p>
+    ${mobilePayTech ? `
+      <div style="margin-bottom:16px;">
+        <p class="field-label">Choisissez votre moyen de paiement</p>
+        <div class="flex gap-2">
+          ${[['Wave','wave'],['Orange Money','orange_money']].map(([label,key])=>`<button type="button" onclick="obState.paymentMethod='${label}';savePendingOnboarding();renderOnboarding();" style="flex:1;border:2px solid ${o.paymentMethod===label?'var(--amber-deep)':'var(--cream-line)'};${o.paymentMethod===label?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:13px 10px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;">${paymentMark(key,24)}<span style="display:block;margin-top:6px;">${label}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="flex-col gap-2" style="margin-bottom:18px;">
+        <div><label class="field-label">Nom complet</label><input class="field-input" autocomplete="name" value="${escapeAttr(o.accountName||'')}" oninput="obField('accountName',this.value)"></div>
+        <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" value="${escapeAttr(o.phone||'')}" oninput="this.value=this.value.replace(/\D/g,'');obField('phone',this.value)"></div>
+      </div>` : ''}
     <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
       <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
       <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${cyclePrice}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
     </div>
-    <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
+    <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} ${mobilePayTech ? `Continuer avec ${o.paymentMethod||'le paiement choisi'}` : `Payer ${fmt(price)} avec PayTech`}</button>
     <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
   }
 
@@ -9728,6 +9828,9 @@ function pickCover(){
 /* ---------------- ABONNEMENT — machine à états réelle ---------------- */
 let abonSelectedPlan = null;
 let abonSelectedCycle = null;
+let abonPaymentMethod = '';
+let abonCustomerName = '';
+let abonCustomerPhone = '';
 
 const SUBSCRIPTION_STATUS_LABELS = {
   trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré", pending_payment:"En attente de paiement",
@@ -9773,6 +9876,11 @@ function abonCardHtml(){
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(abonSelectedPlan, cycle);
+  const mobilePayTech = isMobilePayTechDevice();
+  if(mobilePayTech){
+    if(!abonCustomerName) abonCustomerName = String(RESTAURANT?.name ? (currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || '') : '');
+    if(!abonCustomerPhone) abonCustomerPhone = String(RESTAURANT?.phone||'').replace(/\D/g,'');
+  }
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
@@ -9784,6 +9892,17 @@ function abonCardHtml(){
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
+  ${mobilePayTech ? `
+  <div style="margin-bottom:16px;">
+    <p class="field-label">Choisissez votre moyen de paiement</p>
+    <div class="flex gap-2">
+      ${[['Wave','wave'],['Orange Money','orange_money']].map(([label,key])=>`<button type="button" onclick="abonPaymentMethod='${label}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="flex:1;border:2px solid ${abonPaymentMethod===label?'var(--amber-deep)':'var(--cream-line)'};${abonPaymentMethod===label?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:13px 10px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;">${paymentMark(key,24)}<span style="display:block;margin-top:6px;">${label}</span></button>`).join('')}
+    </div>
+  </div>
+  <div class="flex-col gap-2" style="margin-bottom:18px;">
+    <div><label class="field-label">Nom complet</label><input class="field-input" autocomplete="name" value="${escapeAttr(abonCustomerName)}" oninput="abonCustomerName=this.value"></div>
+    <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" value="${escapeAttr(abonCustomerPhone)}" oninput="this.value=this.value.replace(/\D/g,'');abonCustomerPhone=this.value"></div>
+  </div>` : ''}
   <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
     <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
     <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
@@ -9844,6 +9963,24 @@ async function startPayTechCheckout(plan){
   const btn = document.getElementById('paytechBtn');
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(plan, cycle);
+  const mobilePayTech = isMobilePayTechDevice();
+  const paymentMethod = mobilePayTech ? String(abonPaymentMethod||'').trim() : '';
+  const customerName = mobilePayTech ? String(abonCustomerName||'').trim() : '';
+  const customerPhone = mobilePayTech ? String(abonCustomerPhone||'').replace(/\D/g,'') : '';
+  if(mobilePayTech){
+    if(!['Wave','Orange Money'].includes(paymentMethod)){
+      toast('Choisissez Wave ou Orange Money pour continuer.');
+      return;
+    }
+    if(!customerName){
+      toast('Veuillez renseigner votre nom complet.');
+      return;
+    }
+    if(!customerPhone){
+      toast('Veuillez renseigner votre numéro de téléphone.');
+      return;
+    }
+  }
   if(btn){ btn.disabled = true; btn.textContent = 'Préparation du paiement PayTech…'; }
   // La session Supabase déjà ouverte est automatiquement jointe à l'appel Edge;
   // aucun aller-retour getSession() supplémentaire n'est nécessaire ici.
@@ -9851,7 +9988,12 @@ async function startPayTechCheckout(plan){
   // directement depuis le navigateur, et aucune clé PayTech ici (voir
   // supabase/functions/paytech-checkout/index.ts).
   const { data, error } = await supabaseClient.functions.invoke('paytech-checkout', {
-    body: { restaurant_id: RESTAURANT.id, plan, billing_cycle: cycle },
+    body: {
+      restaurant_id: RESTAURANT.id,
+      plan,
+      billing_cycle: cycle,
+      ...(mobilePayTech ? { target_payment: paymentMethod, customer_name: customerName, customer_phone: customerPhone } : {}),
+    },
   });
   if(error || !data || !data.redirect_url){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
