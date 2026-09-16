@@ -2990,6 +2990,7 @@ function setRestaurantSaveState(state){
 }
 
 async function persistRestaurant(){
+  if(!requireSectionAccess('settings')) return false;
   if(!RESTAURANT.id) return false;
 
   // Le sous-domaine suit automatiquement le nom du restaurant.
@@ -3072,6 +3073,7 @@ async function persistRestaurant(){
 
 let publishActionInFlight = false;
 async function togglePublish(){
+  if(!requireSectionAccess('settings')) return;
   if(publishActionInFlight || !RESTAURANT.id) return;
   publishActionInFlight = true;
   clearTimeout(restaurantSaveTimer);
@@ -3104,6 +3106,7 @@ async function togglePublish(){
   }
 }
 async function activateCustomDomainAfterConfirmation(domain){
+  if(!requireSectionAccess('settings')) return false;
   const clean = String(domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase();
   if(!clean || /[\s/]/.test(clean) || clean.length>253) throw new Error('Domaine invalide.');
   if(!RESTAURANT.id) throw new Error('Restaurant introuvable.');
@@ -3115,6 +3118,7 @@ async function activateCustomDomainAfterConfirmation(domain){
   return true;
 }
 function markCustomDomainPending(domain){
+  if(!requireSectionAccess('settings')) return;
   const clean = String(domain||'').trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase();
   if(!clean) return;
   RESTAURANT.social = {...(RESTAURANT.social||{}), custom_domain:clean, custom_domain_status:'pending', custom_domain_updated_at:Date.now()};
@@ -3132,6 +3136,7 @@ function copyPublicSiteLink(){
    update. Après un insert, l'id local ('p_...') est remplacé par le
    vrai id Supabase pour que les futures opérations le retrouvent. */
 async function persistProduct(p){
+  if(!requireSectionAccess('products')) return;
   if(!RESTAURANT.id) return false;
   const payload = {
     restaurant_id: RESTAURANT.id, cat:p.cat, name:p.name, desc:p.desc, price:p.price,
@@ -3152,6 +3157,7 @@ async function persistProduct(p){
   return true;
 }
 async function deleteProductRow(id){
+  if(!requireSectionAccess('products')) return;
   if(!RESTAURANT.id || String(id).startsWith('p_')) return;
   const {error} = await supabaseClient.from('products').delete().eq('id', id);
   renderPlanBadgeAndBanner();
@@ -3161,6 +3167,7 @@ async function deleteProductRow(id){
 /* Personnel — reflète chaque action de la section "Personnel" dans la
    table staff. */
 async function persistStaffInsert(s){
+  if(!requireSectionAccess('staff')) return;
   if(!RESTAURANT.id) return;
   const {data, error} = await supabaseClient.from('staff').insert({
     restaurant_id: RESTAURANT.id, name:s.name, email:s.email, role:s.role,
@@ -3171,6 +3178,7 @@ async function persistStaffInsert(s){
   s.id = data.id;
 }
 async function persistStaffUpdate(s){
+  if(!requireSectionAccess('staff')) return;
   if(!RESTAURANT.id || !s.id) return;
   const {error} = await supabaseClient.from('staff').update({
     name:s.name, role:s.role, permissions:s.permissions, status:s.status,
@@ -3179,6 +3187,7 @@ async function persistStaffUpdate(s){
   if(error) toast('❌ Le membre du personnel n’a pas pu être mis à jour.');
 }
 async function deleteStaffRow(id){
+  if(!requireSectionAccess('staff')) return;
   if(!RESTAURANT.id || !id) return;
   const {error} = await supabaseClient.from('staff').delete().eq('id', id);
   if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
@@ -3190,6 +3199,7 @@ async function deleteStaffRow(id){
    déjà créée est encore modifié directement (fonction suivante),
    jamais son contenu financier. */
 async function persistOrderUpdate(o){
+  if(!requireSectionAccess('orders')) return;
   if(!RESTAURANT.id || !o.id) return;
   const {error} = await supabaseClient.from('orders').update({
     status:o.status, pay_status:o.payStatus,
@@ -3532,7 +3542,7 @@ function renderRestaurantNotFound(){
    Sans paramètre, comportement inchangé pour tous les autres appels
    (restoreSession, etc.) : revalidation en direct, nécessaire quand on
    ne sait pas encore avec certitude si une session existe. */
-async function findMyRestaurantId(p_knownUserId){
+async function resolveCurrentAccess(p_knownUserId){
   let user;
   if(p_knownUserId){
     user = {id: p_knownUserId};
@@ -3542,12 +3552,40 @@ async function findMyRestaurantId(p_knownUserId){
     if(user) currentUser = user;
   }
   if(!user) return null;
+
   const [{data:owned}, {data:staffRow}] = await Promise.all([
     supabaseClient.from('restaurants').select('id').eq('owner_id', user.id).limit(1).maybeSingle(),
-    supabaseClient.from('staff').select('restaurant_id').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle(),
+    supabaseClient.from('staff').select('id,restaurant_id,name,email,role,permissions,status').eq('user_id', user.id).eq('status','Actif').limit(1).maybeSingle(),
   ]);
-  if(owned) return owned.id;
-  return staffRow ? staffRow.restaurant_id : null;
+
+  if(owned){
+    return {
+      kind:'owner',
+      restaurantId:owned.id,
+      role:'Administrateur',
+      permissions:null,
+      staffId:null,
+    };
+  }
+
+  if(staffRow){
+    return {
+      kind:'staff',
+      restaurantId:staffRow.restaurant_id,
+      role:staffRow.role || 'Caissier',
+      permissions:Array.isArray(staffRow.permissions) ? staffRow.permissions : (Array.isArray(staffRow.permissions?.sections) ? staffRow.permissions.sections : null),
+      staffId:staffRow.id,
+      name:staffRow.name,
+      email:staffRow.email,
+    };
+  }
+
+  return null;
+}
+
+async function findMyRestaurantId(p_knownUserId){
+  const access=await resolveCurrentAccess(p_knownUserId);
+  return access ? access.restaurantId : null;
 }
 
 /* Empêche définitivement le bug "affiche le restaurant le plus
@@ -3563,19 +3601,25 @@ async function restoreSession(){
     currentUser = session ? session.user : null;
 
     if(currentUser){
-      const desiredSection = requestedDashSection() || 'overview';
-      const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
-      let rid = null;
-      try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
+      /* Une invitation en attente est prioritaire : le lien d'authentification
+         Supabase peut créer/restaurer la session AVANT que restoreSession()
+         ne retrouve la ligne staff comme active. */
+      if(await tryFinalizePendingStaffInvite()) return;
 
-      /* Ne jamais afficher un tableau de bord intermédiaire.
-         On charge d'abord le restaurant de l'utilisateur, puis seulement
-         après succès on affiche le VRAI tableau de bord avec ses données. */
-      viewerIsStaff = true;
-      state.dashSection = desiredSection;
+      const access=await resolveCurrentAccess(currentUser.id);
+      if(access){
+        applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+        renderDashNav();
+        renderRoleSimBanner();
+        const desiredSection = requestedDashSection() || firstAllowedSection();
+        const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
+        const rid = access.restaurantId;
 
-      /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
-      if(rid){
+        try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
+
+        viewerIsStaff = true;
+        state.dashSection = desiredSection;
+
         try{
           const ok = await loadRestaurantCore(rid,true);
           if(ok){
@@ -3588,23 +3632,8 @@ async function restoreSession(){
             return;
           }
         }catch(e){
-          console.warn('Chargement direct du restaurant mémorisé:', e);
+          console.warn('Chargement du restaurant de la session:', e);
         }
-      }
-
-      /* Premier passage ou restaurant mémorisé devenu inaccessible :
-         seulement ici on retrouve l'association propriétaire/personnel. */
-      rid = await findMyRestaurantId(currentUser.id);
-      if(rid){
-        try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-        await loadRestaurantCore(rid,true);
-        hideAuthCheckSplash();
-        hideRestoSplash();
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantSecondaryData(rid);
-        return;
       }
 
       viewerIsStaff = false;
@@ -3753,15 +3782,9 @@ function setLoginTab(tab){
       <label class="field-label">Adresse e-mail invitée</label>
       <input class="field-input" id="inviteEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
-      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" style="margin-bottom:12px;text-transform:uppercase;">
-      <label class="field-label">Choisissez un mot de passe</label>
-      <div style="position:relative;">
-        <input class="field-input" id="invitePasswordInput" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" oninput="renderPasswordStrength(this.value,'invitePwStrength')">
-        <button type="button" onclick="togglePasswordVisibility('invitePasswordInput',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
-      </div>
-      <div id="invitePwStrength" style="margin-bottom:16px;"></div>
+      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" autocomplete="one-time-code" style="margin-bottom:16px;text-transform:uppercase;">
       <button id="inviteSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Ce mot de passe crée votre compte TerangaResto (ou vous y connecte s'il existe déjà).</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Le compte est authentifié automatiquement par le système à partir de votre adresse e-mail.</p>`;
   }
   hydrateIcons(body);
 }
@@ -3881,11 +3904,23 @@ async function submitLogin(){
   if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
 
   currentUser = data.user;
-  simulatedRole = null;
-  const desiredSection = requestedDashSection() || 'overview';
+  const access=await resolveCurrentAccess(data.user.id);
+  if(!access){
+    simulatedRole=null;
+    simulatedPermissions=null;
+    viewerIsStaff = false;
+    setLoginVerifying(false);
+    setView('landing');
+    openLogin('login');
+    toast('Aucun espace TerangaResto associé à ce compte.');
+    return;
+  }
+  applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+  renderDashNav();
+  renderRoleSimBanner();
+  const desiredSection = requestedDashSection() || firstAllowedSection();
+  const rid = access.restaurantId;
   const lastRidKey = 'tg_last_restaurant_' + String(data.user.id);
-  let rid = null;
-  try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
 
   /* Ne ferme pas la connexion et n'affiche pas un faux tableau de bord
      avant que le restaurant réel soit chargé. */
@@ -3893,32 +3928,6 @@ async function submitLogin(){
   state.dashSection = desiredSection;
 
   try{
-    /* Compte déjà connu : on charge directement le restaurant mémorisé. */
-    if(rid){
-      const ok = await loadRestaurantCore(rid,true);
-      if(ok){
-        setLoginVerifying(false);
-        closeLogin();
-        hideRestoSplash();
-        hideAuthCheckSplash();
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantSecondaryData(rid);
-        return;
-      }
-    }
-
-    rid = await findMyRestaurantId(data.user.id);
-    if(!rid){
-      viewerIsStaff = false;
-      setView('landing');
-      openLogin('login');
-      toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
-      startOnboarding();
-      return;
-    }
-
     try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
     await loadRestaurantCore(rid,true);
     setLoginVerifying(false);
@@ -3940,69 +3949,141 @@ async function submitLogin(){
   }
 }
 
-async function submitInviteAccept(){
-  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
-  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-  const password = document.getElementById('invitePasswordInput').value;
-  if(!email || !code || !password){ toast('Complétez e-mail, code et mot de passe.'); return; }
-  const invitePwValidation = validateStrongPassword(password);
-  if(invitePwValidation){ toast(invitePwValidation); return; }
-
-  setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
-
-  // Vérification e-mail + code via une fonction dédiée (RPC) : la
-  // personne n'a pas encore de compte, donc pas de session permettant
-  // à RLS de l'identifier — voir find_staff_invite dans supabase_schema.sql.
-  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
-  const match = (matchRows && matchRows[0]) || null;
-  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast("E-mail ou code d'invitation incorrect."); return; }
-  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
-  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
-
-  // Compte du membre du personnel : on tente une inscription, et si
-  // l'adresse a déjà un compte TerangaResto, on se connecte simplement.
-  let {data:signData, error:signErr} = await supabaseClient.auth.signUp({email, password});
-  if(signErr){
-    const {data:inData, error:inErr} = await supabaseClient.auth.signInWithPassword({email, password});
-    if(inErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast(supabaseErrorFr(inErr,'Mot de passe incorrect pour ce compte existant.')); return; }
-    signData = inData;
-  }
-  currentUser = signData.user;
-
-  // Acceptation réelle (RPC accept_staff_invite) : le statut passe à
-  // Actif (ce code ne pourra plus jamais être réutilisé) et le compte
-  // est lié à cette ligne "staff" — le rôle + les permissions EXACTES
-  // choisies par l'administrateur pour CETTE invitation sont conservés,
-  // jamais les permissions par défaut d'un autre rôle.
-  const {data:acceptRows, error:acceptErr} = await supabaseClient.rpc('accept_staff_invite', {p_staff_id:match.id, p_code:code});
-  const accepted = (acceptRows && acceptRows[0]) || match;
-  if(acceptErr){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Impossible de finaliser l’acceptation : ' + supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.')); return; }
-
-  // Même règle ici : aucun tableau de bord intermédiaire n'est affiché.
-  // Le compte est authentifié, mais l'espace réel n'apparaît qu'après
-  // chargement complet du restaurant concerné.
-  setSimulatedRole(accepted.role, accepted.permissions);
-  state.dashSection = requestedDashSection() || 'overview';
+let pendingStaffInviteBusy = false;
+function readPendingStaffInvite(){
   try{
-    await loadRestaurantCore(accepted.restaurant_id,true);
-    viewerIsStaff = true;
-    setLoginVerifying(false,'inviteSubmitBtn');
+    const raw=localStorage.getItem('tg_pending_staff_invite');
+    if(!raw) return null;
+    const data=JSON.parse(raw);
+    if(!data?.email || !data?.code) return null;
+    if(data.expiresAt && Date.now()>Number(data.expiresAt)) return null;
+    return data;
+  }catch(e){ return null; }
+}
+function savePendingStaffInvite(data){
+  try{ localStorage.setItem('tg_pending_staff_invite',JSON.stringify(data)); }catch(e){}
+}
+function clearPendingStaffInvite(){
+  try{ localStorage.removeItem('tg_pending_staff_invite'); }catch(e){}
+}
+
+async function finalizePendingStaffInvite(){
+  if(pendingStaffInviteBusy) return false;
+  const pending=readPendingStaffInvite();
+  if(!pending) return false;
+  pendingStaffInviteBusy=true;
+  try{
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    if(!session?.user?.email || session.user.email.toLowerCase()!==String(pending.email).toLowerCase()){
+      clearPendingStaffInvite();
+      return false;
+    }
+
+    const {data:matchRows,error:findErr}=await supabaseClient.rpc('find_staff_invite',{p_email:pending.email,p_code:pending.code});
+    const match=(matchRows&&matchRows[0])||null;
+    if(findErr || !match){
+      clearPendingStaffInvite();
+      toast('E-mail ou code d’invitation incorrect.');
+      return false;
+    }
+    if(match.expires_at && Date.now()>new Date(match.expires_at).getTime()){
+      clearPendingStaffInvite();
+      toast('Cette invitation a expiré.');
+      return false;
+    }
+
+    if(match.status!=='Actif'){
+      const {error:acceptErr}=await supabaseClient.rpc('accept_staff_invite',{p_staff_id:match.id,p_code:pending.code});
+      if(acceptErr){
+        toast('Impossible de finaliser l’acceptation : '+supabaseErrorFr(acceptErr,'Réessayez dans quelques instants.'));
+        return false;
+      }
+    }
+
+    clearPendingStaffInvite();
+    currentUser=session.user;
+    const access=await resolveCurrentAccess(session.user.id);
+    if(!access || access.kind!=='staff'){
+      toast('L’invitation a été acceptée, mais votre espace personnel n’a pas été trouvé.');
+      return false;
+    }
+    applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+    renderDashNav();
+    renderRoleSimBanner();
+    const rid=access.restaurantId;
+    const lastRidKey='tg_last_restaurant_'+String(session.user.id);
+    try{ localStorage.setItem(lastRidKey,String(rid)); }catch(e){}
+    viewerIsStaff=true;
+    state.dashSection=requestedDashSection()||firstAllowedSection();
+    await loadRestaurantCore(rid,true);
     closeLogin();
     hideRestoSplash();
     hideAuthCheckSplash();
     setView('dashboard');
-    setDashSection(requestedDashSection() || 'overview');
-    toast(`Invitation acceptée — bienvenue ${accepted.name}, accès ${accepted.role}.`);
-    loadRestaurantSecondaryData(accepted.restaurant_id);
+    setDashSection(requestedDashSection()||firstAllowedSection());
+    loadRestaurantSecondaryData(rid);
+    toast(`Invitation acceptée — bienvenue ${access.name||pending.email}, accès ${access.role}.`);
+    return true;
   }catch(e){
-    console.error('Invitation — chargement du restaurant:', e);
-    viewerIsStaff = false;
-    const el = document.getElementById('dashContent');
-    if(el){
-      el.innerHTML = `<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('alertTriangle',28,{stroke:'var(--terracotta)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Impossible de charger votre espace</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Vérifiez votre connexion Internet puis réessayez.</p></div>`;
-      hydrateIcons(el);
-    }
+    console.error('Finalisation de l’invitation:',e);
+    return false;
+  }finally{
+    pendingStaffInviteBusy=false;
   }
+}
+
+async function tryFinalizePendingStaffInvite(){
+  if(!readPendingStaffInvite()) return false;
+  return await finalizePendingStaffInvite();
+}
+
+async function submitInviteAccept(){
+  const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
+  const code = document.getElementById('inviteCode').value.trim().toUpperCase();
+  if(!email || !code){ toast('Complétez l’e-mail et le code d’invitation.'); return; }
+
+  setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
+
+  const {data:matchRows, error:findErr} = await supabaseClient.rpc('find_staff_invite', {p_email:email, p_code:code});
+  const match = (matchRows && matchRows[0]) || null;
+  if(findErr || !match){ setLoginVerifying(false,'inviteSubmitBtn'); toast('E-mail ou code d’invitation incorrect.'); return; }
+  if(match.status === 'Actif'){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a déjà été utilisée.'); return; }
+  if(match.expires_at && Date.now() > new Date(match.expires_at).getTime()){ setLoginVerifying(false,'inviteSubmitBtn'); toast('Cette invitation a expiré.'); return; }
+
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(session?.user){
+    if(String(session.user.email||'').toLowerCase()!==email){
+      setLoginVerifying(false,'inviteSubmitBtn');
+      toast('Une autre session est déjà connectée sur cet appareil. Déconnectez-vous avant d’accepter cette invitation.');
+      return;
+    }
+    savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000});
+    const done=await finalizePendingStaffInvite();
+    setLoginVerifying(false,'inviteSubmitBtn');
+    if(!done) clearPendingStaffInvite();
+    return;
+  }
+
+  savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000});
+
+  const {error}=await supabaseClient.auth.signInWithOtp({
+    email,
+    options:{
+      shouldCreateUser:true,
+      emailRedirectTo:getPublicSiteOrigin(),
+      data:{invitation_code:code,invitation_role:match.role,restaurant_name:RESTO_NAME}
+    }
+  });
+
+  setLoginVerifying(false,'inviteSubmitBtn');
+  if(error){
+    clearPendingStaffInvite();
+    toast(supabaseErrorFr(error,'Impossible d’envoyer le lien d’authentification.'));
+    return;
+  }
+
+  closeLogin();
+  toast('Un lien de connexion sécurisé a été envoyé à votre adresse e-mail. Ouvrez-le pour accéder automatiquement à votre espace.');
 }
 
 async function signOutSupabase(){
@@ -4258,36 +4339,91 @@ function hydrateIcons(root){
    Analyses, Caisse et Comptabilité. Change réellement les données
    affichées ; jamais décoratif. ---------------- */
 /* ---------------- RÔLES ET PERMISSIONS ----------------
-   IMPORTANT — honnêteté sur la portée de cette démo : ce fichier est un
-   aperçu HTML autonome, sans backend ni base de données. Le filtrage de
-   menu ci-dessous est une VRAIE logique d'interface (le menu change
-   réellement selon le rôle simulé), mais ce n'est PAS une sécurité
-   réelle — n'importe qui avec les outils de développement du navigateur
-   pourrait la contourner. La sécurité réelle (comptes uniques, sessions,
-   e-mails d'invitation, isolation multi-restaurant au niveau base de
-   données) existe déjà dans la vraie application Next.js + Supabase
-   livrée séparément, où elle est appliquée par de vraies politiques RLS
-   côté serveur, pas par du JavaScript côté client. */
+   Pour un utilisateur authentifié, le rôle est résolu depuis la session
+   Supabase et la ligne STAFF active associée à auth.uid(). La variable de
+   prévisualisation reste disponible uniquement pour le propriétaire ; elle
+   ne peut pas remplacer le rôle réel d'un membre du personnel. */
 const ROLE_SECTIONS = {
   'Administrateur': ['overview','orders','products','inventory','pos','analytics','accounting','categories','variants','payments','customers','qrcode','staff','library','settings'],
   'Gestionnaire': ['overview','orders','products','inventory','categories','variants','analytics','customers','library'],
   'Caissier': ['pos','orders'],
   'Cuisine': ['orders'],
 };
-let simulatedRole = null; // null = Administrateur (propriétaire), sinon un des STAFF_ROLES
-let simulatedPermissions = null; // liste de sections spécifique à LA personne (si personnalisée à l'invitation), sinon null = utilise les sections par défaut du rôle
+let simulatedRole = null; // réservé à la prévisualisation du propriétaire
+let simulatedPermissions = null;
+let realAccessRole = null;
+let realAccessPermissions = null;
+let realAccessKind = null;
+const REAL_ACCESS_TRUST = Symbol('real-access-trust');
+
+function applyRealAccess(access){
+  if(!access || access[REAL_ACCESS_TRUST] !== true) return false;
+  realAccessKind = access?.kind || null;
+  realAccessRole = access?.role || null;
+  realAccessPermissions = Array.isArray(access?.permissions) ? Object.freeze(access.permissions.slice()) : null;
+  if(realAccessKind==='staff'){
+    simulatedRole = realAccessRole;
+    simulatedPermissions = realAccessPermissions;
+  }else if(realAccessKind==='owner'){
+    simulatedRole = null;
+    simulatedPermissions = null;
+  }else{
+    simulatedRole = null;
+    simulatedPermissions = null;
+  }
+}
+
+function hasLockedRealRole(){
+  return realAccessKind==='staff' && !!realAccessRole;
+}
+
+/* Garde-fou centralisé des actions/renderer du tableau de bord.
+   - Un vrai membre du personnel est toujours évalué avec son rôle réel +
+     ses permissions réelles, jamais avec le mode de prévisualisation.
+   - Le propriétaire conserve intégralement son accès et son système
+     de prévisualisation.
+   - Toute invocation directe d'une fonction sensible depuis le navigateur
+     est refusée si la section correspondante n'est pas autorisée. */
+function requireSectionAccess(key){
+  if(realAccessKind==='staff') {
+    if(canSeeSection(key)) return true;
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole}.`, true);
+    return false;
+  }
+  if(realAccessKind==='owner') return true;
+  return false;
+}
 
 function canSeeSection(key){
-  if(!simulatedRole) return true;
-  if(simulatedPermissions) return simulatedPermissions.includes(key);
-  return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
+  if(realAccessKind==='staff'){
+    if(realAccessPermissions) return realAccessPermissions.includes(key);
+    return (ROLE_SECTIONS[realAccessRole]||[]).includes(key);
+  }
+  if(realAccessKind==='owner'){
+    if(!simulatedRole) return true;
+    if(simulatedPermissions) return simulatedPermissions.includes(key);
+    return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
+  }
+  return false;
 }
 function firstAllowedSection(){
+  if(hasLockedRealRole()){
+    const list=realAccessPermissions || ROLE_SECTIONS[realAccessRole] || ['orders'];
+    return list[0] || 'overview';
+  }
   if(!simulatedRole) return 'overview';
   const list = simulatedPermissions || ROLE_SECTIONS[simulatedRole] || ['orders'];
-  return list[0];
+  return list[0] || 'overview';
 }
 function setSimulatedRole(role, permissions){
+  if(hasLockedRealRole()){
+    simulatedRole=realAccessRole;
+    simulatedPermissions=realAccessPermissions;
+    renderDashNav();
+    renderRoleSimBanner();
+    return;
+  }
+  if(realAccessKind!=='owner') return;
   simulatedRole = role || null;
   simulatedPermissions = role ? (permissions || null) : null;
   toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
@@ -4299,6 +4435,7 @@ function setSimulatedRole(role, permissions){
 function renderRoleSimBanner(){
   const el = document.getElementById('roleSimBanner');
   if(!el) return;
+  if(realAccessKind!=='owner'){ el.innerHTML=''; return; }
   el.innerHTML = simulatedRole ? `<div style="background:rgba(232,135,30,.12);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     ${ic('userGroup',15)}Aperçu — vous visualisez le tableau de bord comme <b>${simulatedRole}</b>, avec ses permissions réelles.
     <a href="#" onclick="setSimulatedRole(null);return false;" style="text-decoration:underline;font-weight:600;margin-left:auto;">Revenir à Administrateur</a>
@@ -5046,22 +5183,25 @@ async function saveRecoveredPassword(){
   }
 
   currentUser=sessionAfterUpdate.session.user||currentUser;
-  simulatedRole=null;
+  const access=await resolveCurrentAccess(currentUser.id);
+  if(!access){
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast('Mot de passe modifié, mais aucun espace TerangaResto n’est associé à ce compte.');
+    return;
+  }
+  applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+  renderDashNav();
+  renderRoleSimBanner();
   viewerIsStaff=true;
-  const desiredSection=requestedDashSection()||'overview';
+  const desiredSection=requestedDashSection()||firstAllowedSection();
   state.dashSection=desiredSection;
+  const rid=access.restaurantId;
   const lastRidKey='tg_last_restaurant_'+String(currentUser.id);
-  let rid=null;
   let restaurantLoaded=false;
-  try{ rid=localStorage.getItem(lastRidKey)||null; }catch(e){}
 
   try{
-    if(rid){
-      restaurantLoaded=await loadRestaurantCore(rid,true);
-      if(!restaurantLoaded) rid=null;
-    }
-    if(!rid) rid=await findMyRestaurantId(currentUser.id);
-    if(!rid){
+    restaurantLoaded=await loadRestaurantCore(rid,true);
+    if(!restaurantLoaded){
       viewerIsStaff=false;
       if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
       toast('Mot de passe modifié, mais aucun restaurant n’a été trouvé pour ce compte.');
@@ -5069,7 +5209,6 @@ async function saveRecoveredPassword(){
     }
 
     try{ localStorage.setItem(lastRidKey,String(rid)); }catch(e){}
-    if(!restaurantLoaded) restaurantLoaded=await loadRestaurantCore(rid,true);
     if(!restaurantLoaded){
       viewerIsStaff=false;
       if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
@@ -7297,13 +7436,11 @@ function syncDashUrl(key, replace=false){
 }
 
 function setDashSection(key){
-  // Garde-fou de navigation : simule une vraie protection de page — si le
-  // rôle actuellement prévisualisé n'a pas accès à cette section, l'accès
-  // est refusé et l'utilisateur est renvoyé vers une section autorisée.
-  // (Rappel : ceci est une démonstration d'UX, pas une sécurité réelle —
-  // voir la note dans ROLE_SECTIONS.)
-  if(!canSeeSection(key)){
-    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${simulatedRole}.`, true);
+  // Garde-fou de navigation : le rôle réel d'un membre du personnel est
+  // résolu depuis sa session Supabase et ne peut pas être remplacé par l'URL
+  // ou une variable de prévisualisation.
+  if(!realAccessKind || !canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole || 'utilisateur'}.`, true);
     key = firstAllowedSection();
   }
   state.dashSection = key;
@@ -7345,6 +7482,7 @@ function closeNotifPanel(){
   if(el) el.remove();
 }
 function toggleNotifPanel(){
+  if(!requireSectionAccess('orders')) return;
   if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
   const existing = document.getElementById('notifPanelOverlay');
   if(existing){ existing.remove(); return; }
@@ -7388,6 +7526,11 @@ function markNotifsSeen(){
 }
 async function logoutDashboard(){
   simulatedRole = null;
+  simulatedPermissions = null;
+  realAccessRole = null;
+  realAccessPermissions = null;
+  realAccessKind = null;
+  clearPendingStaffInvite();
   await signOutSupabase();
   unsubscribeOrdersRealtime();
   unsubscribeReviewsRealtime();
@@ -7735,6 +7878,10 @@ async function renouvelerDomaineDepuisInterface(domain,customerPriceXof){
 }
 
 function renderDashSection(key){
+  if(!canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole || 'utilisateur'}.`, true);
+    key=firstAllowedSection();
+  }
   const el = document.getElementById('dashContent');
   // Accès qui se termine réellement à la fin de l'essai gratuit OU d'un
   // abonnement expiré : seule la page Abonnement reste accessible pour
@@ -7766,6 +7913,7 @@ function renderDashSection(key){
 
 /* ---------------- OVERVIEW ---------------- */
 function dashOverview(){
+  if(!requireSectionAccess('overview')) return '';
   const periodOrders = ordersForPeriod();
   const paidOrders = periodOrders.filter(o=>o.status!=='cancelled');
   const revenue = paidOrders.reduce((s,o)=>s+o.total,0);
@@ -7885,6 +8033,7 @@ let orderStatusFilter = 'all';
 const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing','En préparation'],['ready','Prêtes'],['delivering','En livraison'],['completed','Terminées'],['cancelled','Annulées']];
 
 function dashOrders(){
+  if(!requireSectionAccess('orders')) return '';
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)}.</p>
@@ -7912,6 +8061,7 @@ function filteredOrders(){
   );
 }
 function ordersRowsHtml(){
+  if(!requireSectionAccess('orders')) return;
   const list = filteredOrders();
   if(list.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">Aucune commande ne correspond à ces critères.</td></tr>`;
   return list.map((o)=>{
@@ -7927,6 +8077,7 @@ function ordersRowsHtml(){
   }).join('');
 }
 function orderProgressHtml(o){
+  if(!requireSectionAccess('orders')) return;
   const delivery = isDeliveryOrder(o.type);
   const steps = delivery
     ? [['new','receipt','Nouvelle'],['preparing','flame','Préparation'],['ready','package','Prête'],['delivering','bike','En livraison'],['completed','checkCircle','Terminée']]
@@ -7965,6 +8116,7 @@ function orderItemLine(it){
   </div>`;
 }
 function printOrderDetail(i){
+  if(!requireSectionAccess('orders')) return;
   const panel=document.getElementById('orderDetailPanel');
   const o=DEMO_ORDERS[i];
   if(!panel || !o) return;
@@ -7977,6 +8129,7 @@ function printOrderDetail(i){
   w.document.close(); w.focus(); setTimeout(()=>w.print(),150);
 }
 function openOrderDetail(i){
+  if(!requireSectionAccess('orders')) return;
   const o = DEMO_ORDERS[i];
   if(!o) return;
   // Mémorise la commande actuellement ouverte pour que les mises à jour
@@ -8053,6 +8206,7 @@ function closeOrderDetail(){
    arrière-plan (ordersTableBody), qui existe indépendamment du
    panneau — jamais tout #dashContent. */
 function changeOrderStatus(i, newStatus, ev){
+  if(!requireSectionAccess('orders')) return;
   if(ev && typeof ev.preventDefault==='function') ev.preventDefault();
   if(ev && typeof ev.stopPropagation==='function') ev.stopPropagation();
   const o = DEMO_ORDERS[i];
@@ -8087,6 +8241,7 @@ function orderItemNameQty(it){
 
 /* ---------------- CAISSE (POS) ---------------- */
 function dashPos(){
+  if(!requireSectionAccess('pos')) return '';
   const periodOrders = ordersForPeriod();
   // CORRECTION : "Total encaissé" restait à 0 FCFA car il filtrait sur
   // payStatus==='paid' — un champ qui n'est en réalité JAMAIS mis à
@@ -8143,6 +8298,7 @@ function dashPos(){
 
 /* ---------------- ANALYTICS ---------------- */
 function dashAnalytics(){
+  if(!requireSectionAccess('analytics')) return '';
   const periodOrders = ordersForPeriod();
   const validOrders = periodOrders.filter(o=>o.status!=='cancelled');
   const revenue = validOrders.reduce((s,o)=>s+o.total,0);
@@ -8174,6 +8330,7 @@ function dashAnalytics(){
   </div>`}`;
 }
 function drawRevenueChart(){
+  if(!requireSectionAccess('analytics')) return;
   const el = document.getElementById('revenueChart');
   if(!el) return;
   // Série réelle : somme du chiffre d'affaires (commandes non annulées)
@@ -8220,6 +8377,7 @@ let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
 let catsHomeVisible = {};
 let expandedCat = 'plats';
 function dashCategories(){
+  if(!requireSectionAccess('categories')) return '';
   const atLimit = !canAddCategory();
   return `
   
@@ -8233,6 +8391,7 @@ function dashCategories(){
   <div class="card" style="max-width:640px;" id="catList">${renderCatList()}</div>`;
 }
 function renderCatList(){
+  if(!requireSectionAccess('categories')) return;
   return Object.entries(catsState).map(([key,label])=>{
     const items = PRODUCTS.filter(p=>p.cat===key);
     const open = expandedCat===key;
@@ -8256,8 +8415,10 @@ function renderCatList(){
     </div>`;
   }).join('');
 }
-function toggleCat(key){ expandedCat = expandedCat===key ? null : key; document.getElementById('catList').innerHTML = renderCatList(); hydrateIcons(); }
+function toggleCat(key){
+  if(!requireSectionAccess('categories')) return; expandedCat = expandedCat===key ? null : key; document.getElementById('catList').innerHTML = renderCatList(); hydrateIcons(); }
 async function toggleCategoryHomeVisibility(key){
+  if(!requireSectionAccess('categories')) return;
   const previous = catsHomeVisible[key] !== false;
   catsHomeVisible[key] = !previous;
   document.getElementById('catList').innerHTML = renderCatList();
@@ -8283,6 +8444,7 @@ let productForm = null; // {id?, name, desc, price, cat, prep, active, available
 let libraryOpen = false;
 
 function dashProducts(){
+  if(!requireSectionAccess('products')) return '';
   const atLimit = !canAddProduct();
   return `
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px;">
@@ -8303,6 +8465,7 @@ function dashProducts(){
 }
 
 function productsListHtml(){
+  if(!requireSectionAccess('products')) return;
   const q = productSearch.trim().toLowerCase();
   const list = PRODUCTS.filter(p=>!q || p.name.toLowerCase().includes(q));
 
@@ -8351,6 +8514,7 @@ function productsListHtml(){
 }
 
 function toggleProductActive(id){
+  if(!requireSectionAccess('products')) return;
   const p = PRODUCTS.find(x=>x.id===id); p.active = !p.active;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
@@ -8358,12 +8522,14 @@ function toggleProductActive(id){
   persistProduct(p);
 }
 function toggleProductAvailable(id){
+  if(!requireSectionAccess('products')) return;
   const p = PRODUCTS.find(x=>x.id===id); p.available = !p.available;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   persistProduct(p);
 }
 function deleteProduct(id){
+  if(!requireSectionAccess('products')) return;
   const p = PRODUCTS.find(x=>x.id===id);
   if(!confirm(`Supprimer « ${p.name} » ?`)) return;
   const idx = PRODUCTS.indexOf(p); PRODUCTS.splice(idx,1);
@@ -8382,6 +8548,7 @@ function productPhotosForForm(source){
   return normalizeProductPhotos(source && source.photos, source && source.photo);
 }
 function openProductForm(id){
+  if(!requireSectionAccess('products')) return;
   if(!id && !canAddProduct()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_PRODUCTS} produits.`); return; }
   const existing = id ? PRODUCTS.find(p=>p.id===id) : null;
   productForm = existing
@@ -8398,6 +8565,7 @@ function pfSyncPhotos(){
   productForm.photo = productForm.photos[0] || null;
 }
 function pfPickPhotos(){
+  if(!requireSectionAccess('products')) return;
   const remaining = Math.max(1, 3 - (productForm.photos||[]).length);
   triggerMultipleImagePicker(remaining, (dataUrls)=>{
     const current = normalizeProductPhotos(productForm.photos, productForm.photo);
@@ -8407,6 +8575,7 @@ function pfPickPhotos(){
   });
 }
 function pfReplacePhoto(index){
+  if(!requireSectionAccess('products')) return;
   triggerImagePicker((dataUrl)=>{
     const photos = normalizeProductPhotos(productForm.photos, productForm.photo);
     photos[index] = dataUrl;
@@ -8416,6 +8585,7 @@ function pfReplacePhoto(index){
   });
 }
 function pfRemovePhoto(index){
+  if(!requireSectionAccess('products')) return;
   const photos = normalizeProductPhotos(productForm.photos, productForm.photo);
   photos.splice(index,1);
   productForm.photos = photos.slice(0,3);
@@ -8424,6 +8594,7 @@ function pfRemovePhoto(index){
 }
 
 function renderProductForm(){
+  if(!requireSectionAccess('products')) return;
   if(!productForm){ document.getElementById('productFormModal').innerHTML=''; return; }
   const f = productForm;
   document.getElementById('productFormModal').innerHTML = `
@@ -8478,6 +8649,7 @@ function renderProductForm(){
   hydrateIcons();
 }
 async function saveProductForm(){
+  if(!requireSectionAccess('products')) return;
   const f = productForm;
   if(!f.name.trim()){ toast('Le nom du produit est requis.'); return; }
   if(!f.price || Number(f.price)<0){ toast('Indiquez un prix valide.'); return; }
@@ -8511,6 +8683,7 @@ function isInMyProducts(item){
   return PRODUCTS.some(p=>p.name.trim().toLowerCase()===item.name.trim().toLowerCase());
 }
 function openLibrary(){
+  if(!requireSectionAccess('library')) return;
   libSearch = ''; libCatFilter = 'all';
   document.getElementById('libraryModal').innerHTML = `
   <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:16px;">
@@ -8536,6 +8709,7 @@ function openLibrary(){
   hydrateIcons();
 }
 function renderLibraryList(){
+  if(!requireSectionAccess('library')) return;
   const q = libSearch.trim().toLowerCase();
   const list = LIBRARY_ITEMS
     .map((item,i)=>({item,i}))
@@ -8563,6 +8737,7 @@ function renderLibraryList(){
 }
 function closeLibrary(){ document.getElementById('libraryModal').innerHTML=''; }
 function toggleLibraryItem(i){
+  if(!requireSectionAccess('library')) return;
   const item = LIBRARY_ITEMS[i];
   if(isInMyProducts(item)){
     const p = PRODUCTS.find(x=>x.name.trim().toLowerCase()===item.name.trim().toLowerCase());
@@ -8582,6 +8757,7 @@ function toggleLibraryItem(i){
   if(state.view==='storefront') renderProductSections();
 }
 async function addCategory(){
+  if(!requireSectionAccess('categories')) return;
   const input = document.getElementById('newCatInput');
   if(!input.value.trim()) return;
   if(!canAddCategory()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_CATEGORIES} catalogues.`); return; }
@@ -8609,6 +8785,7 @@ async function addCategory(){
 
 /* ---------------- INVENTAIRE — lié réellement aux produits et aux commandes ---------------- */
 function dashInventory(){
+  if(!requireSectionAccess('inventory')) return '';
   const rows = PRODUCTS.map(p=>{
     const stock = typeof p.stock === 'number' ? p.stock : null;
     let state_, tone;
@@ -8651,6 +8828,7 @@ function dashInventory(){
   </div>`;
 }
 async function adjustStock(id, delta){
+  if(!requireSectionAccess('inventory')) return;
   const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
   const oldStock=typeof p.stock==='number'?p.stock:0, oldAvailable=p.available;
   p.stock=Math.max(0,oldStock+delta);
@@ -8662,6 +8840,7 @@ async function adjustStock(id, delta){
   if(state.view==='storefront') renderProductSections();
 }
 async function restockProduct(id){
+  if(!requireSectionAccess('inventory')) return;
   const p = PRODUCTS.find(x=>x.id===id); if(!p) return;
   const oldStock=p.stock||0, oldAvailable=p.available;
   p.stock=oldStock+20;p.available=true;
@@ -8674,6 +8853,7 @@ async function restockProduct(id){
 
 /* ---------------- COMPTABILITÉ — revenus réels + historique des paiements d'abonnement ---------------- */
 function dashAccounting(){
+  if(!requireSectionAccess('accounting')) return '';
   const validOrders = ordersForPeriod().filter(o=>o.status!=='cancelled');
   const grossRevenue = validOrders.reduce((s,o)=>s+o.total,0);
   const byMethod = {};
@@ -8702,6 +8882,7 @@ function dashAccounting(){
 /* ---------------- VARIANTS ---------------- */
 let variantsSelectedProduct = null;
 function dashVariants(){
+  if(!requireSectionAccess('variants')) return '';
   // Auto-correction : si le produit mémorisé n'existe plus (supprimé,
   // ou "p2" resté d'un ancien état de démo, ou produit d'un AUTRE
   // restaurant chargé plus tôt dans le même onglet), on retombe sur le
@@ -8734,6 +8915,7 @@ function dashVariants(){
   </div>`;
 }
 function variantsCardHtml(){
+  if(!requireSectionAccess('variants')) return;
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   if(!p) return `<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Sélectionnez un produit.</p>`;
   return `
@@ -8753,8 +8935,10 @@ function variantsCardHtml(){
       <button onclick="removeVariant(${i})" style="color:var(--terracotta);">${ic('trash',14)}</button>
     </div>`).join('')}`;
 }
-function renderVariantsCard(){ document.getElementById('variantsCard').innerHTML = variantsCardHtml(); hydrateIcons(); }
+function renderVariantsCard(){
+  if(!requireSectionAccess('variants')) return; document.getElementById('variantsCard').innerHTML = variantsCardHtml(); hydrateIcons(); }
 function toggleVariantsRequired(){
+  if(!requireSectionAccess('variants')) return;
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   if(!p) return;
   p.variantsRequired = !p.variantsRequired;
@@ -8762,6 +8946,7 @@ function toggleVariantsRequired(){
   persistProduct(p);
 }
 function addVariant(){
+  if(!requireSectionAccess('variants')) return;
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   if(!p) return;
   const name = document.getElementById('newVariantName').value.trim();
@@ -8773,6 +8958,7 @@ function addVariant(){
   persistProduct(p);
 }
 function removeVariant(i){
+  if(!requireSectionAccess('variants')) return;
   const p = PRODUCTS.find(x=>x.id===variantsSelectedProduct);
   if(!p) return;
   p.variants.splice(i,1);
@@ -8795,6 +8981,7 @@ const PAYMENT_LINK_FIELD = {
   orange_money: {key:'orange_money_link', label:'Lien de paiement Orange Money'},
 };
 function dashPayments(){
+  if(!requireSectionAccess('payments')) return '';
   const methods = ['cash','on_delivery','wave','orange_money'];
   return `
   
@@ -8816,6 +9003,7 @@ function dashPayments(){
   </div>`;
 }
 function paymentsListHtml(methods){
+  if(!requireSectionAccess('payments')) return '';
   return methods.map(m=>{
     const on = state.toggles[m];
     const locked = PRO_ONLY_METHODS.includes(m) && !isPremiumActive();
@@ -8844,6 +9032,7 @@ function schedulePaymentPersist(){
   paymentSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function togglePayment(m){
+  if(!requireSectionAccess('payments')) return;
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
   if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()){
     toast(ic('lock',14)+' '+PRO_ONLY_LABEL[m]+" nécessite le forfait Premium.", true);
@@ -8858,6 +9047,7 @@ function togglePayment(m){
 /* ---------------- CUSTOMERS ---------------- */
 let dashCustomersTab = 'clients';
 function dashCustomers(){
+  if(!requireSectionAccess('customers')) return '';
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Clients</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;">Calculés à partir des commandes réelles de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
@@ -8867,8 +9057,10 @@ function dashCustomers(){
   </div>
   <div id="dashCustomersBody">${dashCustomersTab==='clients' ? dashClientsListHtml() : dashReviewsHtml()}</div>`;
 }
-function setDashCustomersTab(tab){ dashCustomersTab = tab; renderDashSection('customers'); }
+function setDashCustomersTab(tab){
+  if(!requireSectionAccess('customers')) return; dashCustomersTab = tab; renderDashSection('customers'); }
 function dashClientsListHtml(){
+  if(!requireSectionAccess('customers')) return;
   return `
   <div style="position:relative;max-width:280px;margin-bottom:16px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" id="customerSearch" style="padding-left:34px;" placeholder="Rechercher un client..." oninput="document.getElementById('customersTableBody').innerHTML=customersRowsHtml(this.value)"></div>
   <div class="card overflow-x-auto">
@@ -8879,6 +9071,7 @@ function dashClientsListHtml(){
   </div>`;
 }
 function computeCustomersFromOrders(){
+  if(!requireSectionAccess('customers')) return [];
   const byPhone = {};
   DEMO_ORDERS.forEach(o=>{
     if(!byPhone[o.phone]) byPhone[o.phone] = {name:o.client, phone:o.phone, orders:0, spent:0, lastOrder:o.createdAt};
@@ -8889,6 +9082,7 @@ function computeCustomersFromOrders(){
   return Object.values(byPhone).sort((a,b)=>b.spent-a.spent);
 }
 function customersRowsHtml(query){
+  if(!requireSectionAccess('customers')) return '';
   const q = (query||'').trim().toLowerCase();
   const customers = computeCustomersFromOrders().filter(c=>!q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
   if(customers.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">${q?'Aucun client ne correspond à votre recherche.':'Aucun client pour le moment.'}</td></tr>`;
@@ -8904,6 +9098,7 @@ function customersRowsHtml(query){
   }).join('');
 }
 function openOrderDetailByNum(num){
+  if(!requireSectionAccess('orders')) return;
   const i = DEMO_ORDERS.findIndex(o=>o.num===num);
   if(i!==-1) openOrderDetail(i);
 }
@@ -8911,6 +9106,7 @@ function openOrderDetailByNum(num){
    (vraies lignes Supabase pour CE restaurant) — jamais un chiffre codé
    en dur. */
 function dashReviewsHtml(){
+  if(!requireSectionAccess('customers')) return;
   if(REVIEWS.length===0){
     return `<div class="empty-state">${ic('star',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après que des clients en laissent depuis la page de confirmation de commande.</p></div>`;
   }
@@ -8938,6 +9134,7 @@ function dashReviewsHtml(){
   </div>`;
 }
 async function deleteReview(id){
+  if(!requireSectionAccess('customers')) return;
   if(!confirm('Supprimer cet avis ?')) return;
   const {error} = await supabaseClient.from('reviews').delete().eq('id', id);
   if(error){ toast('Suppression impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.')); return; }
@@ -8948,6 +9145,7 @@ async function deleteReview(id){
 
 /* ---------------- QR CODE ---------------- */
 function dashQrcode(){
+  if(!requireSectionAccess('qrcode')) return '';
   const url = publicRestaurantUrl(RESTAURANT.slug);
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
@@ -8969,6 +9167,7 @@ function dashQrcode(){
   </div>`;
 }
 function shareQr(){
+  if(!requireSectionAccess('qrcode')) return;
   const publicUrl = publicRestaurantUrl(RESTAURANT.slug);
   if(navigator.share){
     navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
@@ -9005,6 +9204,7 @@ function genInviteCode(){
 }
 
 function dashStaff(){
+  if(!requireSectionAccess('staff')) return '';
   if(!isPremiumActive()){
     return `
     
@@ -9060,12 +9260,14 @@ function dashStaff(){
 }
 
 function toggleInvitePermission(key, checked){
+  if(!requireSectionAccess('staff')) return;
   invitePermissions = invitePermissions.slice();
   if(checked && !invitePermissions.includes(key)) invitePermissions.push(key);
   if(!checked) invitePermissions = invitePermissions.filter(k=>k!==key);
 }
 
 function staffActiveListHtml(){
+  if(!requireSectionAccess('staff')) return;
   const active = staffState.filter(s=>s.status==='Actif');
   if(active.length===0) return `<div class="empty-state">${ic('userGroup',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun membre actif.</p></div>`;
   return active.map((s)=>{
@@ -9086,6 +9288,7 @@ function staffActiveListHtml(){
   }).join('');
 }
 function staffPendingListHtml(){
+  if(!requireSectionAccess('staff')) return;
   const pending = staffState.filter(s=>s.status==='En attente');
   if(pending.length===0) return `<div class="empty-state">${ic('send',22,{stroke:'var(--amber-deep)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune invitation en attente.</p></div>`;
   return pending.map((s)=>{
@@ -9109,6 +9312,7 @@ function refreshStaffLists(){
 }
 
 async function inviteStaff(){
+  if(!requireSectionAccess('staff')) return;
   const email = document.getElementById('staffEmail').value.trim().toLowerCase();
   if(!email){ toast('Entrez un e-mail.'); return; }
   if(!/^\S+@\S+\.\S+$/.test(email)){ toast('Adresse e-mail invalide.'); return; }
@@ -9152,6 +9356,7 @@ async function inviteStaff(){
 }
 
 async function resendInvite(i){
+  if(!requireSectionAccess('staff')) return;
   const s=staffState[i];
   if(!s) return;
   const {error} = await supabaseClient.auth.signInWithOtp({
@@ -9168,6 +9373,7 @@ async function resendInvite(i){
 }
 
 async function cancelInvite(i){
+  if(!requireSectionAccess('staff')) return;
   if(!confirm(`Annuler l'invitation de ${staffState[i].email} ?`)) return;
   const id = staffState[i].id;
   staffState.splice(i,1);
@@ -9175,6 +9381,7 @@ async function cancelInvite(i){
   await deleteStaffRow(id);
 }
 async function deactivateStaff(i){
+  if(!requireSectionAccess('staff')) return;
   if(!confirm(`Désactiver l'accès de ${staffState[i].name} à ce restaurant ?`)) return;
   staffState[i].status = 'En attente';
   staffState[i].code = genInviteCode();
@@ -9185,6 +9392,7 @@ async function deactivateStaff(i){
 }
 
 function openStaffEdit(i){
+  if(!requireSectionAccess('staff')) return;
   editingStaffIndex = i;
   const s = staffState[i];
   const perms = s.permissions || ROLE_SECTIONS[s.role] || [];
@@ -9217,12 +9425,14 @@ function openStaffEdit(i){
   hydrateIcons();
 }
 function editStaffPermission(i,key,checked){
+  if(!requireSectionAccess('staff')) return;
   const s = staffState[i];
   let perms = s.permissions || ROLE_SECTIONS[s.role].slice();
   perms = checked ? [...new Set([...perms,key])] : perms.filter(k=>k!==key);
   s.permissions = perms;
 }
 function saveStaffEdit(i){
+  if(!requireSectionAccess('staff')) return;
   closeStaffEdit();
   refreshStaffLists();
   toast(`Permissions de ${staffState[i].name} mises à jour.`);
@@ -9233,6 +9443,7 @@ function closeStaffEdit(){ editingStaffIndex=null; document.getElementById('staf
 /* ---------------- BIBLIOTHÈQUE (médias : logo, couverture, photos produits) ---------------- */
 let libraryTab = 'all';
 function dashLibrary(){
+  if(!requireSectionAccess('library')) return '';
   return `
   <div class="lib-header">
     <div>
@@ -9260,6 +9471,7 @@ function libCardShell({imageHtml, name, meta, actions}){
 }
 
 function libraryCardsHtml(){
+  if(!requireSectionAccess('library')) return '';
   const cards = [];
 
   if(libraryTab!=='products'){
@@ -9358,6 +9570,7 @@ function onSocialDraftInput(key, el){
   }
 }
 function openSocialEdit(key){
+  if(!requireSectionAccess('settings')) return;
   socialEditingKey = key;
   socialDraft = RESTAURANT.social[key].value;
   refreshSocialCards();
@@ -9369,6 +9582,7 @@ function closeSocialEdit(){
   refreshSocialCards();
 }
 async function saveSocialEdit(key){
+  if(!requireSectionAccess('settings')) return;
   if(!socialDraft.trim()){ toast('Ce champ ne peut pas être vide.'); return; }
   RESTAURANT.social[key].value = socialDraft.trim();
   RESTAURANT.social[key].enabled = true;
@@ -9380,12 +9594,14 @@ async function saveSocialEdit(key){
   toast('Réseau enregistré — visible sur votre site public.');
 }
 async function toggleSocialEnabled(key){
+  if(!requireSectionAccess('settings')) return;
   RESTAURANT.social[key].enabled = !RESTAURANT.social[key].enabled;
   refreshSocialCards();
   if(state.view==='storefront') renderStorefrontHero();
   await persistRestaurant();
 }
 async function removeSocial(key){
+  if(!requireSectionAccess('settings')) return;
   if(!confirm('Retirer ce réseau ? Ses informations seront supprimées (différent de le masquer).')) return;
   RESTAURANT.social[key] = {enabled:false, value:''};
   refreshSocialCards();
@@ -9408,6 +9624,7 @@ function backToHomeBtnHtml(){
   return `<button class="mobile-tablet-only" onclick="setDashSection('overview')" style="align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:6px 2px;border:none;background:none;">${ic('arrowLeft',15)} Retour à l'accueil</button>`;
 }
 function dashSettings(){
+  if(!requireSectionAccess('settings')) return '';
   return `
   
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -9422,6 +9639,7 @@ function dashSettings(){
 }
 
 function settingsBodyHtml(){
+  if(!requireSectionAccess('settings')) return;
   if(settingsTab==='Général') return `
     <div class="card" style="padding:14px 16px;margin-bottom:16px;">
       <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.isPublished?'0':'12px'};">
@@ -9677,6 +9895,7 @@ function addDeliveryZone(){
 }
 let deliveryZoneSaveTimer=null;
 function updateDeliveryZone(index,key,value){
+  if(!requireSectionAccess('settings')) return;
   const z=enabledDeliveryZones()[index];
   if(!z) return;
   if(key==='name') z.name=String(value||'').trim();
@@ -9685,6 +9904,7 @@ function updateDeliveryZone(index,key,value){
   deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function removeDeliveryZone(index){
+  if(!requireSectionAccess('settings')) return;
   const z=enabledDeliveryZones()[index];
   if(!z) return;
   if(!confirm(`Supprimer la zone « ${z.name} » ?`)) return;
@@ -9696,6 +9916,7 @@ function removeDeliveryZone(index){
 }
 
 async function requestOrderNotificationEmailChange(){
+  if(!requireSectionAccess('settings')) return;
   if(!RESTAURANT.id) return;
   const input = document.getElementById('orderNotifyEmail');
   const email = (input?.value || '').trim().toLowerCase();
@@ -9710,6 +9931,7 @@ async function requestOrderNotificationEmailChange(){
 }
 
 async function verifyOrderNotificationEmail(){
+  if(!requireSectionAccess('settings')) return;
   if(!RESTAURANT.id || !RESTAURANT.orderNotificationEmailPending) return;
   const code = (document.getElementById('orderNotifyCode')?.value || '').replace(/\D/g,'').slice(0,8);
   if(code.length !== 8){ toast('Entrez le code à 8 chiffres.'); return; }
@@ -9725,6 +9947,7 @@ async function verifyOrderNotificationEmail(){
 }
 
 async function saveSettings(){
+  if(!requireSectionAccess('settings')) return;
   const nameEl = document.getElementById('setName');
   if(nameEl){ RESTAURANT.name = nameEl.value.trim() || RESTAURANT.name; applyRestaurantName(RESTAURANT.name); }
   const typeEl = document.getElementById('setType'); if(typeEl) RESTAURANT.type = typeEl.value;
@@ -9741,7 +9964,10 @@ async function saveSettings(){
   const saved = await persistRestaurant();
   if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
 }
-function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
+function applyRestaurantVisuals(){
+  if(!requireSectionAccess('settings')) return;
+  renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant();
+}
 
 async function optimizeGalleryPhoto(dataUrl, maxSide=1600, quality=0.84){
   return new Promise((resolve)=>{
@@ -9767,6 +9993,7 @@ async function optimizeGalleryPhoto(dataUrl, maxSide=1600, quality=0.84){
 }
 
 async function addGalleryPhotos(){
+  if(!requireSectionAccess('settings')) return;
   const existing=Array.isArray(RESTAURANT.galleryPhotos)?RESTAURANT.galleryPhotos.filter(Boolean):[];
   const remaining=Math.max(0,3-existing.length);
   if(!remaining){ toast('Vous avez déjà ajouté 3 photos supplémentaires.'); return; }
@@ -9782,6 +10009,7 @@ async function addGalleryPhotos(){
   });
 }
 function pickGalleryPhoto(index){
+  if(!requireSectionAccess('settings')) return;
   const slot=Number(index);
   if(!Number.isInteger(slot)||slot<0||slot>2) return;
   triggerImagePicker(async (dataUrl)=>{
@@ -9797,6 +10025,7 @@ function pickGalleryPhoto(index){
   });
 }
 function removeGalleryPhoto(index){
+  if(!requireSectionAccess('settings')) return;
   const slot=Number(index);
   if(!Number.isInteger(slot)||slot<0||slot>2) return;
   RESTAURANT.galleryPhotos=(RESTAURANT.galleryPhotos||[]).filter((_,i)=>i!==slot).filter(Boolean).slice(0,3);
@@ -9808,6 +10037,7 @@ function removeGalleryPhoto(index){
 }
 
 function pickLogo(){
+  if(!requireSectionAccess('settings')) return;
   triggerImagePicker((dataUrl)=>{
     RESTAURANT.logoDataUrl = dataUrl;
     applyRestaurantVisuals();
@@ -9815,6 +10045,7 @@ function pickLogo(){
   });
 }
 function pickCover(){
+  if(!requireSectionAccess('settings')) return;
   triggerImagePicker((dataUrl)=>{
     RESTAURANT.coverDataUrl = dataUrl;
     applyRestaurantVisuals();
@@ -9837,6 +10068,7 @@ const SUBSCRIPTION_STATUS_TONE = {
 };
 
 function dashAbonnement(){
+  if(!requireSectionAccess('abonnement')) return '';
   abonPaymentMethod = '';
   if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
@@ -9871,6 +10103,7 @@ function dashAbonnement(){
 }
 
 function abonCardHtml(){
+  if(!requireSectionAccess('abonnement')) return '';
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(abonSelectedPlan, cycle);
@@ -9886,20 +10119,20 @@ function abonCardHtml(){
     <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
+    <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
+    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
+  </div>
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
   <div style="margin-bottom:16px;">
     <p class="field-label">Choisissez votre moyen de paiement</p>
-    <div class="flex gap-2">
-      ${[['Wave','wave'],['Orange Money','orange_money']].map(([label,key])=>`<button type="button" aria-label="Payer avec ${label}" aria-pressed="${abonPaymentMethod===label?'true':'false'}" onclick="abonPaymentMethod='${label}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="flex:1;min-height:96px;border:2px solid ${abonPaymentMethod===label?'var(--amber-deep)':'var(--cream-line)'};${abonPaymentMethod===label?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;">${mobileSubscriptionPaymentLogo(key,label)}</button>`).join('')}
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+      ${[['Wave','wave'],['Orange Money','orange_money']].map(([label,key])=>`<button type="button" aria-label="Payer avec ${label}" aria-pressed="${abonPaymentMethod===label?'true':'false'}" onclick="abonPaymentMethod='${label}';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="width:132px;height:132px;flex:0 0 132px;box-sizing:border-box;border:2px solid ${abonPaymentMethod===label?'var(--amber-deep)':'var(--cream-line)'};${abonPaymentMethod===label?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;">${mobileSubscriptionPaymentLogo(key,label)}</button>`).join('')}
     </div>
   </div>
   <div class="flex-col gap-2" style="margin-bottom:18px;">
     <div><label class="field-label">Nom complet</label><input class="field-input" autocomplete="name" value="${escapeAttr(abonCustomerName)}" oninput="abonCustomerName=this.value"></div>
     <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" value="${escapeAttr(abonCustomerPhone)}" oninput="this.value=this.value.replace(/\D/g,'');abonCustomerPhone=this.value"></div>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
-    <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
-    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
   </div>
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
     <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
@@ -9916,6 +10149,7 @@ function abonCardHtml(){
 }
 
 function paymentsHistoryHtml(){
+  if(!requireSectionAccess('abonnement')) return '';
   if(!paymentsHistory.length){
     return `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun paiement PayTech pour le moment.</p>`;
   }
@@ -9927,6 +10161,7 @@ function paymentsHistoryHtml(){
 }
 
 async function abonApplyPlan(){
+  if(!requireSectionAccess('abonnement')) return;
   if(abonSelectedPlan === 'free'){
     state.plan = 'free';
     renderDashSection('abonnement');
@@ -9953,6 +10188,7 @@ let paymentsHistory = [];
    de note ou de nombre d'avis inventé pour l'affichage. */
 let REVIEWS = [];
 async function startPayTechCheckout(plan){
+  if(!requireSectionAccess('abonnement')) return;
   savePayTechReturnSection('abonnement');
   const btn = document.getElementById('paytechBtn');
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
@@ -9997,6 +10233,7 @@ async function startPayTechCheckout(plan){
 }
 
 async function cancelSubscription(){
+  if(!requireSectionAccess('abonnement')) return;
   if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre forfait repassera en Gratuit.")) return;
   // Passe par la RPC dédiée cancel_my_subscription — subscription_status
   // n'est plus modifiable par une simple mise à jour de paramètres
@@ -10010,6 +10247,7 @@ async function cancelSubscription(){
   toast('Abonnement résilié — accès Premium conservé jusqu\'à la fin de la période déjà payée.');
 }
 async function reactivateSubscription(){
+  if(!requireSectionAccess('abonnement')) return;
   // Passe par la RPC dédiée reactivate_my_subscription — ne peut
   // reprendre qu'un abonnement annulé dont la période payée n'est pas
   // terminée ; ne peut jamais activer Premium depuis un état
@@ -10284,6 +10522,10 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   // rien à reprendre).
   if(event === 'SIGNED_IN' && session){
     currentUser = session.user;
+    if(readPendingStaffInvite()){
+      tryFinalizePendingStaffInvite();
+      return;
+    }
     tryResumePendingOnboarding();
   }
 });
@@ -10807,6 +11049,7 @@ function speakAiText(text,button){
   function toggleAi(){if(aiOpen)closeAi();else openAi();}
 
   async function toggleTerangaAI(ev){
+  if(!requireSectionAccess('settings')) return;
     ev?.preventDefault?.();ev?.stopPropagation?.();
     const toggle=document.getElementById('tgAiSettingsToggle');const previous=enabled();const next=!previous;
     RESTAURANT.aiEnabled=next;saveEnabledLocal(next);
