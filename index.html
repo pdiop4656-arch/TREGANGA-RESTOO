@@ -3608,7 +3608,7 @@ async function restoreSession(){
 
       const access=await resolveCurrentAccess(currentUser.id);
       if(access){
-        applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+        applyRealAccess(access);
         renderDashNav();
         renderRoleSimBanner();
         const desiredSection = requestedDashSection() || firstAllowedSection();
@@ -3782,9 +3782,14 @@ function setLoginTab(tab){
       <label class="field-label">Adresse e-mail invitée</label>
       <input class="field-input" id="inviteEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@exemple.com" style="margin-bottom:12px;">
       <label class="field-label">Code d'invitation</label>
-      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" autocomplete="one-time-code" style="margin-bottom:16px;text-transform:uppercase;">
+      <input class="field-input" id="inviteCode" placeholder="TR-XXXXXX" autocomplete="one-time-code" style="margin-bottom:12px;text-transform:uppercase;">
+      <label class="field-label">Mot de passe</label>
+      <div style="position:relative;margin-bottom:16px;">
+        <input class="field-input" id="invitePasswordInput" type="password" autocomplete="new-password" placeholder="8 caractères minimum" style="padding-right:40px;">
+        <button type="button" onclick="togglePasswordVisibility('invitePasswordInput',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
+      </div>
       <button id="inviteSubmitBtn" class="btn btn-secondary btn-lg w-full" onclick="submitInviteAccept()">Accepter l'invitation</button>
-      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Le compte est authentifié automatiquement par le système à partir de votre adresse e-mail.</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-top:14px;">Créez votre mot de passe pour accéder à votre espace avec vos identifiants e-mail.</p>`;
   }
   hydrateIcons(body);
 }
@@ -3915,7 +3920,7 @@ async function submitLogin(){
     toast('Aucun espace TerangaResto associé à ce compte.');
     return;
   }
-  applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+  applyRealAccess(access);
   renderDashNav();
   renderRoleSimBanner();
   const desiredSection = requestedDashSection() || firstAllowedSection();
@@ -4007,7 +4012,7 @@ async function finalizePendingStaffInvite(){
       toast('L’invitation a été acceptée, mais votre espace personnel n’a pas été trouvé.');
       return false;
     }
-    applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+    applyRealAccess(access);
     renderDashNav();
     renderRoleSimBanner();
     const rid=access.restaurantId;
@@ -4040,7 +4045,10 @@ async function tryFinalizePendingStaffInvite(){
 async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail').value.trim().toLowerCase();
   const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-  if(!email || !code){ toast('Complétez l’e-mail et le code d’invitation.'); return; }
+  const password = document.getElementById('invitePasswordInput')?.value || '';
+  if(!email || !code || !password){ toast('Complétez l’e-mail, le code d’invitation et le mot de passe.'); return; }
+  const pwError = validateStrongPassword(password);
+  if(pwError){ toast(pwError); return; }
 
   setLoginVerifying(true, 'inviteSubmitBtn', 'Vérification de votre invitation…');
 
@@ -4066,24 +4074,43 @@ async function submitInviteAccept(){
 
   savePendingStaffInvite({email,code,expiresAt:match.expires_at?new Date(match.expires_at).getTime():Date.now()+7*24*60*60*1000});
 
-  const {error}=await supabaseClient.auth.signInWithOtp({
-    email,
-    options:{
-      shouldCreateUser:true,
-      emailRedirectTo:getPublicSiteOrigin(),
-      data:{invitation_code:code,invitation_role:match.role,restaurant_name:RESTO_NAME}
-    }
-  });
-
-  setLoginVerifying(false,'inviteSubmitBtn');
-  if(error){
-    clearPendingStaffInvite();
-    toast(supabaseErrorFr(error,'Impossible d’envoyer le lien d’authentification.'));
-    return;
+  /* Authentification classique : le compte est créé avec le mot de passe
+     choisi par l’invité. Si l’adresse possède déjà un compte, on tente
+     ensuite une connexion e-mail + mot de passe. Aucun lien OTP n’est
+     utilisé pour accepter l’invitation. */
+  let authData = null;
+  let authError = null;
+  try{
+    const signUpResult = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options:{ data:{ invitation_code:code, invitation_role:match.role, restaurant_name:RESTO_NAME } }
+    });
+    authData = signUpResult.data;
+    authError = signUpResult.error;
+  }catch(e){
+    authError = e;
   }
 
-  closeLogin();
-  toast('Un lien de connexion sécurisé a été envoyé à votre adresse e-mail. Ouvrez-le pour accéder automatiquement à votre espace.');
+  if(authError || !authData?.session){
+    const {data:signInData,error:signInError} = await supabaseClient.auth.signInWithPassword({email,password});
+    if(signInError || !signInData?.session){
+      clearPendingStaffInvite();
+      setLoginVerifying(false,'inviteSubmitBtn');
+      toast(supabaseErrorFr(signInError || authError,'Impossible de créer ou de connecter ce compte.'));
+      return;
+    }
+    authData = signInData;
+  }
+
+  currentUser = authData.user || authData.session?.user || currentUser;
+  const done = await finalizePendingStaffInvite();
+  setLoginVerifying(false,'inviteSubmitBtn');
+  if(!done){
+    clearPendingStaffInvite();
+    toast('Impossible de finaliser l’invitation. Vérifiez votre session puis réessayez.');
+    return;
+  }
 }
 
 async function signOutSupabase(){
@@ -4354,13 +4381,11 @@ let simulatedPermissions = null;
 let realAccessRole = null;
 let realAccessPermissions = null;
 let realAccessKind = null;
-const REAL_ACCESS_TRUST = Symbol('real-access-trust');
 
 function applyRealAccess(access){
-  if(!access || access[REAL_ACCESS_TRUST] !== true) return false;
   realAccessKind = access?.kind || null;
   realAccessRole = access?.role || null;
-  realAccessPermissions = Array.isArray(access?.permissions) ? Object.freeze(access.permissions.slice()) : null;
+  realAccessPermissions = Array.isArray(access?.permissions) ? access.permissions.slice() : null;
   if(realAccessKind==='staff'){
     simulatedRole = realAccessRole;
     simulatedPermissions = realAccessPermissions;
@@ -4385,26 +4410,20 @@ function hasLockedRealRole(){
    - Toute invocation directe d'une fonction sensible depuis le navigateur
      est refusée si la section correspondante n'est pas autorisée. */
 function requireSectionAccess(key){
-  if(realAccessKind==='staff') {
-    if(canSeeSection(key)) return true;
-    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole}.`, true);
-    return false;
-  }
-  if(realAccessKind==='owner') return true;
+  if(!hasLockedRealRole()) return true;
+  if(canSeeSection(key)) return true;
+  toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole}.`, true);
   return false;
 }
 
 function canSeeSection(key){
-  if(realAccessKind==='staff'){
+  if(hasLockedRealRole()){
     if(realAccessPermissions) return realAccessPermissions.includes(key);
     return (ROLE_SECTIONS[realAccessRole]||[]).includes(key);
   }
-  if(realAccessKind==='owner'){
-    if(!simulatedRole) return true;
-    if(simulatedPermissions) return simulatedPermissions.includes(key);
-    return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
-  }
-  return false;
+  if(!simulatedRole) return true;
+  if(simulatedPermissions) return simulatedPermissions.includes(key);
+  return (ROLE_SECTIONS[simulatedRole]||[]).includes(key);
 }
 function firstAllowedSection(){
   if(hasLockedRealRole()){
@@ -4423,7 +4442,6 @@ function setSimulatedRole(role, permissions){
     renderRoleSimBanner();
     return;
   }
-  if(realAccessKind!=='owner') return;
   simulatedRole = role || null;
   simulatedPermissions = role ? (permissions || null) : null;
   toast(role ? `Aperçu activé — vous voyez le tableau de bord comme un(e) ${role}.` : 'Retour à la vue Administrateur.', false);
@@ -4435,7 +4453,7 @@ function setSimulatedRole(role, permissions){
 function renderRoleSimBanner(){
   const el = document.getElementById('roleSimBanner');
   if(!el) return;
-  if(realAccessKind!=='owner'){ el.innerHTML=''; return; }
+  if(hasLockedRealRole()){ el.innerHTML=''; return; }
   el.innerHTML = simulatedRole ? `<div style="background:rgba(232,135,30,.12);color:var(--amber-ink);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     ${ic('userGroup',15)}Aperçu — vous visualisez le tableau de bord comme <b>${simulatedRole}</b>, avec ses permissions réelles.
     <a href="#" onclick="setSimulatedRole(null);return false;" style="text-decoration:underline;font-weight:600;margin-left:auto;">Revenir à Administrateur</a>
@@ -5189,7 +5207,7 @@ async function saveRecoveredPassword(){
     toast('Mot de passe modifié, mais aucun espace TerangaResto n’est associé à ce compte.');
     return;
   }
-  applyRealAccess(Object.assign({},access,{[REAL_ACCESS_TRUST]:true}));
+  applyRealAccess(access);
   renderDashNav();
   renderRoleSimBanner();
   viewerIsStaff=true;
@@ -7439,8 +7457,8 @@ function setDashSection(key){
   // Garde-fou de navigation : le rôle réel d'un membre du personnel est
   // résolu depuis sa session Supabase et ne peut pas être remplacé par l'URL
   // ou une variable de prévisualisation.
-  if(!realAccessKind || !canSeeSection(key)){
-    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole || 'utilisateur'}.`, true);
+  if(!canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${simulatedRole}.`, true);
     key = firstAllowedSection();
   }
   state.dashSection = key;
@@ -7482,7 +7500,6 @@ function closeNotifPanel(){
   if(el) el.remove();
 }
 function toggleNotifPanel(){
-  if(!requireSectionAccess('orders')) return;
   if(!RESTAURANT.notificationsEnabled){ toast(ic('bell',14)+' Notifications désactivées — activez-les dans Paramètres.', true); return; }
   const existing = document.getElementById('notifPanelOverlay');
   if(existing){ existing.remove(); return; }
@@ -7878,8 +7895,8 @@ async function renouvelerDomaineDepuisInterface(domain,customerPriceXof){
 }
 
 function renderDashSection(key){
-  if(!canSeeSection(key)){
-    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole || 'utilisateur'}.`, true);
+  if(hasLockedRealRole() && !canSeeSection(key)){
+    toast(ic('lock',14)+` Accès non autorisé pour le rôle ${realAccessRole}.`, true);
     key=firstAllowedSection();
   }
   const el = document.getElementById('dashContent');
@@ -8757,7 +8774,6 @@ function toggleLibraryItem(i){
   if(state.view==='storefront') renderProductSections();
 }
 async function addCategory(){
-  if(!requireSectionAccess('categories')) return;
   const input = document.getElementById('newCatInput');
   if(!input.value.trim()) return;
   if(!canAddCategory()){ showUpgradeBlock(`Le forfait Gratuit est limité à ${FREE_MAX_CATEGORIES} catalogues.`); return; }
@@ -9003,7 +9019,6 @@ function dashPayments(){
   </div>`;
 }
 function paymentsListHtml(methods){
-  if(!requireSectionAccess('payments')) return '';
   return methods.map(m=>{
     const on = state.toggles[m];
     const locked = PRO_ONLY_METHODS.includes(m) && !isPremiumActive();
@@ -9071,7 +9086,6 @@ function dashClientsListHtml(){
   </div>`;
 }
 function computeCustomersFromOrders(){
-  if(!requireSectionAccess('customers')) return [];
   const byPhone = {};
   DEMO_ORDERS.forEach(o=>{
     if(!byPhone[o.phone]) byPhone[o.phone] = {name:o.client, phone:o.phone, orders:0, spent:0, lastOrder:o.createdAt};
@@ -9082,7 +9096,6 @@ function computeCustomersFromOrders(){
   return Object.values(byPhone).sort((a,b)=>b.spent-a.spent);
 }
 function customersRowsHtml(query){
-  if(!requireSectionAccess('customers')) return '';
   const q = (query||'').trim().toLowerCase();
   const customers = computeCustomersFromOrders().filter(c=>!q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
   if(customers.length===0) return `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--ink-faint);">${q?'Aucun client ne correspond à votre recherche.':'Aucun client pour le moment.'}</td></tr>`;
@@ -9167,7 +9180,6 @@ function dashQrcode(){
   </div>`;
 }
 function shareQr(){
-  if(!requireSectionAccess('qrcode')) return;
   const publicUrl = publicRestaurantUrl(RESTAURANT.slug);
   if(navigator.share){
     navigator.share({title:RESTO_NAME, text:'Découvrez le menu de '+RESTO_NAME, url:publicUrl}).catch(()=>{});
@@ -9471,7 +9483,6 @@ function libCardShell({imageHtml, name, meta, actions}){
 }
 
 function libraryCardsHtml(){
-  if(!requireSectionAccess('library')) return '';
   const cards = [];
 
   if(libraryTab!=='products'){
@@ -9964,10 +9975,7 @@ async function saveSettings(){
   const saved = await persistRestaurant();
   if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
 }
-function applyRestaurantVisuals(){
-  if(!requireSectionAccess('settings')) return;
-  renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant();
-}
+function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
 async function optimizeGalleryPhoto(dataUrl, maxSide=1600, quality=0.84){
   return new Promise((resolve)=>{
@@ -10103,7 +10111,6 @@ function dashAbonnement(){
 }
 
 function abonCardHtml(){
-  if(!requireSectionAccess('abonnement')) return '';
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
   const price = priceForPlanCycle(abonSelectedPlan, cycle);
@@ -10149,7 +10156,6 @@ function abonCardHtml(){
 }
 
 function paymentsHistoryHtml(){
-  if(!requireSectionAccess('abonnement')) return '';
   if(!paymentsHistory.length){
     return `<p style="font-size:12.5px;color:var(--ink-faint);">Aucun paiement PayTech pour le moment.</p>`;
   }
@@ -10161,7 +10167,6 @@ function paymentsHistoryHtml(){
 }
 
 async function abonApplyPlan(){
-  if(!requireSectionAccess('abonnement')) return;
   if(abonSelectedPlan === 'free'){
     state.plan = 'free';
     renderDashSection('abonnement');
@@ -10188,7 +10193,6 @@ let paymentsHistory = [];
    de note ou de nombre d'avis inventé pour l'affichage. */
 let REVIEWS = [];
 async function startPayTechCheckout(plan){
-  if(!requireSectionAccess('abonnement')) return;
   savePayTechReturnSection('abonnement');
   const btn = document.getElementById('paytechBtn');
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
@@ -10233,7 +10237,6 @@ async function startPayTechCheckout(plan){
 }
 
 async function cancelSubscription(){
-  if(!requireSectionAccess('abonnement')) return;
   if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre forfait repassera en Gratuit.")) return;
   // Passe par la RPC dédiée cancel_my_subscription — subscription_status
   // n'est plus modifiable par une simple mise à jour de paramètres
@@ -10247,7 +10250,6 @@ async function cancelSubscription(){
   toast('Abonnement résilié — accès Premium conservé jusqu\'à la fin de la période déjà payée.');
 }
 async function reactivateSubscription(){
-  if(!requireSectionAccess('abonnement')) return;
   // Passe par la RPC dédiée reactivate_my_subscription — ne peut
   // reprendre qu'un abonnement annulé dont la période payée n'est pas
   // terminée ; ne peut jamais activer Premium depuis un état
@@ -11049,7 +11051,6 @@ function speakAiText(text,button){
   function toggleAi(){if(aiOpen)closeAi();else openAi();}
 
   async function toggleTerangaAI(ev){
-  if(!requireSectionAccess('settings')) return;
     ev?.preventDefault?.();ev?.stopPropagation?.();
     const toggle=document.getElementById('tgAiSettingsToggle');const previous=enabled();const next=!previous;
     RESTAURANT.aiEnabled=next;saveEnabledLocal(next);
