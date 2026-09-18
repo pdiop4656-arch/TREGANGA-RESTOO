@@ -9987,15 +9987,6 @@ async function loadOrderWhatsappRecipients(restaurantId=RESTAURANT.id){
 
 async function setOrderNotificationChannel(channel){
   const next = channel === 'whatsapp' ? 'whatsapp' : 'email';
-  if(next === 'whatsapp'){
-    const recipients = Array.isArray(RESTAURANT.orderNotificationWhatsappRecipients)
-      ? RESTAURANT.orderNotificationWhatsappRecipients.filter(r=>r && r.is_active !== false)
-      : [];
-    if(!recipients.length){
-      toast('Ajoutez d’abord un numéro WhatsApp de réception.');
-      return;
-    }
-  }
   if(next === 'email' && !RESTAURANT.orderNotificationEmailVerified){
     toast('Vérifiez d’abord l’adresse Gmail de réception.');
     return;
@@ -10121,6 +10112,22 @@ function showOrderWhatsappPremiumNotice(){
 }
 
 
+function handleOrderWhatsappRowClick(event){
+  if(event?.target?.closest('button')) return;
+  const recipients = Array.isArray(RESTAURANT.orderNotificationWhatsappRecipients)
+    ? RESTAURANT.orderNotificationWhatsappRecipients.filter(r=>r && r.is_active !== false)
+    : [];
+  if(!recipients.length) openOrderWhatsappRecipientModal('add');
+}
+
+function toggleOrderNotificationGmailDetails(event){
+  if(event?.target?.closest('button')) return;
+  if(RESTAURANT.orderNotificationChannel !== 'email') return;
+  const box = document.getElementById('orderNotificationGmailDetails');
+  if(!box) return;
+  box.classList.toggle('hidden');
+}
+
 function renderOrderWhatsappRecipientRows(){
   const allRecipients = Array.isArray(RESTAURANT.orderNotificationWhatsappRecipients) ? RESTAURANT.orderNotificationWhatsappRecipients : [];
   const limit = orderWhatsappLimit();
@@ -10161,24 +10168,28 @@ function orderNotificationSettingsHtml(){
       <div><p style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);">NOTIFICATION DE NOUVELLE COMMANDE</p><p style="font-size:11.8px;color:var(--ink-soft);margin-top:4px;">Choisissez un seul canal pour recevoir automatiquement vos nouvelles commandes.</p><p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Une seule option peut être active à la fois.</p></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;cursor:${(!RESTAURANT.orderNotificationWhatsappRecipients?.length)?'pointer':'default'};" onclick="handleOrderWhatsappRowClick(event)">
         <div style="display:flex;align-items:center;gap:10px;min-width:0;">
           <img src="${ORDER_WHATSAPP_LOGO}" alt="WhatsApp" style="width:26px;height:26px;object-fit:contain;border-radius:7px;flex:0 0 26px;">
-          <div><p style="font-size:13px;font-weight:700;">WhatsApp</p><p style="font-size:11px;color:var(--ink-faint);">${waActive?'Canal actif':'Canal désactivé'}</p></div>
+          <div style="min-width:0;"><p style="font-size:13px;font-weight:700;">WhatsApp</p><p style="font-size:11px;color:var(--ink-faint);">${waActive?'Canal actif':'Canal désactivé'}</p>${waActive && !RESTAURANT.orderNotificationWhatsappRecipients?.length ? `<p style="font-size:11px;color:#c33b32;margin-top:3px;">Aucun numéro WhatsApp de réception n’est configuré.</p>` : ''}</div>
         </div>
-        <button type="button" class="toggle ${waActive?'on':''}" role="switch" aria-checked="${waActive?'true':'false'}" aria-label="Activer ou désactiver WhatsApp" onclick="setOrderNotificationChannel('${waActive?'email':'whatsapp'}')"><span class="dot"></span></button>
+        <button type="button" class="toggle ${waActive?'on':''}" role="switch" aria-checked="${waActive?'true':'false'}" aria-label="Activer ou désactiver WhatsApp" onclick="event.stopPropagation();setOrderNotificationChannel('${waActive?'email':'whatsapp'}')"><span class="dot"></span></button>
       </div>
       ${waActive ? `<div style="border-top:1px solid var(--cream-line);padding:12px 0 4px;">
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:8px;">Numéros de réception</p>
         ${renderOrderWhatsappRecipientRows()}
       </div>` : ''}
-      <div style="border-top:1px solid var(--cream-line);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 0;">
+      <div style="border-top:1px solid var(--cream-line);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 0;cursor:${gmailActive?'pointer':'default'};" onclick="toggleOrderNotificationGmailDetails(event)">
         <div style="display:flex;align-items:center;gap:10px;min-width:0;">
           <img src="${ORDER_GMAIL_LOGO}" alt="Gmail" style="width:26px;height:26px;object-fit:contain;border-radius:7px;flex:0 0 26px;">
           <div><p style="font-size:13px;font-weight:700;">Gmail</p><p style="font-size:11px;color:var(--ink-faint);">${gmailActive?'Canal actif':'Canal désactivé'}</p></div>
         </div>
-        <button type="button" class="toggle ${gmailActive?'on':''}" role="switch" aria-checked="${gmailActive?'true':'false'}" aria-label="Activer ou désactiver Gmail" onclick="setOrderNotificationChannel('${gmailActive?'whatsapp':'email'}')"><span class="dot"></span></button>
+        <button type="button" class="toggle ${gmailActive?'on':''}" role="switch" aria-checked="${gmailActive?'true':'false'}" aria-label="Activer ou désactiver Gmail" onclick="event.stopPropagation();setOrderNotificationChannel('${gmailActive?'whatsapp':'email'}')"><span class="dot"></span></button>
       </div>
+      ${gmailActive ? `<div id="orderNotificationGmailDetails" class="hidden" style="margin-top:7px;padding:9px 11px;border:1px solid var(--cream-line);border-radius:10px;background:rgba(255,255,255,.58);">
+        <p style="font-size:11px;color:var(--ink-faint);margin-bottom:3px;">Adresse de réception</p>
+        <p style="font-size:12.5px;font-weight:600;overflow-wrap:anywhere;">${escapeHtml(RESTAURANT.orderNotificationEmail || currentUser?.email || 'Adresse e-mail non disponible')}</p>
+      </div>` : ''}
     </div>
   </div>`;
 }
