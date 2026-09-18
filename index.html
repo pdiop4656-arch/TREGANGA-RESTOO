@@ -9117,7 +9117,7 @@ function dashReviewsHtml(){
       <div class="flex items-center justify-between" style="margin-bottom:6px;">
         <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
         <div class="flex items-center" style="gap:6px;">
-          <button type="button" onclick="publishReview('${r.id}')" title="${published?'Avis publié sur le site public':'Publier cet avis sur le site public'}" aria-label="${published?'Avis publié sur le site public':'Publier cet avis sur le site public'}" aria-pressed="${published?'true':'false'}" ${published?'disabled':''} style="width:27px;height:27px;border-radius:999px;border:1px solid ${published?'#2f8f57':'var(--cream-line)'};background:${published?'#2f8f57':'#fff'};color:${published?'#fff':'var(--ink-faint)'};display:flex;align-items:center;justify-content:center;cursor:${published?'default':'pointer'};">${ic('plus',13,{stroke:published?'#fff':'var(--amber-deep)',strokeWidth:2.1})}</button>
+          <button type="button" onclick="toggleReviewPublication('${r.id}')" title="${published?'Dépublier cet avis du site public':'Publier cet avis sur le site public'}" aria-label="${published?'Dépublier cet avis du site public':'Publier cet avis sur le site public'}" aria-pressed="${published?'true':'false'}" style="width:27px;height:27px;border-radius:999px;border:1px solid ${published?'#2f8f57':'var(--cream-line)'};background:${published?'#2f8f57':'#fff'};color:${published?'#fff':'var(--amber-deep)'};display:flex;align-items:center;justify-content:center;cursor:pointer;">${ic('plus',13,{stroke:published?'#fff':'var(--amber-deep)',strokeWidth:2.1})}</button>
           <button type="button" onclick="deleteReview('${r.id}')" title="Supprimer" aria-label="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
         </div>
       </div>
@@ -9127,24 +9127,40 @@ function dashReviewsHtml(){
     }).join('')}
   </div>`;
 }
-async function publishReview(id){
-  const reviewIndex = REVIEWS.findIndex(r=>String(r.id)===String(id));
-  if(reviewIndex===-1) return;
-  if(REVIEWS[reviewIndex].is_published === true) return;
-  const {data,error} = await supabaseClient
+async function toggleReviewPublication(id){
+  const reviewIndex = REVIEWS.findIndex(r => String(r.id) === String(id));
+  if(reviewIndex === -1) return;
+
+  const current = REVIEWS[reviewIndex].is_published === true;
+  const next = !current;
+
+  const { data, error } = await supabaseClient
     .from('reviews')
-    .update({is_published:true})
+    .update({ is_published: next })
     .eq('id', id)
     .eq('restaurant_id', RESTAURANT.id)
     .select('*')
     .single();
+
   if(error){
-    toast('Publication impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
+    toast(
+      (next ? 'Publication impossible : ' : 'Dépublication impossible : ')
+      + supabaseErrorFr(error,'Réessayez dans quelques instants.')
+    );
     return;
   }
-  REVIEWS[reviewIndex] = data || {...REVIEWS[reviewIndex], is_published:true};
+
+  REVIEWS[reviewIndex] = data || {
+    ...REVIEWS[reviewIndex],
+    is_published: next
+  };
+
   const body = document.getElementById('dashCustomersBody');
-  if(body){ body.innerHTML = dashReviewsHtml(); hydrateIcons(body); }
+  if(body){
+    body.innerHTML = dashReviewsHtml();
+    hydrateIcons(body);
+  }
+
   renderPublicReviews();
 }
 async function deleteReview(id){
