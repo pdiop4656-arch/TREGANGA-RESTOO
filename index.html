@@ -3184,11 +3184,11 @@ async function deleteStaffRow(id){
   if(error) toast('Suppression Supabase impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
 }
 
-/* La création de commande passe désormais exclusivement par la RPC
-   create_order() (voir submitOrderInternal), qui recalcule tout côté
-   serveur — plus d'INSERT direct ici. Seul le statut d'une commande
-   déjà créée est encore modifié directement (fonction suivante),
-   jamais son contenu financier. */
+/* La création publique d'une commande est persistée par la RPC
+   save_public_order, qui recalcule les données financières côté serveur.
+   create_order() reste également une voie RPC sécurisée dans le schéma.
+   Seul le statut d'une commande déjà créée est encore modifié directement
+   ici, jamais son contenu financier. */
 async function persistOrderUpdate(o){
   if(!RESTAURANT.id || !o.id) return;
   const {error} = await supabaseClient.from('orders').update({
@@ -3218,17 +3218,15 @@ async function persistOrderUpdate(o){
    restaurant ayant choisi Starter/Premium mais pas encore payé a
    subscription_status='pending_payment', que isAccessBlocked() (qui ne
    testait que 'expired') laissait passer comme "accessible" côté
-   client, alors que is_restaurant_live() (serveur) refuse tout statut
-   qui n'est ni 'trialing' ni 'active'/'cancelled' — le client pouvait
-   donc parcourir tout le site et remplir son panier avant d'essuyer
-   l'échec RLS seulement à la validation finale. */
+   client ; le client et le serveur doivent donc rester strictement alignés
+   sur la même règle de période valide, y compris pour 'pending_payment'. */
 function isRestaurantLiveClientSide(){
   if(!RESTAURANT.isPublished) return false;
   const status = computeEffectiveSubscriptionStatus();
   if(status === 'trialing') return !RESTAURANT.trialEndsAt || Date.now() < RESTAURANT.trialEndsAt;
   if(status === 'active' || status === 'cancelled') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd;
-  if(status === 'pending_payment') return false; // aucun site payant n'est public avant confirmation réelle du paiement
-  return false; // 'expired' ou toute autre valeur : indisponible
+  if(status === 'pending_payment') return !RESTAURANT.currentPeriodEnd || Date.now() < RESTAURANT.currentPeriodEnd; // ne bloque pas la visibilité publique par lui-même ; les fonctions Premium restent verrouillées
+  return false; // 'expired' ou tout autre état réellement non public : indisponible
 }
 function isStorefrontGated(){
   if(!RESTAURANT.created || viewerIsStaff) return false;
@@ -3262,7 +3260,21 @@ function renderStorefrontGateOverlay(){
     const status = computeEffectiveSubscriptionStatus();
     const unpublished = !RESTAURANT.isPublished;
 
-    if(unpublished){
+    if(status === 'load_error'){
+      overlay.innerHTML = `
+        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
+          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
+            ${ic('alertTriangle',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
+          </div>
+          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Impossible de charger ce restaurant.</h1>
+          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
+          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Une erreur technique empêche actuellement la lecture de cette boutique. Réessayez dans un instant.</p>
+          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
+          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
+            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
+          </a>
+        </div>`;
+    } else if(unpublished){
       overlay.innerHTML = `
         <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
           <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
@@ -3285,20 +3297,6 @@ function renderStorefrontGateOverlay(){
           <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible pour l'instant.</h1>
           <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
           <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce restaurant n'est pas accessible publiquement pour le moment.</p>
-          <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
-          <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
-            <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
-          </a>
-        </div>`;
-    } else if(status === 'pending_payment'){
-      overlay.innerHTML = `
-        <div style="width:min(100%,430px);padding:24px 18px;box-sizing:border-box;">
-          <div style="width:76px;height:76px;margin:0 auto 26px;border-radius:50%;background:#FFF5EA;display:flex;align-items:center;justify-content:center;">
-            ${ic('clock',34,{stroke:'var(--amber-deep)',strokeWidth:1.8})}
-          </div>
-          <h1 class="font-display" style="font-size:clamp(27px,7vw,40px);line-height:1.12;margin:0 0 18px;color:#172033;font-weight:800;">Le site web n'est pas disponible.</h1>
-          <div style="width:64px;height:3px;background:var(--amber-deep);margin:0 auto 26px;border-radius:99px;"></div>
-          <p style="font-size:16px;line-height:1.65;color:#667085;margin:0 auto;max-width:380px;">Ce site est temporairement indisponible. L'abonnement du propriétaire est en cours d'activation.</p>
           <div style="width:150px;height:1px;background:#E9E9E9;margin:30px auto 22px;"></div>
           <a href="https://www.terangaresto.com/" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 21px;border:1.5px solid var(--amber-deep);border-radius:10px;background:#fff;color:var(--amber-deep);font-size:15px;font-weight:700;text-decoration:none;min-width:190px;box-sizing:border-box;">
             <span style="font-size:22px;line-height:1;">←</span> TERANGA RESTO
@@ -3374,7 +3372,7 @@ function subscribeToPublicRealtime(restaurantId){
 }
 
 async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false){
-  const [{data:r}, {data:cats}, {data:prods}] = await Promise.all([
+  const [restaurantResult, categoriesResult, productsResult] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
@@ -3391,7 +3389,15 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
 
-  if(!r) return false;
+  if(restaurantResult.error || categoriesResult.error || productsResult.error || !restaurantResult.data){
+    markPublicLoadError('', restaurantId);
+    console.error('Chargement public du restaurant:', restaurantResult.error || categoriesResult.error || productsResult.error);
+    return true;
+  }
+
+  const r = restaurantResult.data;
+  const cats = categoriesResult.data;
+  const prods = productsResult.data;
 
   RESTAURANT.id = r.id;
   RESTAURANT.created = true;
@@ -4712,10 +4718,11 @@ function enabledDeliveryZones(){
   return zones.filter(z=>z && z.enabled!==false && String(z.name||'').trim());
 }
 function deliveryFeeFor(modeKey, zoneId){
-  if(modeKey==='express') return Number(RESTAURANT.delivery.modes.express.fee)||0;
-  const zone=enabledDeliveryZones().find(z=>z.id===zoneId);
-  if(zone) return Math.max(0,Number(zone.fee)||0);
-  return Number(RESTAURANT.delivery.fee)||0;
+  const zone = deliveryZoneById(zoneId);
+  if(!zone) return 0;
+  const zoneFee = Math.max(0, Number(zone.fee)||0);
+  if(modeKey==='express') return zoneFee + Math.max(0, Number(RESTAURANT.delivery.modes.express.fee)||0);
+  return zoneFee;
 }
 function deliveryZoneById(id){
   const wanted = String(id ?? '').trim();
@@ -4734,11 +4741,13 @@ function deliveryModeAllowsCashOnDelivery(modeKey){
    proposée au client. */
 const DISCONTINUED_PAYMENT_METHODS = ['card'];
 function availablePaymentMethods(){
-  const enabled = Object.keys(state.toggles).filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
+  const enabled = ['wave','orange_money','cash','on_delivery']
+    .filter(m=>state.toggles[m] && !DISCONTINUED_PAYMENT_METHODS.includes(m));
   return enabled.filter(m=>{
     if(PRO_ONLY_METHODS.includes(m) && !isPremiumActive()) return false;
     if(m === 'wave' && !isSafeHttpUrl(state.toggles.wave_link)) return false;
     if(m === 'orange_money' && !isSafeHttpUrl(state.toggles.orange_money_link)) return false;
+    if(m === 'cash' && state.checkout.orderType === 'delivery') return false;
     if(m !== 'on_delivery') return true;
     if(state.checkout.orderType !== 'delivery') return false; // "à la livraison" n'a de sens que pour une livraison
     return deliveryModeAllowsCashOnDelivery(state.checkout.deliveryMode);
@@ -5473,6 +5482,24 @@ function rememberPreviousSlug(previousSlug, nextSlug){
   RESTAURANT.social = {...social, slug_redirects: kept};
 }
 
+function markPublicLoadError(slug, restaurantId=''){
+  RESTAURANT.id = restaurantId || '';
+  RESTAURANT.created = true;
+  RESTAURANT.name = 'Ce restaurant';
+  RESTAURANT.slug = slug || '';
+  RESTAURANT.isPublished = true;
+  RESTAURANT.subscriptionStatus = 'load_error';
+  RESTAURANT.trialEndsAt = null;
+  RESTAURANT.currentPeriodEnd = null;
+  RESTAURANT.logoDataUrl = '';
+  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.primary = '#E8871E';
+  RESTAURANT.secondary = '#D97706';
+  RESTAURANT.textColor = '#2B1810';
+  applyRestaurantName(RESTAURANT.name);
+  applyThemeColors(RESTAURANT.primary, RESTAURANT.secondary, RESTAURANT.textColor);
+}
+
 /* Recherche d'un ancien sous-domaine pendant sa fenêtre de 48 h.
    Après expiration, il n'est plus reconnu et devient introuvable. */
 async function loadRestaurantPublicGateState(slug){
@@ -5482,15 +5509,19 @@ async function loadRestaurantPublicGateState(slug){
      existe sans exposer aucune donnée du restaurant.
 
      - false  => le slug existe mais n'est pas publiquement lisible :
-                  on affiche la page d'accès suspendu/abonnement expiré.
+                  on conserve un état métier non public.
      - true   => aucun restaurant n'existe pour ce slug : on conserve
                   le vrai message "Restaurant introuvable".
-
-     Aucun nouveau réglage SQL n'est requis et aucun secret n'est ajouté
-     au HTML. */
+     - erreur => problème technique : on affiche une erreur de lecture,
+                 jamais un faux état métier "indisponible". */
   try{
     const {data, error} = await supabaseClient.rpc('is_slug_available', {p_slug: slug});
-    if(error || data !== false) return false;
+    if(error){
+      markPublicLoadError(slug);
+      console.error('is_slug_available:', error);
+      return true;
+    }
+    if(data !== false) return false;
 
     RESTAURANT.id = '';
     RESTAURANT.created = true;
@@ -5511,8 +5542,9 @@ async function loadRestaurantPublicGateState(slug){
     applyThemeColors(RESTAURANT.primary, RESTAURANT.secondary, RESTAURANT.textColor);
     return true;
   }catch(e){
-    console.warn('Vérification publique du restaurant indisponible:', e);
-    return false;
+    markPublicLoadError(slug);
+    console.error('is_slug_available:', e);
+    return true;
   }
 }
 
@@ -5520,11 +5552,17 @@ async function loadRestaurantBySlug(slug){
   const clean = slugify(slug);
   if(!clean) return false;
 
-  const {data} = await supabaseClient
+  const {data, error} = await supabaseClient
     .from('restaurants')
     .select('id')
     .eq('slug', clean)
     .maybeSingle();
+
+  if(error){
+    markPublicLoadError(clean);
+    console.error('Lecture publique du restaurant:', error);
+    return true;
+  }
 
   if(data){
     return await loadRestaurantPublicFast(data.id);
@@ -6974,7 +7012,7 @@ function renderCheckout(){
         <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
           ${modes.map(mk=>`<button onclick="ckField('deliveryMode','${mk}');renderCheckout();" style="border:2px solid ${c.deliveryMode===mk?'var(--amber-deep)':'var(--cream-line)'};${c.deliveryMode===mk?'background:rgba(232,135,30,.06);':''}border-radius:14px;padding:10px 8px;text-align:center;">
             <div style="font-size:12px;font-weight:600;">${DELIVERY_MODE_LABELS[mk]}</div>
-            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${fmt(deliveryFeeFor(mk))}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
+            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${c.deliveryZone ? (deliveryFeeFor(mk,c.deliveryZone)===0 ? 'Gratuit' : fmt(deliveryFeeFor(mk,c.deliveryZone))) : 'Sélectionnez une zone'}${mk==='own' && deliveryModeAllowsCashOnDelivery('own') ? ' · Paiement à la remise possible':''}</div>
           </button>`).join('')}
         </div>`:''}
         <label class="field-label" style="${c.requiredField==='deliveryZone'?'color:var(--terracotta);':''}">Zone de livraison <span style="color:var(--terracotta);font-weight:700;">*</span></label>
