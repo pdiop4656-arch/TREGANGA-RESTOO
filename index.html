@@ -865,15 +865,6 @@ body{min-width:0;}
     </div>
   </section>
 
-  <!-- AVIS CLIENTS — affiché uniquement lorsqu'il existe au moins un avis actif/publié -->
-  <section class="menu-section" id="tgReviewsSection" style="display:none;background:#FFF;">
-    <div class="container">
-      <div class="section-title"><span>Témoignages</span><h2>Avis clients</h2></div>
-      <div id="tgReviewsList" class="flex-col gap-2" style="max-width:760px;margin:0 auto;"></div>
-      <div id="tgReviewsMoreWrap" style="display:none;text-align:center;margin-top:16px;"></div>
-    </div>
-  </section>
-
   <!-- HORAIRES & LOCALISATION -->
   <section class="info-section" id="tgHoraires">
     <div class="container">
@@ -889,6 +880,15 @@ body{min-width:0;}
           <div id="sfMapContainer" style="margin-top:14px;"></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- AVIS CLIENTS — affiché uniquement lorsqu'il existe au moins un avis actif/publié -->
+  <section class="menu-section" id="tgReviewsSection" style="display:none;background:#FFF;">
+    <div class="container">
+      <div class="section-title"><span>Témoignages</span><h2>Avis clients</h2></div>
+      <div id="tgReviewsList" class="flex-col gap-2" style="max-width:760px;margin:0 auto;"></div>
+      <div id="tgReviewsMoreWrap" style="display:none;text-align:center;margin-top:16px;"></div>
     </div>
   </section>
 
@@ -952,18 +952,6 @@ body{min-width:0;}
       <button onclick="closeReviewModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
     </div>
     <div style="padding:20px;" id="reviewBody"></div>
-  </div>
-</div>
-
-<!-- Ajout d'un avis depuis le tableau de bord restaurateur. -->
-<div id="adminReviewOverlay" class="hidden" style="position:fixed;inset:0;z-index:1107;">
-  <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeAddReviewModal()"></div>
-  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:82vh;overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);">
-    <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid var(--cream-line);">
-      <h2 class="font-display" style="font-size:17px;">Ajouter un avis client</h2>
-      <button onclick="closeAddReviewModal()" style="font-size:18px;color:var(--ink-soft);" data-icon="x" data-size="18"></button>
-    </div>
-    <div style="padding:20px;" id="adminReviewBody"></div>
   </div>
 </div>
 
@@ -2447,6 +2435,7 @@ async function loadRestaurantIntoState(restaurantId){
       .from('reviews')
       .select('*')
       .eq('restaurant_id', restaurantId)
+      .eq('is_published', true)
       .order('created_at', {ascending:false});
     REVIEWS = Array.isArray(publicReviews) ? publicReviews : [];
     renderPublicReviews();
@@ -2902,6 +2891,7 @@ async function submitReview(){
     client: state.checkout.firstName ? `${state.checkout.firstName} ${state.checkout.lastName||''}`.trim() : null,
     rating: reviewRating,
     comment: comment || null,
+    is_published: false,
   });
 
   if(error){
@@ -9050,21 +9040,13 @@ function openOrderDetailByNum(num){
   const i = DEMO_ORDERS.findIndex(o=>o.num===num);
   if(i!==-1) openOrderDetail(i);
 }
-/* Avis publics : une ligne est considérée comme publiable par défaut lorsque
-   l'ancien schéma ne comporte aucun champ de publication. Si le schéma
-   expose déjà un indicateur explicite (active/published/status), celui-ci
-   prime et les états masqués/brouillons restent exclus du site public. */
+/* Avis publics : seule une sélection explicite du restaurateur
+   (`is_published = true`) rend un avis visible sur le site public.
+   La simple présence de l'avis dans la base ou dans le tableau de bord
+   ne suffit jamais. */
 let publicReviewsExpanded = false;
 function isPublicReviewActive(review){
-  if(!review) return false;
-  if(review.is_published !== undefined && review.is_published !== null) return Boolean(review.is_published);
-  if(review.published !== undefined && review.published !== null) return Boolean(review.published);
-  if(review.is_active !== undefined && review.is_active !== null) return Boolean(review.is_active);
-  if(review.active !== undefined && review.active !== null) return Boolean(review.active);
-  if(review.status !== undefined && review.status !== null && String(review.status).trim()!==''){
-    return ['active','published','public','approved'].includes(String(review.status).trim().toLowerCase());
-  }
-  return true;
+  return !!review && review.is_published === true;
 }
 function publicReviewsList(){
   return (Array.isArray(REVIEWS)?REVIEWS:[]).filter(isPublicReviewActive);
@@ -9114,9 +9096,7 @@ function renderPublicReviews(){
    en dur. */
 function dashReviewsHtml(){
   if(REVIEWS.length===0){
-    return `<div class="empty-state">${ic('star',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après que des clients en laissent depuis la page de confirmation de commande.</p>
-      <div style="margin-top:16px;"><button type="button" class="btn btn-secondary" onclick="openAddReviewModal()">${ic('plus',15)} Ajouter un avis client</button></div>
-    </div>`;
+    return `<div class="empty-state">${ic('star',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucun avis pour le moment — les avis apparaissent ici après que des clients en laissent depuis la page de confirmation de commande.</p></div>`;
   }
   const avg = REVIEWS.reduce((s,r)=>s+r.rating,0) / REVIEWS.length;
   return `
@@ -9131,85 +9111,40 @@ function dashReviewsHtml(){
     </div>
   </div>
   <div class="flex-col gap-2" style="max-width:560px;">
-    ${REVIEWS.map(r=>`<div class="card" style="padding:14px;">
+    ${REVIEWS.map(r=>{
+      const published = r.is_published === true;
+      return `<div class="card" style="padding:14px;">
       <div class="flex items-center justify-between" style="margin-bottom:6px;">
         <div style="display:flex;gap:1px;">${[1,2,3,4,5].map(n=>ic('star',13,{fill:n<=r.rating?'var(--amber)':'none', stroke:'var(--amber)'})).join('')}</div>
-        <button onclick="deleteReview('${r.id}')" title="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
+        <div class="flex items-center" style="gap:6px;">
+          <button type="button" onclick="publishReview('${r.id}')" title="${published?'Avis publié sur le site public':'Publier cet avis sur le site public'}" aria-label="${published?'Avis publié sur le site public':'Publier cet avis sur le site public'}" aria-pressed="${published?'true':'false'}" ${published?'disabled':''} style="width:27px;height:27px;border-radius:999px;border:1px solid ${published?'#2f8f57':'var(--cream-line)'};background:${published?'#2f8f57':'#fff'};color:${published?'#fff':'var(--ink-faint)'};display:flex;align-items:center;justify-content:center;cursor:${published?'default':'pointer'};">${ic('plus',13,{stroke:published?'#fff':'currentColor'})}</button>
+          <button type="button" onclick="deleteReview('${r.id}')" title="Supprimer" aria-label="Supprimer" style="color:var(--ink-faint);">${ic('trash',13)}</button>
+        </div>
       </div>
       ${r.comment?`<p style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">${escapeHtml(r.comment)}</p>`:''}
       <p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(r.client||'Client anonyme')} · ${timeAgo(new Date(r.created_at))}${r.order_id?' · commande liée':''}</p>
-    </div>`).join('')}
-  </div>
-  <div style="margin-top:16px;text-align:center;max-width:560px;"><button type="button" class="btn btn-secondary" onclick="openAddReviewModal()">${ic('plus',15)} Ajouter un avis client</button></div>`;
+    </div>`;
+    }).join('')}
+  </div>`;
 }
-function openAddReviewModal(){
-  const overlay = document.getElementById('adminReviewOverlay');
-  if(!overlay) return;
-  adminReviewRating = 0;
-  overlay.classList.remove('hidden');
-  renderAddReviewModal();
-}
-function closeAddReviewModal(){ document.getElementById('adminReviewOverlay')?.classList.add('hidden'); }
-let adminReviewRating = 0;
-function setAdminReviewRating(n){ adminReviewRating = Math.max(0, Math.min(5, Number(n)||0)); renderAddReviewModal(); }
-function renderAddReviewModal(){
-  const body = document.getElementById('adminReviewBody');
-  if(!body) return;
-  body.innerHTML = `
-    <label class="field-label">Nom du client</label>
-    <input class="field-input" id="adminReviewClient" type="text" placeholder="Client" style="margin-bottom:14px;">
-    <label class="field-label">Note</label>
-    <div class="flex items-center" style="gap:4px;margin-bottom:16px;">${[1,2,3,4,5].map(n=>`<button type="button" onclick="setAdminReviewRating(${n})" style="padding:3px;">${ic('star',28,{fill:n<=adminReviewRating?'var(--amber)':'none',stroke:n<=adminReviewRating?'var(--amber)':'var(--cream-line)'})}</button>`).join('')}</div>
-    <label class="field-label">Avis</label>
-    <textarea class="field-input" id="adminReviewComment" rows="4" placeholder="Écrivez l'avis du client…" style="margin-bottom:16px;"></textarea>
-    <button type="button" class="btn btn-secondary btn-lg w-full" onclick="submitAdminReview()">Ajouter l'avis</button>`;
-  hydrateIcons(body);
-}
-async function submitAdminReview(){
-  if(!RESTAURANT.id) return;
-  if(adminReviewRating < 1 || adminReviewRating > 5){
-    toast('Choisissez une note de 1 à 5 étoiles.');
-    return;
-  }
-  const client = (document.getElementById('adminReviewClient')?.value||'').trim() || 'Client';
-  const comment = (document.getElementById('adminReviewComment')?.value||'').trim();
-  const btn = document.querySelector('#adminReviewBody .btn-secondary');
-  if(btn){ btn.disabled = true; btn.textContent = 'Ajout…'; }
-  let {data,error} = await supabaseClient.from('reviews').insert({
-    restaurant_id: RESTAURANT.id,
-    order_id: null,
-    client,
-    rating: adminReviewRating,
-    comment: comment || null,
-  }).select('*').single();
+async function publishReview(id){
+  const reviewIndex = REVIEWS.findIndex(r=>String(r.id)===String(id));
+  if(reviewIndex===-1) return;
+  if(REVIEWS[reviewIndex].is_published === true) return;
+  const {data,error} = await supabaseClient
+    .from('reviews')
+    .update({is_published:true})
+    .eq('id', id)
+    .eq('restaurant_id', RESTAURANT.id)
+    .select('*')
+    .single();
   if(error){
-    toast('Ajout impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
-    if(btn){ btn.disabled = false; btn.textContent = "Ajouter l'avis"; }
+    toast('Publication impossible : ' + supabaseErrorFr(error,'Réessayez dans quelques instants.'));
     return;
   }
-  // Si la table expose déjà un indicateur de publication/activation,
-  // tout avis ajouté par le restaurateur est immédiatement publiable.
-  if(data && data.id){
-    const publicationPatch = {};
-    if(Object.prototype.hasOwnProperty.call(data,'is_published')) publicationPatch.is_published = true;
-    if(Object.prototype.hasOwnProperty.call(data,'published')) publicationPatch.published = true;
-    if(Object.prototype.hasOwnProperty.call(data,'is_active')) publicationPatch.is_active = true;
-    if(Object.prototype.hasOwnProperty.call(data,'active')) publicationPatch.active = true;
-    if(Object.keys(publicationPatch).length){
-      const {data:publishedData,error:publishError} = await supabaseClient
-        .from('reviews').update(publicationPatch).eq('id',data.id).select('*').single();
-      if(publishError){
-        toast("L'avis a été ajouté mais sa publication n'a pas pu être confirmée.");
-        if(btn){ btn.disabled = false; btn.textContent = "Ajouter l'avis"; }
-        return;
-      }
-      data = publishedData || data;
-    }
-  }
-  if(data){ REVIEWS.unshift(data); }
-  closeAddReviewModal();
-  document.getElementById('dashCustomersBody').innerHTML = dashReviewsHtml();
-  hydrateIcons();
+  REVIEWS[reviewIndex] = data || {...REVIEWS[reviewIndex], is_published:true};
+  const body = document.getElementById('dashCustomersBody');
+  if(body){ body.innerHTML = dashReviewsHtml(); hydrateIcons(body); }
   renderPublicReviews();
 }
 async function deleteReview(id){
