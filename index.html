@@ -635,6 +635,8 @@ button,a,input,select,textarea{font-family:inherit;}
     </div>
     <div style="border-top:1px solid var(--cream-line);padding:16px 24px;text-align:center;font-size:12px;color:var(--ink-faint);">
       © 2026 TerangaResto. Fait avec teranga 🇸🇳 · Sénégal — FCFA (XOF)
+      <span style="display:inline-block;margin:0 6px;">·</span>
+      <a href="#" onclick="openPrivacyPolicy();return false;" style="color:inherit;text-decoration:none;">Politique de confidentialité</a>
     </div>
   </footer>
 
@@ -895,6 +897,7 @@ body{min-width:0;}
   <!-- FOOTER -->
   <footer class="tg-footer" style="border-top:1px solid rgba(0,0,0,.06);padding:32px 0;text-align:center;">
     <div class="flex gap-3" id="sfSocialIcons" style="justify-content:center;margin-bottom:12px;"></div>
+    <a href="#" onclick="openPrivacyPolicy();return false;" style="display:inline-block;font-size:12px;color:var(--ink-faint);text-decoration:none;margin-bottom:8px;">Politique de confidentialité</a>
     <p class="resto-name" style="font-family:'Playfair Display',serif;font-size:15px;"></p>
   </footer>
 
@@ -2259,9 +2262,36 @@ let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/perso
    qui n'a de toute façon jamais chargé la partie secondaire
    (isLoggedIn=false). Les chemins de connexion appellent maintenant
    directement les deux phases séparément. */
-async function loadRestaurantCore(restaurantId, fastDashboard=false){
+function applyRestaurantCatalogState(cats,prods){
+  catsState = {};
+  catsHomeVisible = {};
+  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
+  PRODUCTS.length = 0;
+  (prods||[]).forEach(p => PRODUCTS.push({
+    id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
+    active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
+    variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
+  }));
+  renderPlanBadgeAndBanner();
+}
+
+async function loadRestaurantCatalogSecondaryData(restaurantId){
+  try{
+    const [catsRes,prodsRes] = await Promise.all([
+      supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
+      supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
+    ]);
+    applyRestaurantCatalogState(catsRes?.data,prodsRes?.data);
+    variantsSelectedProduct = null;
+    if(state.view==='dashboard') renderDashSection(state.dashSection);
+  }catch(e){
+    console.warn('Chargement différé du catalogue:',e);
+  }
+}
+
+async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalog=false){
   const restaurantPromise = supabaseClient.from('restaurants').select('*').eq('id', restaurantId).single();
-  const catalogPromise = Promise.all([
+  const catalogPromise = deferCatalog ? null : Promise.all([
     supabaseClient.from('categories').select('*').eq('restaurant_id', restaurantId).order('sort_order'),
     supabaseClient.from('products').select('*').eq('restaurant_id', restaurantId).order('created_at'),
   ]);
@@ -2304,7 +2334,12 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false){
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
   RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
   RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
-  RESTAURANT.orderNotificationChannel = r.order_notification_channel === 'whatsapp' ? 'whatsapp' : 'email';
+  RESTAURANT.orderNotificationChannel = (()=>{
+    let locallyDisabled = false;
+    try{ locallyDisabled = localStorage.getItem('teranga_order_notification_none_' + String(r.id||'')) === '1'; }catch(e){}
+    if(locallyDisabled) return null;
+    return r.order_notification_channel === 'whatsapp' ? 'whatsapp' : 'email';
+  })();
   RESTAURANT.orderNotificationWhatsappRecipients = [];
   RESTAURANT.isPublished = !!r.is_published;
   RESTAURANT.heroTitle = r.hero_title || '';
@@ -2344,27 +2379,13 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false){
   // plus tôt dans le même onglet.
   catsState = {};
   catsHomeVisible = {};
-  const applyCatalog = (cats,prods)=>{
-    catsState = {};
-    catsHomeVisible = {};
-    (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
-    PRODUCTS.length = 0;
-    (prods||[]).forEach(p => PRODUCTS.push({
-      id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
-      active:p.active, available:p.available, photo:p.photo, variants:p.variants||[],
-      variantsRequired: !!p.variants_required, stock:p.stock, threshold:p.threshold,
-    }));
-    renderPlanBadgeAndBanner();
-  };
-  if(fastDashboard){
-    catalogPromise.then(([catsRes,prodsRes])=>{
-      applyCatalog(catsRes?.data,prodsRes?.data);
-      variantsSelectedProduct = null;
-      if(state.view==='dashboard') renderDashSection(state.dashSection);
-    }).catch(e=>console.warn('Chargement différé du catalogue:',e));
-  }else{
-    const [{data:cats},{data:prods}] = await catalogPromise;
-    applyCatalog(cats,prods);
+  if(!deferCatalog){
+    if(fastDashboard){
+      loadRestaurantCatalogSecondaryData(restaurantId);
+    }else{
+      const [{data:cats},{data:prods}] = await catalogPromise;
+      applyRestaurantCatalogState(cats,prods);
+    }
   }
 
   // Réinitialise les sélections d'écran qui pointaient peut-être vers
@@ -3444,7 +3465,12 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   RESTAURANT.orderNotificationEmail = r.order_notification_email || '';
   RESTAURANT.orderNotificationEmailVerified = !!r.order_notification_email_verified;
   RESTAURANT.orderNotificationEmailPending = r.order_notification_email_pending || '';
-  RESTAURANT.orderNotificationChannel = r.order_notification_channel === 'whatsapp' ? 'whatsapp' : 'email';
+  RESTAURANT.orderNotificationChannel = (()=>{
+    let locallyDisabled = false;
+    try{ locallyDisabled = localStorage.getItem('teranga_order_notification_none_' + String(r.id||'')) === '1'; }catch(e){}
+    if(locallyDisabled) return null;
+    return r.order_notification_channel === 'whatsapp' ? 'whatsapp' : 'email';
+  })();
   RESTAURANT.isPublished = !!r.is_published;
   RESTAURANT.heroTitle = r.hero_title || '';
   RESTAURANT.heroSubtitle = r.hero_subtitle || '';
@@ -3606,18 +3632,19 @@ async function restoreSession(){
       /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
       if(rid){
         try{
-          const ok = await loadRestaurantCore(rid,true);
-          if(ok){
-            const access = await resolveRealAccess(rid);
-            if(access){
+          const [ok,access] = await Promise.all([
+            loadRestaurantCore(rid,true,true),
+            resolveRealAccess(rid,currentUser.id),
+          ]);
+          if(ok && access){
             hideAuthCheckSplash();
             hideRestoSplash();
             setView('dashboard');
             setDashSection(desiredSection);
             if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+            loadRestaurantCatalogSecondaryData(rid);
             loadRestaurantSecondaryData(rid);
             return;
-            }
           }
         }catch(e){
           console.warn('Chargement direct du restaurant mémorisé:', e);
@@ -3629,9 +3656,11 @@ async function restoreSession(){
       rid = await findMyRestaurantId(currentUser.id);
       if(rid){
         try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-        await loadRestaurantCore(rid,true);
-        const access = await resolveRealAccess(rid);
-        if(!access){
+        const [ok,access] = await Promise.all([
+          loadRestaurantCore(rid,true,true),
+          resolveRealAccess(rid,currentUser.id),
+        ]);
+        if(!ok || !access){
           viewerIsStaff = false;
           setView('landing');
           return;
@@ -3641,6 +3670,7 @@ async function restoreSession(){
         setView('dashboard');
         setDashSection(desiredSection);
         if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+        loadRestaurantCatalogSecondaryData(rid);
         loadRestaurantSecondaryData(rid);
         return;
       }
@@ -3926,10 +3956,11 @@ async function submitLogin(){
   try{
     /* Compte déjà connu : on charge directement le restaurant mémorisé. */
     if(rid){
-      const ok = await loadRestaurantCore(rid,true);
-      if(ok){
-        const access = await resolveRealAccess(rid);
-        if(access){
+      const [ok,access] = await Promise.all([
+        loadRestaurantCore(rid,true,true),
+        resolveRealAccess(rid,data.user.id),
+      ]);
+      if(ok && access){
         setLoginVerifying(false);
         closeLogin();
         hideRestoSplash();
@@ -3937,9 +3968,9 @@ async function submitLogin(){
         setView('dashboard');
         setDashSection(desiredSection);
         if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+        loadRestaurantCatalogSecondaryData(rid);
         loadRestaurantSecondaryData(rid);
         return;
-        }
       }
     }
 
@@ -3954,8 +3985,13 @@ async function submitLogin(){
     }
 
     try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-    await loadRestaurantCore(rid,true);
-    await resolveRealAccess(rid);
+    const [ok,access] = await Promise.all([
+      loadRestaurantCore(rid,true,true),
+      resolveRealAccess(rid,data.user.id),
+    ]);
+    if(!ok || !access){
+      throw new Error('Accès au restaurant impossible.');
+    }
     setLoginVerifying(false);
     closeLogin();
     hideRestoSplash();
@@ -3963,6 +3999,7 @@ async function submitLogin(){
     setView('dashboard');
     setDashSection(desiredSection);
     if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+    loadRestaurantCatalogSecondaryData(rid);
     loadRestaurantSecondaryData(rid);
     toast('Connecté — bienvenue sur votre tableau de bord.');
   }catch(e){
@@ -4012,7 +4049,7 @@ async function submitInviteAccept(){
 
     // Relecture obligatoire depuis Supabase après authentification :
     // restaurant_id, rôle et permissions ne viennent jamais du navigateur.
-    const access = await resolveRealAccess(result.restaurant_id);
+    const access = await resolveRealAccess(result.restaurant_id,currentUser.id);
     if(!access || access.kind !== 'staff'){
       await signOutSupabase();
       throw new Error('L’accès personnel associé à cette invitation n’a pas pu être confirmé.');
@@ -4020,7 +4057,10 @@ async function submitInviteAccept(){
 
     state.dashSection = firstAllowedSection();
 
-    await loadRestaurantCore(access.restaurantId, true);
+    const loaded = await loadRestaurantCore(access.restaurantId, true, true);
+    if(!loaded){
+      throw new Error('L’espace du restaurant n’a pas pu être chargé.');
+    }
     setLoginVerifying(false, 'inviteSubmitBtn');
     closeLogin();
     hideRestoSplash();
@@ -4029,6 +4069,7 @@ async function submitInviteAccept(){
     setDashSection(firstAllowedSection());
     try{ localStorage.setItem('tg_last_restaurant_' + String(currentUser.id), String(access.restaurantId)); }catch(e){}
     if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
+    loadRestaurantCatalogSecondaryData(access.restaurantId);
     loadRestaurantSecondaryData(access.restaurantId);
     toast(`Invitation acceptée — bienvenue, accès ${access.role}.`);
   }catch(e){
@@ -4313,8 +4354,8 @@ let realAccessRole = 'Administrateur';
 let realAccessPermissions = null;
 let realAccessKind = 'owner'; // 'owner' ou 'staff' — déterminé depuis Supabase
 
-async function resolveRealAccess(restaurantId){
-  const userId = (await supabaseClient.auth.getUser()).data?.user?.id;
+async function resolveRealAccess(restaurantId, knownUserId=null){
+  const userId = knownUserId || (await supabaseClient.auth.getUser()).data?.user?.id;
   if(!userId || !restaurantId) return null;
 
   const {data:staffRow, error:staffErr} = await supabaseClient
@@ -4930,6 +4971,109 @@ function renderPlanBadgeAndBanner(){
   } else {
     banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel}, confirmé par PayTech. Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''}.</div>`;
   }
+}
+
+function privacyPolicyHtml(){
+  return `
+    <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;position:sticky;top:0;z-index:3;background:var(--surface);padding:2px 0 16px;border-bottom:1px solid var(--cream-line);">
+      <button type="button" class="btn btn-outline btn-sm" onclick="closePrivacyPolicy()">${ic('arrowLeft',14)} Retour</button>
+      <h1 id="privacyPolicyTitle" style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;text-align:center;margin:0;flex:1;">Politique de confidentialité</h1>
+      <button type="button" onclick="closePrivacyPolicy()" aria-label="Fermer" style="width:34px;height:34px;border-radius:999px;border:1px solid var(--cream-line);background:var(--surface);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;flex:0 0 34px;">${ic('x',15)}</button>
+    </div>
+    <article style="padding:22px 4px 8px;color:var(--ink);line-height:1.68;">
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Notre approche de la confidentialité</h2>
+        <p>TerangaResto accorde de l’importance à une utilisation claire et responsable des informations nécessaires au fonctionnement de ses services. Les informations nécessaires peuvent être traitées dans le cadre des fonctionnalités utilisées et du service demandé.</p>
+        <p style="margin-top:9px;">Les informations sont utilisées dans la mesure nécessaire au fonctionnement du service, à sa sécurité et aux fonctionnalités effectivement utilisées. Cette politique explique de manière générale comment ces informations peuvent intervenir lorsqu’un visiteur consulte un site de restaurant, passe une commande ou utilise les services proposés par TerangaResto.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Commandes et informations nécessaires au service</h2>
+        <p>Lorsqu’un client utilise le système de commande, certaines informations peuvent être nécessaires pour permettre l’exécution du service demandé. Les informations communiquées dans le cadre d’une commande peuvent être utilisées dans la mesure nécessaire à son traitement, à sa préparation, à sa livraison lorsqu’elle est proposée et aux communications nécessaires à son suivi.</p>
+        <p style="margin-top:9px;">Le restaurant auprès duquel la commande est effectuée peut disposer des informations nécessaires à la préparation, à l’exécution, à la gestion, à la livraison lorsqu’elle est proposée et au suivi de la commande. Cette transmission constitue une conséquence normale du service demandé par le client.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Notifications WhatsApp et Gmail</h2>
+        <p>TerangaResto permet au restaurant de choisir un canal de notification pour recevoir les informations nécessaires relatives à ses nouvelles commandes. Les canaux concernés sont <strong>WhatsApp</strong> et <strong>Gmail</strong>.</p>
+        <p style="margin-top:9px;">Lorsqu’un canal est activé, certaines informations nécessaires à la notification peuvent être transmises par ce canal afin de permettre au restaurant de recevoir les éléments utiles au traitement de ses nouvelles commandes.</p>
+        <p style="margin-top:9px;">Lorsque aucun canal de notification n’est activé, aucune notification de nouvelle commande n’est envoyée par WhatsApp ou Gmail. Les données nécessaires au fonctionnement de la commande restent traitées par les systèmes nécessaires au service, conformément à l’architecture réelle de TerangaResto.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Paiements</h2>
+        <p>Lorsqu’un moyen de paiement électronique est utilisé, certaines informations nécessaires à l’opération peuvent être traitées par le prestataire de paiement concerné. Les modalités de traitement dépendent du service de paiement effectivement utilisé dans le cadre de la transaction.</p>
+        <p style="margin-top:9px;">TerangaResto n’affirme pas conserver directement des données bancaires qui ne sont pas nécessaires à son propre fonctionnement. Les informations utiles au suivi de l’opération peuvent toutefois être traitées dans les systèmes nécessaires à la réalisation et à la confirmation du paiement.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Services techniques</h2>
+        <p>Pour assurer le fonctionnement de la plateforme, TerangaResto peut s’appuyer sur des services techniques nécessaires à l’hébergement, à la base de données, au stockage, aux paiements, aux communications, aux notifications, à la sécurité et à la disponibilité du service.</p>
+        <p style="margin-top:9px;">Selon la fonctionnalité utilisée, certaines informations peuvent donc être traitées par les services techniques nécessaires à son exécution. Lorsqu’un fournisseur particulier n’est pas présenté ici, cette politique privilégie une description générale plutôt que l’invention d’une liste de prestataires qui pourrait devenir inexacte.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Protection et sécurité</h2>
+        <p>Des mesures techniques et organisationnelles sont mises en place pour protéger les informations contre les accès non autorisés, la perte, l’altération ou l’utilisation inappropriée. Ces mesures sont adaptées à la nature des services proposés et peuvent évoluer lorsque l’architecture ou les fonctionnalités évoluent.</p>
+        <p style="margin-top:9px;">Aucun système ne permet de garantir une sécurité absolument parfaite. TerangaResto cherche néanmoins à limiter les risques liés au traitement des informations et à préserver leur confidentialité, leur intégrité et leur disponibilité dans le cadre des moyens raisonnablement applicables.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Conservation</h2>
+        <p>Les informations sont conservées pendant la durée nécessaire à leur finalité et, lorsque cela est applicable, pendant les périodes imposées par les obligations légales, administratives ou de sécurité. La durée peut donc varier selon la nature de l’information, la fonctionnalité concernée et les besoins de fonctionnement du service.</p>
+        <p style="margin-top:9px;">TerangaResto évite de présenter une durée unique lorsque celle-ci n’est pas définie de manière uniforme par le système.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Vos droits</h2>
+        <p>Selon les conditions applicables, les utilisateurs peuvent disposer de droits concernant leurs informations personnelles, notamment des droits d’accès, de rectification, d’opposition ou de suppression, ainsi que de tout autre droit pertinent reconnu dans le contexte applicable.</p>
+        <p style="margin-top:9px;">Toute demande peut être examinée en fonction de sa nature, des informations concernées et des obligations applicables. TerangaResto ne présente pas ici une procédure technique particulière qui ne serait pas effectivement disponible dans le service.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Nous contacter</h2>
+        <p>Pour toute question concernant la confidentialité ou l’utilisation des informations dans le cadre des services TerangaResto, vous pouvez contacter l’équipe à l’adresse <a href="mailto:terangaresto221@gmail.com" style="color:var(--amber-ink);text-decoration:underline;">terangaresto221@gmail.com</a> ou utiliser les réseaux officiels visibles sur les pages du site lorsqu’ils sont proposés comme moyen de contact.</p>
+        <p style="margin-top:9px;font-weight:600;">Notre équipe est disponible pour vous répondre. Les réponses peuvent prendre jusqu’à 48 heures.</p>
+      </section>
+
+      <section style="margin-bottom:26px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Domaines personnalisés et DNS</h2>
+        <p>La configuration d’un domaine personnalisé repose notamment sur sa configuration DNS. Après une configuration DNS correcte et les vérifications nécessaires, le domaine peut passer automatiquement à l’état actif lorsque les conditions techniques prévues par le service sont satisfaites.</p>
+        <p style="margin-top:9px;">TerangaResto ne donne pas nécessairement au client une interface permettant de modifier librement tous les enregistrements DNS. Afin de limiter les erreurs susceptibles d’affecter le fonctionnement d’un domaine, certaines opérations DNS peuvent être accompagnées directement par l’équipe TerangaResto plutôt que d’être laissées à une modification libre depuis l’interface.</p>
+        <p style="margin-top:9px;">Lorsqu’un client souhaite être accompagné pour la configuration de son domaine ou de ses DNS, il peut contacter directement TerangaResto. L’équipe peut accompagner la configuration et la vérification nécessaires. Les demandes d’assistance DNS peuvent prendre <strong>jusqu’à 72 heures</strong>.</p>
+      </section>
+
+      <section style="margin-bottom:18px;">
+        <h2 style="font-size:17px;font-weight:700;margin-bottom:9px;">Évolution de cette politique</h2>
+        <p>Cette politique peut évoluer lorsque le service évolue, que de nouvelles fonctionnalités sont ajoutées, que les modalités de traitement évoluent ou que les obligations applicables évoluent. Lorsqu’une mise à jour est publiée, la date de dernière mise à jour affichée ci-dessous est actualisée.</p>
+      </section>
+
+      <p style="font-size:11.5px;color:var(--ink-faint);padding-top:12px;border-top:1px solid var(--cream-line);">Dernière mise à jour : 19 septembre 2026</p>
+    </article>`;
+}
+
+function openPrivacyPolicy(){
+  if(document.getElementById('privacyPolicyOverlay')) return;
+  const previousOverflow = document.body.style.overflow || '';
+  const overlay = document.createElement('div');
+  overlay.id = 'privacyPolicyOverlay';
+  overlay.dataset.previousOverflow = previousOverflow;
+  overlay.style.cssText='position:fixed;inset:0;z-index:1650;background:rgba(43,24,16,.32);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
+  overlay.innerHTML = `
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="privacyPolicyTitle" style="width:min(100%,920px);max-height:calc(100vh - 36px);overflow:hidden;display:flex;flex-direction:column;padding:20px 22px;box-shadow:0 24px 80px rgba(43,24,16,.24);">
+      <div id="privacyPolicyContent" style="overflow:auto;-webkit-overflow-scrolling:touch;padding-right:4px;">${privacyPolicyHtml()}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow='hidden';
+  const content = overlay.querySelector('#privacyPolicyContent');
+  if(content) content.focus({preventScroll:true});
+}
+
+function closePrivacyPolicy(){
+  const overlay = document.getElementById('privacyPolicyOverlay');
+  if(!overlay) return;
+  document.body.style.overflow = overlay.dataset.previousOverflow || '';
+  overlay.remove();
 }
 
 /* ---------------- VIEW SWITCHING ---------------- */
@@ -6188,14 +6332,15 @@ async function finishOnboarding(){
   const existingRid = currentUser?.id ? await findMyRestaurantId(currentUser.id) : null;
   if(existingRid){
     try{ localStorage.setItem('tg_last_restaurant_'+String(currentUser.id), String(existingRid)); }catch(e){}
-    const ok = await loadRestaurantCore(existingRid,true);
+    const ok = await loadRestaurantCore(existingRid,true,true);
     if(ok){
       viewerIsStaff = true;
-      loadRestaurantSecondaryData(existingRid);
       if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
       clearPendingOnboarding();
       setView('dashboard');
       setDashSection('overview');
+      loadRestaurantCatalogSecondaryData(existingRid);
+      loadRestaurantSecondaryData(existingRid);
       toast(ic('checkCircle',15)+` Votre restaurant existant est maintenant accessible depuis le tableau de bord.`, true);
       return;
     }
@@ -9986,7 +10131,7 @@ async function loadOrderWhatsappRecipients(restaurantId=RESTAURANT.id){
 }
 
 async function setOrderNotificationChannel(channel){
-  const next = channel === 'whatsapp' ? 'whatsapp' : 'email';
+  const next = channel === 'whatsapp' ? 'whatsapp' : channel === 'email' ? 'email' : null;
   if(next === 'email' && !RESTAURANT.orderNotificationEmailVerified){
     toast('Vérifiez d’abord l’adresse Gmail de réception.');
     return;
@@ -10002,6 +10147,11 @@ async function setOrderNotificationChannel(channel){
     return;
   }
   RESTAURANT.orderNotificationChannel = next;
+  try{
+    const key = 'teranga_order_notification_none_' + String(RESTAURANT.id||'');
+    if(next===null) localStorage.setItem(key,'1');
+    else localStorage.removeItem(key);
+  }catch(e){}
   renderDashSection('settings');
 }
 
@@ -10112,6 +10262,42 @@ function showOrderWhatsappPremiumNotice(){
 }
 
 
+function openOrderNotificationDisableConfirm(channel){
+  const isWhatsapp = channel === 'whatsapp';
+  let overlay = document.getElementById('orderNotificationDisableConfirmOverlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'orderNotificationDisableConfirmOverlay';
+    overlay.className = 'hidden';
+    overlay.style.cssText='position:fixed;inset:0;z-index:1140;display:flex;align-items:center;justify-content:center;padding:18px;';
+    document.body.appendChild(overlay);
+  }
+  const title = isWhatsapp ? 'Désactiver les notifications WhatsApp ?' : 'Désactiver les notifications Gmail ?';
+  const message = isWhatsapp
+    ? 'Si vous désactivez cette option, les nouvelles commandes ne seront plus envoyées sur WhatsApp. Aucun autre canal ne sera activé automatiquement.'
+    : 'Si vous désactivez cette option, les nouvelles commandes ne seront plus envoyées par e-mail. Aucun autre canal ne sera activé automatiquement.';
+  overlay.innerHTML = `
+    <div style="position:absolute;inset:0;background:rgba(43,24,16,.5);" onclick="closeOrderNotificationDisableConfirm()"></div>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="orderNotificationDisableConfirmTitle" style="position:relative;width:min(100%,460px);padding:20px;box-shadow:0 22px 70px rgba(43,24,16,.25);">
+      <p id="orderNotificationDisableConfirmTitle" style="font-size:15px;font-weight:700;">${title}</p>
+      <p style="font-size:12.5px;line-height:1.55;color:var(--ink-soft);margin-top:8px;">${message}</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px;">
+        <button type="button" class="btn btn-outline" onclick="closeOrderNotificationDisableConfirm()">Annuler</button>
+        <button type="button" class="btn btn-secondary" onclick="confirmOrderNotificationDisable()">Confirmer</button>
+      </div>
+    </div>`;
+  overlay.dataset.channel = isWhatsapp ? 'whatsapp' : 'email';
+  overlay.classList.remove('hidden');
+}
+function closeOrderNotificationDisableConfirm(){
+  document.getElementById('orderNotificationDisableConfirmOverlay')?.classList.add('hidden');
+}
+async function confirmOrderNotificationDisable(){
+  const overlay = document.getElementById('orderNotificationDisableConfirmOverlay');
+  closeOrderNotificationDisableConfirm();
+  await setOrderNotificationChannel('none');
+}
+
 function handleOrderWhatsappRowClick(event){
   if(event?.target?.closest('button')) return;
   const recipients = Array.isArray(RESTAURANT.orderNotificationWhatsappRecipients)
@@ -10173,7 +10359,7 @@ function orderNotificationSettingsHtml(){
           <img src="${ORDER_WHATSAPP_LOGO}" alt="WhatsApp" style="width:26px;height:26px;object-fit:contain;border-radius:7px;flex:0 0 26px;">
           <div style="min-width:0;"><p style="font-size:13px;font-weight:700;">WhatsApp</p><p style="font-size:11px;color:var(--ink-faint);">${waActive?'Canal actif':'Canal désactivé'}</p>${waActive && !RESTAURANT.orderNotificationWhatsappRecipients?.length ? `<p style="font-size:11px;color:#c33b32;margin-top:3px;">Aucun numéro WhatsApp de réception n’est configuré.</p>` : ''}</div>
         </div>
-        <button type="button" class="toggle ${waActive?'on':''}" role="switch" aria-checked="${waActive?'true':'false'}" aria-label="Activer ou désactiver WhatsApp" onclick="event.stopPropagation();setOrderNotificationChannel('${waActive?'email':'whatsapp'}')"><span class="dot"></span></button>
+        <button type="button" class="toggle ${waActive?'on':''}" role="switch" aria-checked="${waActive?'true':'false'}" aria-label="Activer ou désactiver WhatsApp" onclick="event.stopPropagation();${waActive?'openOrderNotificationDisableConfirm(\'whatsapp\')':'setOrderNotificationChannel(\'whatsapp\')'}"><span class="dot"></span></button>
       </div>
       ${waActive ? `<div style="border-top:1px solid var(--cream-line);padding:12px 0 4px;">
         <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:8px;">Numéros de réception</p>
@@ -10184,7 +10370,7 @@ function orderNotificationSettingsHtml(){
           <img src="${ORDER_GMAIL_LOGO}" alt="Gmail" style="width:26px;height:26px;object-fit:contain;border-radius:7px;flex:0 0 26px;">
           <div><p style="font-size:13px;font-weight:700;">Gmail</p><p style="font-size:11px;color:var(--ink-faint);">${gmailActive?'Canal actif':'Canal désactivé'}</p></div>
         </div>
-        <button type="button" class="toggle ${gmailActive?'on':''}" role="switch" aria-checked="${gmailActive?'true':'false'}" aria-label="Activer ou désactiver Gmail" onclick="event.stopPropagation();setOrderNotificationChannel('${gmailActive?'whatsapp':'email'}')"><span class="dot"></span></button>
+        <button type="button" class="toggle ${gmailActive?'on':''}" role="switch" aria-checked="${gmailActive?'true':'false'}" aria-label="Activer ou désactiver Gmail" onclick="event.stopPropagation();${gmailActive?'openOrderNotificationDisableConfirm(\'email\')':'setOrderNotificationChannel(\'email\')'}"><span class="dot"></span></button>
       </div>
       ${gmailActive ? `<div id="orderNotificationGmailDetails" class="hidden" style="margin-top:7px;padding:9px 11px;border:1px solid var(--cream-line);border-radius:10px;background:rgba(255,255,255,.58);">
         <p style="font-size:11px;color:var(--ink-faint);margin-bottom:3px;">Adresse de réception</p>
