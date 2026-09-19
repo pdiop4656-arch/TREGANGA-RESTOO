@@ -897,7 +897,6 @@ body{min-width:0;}
   <!-- FOOTER -->
   <footer class="tg-footer" style="border-top:1px solid rgba(0,0,0,.06);padding:32px 0;text-align:center;">
     <div class="flex gap-3" id="sfSocialIcons" style="justify-content:center;margin-bottom:12px;"></div>
-    <a href="#" onclick="openPrivacyPolicy();return false;" style="display:inline-block;font-size:12px;color:var(--ink-faint);text-decoration:none;margin-bottom:8px;">Politique de confidentialité</a>
     <p class="resto-name" style="font-family:'Playfair Display',serif;font-size:15px;"></p>
   </footer>
 
@@ -3414,8 +3413,61 @@ function subscribeToPublicRealtime(restaurantId){
     .subscribe();
 }
 
-async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false){
-  const [restaurantResult, categoriesResult, productsResult] = await Promise.all([
+async function preloadRestaurantPublicBySlug(slug){
+  const clean = slugify(slug);
+  if(!clean) return {clean,found:false};
+
+  const restaurantResult = await supabaseClient.from('restaurants').select(
+    'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
+    'address,city,phone,hours,delivery,social,show_map,maps_link,' +
+    'notifications_enabled,order_notification_email,order_notification_email_verified,' +
+    'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,' +
+    'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
+    'plan,payment_toggles'
+  ).eq('slug', clean).maybeSingle();
+
+  if(restaurantResult.error || !restaurantResult.data){
+    return {clean,found:false,error:restaurantResult.error||null};
+  }
+
+  const restaurantId = restaurantResult.data.id;
+  const reviewsPromise = supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).eq('is_published', true).order('created_at', {ascending:false});
+  const [categoriesResult, productsResult] = await Promise.all([
+    supabaseClient.from('categories').select(
+      'key,label,visible_on_home,sort_order'
+    ).eq('restaurant_id', restaurantId).order('sort_order'),
+    supabaseClient.from('products').select(
+      'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
+    ).eq('restaurant_id', restaurantId).order('created_at')
+  ]);
+
+  return {
+    clean,
+    found:true,
+    restaurantId,
+    restaurantResult,
+    categoriesResult,
+    productsResult,
+    reviewsPromise
+  };
+}
+
+async function loadRestaurantPublicReviewsSecondaryData(restaurantId, reviewsPromise=null){
+  try{
+    const reviewsResult = reviewsPromise
+      ? await reviewsPromise
+      : await supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).eq('is_published', true).order('created_at', {ascending:false});
+    if(String(RESTAURANT.id||'') !== String(restaurantId||'')) return;
+    REVIEWS = Array.isArray(reviewsResult?.data) ? reviewsResult.data : [];
+    publicReviewsExpanded = false;
+    if(state.view==='storefront') renderPublicReviews();
+  }catch(e){
+    console.warn('Chargement différé des avis publics:',e);
+  }
+}
+
+async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false, preloaded=null){
+  const {restaurantResult, categoriesResult, productsResult} = preloaded || await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
@@ -3513,6 +3565,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   // Seules la couverture et les photos produits restent différées ; le logo
   // est déjà disponible pour le premier rendu.
   loadRestaurantPublicImagesFast(restaurantId);
+  loadRestaurantPublicReviewsSecondaryData(restaurantId, preloaded?.reviewsPromise || null);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
   return true;
 }
@@ -3614,6 +3667,10 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
+    const restoSlug = restaurantSlugFromLocation();
+    const publicQrPreload = restoSlug ? preloadRestaurantPublicBySlug(restoSlug) : null;
+    if(restoSlug) restoSplashProgress(45);
+
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
 
@@ -3698,10 +3755,14 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    const restoSlug = restaurantSlugFromLocation();
     if(restoSlug){
-      restoSplashProgress(45);
-      const found = await loadRestaurantBySlug(restoSlug);
+      let found = false;
+      const preloaded = publicQrPreload ? await publicQrPreload : null;
+      if(preloaded?.found){
+        found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
+      }else{
+        found = await loadRestaurantBySlug(restoSlug);
+      }
       viewerIsStaff = false;
       if(found){
         setView('storefront');
