@@ -2412,7 +2412,7 @@ async function loadRestaurantSecondaryData(restaurantId){
 
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
-    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, items:o.items,
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', items:o.items,
     total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
     createdAt:new Date(o.created_at),
   }));
@@ -2533,7 +2533,7 @@ function onRealtimeNewOrder(row){
   // ne déclenche pas une seconde alerte pour la même commande.
   if(DEMO_ORDERS.some(o => o.id === row.id)) return;
   const order = {
-    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
     total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
     createdAt:new Date(row.created_at),
   };
@@ -2563,13 +2563,13 @@ function onRealtimeOrderUpdated(row){
     // appareil avant que la session ne soit ouverte) — on l'ajoute
     // proprement plutôt que d'ignorer la mise à jour.
     DEMO_ORDERS.push({
-      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, items:row.items,
+      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
       total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
       createdAt:new Date(row.created_at),
     });
   } else {
     Object.assign(DEMO_ORDERS[i], {
-      client:row.client, phone:row.phone, type:row.type, items:row.items,
+      client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
       total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
     });
   }
@@ -4639,7 +4639,39 @@ const DEMO_ORDERS = [];
 
 const DEMO_STAFF = [];
 
-const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison'};
+const PAYMENT_LABELS = {wave:'Wave',orange_money:'Orange Money',cash:'Espèces',on_delivery:'Paiement à la livraison',card:'Carte bancaire',credit_card:'Carte bancaire',bank_card:'Carte bancaire'};
+
+/* Présentation des commandes pour le restaurateur : une seule logique de
+   conversion des valeurs techniques vers des libellés français. Les données
+   enregistrées restent inchangées ; cette conversion ne sert qu'à l'affichage. */
+function orderDisplayType(order){
+  const rawOrderType = String(order?.orderType ?? order?.order_type ?? '').trim().toLowerCase();
+  const rawDeliveryMode = String(order?.deliveryMode ?? order?.delivery_mode ?? '').trim().toLowerCase();
+  const rawType = String(order?.type ?? '').trim();
+  const normalizedType = rawType.toLowerCase();
+
+  if(rawOrderType === 'delivery' || normalizedType === 'delivery' || normalizedType.startsWith('livraison')){
+    return (rawDeliveryMode === 'express' || normalizedType.includes('express')) ? 'Livraison express' : 'Livraison';
+  }
+  if(rawOrderType === 'dine_in' || normalizedType === 'dine_in' || normalizedType.startsWith('sur place')) return 'Sur place';
+  if(['pickup','take_away','takeaway'].includes(rawOrderType) || ['pickup','take_away','takeaway'].includes(normalizedType) || normalizedType.startsWith('à emporter') || normalizedType.startsWith('a emporter')) return 'À emporter';
+  if(normalizedType === 'express') return 'Livraison express';
+  if(rawDeliveryMode === 'express') return 'Livraison express';
+  if(normalizedType === 'delivery') return 'Livraison';
+  return 'Type de commande';
+}
+
+function orderDisplayPayment(value){
+  const raw = String(value ?? '').trim();
+  const key = raw.toLowerCase();
+  if(PAYMENT_LABELS[key]) return PAYMENT_LABELS[key];
+  if(['wave'].includes(key)) return 'Wave';
+  if(['orange money','orange-money','orange_money'].includes(key)) return 'Orange Money';
+  if(['espèces','especes'].includes(key)) return 'Espèces';
+  if(['paiement à la livraison','paiement a la livraison'].includes(key)) return 'Paiement à la livraison';
+  if(['carte bancaire','carte','credit card','bank card'].includes(key)) return 'Carte bancaire';
+  return raw ? 'Autre moyen de paiement' : 'Moyen de paiement non précisé';
+}
 const ORDER_STATUS_LABELS = {new:'Nouvelle',preparing:'En préparation',ready:'Prête',delivering:'En livraison',completed:'Terminée',cancelled:'Annulée'};
 const ORDER_STATUS_TONE = {new:'amber',preparing:'amber',ready:'forest',delivering:'forest',completed:'ink',cancelled:'terracotta'};
 /* Action suivante UNIQUE pour le restaurateur — jamais plusieurs
@@ -8282,7 +8314,7 @@ function ordersRowsHtml(){
     return `<tr onclick="openOrderDetail(${i})">
       <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
       <td style="color:var(--ink-soft);">${escapeHtml(o.client)}</td>
-      <td style="color:var(--ink-soft);">${escapeHtml(o.type)}</td>
+      <td style="color:var(--ink-soft);">${escapeHtml(orderDisplayType(o))}</td>
       <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
       <td class="font-tabular">${fmt(o.total)}</td>
       <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
@@ -8333,7 +8365,7 @@ function printOrderDetail(i){
   if(!panel || !o) return;
   const w=window.open('','_blank','width=760,height=900');
   if(!w){ toast('Autorisez les fenêtres contextuelles pour imprimer la commande.'); return; }
-  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Commande #${escapeAttr(o.num)}</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;max-width:760px;margin:auto}h1{font-size:24px;margin:0 0 4px}p{margin:6px 0}.line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ddd}.muted{color:#666;font-size:12px}.total{font-size:20px;font-weight:700;margin-top:14px}</style></head><body><h1>Commande #${escapeAttr(o.num)}</h1><p class="muted">${escapeHtml(RESTO_NAME)} · ${escapeHtml(timeAgo(o.createdAt))}</p><hr><p><b>Client :</b> ${escapeHtml(o.client)}</p><p><b>Téléphone :</b> ${escapeHtml(o.phone)}</p><p><b>Type :</b> ${escapeHtml(o.type)}</p>${o.address?`<p><b>Adresse :</b> ${escapeHtml(o.address)}</p>`:''}<h2>Produits</h2>${(o.items||[]).map(it=>{const isLegacy=Array.isArray(it),name=isLegacy?it[0]:it.name,qty=Math.max(1,Number(isLegacy?it[1]:it.qty)||1),u=orderItemPrice(it),t=u===null?null:u*qty;return `<div class="line"><span>${qty} × ${escapeHtml(name)}</span><span>${t===null?'—':fmt(t)}</span></div>`}).join('')}<p class="total">Total : ${fmt(o.total)}</p>
+  w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Commande #${escapeAttr(o.num)}</title><style>body{font-family:Arial,sans-serif;color:#222;padding:28px;max-width:760px;margin:auto}h1{font-size:24px;margin:0 0 4px}p{margin:6px 0}.line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #ddd}.muted{color:#666;font-size:12px}.total{font-size:20px;font-weight:700;margin-top:14px}</style></head><body><h1>Commande #${escapeAttr(o.num)}</h1><p class="muted">${escapeHtml(RESTO_NAME)} · ${escapeHtml(timeAgo(o.createdAt))}</p><hr><p><b>Client :</b> ${escapeHtml(o.client)}</p><p><b>Téléphone :</b> ${escapeHtml(o.phone)}</p><p><b>Type :</b> ${escapeHtml(orderDisplayType(o))}</p>${o.address?`<p><b>Adresse :</b> ${escapeHtml(o.address)}</p>`:''}<h2>Produits</h2>${(o.items||[]).map(it=>{const isLegacy=Array.isArray(it),name=isLegacy?it[0]:it.name,qty=Math.max(1,Number(isLegacy?it[1]:it.qty)||1),u=orderItemPrice(it),t=u===null?null:u*qty;return `<div class="line"><span>${qty} × ${escapeHtml(name)}</span><span>${t===null?'—':fmt(t)}</span></div>`}).join('')}<p class="total">Total : ${fmt(o.total)}</p>
 
 
 </body></html>`);
@@ -8365,7 +8397,7 @@ function openOrderDetail(i){
           <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#B8C2D5;margin-bottom:9px;">Client</p>
           <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">${ic('users',15,{stroke:'#D8E0EF'})}${escapeHtml(o.client)}</p>
           <p style="font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">${ic('phone',15,{stroke:'#D8E0EF'})}${escapeHtml(o.phone)}</p>
-          <p style="font-size:14px;display:flex;align-items:flex-start;gap:8px;">${ic('mapPin',15,{stroke:'#D8E0EF'})}<span>${escapeHtml(o.type)}</span></p>
+          <p style="font-size:14px;display:flex;align-items:flex-start;gap:8px;">${ic('mapPin',15,{stroke:'#D8E0EF'})}<span>${escapeHtml(orderDisplayType(o))}</span></p>
           ${o.address?`<p style="font-size:13px;display:flex;align-items:flex-start;gap:8px;margin-top:8px;color:#D8E0EF;">${ic('home',15,{stroke:'#D8E0EF'})}<span>${escapeHtml(o.address)}</span></p>`:''}
         </div>
         <div style="display:flex;gap:9px;margin-bottom:12px;">
@@ -8384,7 +8416,7 @@ function openOrderDetail(i){
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Sous-total</span><span class="font-tabular">${hasPricedItems?fmt(subtotal):'—'}</span></div>
             ${delivery?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Livraison</span><span class="font-tabular">${fmt(deliveryFee)}</span></div>`:''}
             <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);"><span>Total à payer</span><span class="font-tabular" style="color:#F5B24E;">${fmt(o.total)}</span></div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${paymentMark(o.pay,21)}<span style="font-size:12.5px;color:#C9D2E2;">${PAYMENT_LABELS[o.pay]||o.pay}</span><span class="pill" style="margin-left:auto;${o.payStatus==='paid'?'background:#234B32;color:#8DE0A8;':'background:rgba(232,135,30,.16);color:#F5B24E;'}">${PAY_STATUS_LABELS[o.payStatus]||o.payStatus}</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${paymentMark(o.pay,21)}<span style="font-size:12.5px;color:#C9D2E2;">${orderDisplayPayment(o.pay)}</span><span class="pill" style="margin-left:auto;${o.payStatus==='paid'?'background:#234B32;color:#8DE0A8;':'background:rgba(232,135,30,.16);color:#F5B24E;'}">${PAY_STATUS_LABELS[o.payStatus]||o.payStatus}</span></div>
           </div>
         </div>
         ${action?`<button type="button" onclick="changeOrderStatus(${i},'${action.next}',event)" class="btn btn-secondary btn-lg w-full" style="margin-top:2px;">${ic(action.icon,16)} ${action.label}</button>`:''}
@@ -8497,7 +8529,7 @@ function dashPos(){
     <table class="data-table">
       <thead><tr><th>Commande</th><th>Date</th><th>Paiement</th><th style="text-align:right;">Montant</th></tr></thead>
       <tbody>
-        ${paid.map(o=>`<tr><td class="font-tabular">#${o.num}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${PAYMENT_LABELS[o.pay]||o.pay}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
+        ${paid.map(o=>`<tr><td class="font-tabular">#${o.num}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${orderDisplayPayment(o.pay)}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
       </tbody>
       <tfoot><tr style="font-weight:700;"><td colspan="3">Total</td><td class="font-tabular" style="text-align:right;">${fmt(total)}</td></tr></tfoot>
     </table>`}
