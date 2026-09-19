@@ -10132,9 +10132,9 @@ async function loadOrderWhatsappRecipients(restaurantId=RESTAURANT.id){
 
 async function setOrderNotificationChannel(channel){
   const next = channel === 'whatsapp' ? 'whatsapp' : channel === 'email' ? 'email' : null;
-  if(next === 'email' && !RESTAURANT.orderNotificationEmailVerified){
-    toast('Vérifiez d’abord l’adresse Gmail de réception.');
-    return;
+  if(next === 'email' && !RESTAURANT.orderNotificationEmail){
+    RESTAURANT.orderNotificationEmail = (currentUser?.email || '').trim().toLowerCase();
+    RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
   }
   const {data,error} = await supabaseClient
     .from('restaurants')
