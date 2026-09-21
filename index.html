@@ -2301,7 +2301,6 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalo
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  preloadRestaurantQrCode();
   RESTAURANT.logoDataUrl = r.logo_data_url; RESTAURANT.coverDataUrl = r.cover_data_url;
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
   // Le logo du restaurateur devient immédiatement l'icône de son site public.
@@ -2432,7 +2431,7 @@ async function loadRestaurantSecondaryData(restaurantId){
 
   subscribeToOrdersRealtime(restaurantId);
   subscribeToReviewsRealtime(restaurantId);
-  void ensureDefaultOrderWhatsappRecipient(restaurantId);
+  loadOrderWhatsappRecipients(restaurantId);
 
   // Le tableau de bord était déjà affiché (avec des listes vides) avant
   // que ces données n'arrivent — on redessine la section actuellement
@@ -2627,22 +2626,7 @@ function getMyOrders(){
   if(!RESTAURANT.id) return [];
   try{
     const all = JSON.parse(localStorage.getItem(MY_ORDERS_KEY) || '{}');
-    const remembered = Array.isArray(all[RESTAURANT.id]) ? all[RESTAURANT.id] : [];
-    // Le journal local contient, après sauvegarde réussie, le numéro réellement
-    // attribué par Supabase. Il sert uniquement à réparer une référence locale
-    // devenue obsolète, jamais à remplacer track_order comme source de vérité.
-    const savedKey = 'teranga_local_orders_' + String(RESTAURANT.id);
-    const saved = JSON.parse(localStorage.getItem(savedKey) || '[]');
-    const recovered = Array.isArray(saved)
-      ? saved.filter(o => o && o.num).map(o => ({num:String(o.num), phone:String(o.phone||'')}))
-      : [];
-    const merged = [];
-    [...remembered, ...recovered].forEach(ref => {
-      const num = String(ref?.num||'').trim();
-      if(!num || merged.some(o => o.num===num)) return;
-      merged.push({num, phone:String(ref?.phone||'')});
-    });
-    return merged.slice(0,10);
+    return all[RESTAURANT.id] || [];
   }catch(e){ return []; }
 }
 function rememberMyOrder(num, phone){
@@ -2688,28 +2672,12 @@ async function openTrackOrderModal(){
   hydrateIcons(body);
 
   const results = await Promise.all(myOrders.map(async ref => {
-    const rawPhone = String(ref.phone||'').trim();
-    const digits = rawPhone.replace(/\D/g,'');
-    const phoneCandidates = [...new Set([
-      rawPhone,
-      digits,
-      digits.startsWith('221') ? '+'+digits : '',
-      digits.startsWith('221') ? digits.slice(3) : ''
-    ].filter(Boolean))];
-
-    let row = null;
-    let error = null;
-    for(const phone of phoneCandidates){
-      const result = await supabaseClient.rpc('track_order', {
-        p_restaurant_id: RESTAURANT.id,
-        p_num: String(ref.num||'').trim(),
-        p_phone: phone
-      });
-      error = result.error || null;
-      row = Array.isArray(result.data) ? result.data[0] : result.data;
-      if(row) break;
-    }
-    return {ref, row, error};
+    const {data, error} = await supabaseClient.rpc('track_order', {
+      p_restaurant_id: RESTAURANT.id,
+      p_num: ref.num,
+      p_phone: ref.phone
+    });
+    return {ref, row: Array.isArray(data) ? data[0] : data, error};
   }));
 
   body.innerHTML = `
@@ -3136,10 +3104,11 @@ async function persistRestaurant(){
     restaurantSaveInFlight = null;
     if(restaurantSavePending){
       restaurantSavePending = false;
-      // Une seule nouvelle écriture pour absorber plusieurs changements
-      // rapprochés (notamment les horaires).
+      // La dernière modification en attente est envoyée immédiatement,
+      // sans délai artificiel susceptible de perdre une modification critique.
       clearTimeout(restaurantSaveTimer);
-      restaurantSaveTimer = setTimeout(()=>persistRestaurant(),120);
+      restaurantSaveTimer = null;
+      persistRestaurant();
     }
   }
 }
@@ -3409,29 +3378,28 @@ function renderStorefrontGateOverlay(){
    puis les images (logo/couverture/photos produits) en arrière-plan.
    Le chemin propriétaire/dashboard reste inchangé. */
 let publicRealtimeChannel = null;
-let publicRealtimeRefreshTimer = null;
 let publicRealtimeRestaurantId = null;
+let publicRealtimeRefreshPromise = Promise.resolve();
 
 function unsubscribePublicRealtime(){
-  if(publicRealtimeRefreshTimer){ clearTimeout(publicRealtimeRefreshTimer); publicRealtimeRefreshTimer=null; }
   if(publicRealtimeChannel){ supabaseClient.removeChannel(publicRealtimeChannel); publicRealtimeChannel=null; }
   publicRealtimeRestaurantId = null;
 }
 function schedulePublicRealtimeRefresh(restaurantId){
   if(!restaurantId || state.view!=='storefront') return;
-  clearTimeout(publicRealtimeRefreshTimer);
-  publicRealtimeRefreshTimer=setTimeout(async()=>{
-    publicRealtimeRefreshTimer=null;
+  publicRealtimeRefreshPromise = publicRealtimeRefreshPromise.then(async()=>{
     if(state.view!=='storefront' || publicRealtimeRestaurantId!==restaurantId) return;
     const ok=await loadRestaurantPublicFast(restaurantId,true);
     if(ok){
+      await loadRestaurantPublicReviewsSecondaryData(restaurantId);
       renderStorefrontHero();
       renderProductSections();
       updateFloatingCartButton();
       renderStorefrontGateOverlay();
       renderTrackOrderButton();
     }
-  },120);
+  }).catch(e=>console.warn('Actualisation publique en temps réel:',e));
+  return publicRealtimeRefreshPromise;
 }
 function subscribeToPublicRealtime(restaurantId){
   if(publicRealtimeChannel && publicRealtimeRestaurantId===restaurantId) return;
@@ -3442,6 +3410,7 @@ function subscribeToPublicRealtime(restaurantId){
     .on('postgres_changes',{event:'*',schema:'public',table:'restaurants',filter:`id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .on('postgres_changes',{event:'*',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .on('postgres_changes',{event:'*',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
+    .on('postgres_changes',{event:'*',schema:'public',table:'reviews',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .subscribe();
 }
 
@@ -3525,12 +3494,12 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   const r = restaurantResult.data;
   const cats = categoriesResult.data;
   const prods = productsResult.data;
+  REVIEWS = [];
 
   RESTAURANT.id = r.id;
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  preloadRestaurantQrCode();
   // Le logo fait partie des données critiques du premier affichage : il
   // est chargé avec le restaurant, pas dans le chargement secondaire.
   RESTAURANT.logoDataUrl = r.logo_data_url || '';
@@ -4753,7 +4722,7 @@ function defaultHours(){
 }
 function defaultDelivery(){
   return {
-    enabled:true, fee:1000, min:2000,
+    enabled:true, fee:1000, min:1000,
     modes:{
       own:{enabled:true, allowCashOnDelivery:true},
       express:{enabled:false, fee:1500},
@@ -4921,7 +4890,8 @@ function deliveryZoneById(id){
   return enabledDeliveryZones().find(z=>String(z.id ?? '').trim()===wanted)||null;
 }
 function deliveryModeAllowsCashOnDelivery(modeKey){
-  if(modeKey!=='own' && modeKey!=='express') return false;
+  if(modeKey==='express') return false;
+  if(modeKey!=='own') return false;
   return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
 }
 /* Les moyens de paiement réellement proposés au client = moyens activés
@@ -6331,7 +6301,6 @@ async function createRestaurantFromOnboarding(){
   // Le destinataire réel provient de WASENDER_DEFAULT_RECIPIENT côté serveur.
   RESTAURANT.orderNotificationChannel = 'whatsapp';
   RESTAURANT.orderNotificationWhatsappRecipients = [];
-  await ensureDefaultOrderWhatsappRecipient(RESTAURANT.id);
   Promise.resolve(supabaseClient.functions.invoke('send-order-whatsapp-notification', {
     body:{action:'ensure_default', restaurant_id:RESTAURANT.id}
   })).then(result=>{
@@ -7322,8 +7291,8 @@ function renderCheckout(){
         <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
           ${modes.map(mk=>`<button onclick="ckField('deliveryMode','${mk}');renderCheckout();" style="border:2px solid ${c.deliveryMode===mk?'var(--amber-deep)':'var(--cream-line)'};${c.deliveryMode===mk?'background:rgba(232,135,30,.06);':''}border-radius:14px;padding:10px 8px;text-align:center;">
             <div style="font-size:12px;font-weight:600;">${DELIVERY_MODE_LABELS[mk]}</div>
-            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${c.deliveryZone ? (mk==='express' ? `${fmt(deliveryZoneById(c.deliveryZone)?.fee||0)} + ${fmt(Math.max(0,Number(RESTAURANT.delivery.modes.express.fee)||0))} supplément` : (deliveryFeeFor(mk,c.deliveryZone)===0 ? 'Gratuit' : fmt(deliveryFeeFor(mk,c.deliveryZone)))) : 'Sélectionnez une zone'}${c.deliveryZone && deliveryModeAllowsCashOnDelivery(mk) ? ' · Paiement à la livraison possible':''}</div>
-            ${c.deliveryZone && mk==='express' ? `<div style="font-size:11.5px;font-weight:600;color:var(--ink);margin-top:3px;">${fmt(deliveryFeeFor(mk,c.deliveryZone))}</div>` : ''}
+            <div style="font-size:10.5px;color:var(--ink-faint);margin-top:2px;">${c.deliveryZone ? (mk==='express' ? `${fmt(deliveryZoneById(c.deliveryZone)?.fee||0)} + ${fmt(Math.max(0,Number(RESTAURANT.delivery.modes.express.fee)||0))} supplément` : (deliveryFeeFor(mk,c.deliveryZone)===0 ? 'Gratuit' : fmt(deliveryFeeFor(mk,c.deliveryZone)))) : 'Sélectionnez une zone'}${mk==='express' ? ' · Livraison immédiate':''}</div>
+            ${c.deliveryZone && mk==='express' ? `<div style="font-size:11px;font-weight:600;color:var(--ink);margin-top:3px;">${fmt(deliveryFeeFor(mk,c.deliveryZone))}</div>` : ''}
           </button>`).join('')}
         </div>`:''}
         <label class="field-label" style="${c.requiredField==='deliveryZone'?'color:var(--terracotta);':''}">Zone de livraison <span style="color:var(--terracotta);font-weight:700;">*</span></label>
@@ -8642,9 +8611,10 @@ function drawRevenueChart(){
    produits sont gérés dans la section Produits dédiée) ---------------- */
 let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
 /* Visibilité de chaque catalogue sur la page d'accueil du site public —
-   { [catKey]: boolean }. Seules les catégories explicitement enregistrées
-   avec visible_on_home=true sont affichées sur le site public.
-   Persisté par catégorie (categories.visible_on_home). */
+   { [catKey]: boolean }. Absent d'une clé = considéré visible par
+   règle explicite (catsHomeVisible[c] === true), pour que les catégories
+   existantes avant l'ajout de cette fonctionnalité restent visibles
+   sans surprise. Persisté par catégorie (categories.visible_on_home). */
 let catsHomeVisible = {};
 let expandedCat = 'plats';
 function dashCategories(){
@@ -8672,7 +8642,7 @@ function renderCatList(){
       ${open?`<div style="background:var(--cream);padding:10px 16px 16px;">
         <div class="flex items-center justify-between" style="padding:8px 0 12px;border-bottom:1px solid var(--cream-line);margin-bottom:10px;">
           <div><p style="font-size:12.5px;font-weight:600;">Visible sur la page d'accueil du site public</p><p style="font-size:11px;color:var(--ink-faint);">Désactivez pour garder ce catalogue disponible sans l'afficher en vitrine.</p></div>
-          <div class="toggle ${catsHomeVisible[key]===true?'on':''}" onclick="toggleCategoryHomeVisibility('${key}')"><div class="dot"></div></div>
+          <div class="toggle ${catsHomeVisible[key]!==false?'on':''}" onclick="toggleCategoryHomeVisibility('${key}')"><div class="dot"></div></div>
         </div>
         ${items.length===0?`<p style="font-size:12px;color:var(--ink-faint);padding:6px 2px 12px;">Aucun produit dans cette catégorie.</p>`:
         items.map(p=>`<div class="flex items-center gap-3" style="background:var(--surface);border:1px solid var(--cream-line);border-radius:12px;padding:8px 12px;margin-bottom:6px;">
@@ -9266,10 +9236,8 @@ function paymentsListHtml(methods){
     </div>`;
   }).join('');
 }
-let paymentSaveTimer=null;
 function schedulePaymentPersist(){
-  clearTimeout(paymentSaveTimer);
-  paymentSaveTimer=setTimeout(()=>persistRestaurant(),250);
+  return persistRestaurant();
 }
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
@@ -9469,29 +9437,14 @@ async function deleteReview(id){
 }
 
 /* ---------------- QR CODE ---------------- */
-const qrCodePreloadCache = new Map();
-function preloadRestaurantQrCode(){
-  const slug = String(RESTAURANT.slug||'').trim();
-  if(!slug) return;
-  const url = publicRestaurantUrl(slug);
-  if(!url) return;
-  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
-  if(qrCodePreloadCache.has(url)) return;
-  const img = new Image();
-  img.decoding = 'async';
-  img.fetchPriority = 'high';
-  qrCodePreloadCache.set(url, img);
-  img.src = qrImgUrl;
-}
 function dashQrcode(){
-  preloadRestaurantQrCode();
   const url = publicRestaurantUrl(RESTAURANT.slug);
   const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(url)}`;
   return `
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Votre QR Code</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:18px;">Le QR Code de <span class="resto-name">${escapeHtml(RESTO_NAME)}</span> pointe vers votre site public — prêt à imprimer. (Généré via l'API publique api.qrserver.com, à partir de votre vrai lien ci-dessous — pas une image décorative.)</p>
   <div class="card text-center" style="padding:32px;max-width:340px;">
-    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${escapeAttr(RESTO_NAME)}" loading="eager" fetchpriority="high" decoding="async" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
+    <div style="display:inline-block;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:var(--surface);"><img src="${qrImgUrl}" width="240" height="240" alt="QR Code ${escapeAttr(RESTO_NAME)}" style="display:block;width:min(240px,68vw);height:auto;aspect-ratio:1/1;"></div>
     <p class="font-display resto-name" style="font-size:16px;margin-top:14px;">${escapeHtml(RESTO_NAME)}</p>
     <p class="font-tabular" style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;">${url}</p>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Scannez pour voir le menu et commander</p>
@@ -10207,14 +10160,12 @@ function addDeliveryZone(){
   renderDashSection('settings');
   persistRestaurant();
 }
-let deliveryZoneSaveTimer=null;
 function updateDeliveryZone(index,key,value){
   const z=enabledDeliveryZones()[index];
   if(!z) return;
   if(key==='name') z.name=String(value||'').trim();
   if(key==='fee') z.fee=Math.max(0,Number(value)||0);
-  clearTimeout(deliveryZoneSaveTimer);
-  deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
+  persistRestaurant();
 }
 function removeDeliveryZone(index){
   const z=enabledDeliveryZones()[index];
@@ -10269,26 +10220,6 @@ async function loadOrderWhatsappRecipients(restaurantId=RESTAURANT.id){
   RESTAURANT.orderNotificationWhatsappRecipients = Array.isArray(data) ? data : [];
   if(state.view==='dashboard' && state.dashSection==='settings' && settingsTab==='Général') renderDashSection('settings');
   return RESTAURANT.orderNotificationWhatsappRecipients;
-}
-
-async function ensureDefaultOrderWhatsappRecipient(restaurantId=RESTAURANT.id){
-  if(!restaurantId) return [];
-  const current = await loadOrderWhatsappRecipients(restaurantId);
-  if(current.length) return current;
-
-  const phone = normalizeOrderWhatsappPhone(RESTAURANT.phone);
-  if(!phone) return current;
-
-  const {error} = await supabaseClient.from('restaurant_order_whatsapp_recipients')
-    .insert({restaurant_id:restaurantId,phone,position:1,is_active:true})
-    .select('id,phone,position,is_active')
-    .single();
-
-  if(error && error.code !== '23505'){
-    console.warn('Notification WhatsApp — création du destinataire par défaut:', error);
-    return current;
-  }
-  return await loadOrderWhatsappRecipients(restaurantId);
 }
 
 async function setOrderNotificationChannel(channel){
