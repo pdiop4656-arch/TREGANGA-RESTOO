@@ -2227,46 +2227,68 @@ function normaliseDomainePublic(value){
     .split('/')[0];
 }
 
-async function restaurantSlugFromLocation(){
-  const rawHost = String(location.hostname || '').trim().toLowerCase();
-  const host = normaliseDomainePublic(rawHost);
-  if(rawHost.endsWith('.terangaresto.com') && rawHost !== 'www.terangaresto.com') {
+function restaurantSlugFromLocation(){
+  const host = normaliseDomainePublic(location.hostname);
+
+  // 1) Sous-domaine TerangaResto existant.
+  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
     const prefix = host.slice(0, -'.terangaresto.com'.length);
     if(prefix && !prefix.includes('.')) return {slug:decodeURIComponent(prefix),restaurantId:null,customDomain:false};
   }
 
+  // 2) URL gratuite historique par ?resto=slug.
   const querySlug = new URLSearchParams(location.search).get('resto');
   if(querySlug) return {slug:querySlug,restaurantId:null,customDomain:false};
 
-  // Domaine personnalisé entrant : le hostname est une clé de tenant.
-  // Seuls les domaines marqués "active" sont routables ici.
-  if(rawHost && rawHost !== 'www.terangaresto.com' && !rawHost.endsWith('.terangaresto.com')){
-    try{
-      const {data,error} = await supabaseClient
-        .from('restaurants')
-        .select('id,slug,social')
-        .eq('social->>custom_domain_status','active');
-      if(error){
-        console.error('Résolution du domaine personnalisé:', error);
-        return {slug:null,restaurantId:null,customDomain:true,error:true};
-      }
+  // 3) Aucun restaurant public ciblé : landing générale.
+  return {slug:null,restaurantId:null,customDomain:false};
+}
 
-      const matches = (Array.isArray(data) ? data : []).filter(row =>
-        normaliseDomainePublic(row?.social?.custom_domain) === host
-      );
+/* Résout exclusivement les domaines personnalisés du storefront public.
+   Le hostname est une clé de tenant : un domaine externe inconnu/non actif
+   reste bloqué sur CE domaine et ne doit jamais tomber sur ?resto= ou un autre
+   restaurant. Le dashboard connecté n'utilise pas cette résolution pour choisir
+   son restaurant. */
+async function resolvePublicRestaurantFromHostname(){
+  const host = normaliseDomainePublic(location.hostname);
+  const isTerangaHost = host === 'terangaresto.com'
+    || host === 'www.terangaresto.com'
+    || host.endsWith('.terangaresto.com');
 
-      // Un hostname personnalisé doit identifier exactement un tenant.
-      if(matches.length === 1){
-        return {slug:matches[0].slug || null,restaurantId:matches[0].id,customDomain:true};
-      }
-      return {slug:null,restaurantId:null,customDomain:true,notFound:true};
-    }catch(error){
+  if(!host || isTerangaHost) return null;
+
+  try{
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .select('id,slug,social')
+      .eq('social->>custom_domain_status','active')
+      .eq('social->>custom_domain',host);
+
+    if(error){
       console.error('Résolution du domaine personnalisé:', error);
       return {slug:null,restaurantId:null,customDomain:true,error:true};
     }
-  }
 
-  return {slug:null,restaurantId:null,customDomain:false};
+    // Une correspondance multiple est une anomalie : ne jamais choisir
+    // arbitrairement un tenant.
+    if(Array.isArray(data) && data.length !== 1){
+      if(data.length > 1) console.error('Anomalie: plusieurs restaurants utilisent le domaine personnalisé', host);
+      return {slug:null,restaurantId:null,customDomain:true,notFound:data.length === 0};
+    }
+
+    const row = data[0];
+    const storedDomain = normaliseDomainePublic(row?.social?.custom_domain);
+    const storedStatus = String(row?.social?.custom_domain_status || '').trim().toLowerCase();
+    if(row?.id && storedDomain === host && storedStatus === 'active'){
+      return {slug:row.slug || null,restaurantId:row.id,customDomain:true};
+    }
+
+    // Domaine inconnu, mal normalisé ou non actif : aucun autre tenant.
+    return {slug:null,restaurantId:null,customDomain:true,notFound:true};
+  }catch(error){
+    console.error('Résolution du domaine personnalisé:', error);
+    return {slug:null,restaurantId:null,customDomain:true,error:true};
+  }
 }
 </script>
 
@@ -3711,7 +3733,32 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    const publicTarget = await restaurantSlugFromLocation();
+    // Un domaine personnalisé est une URL publique du restaurant.
+    // Sa résolution passe avant la session Supabase afin qu'un utilisateur
+    // déjà connecté ne puisse jamais être détourné vers le dashboard.
+    const hostnameTarget = await resolvePublicRestaurantFromHostname();
+    if(hostnameTarget?.customDomain){
+      viewerIsStaff = false;
+      hideAuthCheckSplash();
+
+      if(hostnameTarget.restaurantId){
+        restoSplashProgress(45);
+        const found = await loadRestaurantPublicFast(hostnameTarget.restaurantId);
+        if(found){
+          setView('storefront');
+          hideRestoSplash();
+          return;
+        }
+      }
+
+      // Domaine personnalisé inconnu, non actif ou non résolu :
+      // aucun fallback vers la session, ?resto= ou la landing générale.
+      renderRestaurantNotFound();
+      hideRestoSplash();
+      return;
+    }
+
+    const publicTarget = restaurantSlugFromLocation();
     const restoSlug = publicTarget?.slug || null;
     const publicRestaurantId = publicTarget?.restaurantId || null;
     const publicQrPreload = restoSlug && !publicRestaurantId ? preloadRestaurantPublicBySlug(restoSlug) : null;
@@ -9829,6 +9876,76 @@ function libraryCardsHtml(){
 
 /* ---------------- PARAMÈTRES — entièrement branchés sur RESTAURANT ---------------- */
 let settingsTab = 'Général';
+let settingsDomainExpiration = null;
+let settingsDomainExpirationDomain = '';
+let settingsDomainExpirationLoadedFor = '';
+let settingsDomainExpirationLoading = false;
+let settingsDomainExpirationRequest = 0;
+
+function formatDomainExpirationDate(value){
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('fr-FR',{
+    day:'numeric',
+    month:'long',
+    year:'numeric',
+    timeZone:'Africa/Dakar'
+  }).format(date);
+}
+
+async function loadActiveCustomDomainExpiration(domain){
+  const clean = normaliseDomainePublic(domain);
+  const requestId = ++settingsDomainExpirationRequest;
+
+  if(!clean || !RESTAURANT.id){
+    settingsDomainExpiration = null;
+    settingsDomainExpirationDomain = '';
+    settingsDomainExpirationLoadedFor = '';
+    settingsDomainExpirationLoading = false;
+    return;
+  }
+
+  settingsDomainExpirationDomain = clean;
+  settingsDomainExpiration = null;
+  settingsDomainExpirationLoading = true;
+
+  try{
+    const {data,error} = await supabaseClient
+      .from('domain_orders')
+      .select('expires_at,status,domain_status,completed_at')
+      .eq('restaurant_id',RESTAURANT.id)
+      .eq('domain',clean)
+      .in('status',['registered','renewed'])
+      .not('expires_at','is',null)
+      .order('completed_at',{ascending:false})
+      .limit(1);
+
+    if(requestId !== settingsDomainExpirationRequest) return;
+
+    if(error){
+      console.warn('Expiration du domaine personnalisé:', error);
+      settingsDomainExpiration = null;
+      settingsDomainExpirationLoadedFor = clean;
+    }else{
+      settingsDomainExpiration = Array.isArray(data) && data[0]?.expires_at
+        ? data[0].expires_at
+        : null;
+      settingsDomainExpirationLoadedFor = clean;
+    }
+  }catch(error){
+    if(requestId !== settingsDomainExpirationRequest) return;
+    console.warn('Expiration du domaine personnalisé:', error);
+    settingsDomainExpiration = null;
+    settingsDomainExpirationLoadedFor = clean;
+  }finally{
+    if(requestId === settingsDomainExpirationRequest){
+      settingsDomainExpirationLoading = false;
+      if(state.view==='dashboard' && state.dashSection==='settings' && settingsTab==='Domaine'){
+        renderDashSection('settings');
+      }
+    }
+  }
+}
 
 /* ---------------- CARTES RÉSEAUX SOCIAUX (état clair, vrais logos) ---------------- */
 let socialEditingKey = null;
@@ -9942,6 +10059,20 @@ function backToHomeBtnHtml(){
   return `<button class="mobile-tablet-only" onclick="setDashSection('overview')" style="align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:6px 2px;border:none;background:none;">${ic('arrowLeft',15)} Retour à l'accueil</button>`;
 }
 function dashSettings(){
+  if(settingsTab==='Domaine'){
+    const activeDomain = String(RESTAURANT.social?.custom_domain || '').trim();
+    const activeStatus = String(RESTAURANT.social?.custom_domain_status || '').trim().toLowerCase();
+    const cleanActiveDomain = normaliseDomainePublic(activeDomain);
+    if(activeDomain && activeStatus==='active'){
+      if(settingsDomainExpirationLoadedFor !== cleanActiveDomain && !settingsDomainExpirationLoading){
+        loadActiveCustomDomainExpiration(cleanActiveDomain);
+      }
+    }else{
+      settingsDomainExpiration = null;
+      settingsDomainExpirationDomain = '';
+      settingsDomainExpirationLoadedFor = '';
+    }
+  }
   return `
   
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -10122,12 +10253,22 @@ function settingsBodyHtml(){
     const domainText = isActiveDomain
       ? `<a href="https://${escapeAttr(currentDomain)}" target="_blank" rel="noopener noreferrer" class="tr-domain-url" style="margin-top:9px;display:inline-block;text-decoration:none;">${escapeHtml(currentDomain)}</a>`
       : `<p class="tr-domain-url" style="margin-top:9px;">${escapeHtml(currentDomain)}</p>`;
+    const domainExpirationText = isActiveDomain
+      && settingsDomainExpirationDomain === normaliseDomainePublic(customDomain)
+      && settingsDomainExpiration
+      ? (() => {
+          const formatted = formatDomainExpirationDate(settingsDomainExpiration);
+          return formatted
+            ? `<p style="font-size:11px;color:rgba(255,255,255,.56);margin-top:5px;line-height:1.4;">Expire le ${escapeHtml(formatted)}</p>`
+            : '';
+        })()
+      : '';
     const domainHelp = isPendingDomain
       ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine a été enregistré. La configuration DNS et la mise en ligne sont en cours. Le domaine deviendra actif dès que la configuration sera confirmée.</p>`
       : isErrorDomain
         ? `<p style="font-size:11.5px;color:#ffb2b2;margin-top:8px;line-height:1.45;">La configuration de votre domaine nécessite une vérification.</p>`
         : isActiveDomain
-          ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine personnalisé est maintenant actif et accessible publiquement.</p>`
+          ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine personnalisé est maintenant actif et accessible publiquement.</p>${domainExpirationText}`
           : '';
     return `
       <div class="tr-domain-settings">
