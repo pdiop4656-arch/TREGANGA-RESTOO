@@ -2218,77 +2218,13 @@ function publicRestaurantUrl(slug){
 // configuré dans Vercel/DNS. Tant que ce wildcard n'est pas configuré,
 // le lien canonique ?resto=slug reste utilisé pour garantir un lien
 // immédiatement fonctionnel.
-function normaliseDomainePublic(value){
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//i,'')
-    .replace(/^www\./i,'')
-    .split('/')[0];
-}
-
 function restaurantSlugFromLocation(){
-  const host = normaliseDomainePublic(location.hostname);
-
-  // 1) Sous-domaine TerangaResto existant.
+  const host = location.hostname.toLowerCase();
   if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
     const prefix = host.slice(0, -'.terangaresto.com'.length);
-    if(prefix && !prefix.includes('.')) return {slug:decodeURIComponent(prefix),restaurantId:null,customDomain:false};
+    if(prefix && !prefix.includes('.')) return decodeURIComponent(prefix);
   }
-
-  // 2) URL gratuite historique par ?resto=slug.
-  const querySlug = new URLSearchParams(location.search).get('resto');
-  if(querySlug) return {slug:querySlug,restaurantId:null,customDomain:false};
-
-  // 3) Aucun restaurant public ciblé : landing générale.
-  return {slug:null,restaurantId:null,customDomain:false};
-}
-
-/* Résout exclusivement les domaines personnalisés du storefront public.
-   Le hostname est une clé de tenant : un domaine externe inconnu/non actif
-   reste bloqué sur CE domaine et ne doit jamais tomber sur ?resto= ou un autre
-   restaurant. Le dashboard connecté n'utilise pas cette résolution pour choisir
-   son restaurant. */
-async function resolvePublicRestaurantFromHostname(){
-  const host = normaliseDomainePublic(location.hostname);
-  const isTerangaHost = host === 'terangaresto.com'
-    || host === 'www.terangaresto.com'
-    || host.endsWith('.terangaresto.com');
-
-  if(!host || isTerangaHost) return null;
-
-  try{
-    const {data,error} = await supabaseClient
-      .from('restaurants')
-      .select('id,slug,social')
-      .eq('social->>custom_domain_status','active')
-      .eq('social->>custom_domain',host);
-
-    if(error){
-      console.error('Résolution du domaine personnalisé:', error);
-      return {slug:null,restaurantId:null,customDomain:true,error:true};
-    }
-
-    // Une correspondance multiple est une anomalie : ne jamais choisir
-    // arbitrairement un tenant.
-    if(Array.isArray(data) && data.length !== 1){
-      if(data.length > 1) console.error('Anomalie: plusieurs restaurants utilisent le domaine personnalisé', host);
-      return {slug:null,restaurantId:null,customDomain:true,notFound:data.length === 0};
-    }
-
-    const row = data[0];
-    const storedDomain = normaliseDomainePublic(row?.social?.custom_domain);
-    const storedStatus = String(row?.social?.custom_domain_status || '').trim().toLowerCase();
-    if(row?.id && storedDomain === host && storedStatus === 'active'){
-      return {slug:row.slug || null,restaurantId:row.id,customDomain:true};
-    }
-
-    // Domaine inconnu, mal normalisé ou non actif : aucun autre tenant.
-    return {slug:null,restaurantId:null,customDomain:true,notFound:true};
-  }catch(error){
-    console.error('Résolution du domaine personnalisé:', error);
-    return {slug:null,restaurantId:null,customDomain:true,error:true};
-  }
+  return new URLSearchParams(location.search).get('resto');
 }
 </script>
 
@@ -2328,7 +2264,7 @@ let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/perso
 function applyRestaurantCatalogState(cats,prods){
   catsState = {};
   catsHomeVisible = {};
-  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home === true; });
+  (cats||[]).forEach(c => { catsState[c.key] = c.label; catsHomeVisible[c.key] = c.visible_on_home !== false; });
   PRODUCTS.length = 0;
   (prods||[]).forEach(p => PRODUCTS.push({
     id:p.id, name:p.name, desc:p.desc, price:Number(p.price), cat:p.cat, prep:p.prep,
@@ -3168,11 +3104,10 @@ async function persistRestaurant(){
     restaurantSaveInFlight = null;
     if(restaurantSavePending){
       restaurantSavePending = false;
-      // La dernière modification en attente est envoyée immédiatement,
-      // sans délai artificiel susceptible de perdre une modification critique.
+      // Une seule nouvelle écriture pour absorber plusieurs changements
+      // rapprochés (notamment les horaires).
       clearTimeout(restaurantSaveTimer);
-      restaurantSaveTimer = null;
-      persistRestaurant();
+      restaurantSaveTimer = setTimeout(()=>persistRestaurant(),120);
     }
   }
 }
@@ -3442,28 +3377,29 @@ function renderStorefrontGateOverlay(){
    puis les images (logo/couverture/photos produits) en arrière-plan.
    Le chemin propriétaire/dashboard reste inchangé. */
 let publicRealtimeChannel = null;
+let publicRealtimeRefreshTimer = null;
 let publicRealtimeRestaurantId = null;
-let publicRealtimeRefreshPromise = Promise.resolve();
 
 function unsubscribePublicRealtime(){
+  if(publicRealtimeRefreshTimer){ clearTimeout(publicRealtimeRefreshTimer); publicRealtimeRefreshTimer=null; }
   if(publicRealtimeChannel){ supabaseClient.removeChannel(publicRealtimeChannel); publicRealtimeChannel=null; }
   publicRealtimeRestaurantId = null;
 }
 function schedulePublicRealtimeRefresh(restaurantId){
   if(!restaurantId || state.view!=='storefront') return;
-  publicRealtimeRefreshPromise = publicRealtimeRefreshPromise.then(async()=>{
+  clearTimeout(publicRealtimeRefreshTimer);
+  publicRealtimeRefreshTimer=setTimeout(async()=>{
+    publicRealtimeRefreshTimer=null;
     if(state.view!=='storefront' || publicRealtimeRestaurantId!==restaurantId) return;
     const ok=await loadRestaurantPublicFast(restaurantId,true);
     if(ok){
-      await loadRestaurantPublicReviewsSecondaryData(restaurantId);
       renderStorefrontHero();
       renderProductSections();
       updateFloatingCartButton();
       renderStorefrontGateOverlay();
       renderTrackOrderButton();
     }
-  }).catch(e=>console.warn('Actualisation publique en temps réel:',e));
-  return publicRealtimeRefreshPromise;
+  },120);
 }
 function subscribeToPublicRealtime(restaurantId){
   if(publicRealtimeChannel && publicRealtimeRestaurantId===restaurantId) return;
@@ -3474,7 +3410,6 @@ function subscribeToPublicRealtime(restaurantId){
     .on('postgres_changes',{event:'*',schema:'public',table:'restaurants',filter:`id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .on('postgres_changes',{event:'*',schema:'public',table:'categories',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .on('postgres_changes',{event:'*',schema:'public',table:'products',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
-    .on('postgres_changes',{event:'*',schema:'public',table:'reviews',filter:`restaurant_id=eq.${restaurantId}`},()=>schedulePublicRealtimeRefresh(restaurantId))
     .subscribe();
 }
 
@@ -3532,7 +3467,16 @@ async function loadRestaurantPublicReviewsSecondaryData(restaurantId, reviewsPro
 }
 
 async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=false, preloaded=null){
-  const {restaurantResult, categoriesResult, productsResult} = preloaded || await Promise.all([
+  let restaurantResult;
+  let categoriesResult;
+  let productsResult;
+
+  if(preloaded){
+    restaurantResult = preloaded.restaurantResult;
+    categoriesResult = preloaded.categoriesResult;
+    productsResult = preloaded.productsResult;
+  }else{
+    [restaurantResult, categoriesResult, productsResult] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
@@ -3548,6 +3492,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
+  }
 
   if(restaurantResult.error || categoriesResult.error || productsResult.error || !restaurantResult.data){
     markPublicLoadError('', restaurantId);
@@ -3558,7 +3503,6 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   const r = restaurantResult.data;
   const cats = categoriesResult.data;
   const prods = productsResult.data;
-  REVIEWS = [];
 
   RESTAURANT.id = r.id;
   RESTAURANT.created = true;
@@ -3611,7 +3555,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   catsHomeVisible = {};
   (cats||[]).forEach(c => {
     catsState[c.key] = c.label;
-    catsHomeVisible[c.key] = c.visible_on_home === true;
+    catsHomeVisible[c.key] = c.visible_on_home !== false;
   });
 
   PRODUCTS.length = 0;
@@ -3733,36 +3677,9 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    // Un domaine personnalisé est une URL publique du restaurant.
-    // Sa résolution passe avant la session Supabase afin qu'un utilisateur
-    // déjà connecté ne puisse jamais être détourné vers le dashboard.
-    const hostnameTarget = await resolvePublicRestaurantFromHostname();
-    if(hostnameTarget?.customDomain){
-      viewerIsStaff = false;
-      hideAuthCheckSplash();
-
-      if(hostnameTarget.restaurantId){
-        restoSplashProgress(45);
-        const found = await loadRestaurantPublicFast(hostnameTarget.restaurantId);
-        if(found){
-          setView('storefront');
-          hideRestoSplash();
-          return;
-        }
-      }
-
-      // Domaine personnalisé inconnu, non actif ou non résolu :
-      // aucun fallback vers la session, ?resto= ou la landing générale.
-      renderRestaurantNotFound();
-      hideRestoSplash();
-      return;
-    }
-
-    const publicTarget = restaurantSlugFromLocation();
-    const restoSlug = publicTarget?.slug || null;
-    const publicRestaurantId = publicTarget?.restaurantId || null;
-    const publicQrPreload = restoSlug && !publicRestaurantId ? preloadRestaurantPublicBySlug(restoSlug) : null;
-    if(restoSlug || publicRestaurantId) restoSplashProgress(45);
+    const restoSlug = restaurantSlugFromLocation();
+    const publicQrPreload = restoSlug ? preloadRestaurantPublicBySlug(restoSlug) : null;
+    if(restoSlug) restoSplashProgress(45);
 
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
@@ -3848,19 +3765,13 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    if(restoSlug || publicRestaurantId || publicTarget?.customDomain){
+    if(restoSlug){
       let found = false;
-      if(publicRestaurantId){
-        // Réutilise le chargeur public existant : aucune seconde logique de
-        // chargement des catégories, produits ou données du restaurant.
-        found = await loadRestaurantPublicFast(publicRestaurantId);
+      const preloaded = publicQrPreload ? await publicQrPreload : null;
+      if(preloaded?.found){
+        found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
       }else{
-        const preloaded = publicQrPreload ? await publicQrPreload : null;
-        if(preloaded?.found){
-          found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
-        }else if(restoSlug){
-          found = await loadRestaurantBySlug(restoSlug);
-        }
+        found = await loadRestaurantBySlug(restoSlug);
       }
       viewerIsStaff = false;
       if(found){
@@ -4819,7 +4730,7 @@ function defaultHours(){
 }
 function defaultDelivery(){
   return {
-    enabled:true, fee:1000, min:1000,
+    enabled:true, fee:1000, min:2000,
     modes:{
       own:{enabled:true, allowCashOnDelivery:true},
       express:{enabled:false, fee:1500},
@@ -4987,8 +4898,7 @@ function deliveryZoneById(id){
   return enabledDeliveryZones().find(z=>String(z.id ?? '').trim()===wanted)||null;
 }
 function deliveryModeAllowsCashOnDelivery(modeKey){
-  if(modeKey==='express') return false;
-  if(modeKey!=='own') return false;
+  if(modeKey!=='own' && modeKey!=='express') return false;
   return !!RESTAURANT.delivery.modes.own.allowCashOnDelivery;
 }
 /* Les moyens de paiement réellement proposés au client = moyens activés
@@ -6936,7 +6846,7 @@ function renderStorefrontHero(){
   // cette catégorie comme couverture, à défaut d'une couverture dédiée
   // par catalogue (fonctionnalité non encore construite — voir résumé).
   const catsSection = document.getElementById('tgCategoriesSection');
-  const homeCats = Object.keys(catsState).filter(c => catsHomeVisible[c] === true);
+  const homeCats = Object.keys(catsState).filter(c => catsHomeVisible[c] !== false);
   if(homeCats.length === 0){
     catsSection.style.display = 'none';
   } else {
@@ -7388,8 +7298,8 @@ function renderCheckout(){
         <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
           ${modes.map(mk=>`<button onclick="ckField('deliveryMode','${mk}');renderCheckout();" style="border:2px solid ${c.deliveryMode===mk?'var(--amber-deep)':'var(--cream-line)'};${c.deliveryMode===mk?'background:rgba(232,135,30,.06);':''}border-radius:14px;padding:10px 8px;text-align:center;">
             <div style="font-size:12px;font-weight:600;">${DELIVERY_MODE_LABELS[mk]}</div>
-            <div style="font-size:10.5px;color:var(--ink-faint);margin-top:2px;">${c.deliveryZone ? (mk==='express' ? `${fmt(deliveryZoneById(c.deliveryZone)?.fee||0)} + ${fmt(Math.max(0,Number(RESTAURANT.delivery.modes.express.fee)||0))} supplément` : (deliveryFeeFor(mk,c.deliveryZone)===0 ? 'Gratuit' : fmt(deliveryFeeFor(mk,c.deliveryZone)))) : 'Sélectionnez une zone'}${mk==='express' ? ' · Livraison immédiate':''}</div>
-            ${c.deliveryZone && mk==='express' ? `<div style="font-size:11px;font-weight:600;color:var(--ink);margin-top:3px;">${fmt(deliveryFeeFor(mk,c.deliveryZone))}</div>` : ''}
+            <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${c.deliveryZone ? (mk==='express' ? `${fmt(deliveryZoneById(c.deliveryZone)?.fee||0)} + ${fmt(Math.max(0,Number(RESTAURANT.delivery.modes.express.fee)||0))} supplément` : (deliveryFeeFor(mk,c.deliveryZone)===0 ? 'Gratuit' : fmt(deliveryFeeFor(mk,c.deliveryZone)))) : 'Sélectionnez une zone'}${c.deliveryZone && deliveryModeAllowsCashOnDelivery(mk) ? ' · Paiement à la livraison possible':''}</div>
+            ${c.deliveryZone && mk==='express' ? `<div style="font-size:11.5px;font-weight:600;color:var(--ink);margin-top:3px;">${fmt(deliveryFeeFor(mk,c.deliveryZone))}</div>` : ''}
           </button>`).join('')}
         </div>`:''}
         <label class="field-label" style="${c.requiredField==='deliveryZone'?'color:var(--terracotta);':''}">Zone de livraison <span style="color:var(--terracotta);font-weight:700;">*</span></label>
@@ -8709,7 +8619,7 @@ function drawRevenueChart(){
 let catsState = JSON.parse(JSON.stringify(CAT_LABELS));
 /* Visibilité de chaque catalogue sur la page d'accueil du site public —
    { [catKey]: boolean }. Absent d'une clé = considéré visible par
-   règle explicite (catsHomeVisible[c] === true), pour que les catégories
+   défaut (catsHomeVisible[c] !== false), pour que les catégories
    existantes avant l'ajout de cette fonctionnalité restent visibles
    sans surprise. Persisté par catégorie (categories.visible_on_home). */
 let catsHomeVisible = {};
@@ -9333,8 +9243,10 @@ function paymentsListHtml(methods){
     </div>`;
   }).join('');
 }
+let paymentSaveTimer=null;
 function schedulePaymentPersist(){
-  return persistRestaurant();
+  clearTimeout(paymentSaveTimer);
+  paymentSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function togglePayment(m){
   if(DISCONTINUED_PAYMENT_METHODS.includes(m)) return; // Carte bancaire retirée définitivement
@@ -9876,76 +9788,6 @@ function libraryCardsHtml(){
 
 /* ---------------- PARAMÈTRES — entièrement branchés sur RESTAURANT ---------------- */
 let settingsTab = 'Général';
-let settingsDomainExpiration = null;
-let settingsDomainExpirationDomain = '';
-let settingsDomainExpirationLoadedFor = '';
-let settingsDomainExpirationLoading = false;
-let settingsDomainExpirationRequest = 0;
-
-function formatDomainExpirationDate(value){
-  const date = new Date(value);
-  if(Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('fr-FR',{
-    day:'numeric',
-    month:'long',
-    year:'numeric',
-    timeZone:'Africa/Dakar'
-  }).format(date);
-}
-
-async function loadActiveCustomDomainExpiration(domain){
-  const clean = normaliseDomainePublic(domain);
-  const requestId = ++settingsDomainExpirationRequest;
-
-  if(!clean || !RESTAURANT.id){
-    settingsDomainExpiration = null;
-    settingsDomainExpirationDomain = '';
-    settingsDomainExpirationLoadedFor = '';
-    settingsDomainExpirationLoading = false;
-    return;
-  }
-
-  settingsDomainExpirationDomain = clean;
-  settingsDomainExpiration = null;
-  settingsDomainExpirationLoading = true;
-
-  try{
-    const {data,error} = await supabaseClient
-      .from('domain_orders')
-      .select('expires_at,status,domain_status,completed_at')
-      .eq('restaurant_id',RESTAURANT.id)
-      .eq('domain',clean)
-      .in('status',['registered','renewed'])
-      .not('expires_at','is',null)
-      .order('completed_at',{ascending:false})
-      .limit(1);
-
-    if(requestId !== settingsDomainExpirationRequest) return;
-
-    if(error){
-      console.warn('Expiration du domaine personnalisé:', error);
-      settingsDomainExpiration = null;
-      settingsDomainExpirationLoadedFor = clean;
-    }else{
-      settingsDomainExpiration = Array.isArray(data) && data[0]?.expires_at
-        ? data[0].expires_at
-        : null;
-      settingsDomainExpirationLoadedFor = clean;
-    }
-  }catch(error){
-    if(requestId !== settingsDomainExpirationRequest) return;
-    console.warn('Expiration du domaine personnalisé:', error);
-    settingsDomainExpiration = null;
-    settingsDomainExpirationLoadedFor = clean;
-  }finally{
-    if(requestId === settingsDomainExpirationRequest){
-      settingsDomainExpirationLoading = false;
-      if(state.view==='dashboard' && state.dashSection==='settings' && settingsTab==='Domaine'){
-        renderDashSection('settings');
-      }
-    }
-  }
-}
 
 /* ---------------- CARTES RÉSEAUX SOCIAUX (état clair, vrais logos) ---------------- */
 let socialEditingKey = null;
@@ -10059,20 +9901,6 @@ function backToHomeBtnHtml(){
   return `<button class="mobile-tablet-only" onclick="setDashSection('overview')" style="align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:6px 2px;border:none;background:none;">${ic('arrowLeft',15)} Retour à l'accueil</button>`;
 }
 function dashSettings(){
-  if(settingsTab==='Domaine'){
-    const activeDomain = String(RESTAURANT.social?.custom_domain || '').trim();
-    const activeStatus = String(RESTAURANT.social?.custom_domain_status || '').trim().toLowerCase();
-    const cleanActiveDomain = normaliseDomainePublic(activeDomain);
-    if(activeDomain && activeStatus==='active'){
-      if(settingsDomainExpirationLoadedFor !== cleanActiveDomain && !settingsDomainExpirationLoading){
-        loadActiveCustomDomainExpiration(cleanActiveDomain);
-      }
-    }else{
-      settingsDomainExpiration = null;
-      settingsDomainExpirationDomain = '';
-      settingsDomainExpirationLoadedFor = '';
-    }
-  }
   return `
   
   <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -10253,22 +10081,12 @@ function settingsBodyHtml(){
     const domainText = isActiveDomain
       ? `<a href="https://${escapeAttr(currentDomain)}" target="_blank" rel="noopener noreferrer" class="tr-domain-url" style="margin-top:9px;display:inline-block;text-decoration:none;">${escapeHtml(currentDomain)}</a>`
       : `<p class="tr-domain-url" style="margin-top:9px;">${escapeHtml(currentDomain)}</p>`;
-    const domainExpirationText = isActiveDomain
-      && settingsDomainExpirationDomain === normaliseDomainePublic(customDomain)
-      && settingsDomainExpiration
-      ? (() => {
-          const formatted = formatDomainExpirationDate(settingsDomainExpiration);
-          return formatted
-            ? `<p style="font-size:11px;color:rgba(255,255,255,.56);margin-top:5px;line-height:1.4;">Expire le ${escapeHtml(formatted)}</p>`
-            : '';
-        })()
-      : '';
     const domainHelp = isPendingDomain
       ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine a été enregistré. La configuration DNS et la mise en ligne sont en cours. Le domaine deviendra actif dès que la configuration sera confirmée.</p>`
       : isErrorDomain
         ? `<p style="font-size:11.5px;color:#ffb2b2;margin-top:8px;line-height:1.45;">La configuration de votre domaine nécessite une vérification.</p>`
         : isActiveDomain
-          ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine personnalisé est maintenant actif et accessible publiquement.</p>${domainExpirationText}`
+          ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine personnalisé est maintenant actif et accessible publiquement.</p>`
           : '';
     return `
       <div class="tr-domain-settings">
@@ -10351,12 +10169,14 @@ function addDeliveryZone(){
   renderDashSection('settings');
   persistRestaurant();
 }
+let deliveryZoneSaveTimer=null;
 function updateDeliveryZone(index,key,value){
   const z=enabledDeliveryZones()[index];
   if(!z) return;
   if(key==='name') z.name=String(value||'').trim();
   if(key==='fee') z.fee=Math.max(0,Number(value)||0);
-  persistRestaurant();
+  clearTimeout(deliveryZoneSaveTimer);
+  deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
 function removeDeliveryZone(index){
   const z=enabledDeliveryZones()[index];
