@@ -489,12 +489,20 @@ button,a,input,select,textarea{font-family:inherit;}
   const __hasReturningDashboard = (()=>{
     try{return localStorage.getItem('tg_returning_user')==='1';}catch(e){return false;}
   })();
-  if(__hasReturningDashboard){
-    document.getElementById('authCheckSplash').classList.remove('hidden');
-  }else if(/[?&]resto=/.test(location.search) ||
-            (location.hostname.endsWith('.terangaresto.com') &&
-             location.hostname !== 'www.terangaresto.com')){
+  const __isTerangaHost = /(^|\.)terangaresto\.com$/i.test(location.hostname);
+  const __isLocalHost = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(location.hostname);
+  const __isCustomDomainHost = !!location.hostname && !__isTerangaHost && !__isLocalHost && location.hostname.includes('.');
+
+  // Un domaine personnalisé doit afficher immédiatement le même loader
+  // public que les autres accès restaurant. Aucun délai n'est ajouté :
+  // le loader couvre uniquement les requêtes déjà effectuées par init().
+  // Cette décision est purement visuelle et ne modifie pas le routage.
+  if(__isCustomDomainHost || /[?&]resto=/.test(location.search) ||
+     (location.hostname.endsWith('.terangaresto.com') &&
+      location.hostname !== 'www.terangaresto.com')){
     document.getElementById('restoSplash').classList.remove('hidden');
+  }else if(__hasReturningDashboard){
+    document.getElementById('authCheckSplash').classList.remove('hidden');
   }
 </script>
 
