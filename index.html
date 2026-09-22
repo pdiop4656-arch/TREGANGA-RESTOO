@@ -2218,13 +2218,55 @@ function publicRestaurantUrl(slug){
 // configuré dans Vercel/DNS. Tant que ce wildcard n'est pas configuré,
 // le lien canonique ?resto=slug reste utilisé pour garantir un lien
 // immédiatement fonctionnel.
-function restaurantSlugFromLocation(){
-  const host = location.hostname.toLowerCase();
-  if(host.endsWith('.terangaresto.com') && host !== 'www.terangaresto.com') {
+function normaliseDomainePublic(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i,'')
+    .replace(/^www\./i,'')
+    .split('/')[0];
+}
+
+async function restaurantSlugFromLocation(){
+  const rawHost = String(location.hostname || '').trim().toLowerCase();
+  const host = normaliseDomainePublic(rawHost);
+  if(rawHost.endsWith('.terangaresto.com') && rawHost !== 'www.terangaresto.com') {
     const prefix = host.slice(0, -'.terangaresto.com'.length);
-    if(prefix && !prefix.includes('.')) return decodeURIComponent(prefix);
+    if(prefix && !prefix.includes('.')) return {slug:decodeURIComponent(prefix),restaurantId:null,customDomain:false};
   }
-  return new URLSearchParams(location.search).get('resto');
+
+  const querySlug = new URLSearchParams(location.search).get('resto');
+  if(querySlug) return {slug:querySlug,restaurantId:null,customDomain:false};
+
+  // Domaine personnalisé entrant : le hostname est une clé de tenant.
+  // Seuls les domaines marqués "active" sont routables ici.
+  if(rawHost && rawHost !== 'www.terangaresto.com' && !rawHost.endsWith('.terangaresto.com')){
+    try{
+      const {data,error} = await supabaseClient
+        .from('restaurants')
+        .select('id,slug,social')
+        .eq('social->>custom_domain_status','active');
+      if(error){
+        console.error('Résolution du domaine personnalisé:', error);
+        return {slug:null,restaurantId:null,customDomain:true,error:true};
+      }
+
+      const matches = (Array.isArray(data) ? data : []).filter(row =>
+        normaliseDomainePublic(row?.social?.custom_domain) === host
+      );
+
+      // Un hostname personnalisé doit identifier exactement un tenant.
+      if(matches.length === 1){
+        return {slug:matches[0].slug || null,restaurantId:matches[0].id,customDomain:true};
+      }
+      return {slug:null,restaurantId:null,customDomain:true,notFound:true};
+    }catch(error){
+      console.error('Résolution du domaine personnalisé:', error);
+      return {slug:null,restaurantId:null,customDomain:true,error:true};
+    }
+  }
+
+  return {slug:null,restaurantId:null,customDomain:false};
 }
 </script>
 
@@ -3669,9 +3711,11 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    const restoSlug = restaurantSlugFromLocation();
-    const publicQrPreload = restoSlug ? preloadRestaurantPublicBySlug(restoSlug) : null;
-    if(restoSlug) restoSplashProgress(45);
+    const publicTarget = await restaurantSlugFromLocation();
+    const restoSlug = publicTarget?.slug || null;
+    const publicRestaurantId = publicTarget?.restaurantId || null;
+    const publicQrPreload = restoSlug && !publicRestaurantId ? preloadRestaurantPublicBySlug(restoSlug) : null;
+    if(restoSlug || publicRestaurantId) restoSplashProgress(45);
 
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
@@ -3757,13 +3801,19 @@ async function restoreSession(){
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
 
-    if(restoSlug){
+    if(restoSlug || publicRestaurantId || publicTarget?.customDomain){
       let found = false;
-      const preloaded = publicQrPreload ? await publicQrPreload : null;
-      if(preloaded?.found){
-        found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
+      if(publicRestaurantId){
+        // Réutilise le chargeur public existant : aucune seconde logique de
+        // chargement des catégories, produits ou données du restaurant.
+        found = await loadRestaurantPublicFast(publicRestaurantId);
       }else{
-        found = await loadRestaurantBySlug(restoSlug);
+        const preloaded = publicQrPreload ? await publicQrPreload : null;
+        if(preloaded?.found){
+          found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
+        }else if(restoSlug){
+          found = await loadRestaurantBySlug(restoSlug);
+        }
       }
       viewerIsStaff = false;
       if(found){
