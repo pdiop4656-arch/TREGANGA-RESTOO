@@ -2226,6 +2226,101 @@ function restaurantSlugFromLocation(){
   }
   return new URLSearchParams(location.search).get('resto');
 }
+
+/* Résolution publique d'un domaine personnalisé.
+   - Les hôtes TerangaResto restent gérés par le routage existant.
+   - Un domaine personnalisé actif est prioritaire sur ?resto= et sur la session.
+   - Une correspondance multiple est considérée comme non résolue : jamais de
+     sélection arbitraire d'un restaurant. */
+function normaliseDomainePublic(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i,'')
+    .replace(/^www\./i,'')
+    .replace(/\.+$/,'')
+    .split('/')[0];
+}
+
+async function resolvePublicRestaurantFromHostname(){
+  const rawHost = String(location.hostname || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\.+$/,'');
+
+  if(!rawHost) return null;
+
+  const isTerangaHost =
+    rawHost === 'terangaresto.com' ||
+    rawHost === 'www.terangaresto.com' ||
+    rawHost.endsWith('.terangaresto.com');
+
+  if(isTerangaHost) return null;
+
+  const host = normaliseDomainePublic(rawHost);
+
+  try{
+    const {data,error} = await supabaseClient
+      .from('restaurants')
+      .select('id,slug,social')
+      .eq('social->>custom_domain_status','active')
+      .eq('social->>custom_domain',host);
+
+    if(error){
+      console.error('Résolution du domaine personnalisé:', error);
+      return {slug:null,restaurantId:null,customDomain:true,error:true};
+    }
+
+    if(!Array.isArray(data) || data.length !== 1){
+      if(Array.isArray(data) && data.length > 1){
+        console.error(
+          'Anomalie: plusieurs restaurants utilisent le domaine personnalisé',
+          host
+        );
+      }
+      return {
+        slug:null,
+        restaurantId:null,
+        customDomain:true,
+        notFound:true
+      };
+    }
+
+    const row = data[0];
+    const storedDomain = normaliseDomainePublic(row?.social?.custom_domain);
+    const storedStatus = String(
+      row?.social?.custom_domain_status || ''
+    ).trim().toLowerCase();
+
+    if(
+      row?.id &&
+      storedDomain === host &&
+      storedStatus === 'active'
+    ){
+      return {
+        slug:row.slug || null,
+        restaurantId:row.id,
+        customDomain:true
+      };
+    }
+
+    return {
+      slug:null,
+      restaurantId:null,
+      customDomain:true,
+      notFound:true
+    };
+  }catch(error){
+    console.error('Résolution du domaine personnalisé:', error);
+    return {
+      slug:null,
+      restaurantId:null,
+      customDomain:true,
+      error:true
+    };
+  }
+}
+
 </script>
 
 <script>
@@ -3677,10 +3772,72 @@ async function findMyRestaurantId(p_knownUserId){
    session de son propriétaire/personnel — jamais par défaut. */
 async function restoreSession(){
   try{
-    const restoSlug = restaurantSlugFromLocation();
-    const publicQrPreload = restoSlug ? preloadRestaurantPublicBySlug(restoSlug) : null;
-    if(restoSlug) restoSplashProgress(45);
+    // PRIORITÉ 1 : domaine personnalisé actif.
+    // Il représente toujours une visite publique du restaurant et passe
+    // avant ?resto=, la session et le dashboard.
+    const hostnameTarget = await resolvePublicRestaurantFromHostname();
 
+    if(hostnameTarget?.customDomain){
+      viewerIsStaff = false;
+      hideAuthCheckSplash();
+
+      if(hostnameTarget.restaurantId){
+        restoSplashProgress(45);
+
+        const found = await loadRestaurantPublicFast(
+          hostnameTarget.restaurantId
+        );
+
+        if(found){
+          setView('storefront');
+          hideRestoSplash();
+          return;
+        }
+      }
+
+      // Domaine personnalisé détecté mais introuvable, inactif ou en erreur :
+      // jamais de fallback vers ?resto=, la session ou la landing générale.
+      renderRestaurantNotFound();
+      hideRestoSplash();
+      return;
+    }
+
+    // PRIORITÉ 2 : ?resto=slug / sous-domaine TerangaResto.
+    // Ce chemin public passe avant toute session déjà présente.
+    const restoSlug = restaurantSlugFromLocation();
+    const publicQrPreload = restoSlug
+      ? preloadRestaurantPublicBySlug(restoSlug)
+      : null;
+
+    if(restoSlug){
+      restoSplashProgress(45);
+      const preloaded = publicQrPreload ? await publicQrPreload : null;
+      let found = false;
+
+      if(preloaded?.found){
+        found = await loadRestaurantPublicFast(
+          preloaded.restaurantId,
+          false,
+          preloaded
+        );
+      }else{
+        found = await loadRestaurantBySlug(restoSlug);
+      }
+
+      viewerIsStaff = false;
+
+      if(found){
+        setView('storefront');
+        hideRestoSplash();
+        return;
+      }
+
+      renderRestaurantNotFound();
+      hideRestoSplash();
+      return;
+    }
+
+    // PRIORITÉ 3 : session TerangaResto / dashboard.
     const {data:{session}} = await supabaseClient.auth.getSession();
     currentUser = session ? session.user : null;
 
@@ -3744,10 +3901,11 @@ async function restoreSession(){
 
       viewerIsStaff = false;
       setView('landing');
-    } else {
+    }else{
       hideAuthCheckSplash();
     }
 
+    // Aucun restaurant ciblé et aucune session : comportement général actuel.
     const pendingOtp = loadPendingOnboarding();
     if(!currentUser && pendingOtp && pendingOtp.emailConfirmationPending && pendingOtp.pendingEmail){
       Object.assign(obState, pendingOtp);
@@ -3764,26 +3922,6 @@ async function restoreSession(){
 
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
-
-    if(restoSlug){
-      let found = false;
-      const preloaded = publicQrPreload ? await publicQrPreload : null;
-      if(preloaded?.found){
-        found = await loadRestaurantPublicFast(preloaded.restaurantId, false, preloaded);
-      }else{
-        found = await loadRestaurantBySlug(restoSlug);
-      }
-      viewerIsStaff = false;
-      if(found){
-        setView('storefront');
-        hideRestoSplash();
-        return;
-      }
-      renderRestaurantNotFound();
-      hideRestoSplash();
-      return;
-    }
-
     hideRestoSplash();
   }catch(e){
     console.error('Restauration session:', e);
