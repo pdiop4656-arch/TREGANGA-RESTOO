@@ -2423,6 +2423,31 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalo
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
   RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.social.galleryPhotos) ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
   RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
+  RESTAURANT.domainExpiration = null;
+  if(
+    r.social?.custom_domain &&
+    String(r.social?.custom_domain_status || '').trim().toLowerCase() === 'active' &&
+    currentUser
+  ){
+    const domainForExpiration = normaliseDomainePublic(r.social.custom_domain);
+    const loadedRestaurantId = String(r.id || '');
+    if(domainForExpiration){
+      void supabaseClient.rpc(
+        'get_my_domain_expiration',
+        {p_domain:domainForExpiration}
+      ).then(({data:domainExpiration,error:domainExpirationError})=>{
+        if(String(RESTAURANT.id || '') !== loadedRestaurantId) return;
+        if(domainExpirationError){
+          console.error('Lecture expiration du domaine personnalisé:', domainExpirationError);
+        }else if(domainExpiration){
+          const expirationTime = new Date(domainExpiration).getTime();
+          if(Number.isFinite(expirationTime)) RESTAURANT.domainExpiration = expirationTime;
+          else console.error('Lecture expiration du domaine personnalisé: date invalide reçue.', domainExpiration);
+          if(state.view==='dashboard' && state.dashSection==='settings' && settingsTab==='Domaine') renderDashSection('settings');
+        }
+      }).catch(error=>console.error('Lecture expiration du domaine personnalisé:', error));
+    }
+  }
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
   RESTAURANT.notificationsEnabled = r.notifications_enabled;
   // L'IA est activée par défaut pour un nouveau restaurant, mais une préférence
@@ -3255,6 +3280,18 @@ async function activateCustomDomainAfterConfirmation(domain){
   RESTAURANT.social = {...(RESTAURANT.social||{}), custom_domain:clean, custom_domain_status:'active', custom_domain_updated_at:Date.now()};
   const saved = await persistRestaurant();
   if(!saved){ throw new Error('Le domaine n’a pas pu être enregistré.'); }
+  const {data:domainExpiration,error:domainExpirationError} = await supabaseClient.rpc(
+    'get_my_domain_expiration',
+    {p_domain:clean}
+  );
+  if(domainExpirationError){
+    console.error('Lecture expiration du domaine personnalisé:', domainExpirationError);
+    RESTAURANT.domainExpiration = null;
+  }else{
+    const expirationTime = domainExpiration ? new Date(domainExpiration).getTime() : NaN;
+    RESTAURANT.domainExpiration = Number.isFinite(expirationTime) ? expirationTime : null;
+    if(domainExpiration && !Number.isFinite(expirationTime)) console.error('Lecture expiration du domaine personnalisé: date invalide reçue.', domainExpiration);
+  }
   renderDashSection('settings');
   if(state.view==='storefront'){ updateRestaurantSeo(); renderStorefrontHero(); }
   return true;
@@ -4922,6 +4959,7 @@ const RESTAURANT = {
   trialEndsAt:null,
   currentPeriodEnd:null,
   lastRenewedAt:null,
+  domainExpiration:null,
 };
 
 /* ---------------- MODES DE LIVRAISON — le paiement à la livraison n'est
@@ -6380,25 +6418,11 @@ async function createRestaurantFromOnboarding(){
   applyThemeColors(obState.obPrimary, obState.obSecondary, obState.obTextColor);
   applyRestaurantName(obState.restoName);
 
-  // Machine à états de l'abonnement — réelle, pas décorative :
-  // 'plan' enregistre le CHOIX du client (Gratuit / Starter / Premium) ;
-  // mais un forfait payant ne devient réellement actif
-  // (subscription_status='active') qu'après confirmation RÉELLE du
-  // paiement PayTech (voir paytech-webhook) — jamais au moment de la
-  // simple sélection. En attendant cette confirmation, le statut est
-  // 'pending_payment', et isPremiumActive()/isPaidPlanActive() restent
-  // faux tant qu'il n'est pas passé à 'active'. Aucun essai gratuit
-  // n'est accordé sur Starter/Premium, conformément à la consigne.
+  // Le choix de forfait et le cycle sont envoyés au serveur ; les champs
+  // subscription_status / trial_ends_at / current_period_end ne sont
+  // volontairement jamais imposés par le navigateur. La RPC de création
+  // applique côté serveur le statut trialing et la vraie échéance.
   RESTAURANT.billingCycle = obState.billing === 'annual' ? 'annual' : 'monthly';
-  if(obState.plan === 'free'){
-    RESTAURANT.subscriptionStatus = 'trialing';
-    RESTAURANT.trialEndsAt = Date.now() + FREE_TRIAL_DAYS*86400000;
-    RESTAURANT.currentPeriodEnd = null;
-  } else {
-    RESTAURANT.subscriptionStatus = 'pending_payment';
-    RESTAURANT.trialEndsAt = null;
-    RESTAURANT.currentPeriodEnd = null;
-  }
 
   // Création réelle du restaurant via une fonction RPC côté serveur
   // (voir create_my_restaurant dans supabase_schema.sql). Le client
@@ -6418,9 +6442,7 @@ async function createRestaurantFromOnboarding(){
       p_address:RESTAURANT.address, p_city:RESTAURANT.city, p_phone:RESTAURANT.phone,
       p_hours:RESTAURANT.hours, p_delivery:RESTAURANT.delivery, p_social:RESTAURANT.social,
       p_payment_toggles:state.toggles, p_plan:state.plan,
-      p_subscription_status:RESTAURANT.subscriptionStatus, p_billing_cycle:RESTAURANT.billingCycle,
-      p_trial_ends_at: RESTAURANT.trialEndsAt ? new Date(RESTAURANT.trialEndsAt).toISOString() : null,
-      p_current_period_end: RESTAURANT.currentPeriodEnd ? new Date(RESTAURANT.currentPeriodEnd).toISOString() : null,
+      p_billing_cycle:RESTAURANT.billingCycle,
     }));
     if(!error) break;
     if(error.code === '23505' && /slug/i.test(error.message||'')){
@@ -6450,6 +6472,14 @@ async function createRestaurantFromOnboarding(){
   }
 
   RESTAURANT.id = restaurantRow.id;
+  // Après création, les valeurs d'abonnement proviennent exclusivement de
+  // la ligne renvoyée par la RPC serveur, notamment la vraie date calculée
+  // à partir de created_at côté base.
+  RESTAURANT.createdAt = restaurantRow.created_at ? new Date(restaurantRow.created_at).getTime() : RESTAURANT.createdAt;
+  RESTAURANT.subscriptionStatus = restaurantRow.subscription_status || 'trialing';
+  RESTAURANT.billingCycle = restaurantRow.billing_cycle || RESTAURANT.billingCycle;
+  RESTAURANT.trialEndsAt = restaurantRow.trial_ends_at ? new Date(restaurantRow.trial_ends_at).getTime() : null;
+  RESTAURANT.currentPeriodEnd = restaurantRow.current_period_end ? new Date(restaurantRow.current_period_end).getTime() : null;
   // Nouveau restaurant : WhatsApp est le canal de réception par défaut.
   // Le destinataire réel provient de WASENDER_DEFAULT_RECIPIENT côté serveur.
   RESTAURANT.orderNotificationChannel = 'whatsapp';
@@ -8692,6 +8722,39 @@ function dashPos(){
   </div>`;
 }
 
+function advancedAnalyticsData(){
+  const range = periodRange(dashPeriod, dashPeriodFrom, dashPeriodTo);
+  const durationMs = Math.max(0, range.to.getTime() - range.from.getTime());
+  const previousFrom = new Date(range.from.getTime() - durationMs);
+  const currentOrders = DEMO_ORDERS.filter(o => o.createdAt >= range.from && o.createdAt < range.to && o.status !== 'cancelled');
+  const previousOrders = DEMO_ORDERS.filter(o => o.createdAt >= previousFrom && o.createdAt < range.from && o.status !== 'cancelled');
+  const revenue = currentOrders.reduce((sum,o)=>sum+Number(o.total||0),0);
+  const previousRevenue = previousOrders.reduce((sum,o)=>sum+Number(o.total||0),0);
+  const variation = previousRevenue === 0 ? null : ((revenue - previousRevenue) / previousRevenue) * 100;
+  const quantityByProduct = {};
+  const revenueByProduct = {};
+
+  currentOrders.forEach(o => {
+    (Array.isArray(o.items) ? o.items : []).forEach(it => {
+      const [rawName, rawQty] = orderItemNameQty(it);
+      const name = String(rawName || '').trim();
+      const qty = Math.max(0, Number(rawQty)||0);
+      if(!name || qty<=0) return;
+      quantityByProduct[name] = (quantityByProduct[name]||0) + qty;
+
+      const unitPrice = !Array.isArray(it) && Number.isFinite(Number(it.price)) ? Number(it.price) : null;
+      if(unitPrice !== null) revenueByProduct[name] = (revenueByProduct[name]||0) + unitPrice * qty;
+    });
+  });
+
+  return {
+    averageBasket: currentOrders.length ? revenue / currentOrders.length : 0,
+    variation,
+    topQuantity: Object.entries(quantityByProduct).sort((a,b)=>b[1]-a[1]).slice(0,3),
+    topRevenue: Object.entries(revenueByProduct).sort((a,b)=>b[1]-a[1]).slice(0,3),
+  };
+}
+
 /* ---------------- ANALYTICS ---------------- */
 function dashAnalytics(){
   const periodOrders = ordersForPeriod();
@@ -8718,11 +8781,33 @@ function dashAnalytics(){
     <h2 class="font-display" style="font-size:16px;margin-bottom:14px;">Évolution du chiffre d'affaires (7 derniers jours)</h2>
     <div id="revenueChart"></div>
   </div>
-  ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
-  <div class="card" style="padding:18px;">
-    <h2 class="font-display" style="font-size:16px;margin-bottom:10px;">Analyses avancées</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Premium.</p>
-  </div>`}`;
+  ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : (()=>{
+    const advanced = advancedAnalyticsData();
+    return `
+    <div class="card" style="padding:16px;margin-bottom:4px;">
+      <h2 class="font-display" style="font-size:16px;margin-bottom:12px;">Analyses avancées</h2>
+      <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;">
+        <div style="padding:11px 12px;border:1px solid var(--cream-line);border-radius:11px;">
+          <p style="font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.5px;">Panier moyen</p>
+          <p class="font-tabular" style="font-size:17px;font-weight:700;margin-top:5px;">${fmt(advanced.averageBasket)}</p>
+        </div>
+        <div style="padding:11px 12px;border:1px solid var(--cream-line);border-radius:11px;">
+          <p style="font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.5px;">Variation CA</p>
+          <p class="font-tabular" style="font-size:17px;font-weight:700;margin-top:5px;">${advanced.variation===null?'—':`${advanced.variation>=0?'+':''}${advanced.variation.toFixed(1)} %`}</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <p style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Top produits</p>
+          ${advanced.topQuantity.length ? advanced.topQuantity.map(([name,qty],i)=>`<div class="flex items-center justify-between" style="padding:6px 0;border-top:${i?'1px solid var(--cream-line)':'0'};"><span style="font-size:12.5px;">${i+1}. ${escapeHtml(name)}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-soft);">${qty}</span></div>`).join('') : `<p style="font-size:12px;color:var(--ink-faint);">Aucune vente sur la période.</p>`}
+        </div>
+        <div>
+          <p style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Top produits par CA</p>
+          ${advanced.topRevenue.length ? advanced.topRevenue.map(([name,total],i)=>`<div class="flex items-center justify-between" style="padding:6px 0;border-top:${i?'1px solid var(--cream-line)':'0'};"><span style="font-size:12.5px;">${i+1}. ${escapeHtml(name)}</span><span class="font-tabular" style="font-size:12px;color:var(--ink-soft);">${fmt(total)}</span></div>`).join('') : `<p style="font-size:12px;color:var(--ink-faint);">Données produit détaillées indisponibles.</p>`}
+        </div>
+      </div>
+    </div>`;
+  })()}`;
 }
 function drawRevenueChart(){
   const el = document.getElementById('revenueChart');
@@ -10227,6 +10312,9 @@ function settingsBodyHtml(){
     const domainText = isActiveDomain
       ? `<a href="https://${escapeAttr(currentDomain)}" target="_blank" rel="noopener noreferrer" class="tr-domain-url" style="margin-top:9px;display:inline-block;text-decoration:none;">${escapeHtml(currentDomain)}</a>`
       : `<p class="tr-domain-url" style="margin-top:9px;">${escapeHtml(currentDomain)}</p>`;
+    const domainExpirationText = isActiveDomain && RESTAURANT.domainExpiration != null && Number.isFinite(Number(RESTAURANT.domainExpiration))
+      ? `<p style="font-size:11.5px;color:rgba(255,255,255,.82);margin-top:6px;line-height:1.45;">Expiration : ${escapeHtml(new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Dakar'}).format(new Date(RESTAURANT.domainExpiration)))}</p>`
+      : '';
     const domainHelp = isPendingDomain
       ? `<p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:8px;line-height:1.45;">Votre domaine a été enregistré. La configuration DNS et la mise en ligne sont en cours. Le domaine deviendra actif dès que la configuration sera confirmée.</p>`
       : isErrorDomain
@@ -10249,6 +10337,7 @@ function settingsBodyHtml(){
             <div style="min-width:0;">
               <p class="tr-domain-label">${domainStatusBadge}</p>
               ${domainText}
+              ${domainExpirationText}
               ${domainHelp}
             </div>
           </div>
