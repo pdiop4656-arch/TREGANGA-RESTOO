@@ -2515,7 +2515,7 @@ async function loadRestaurantSecondaryData(restaurantId){
 
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
-    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', items:o.items,
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? o.table_number ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', items:o.items,
     total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
     createdAt:new Date(o.created_at),
   }));
@@ -2636,7 +2636,7 @@ function onRealtimeNewOrder(row){
   // ne déclenche pas une seconde alerte pour la même commande.
   if(DEMO_ORDERS.some(o => o.id === row.id)) return;
   const order = {
-    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
+    id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', table:row.table ?? row.table_number ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
     total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
     createdAt:new Date(row.created_at),
   };
@@ -2666,13 +2666,13 @@ function onRealtimeOrderUpdated(row){
     // appareil avant que la session ne soit ouverte) — on l'ajoute
     // proprement plutôt que d'ignorer la mise à jour.
     DEMO_ORDERS.push({
-      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
+      id:row.id, num:row.num, client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', table:row.table ?? row.table_number ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
       total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
       createdAt:new Date(row.created_at),
     });
   } else {
     Object.assign(DEMO_ORDERS[i], {
-      client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
+      client:row.client, phone:row.phone, type:row.type, orderType:row.orderType ?? row.order_type ?? '', table:row.table ?? row.table_number ?? '', deliveryMode:row.deliveryMode ?? row.delivery_mode ?? '', items:row.items,
       total:Number(row.total), pay:row.pay, payStatus:row.pay_status, status:row.status, notes:row.notes, address:row.address,
     });
   }
@@ -11327,7 +11327,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 .tg-ai-thinking-dots i:nth-child(2){animation-delay:.14s}
 .tg-ai-thinking-dots i:nth-child(3){animation-delay:.28s}
 @keyframes tgAiDot{0%,80%,100%{transform:translateY(0);opacity:.42}40%{transform:translateY(-3px);opacity:1}}
-.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}
+.tg-ai-action{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(232,135,30,.28);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 10px 24px rgba(0,0,0,.12);flex:0 0 auto}.tg-ai-entity-card{margin:0 12px 10px;align-self:stretch;background:#101a2c;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;font-size:11.5px;line-height:1.45;box-shadow:0 8px 20px rgba(0,0,0,.08)}.tg-ai-entity-name{font-size:13px;font-weight:800;margin-bottom:5px;color:#fff}.tg-ai-entity-sub{font-size:10.5px;color:rgba(255,255,255,.58);margin-top:3px}.tg-ai-entity-stats{display:flex;gap:12px;flex-wrap:wrap;color:rgba(255,255,255,.78);margin:6px 0}.tg-ai-entity-list{display:flex;flex-direction:column;gap:7px;margin-top:9px}.tg-ai-entity-row,.tg-ai-order-row{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07);min-width:0}.tg-ai-entity-row>div,.tg-ai-order-row>div{min-width:0}.tg-ai-entity-card button{margin-top:9px;border-radius:10px;padding:8px 11px;border:1px solid rgba(255,255,255,.12);background:#131C30;color:#fff;cursor:pointer;font-size:10.5px;font-weight:700}.tg-ai-entity-row button,.tg-ai-order-row button{margin-top:0;white-space:nowrap}.tg-ai-order-row{margin-top:7px}.tg-ai-order-row strong{color:#fff}
 .tg-ai-action-title{font-size:12.5px;font-weight:800;margin-bottom:8px}
 .tg-ai-action-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;max-height:300px;overflow:auto;padding-right:2px;overscroll-behavior:contain}
 .tg-ai-action-item{padding:9px 10px;border-radius:11px;background:#131C30;border:1px solid rgba(255,255,255,.07);min-width:0;overflow-wrap:anywhere}
@@ -11378,6 +11378,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 
   let aiOpen=false, aiThinking=false, aiRecognition=null, aiListening=false;
   let aiChats=[], activeChatId=null, pendingActions=null;
+  function defaultAiEntity(){return {customer:null,domainResults:[],product:null,order:null};}
+  function chatEntity(chat){if(!chat.entity||typeof chat.entity!=='object')chat.entity=defaultAiEntity();if(!Array.isArray(chat.entity.domainResults))chat.entity.domainResults=[];return chat.entity;}
   const AI_CHATS_KEY='tg_ai_chats_';
   const AI_LEGACY_HISTORY_KEY='tg_ai_history_';
   const AI_ENABLED_FALLBACK_KEY='tg_ai_enabled_';
@@ -11394,29 +11396,27 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function fmtChatDate(ts){const d=new Date(ts||Date.now());return Number.isNaN(d.getTime())?'':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
   function titleFallback(q){const w=String(q||'').replace(/\s+/g,' ').trim().replace(/[!?.,;:()]/g,'').split(' ').filter(Boolean);return (w.slice(0,6).join(' ')||'Nouveau chat').replace(/^./,m=>m.toUpperCase());}
   function newChat(){
-    const now=Date.now(), c={id:'chat_'+now+'_'+Math.random().toString(36).slice(2,8),title:'Nouveau chat',createdAt:now,updatedAt:now,messages:[{role:'assistant',text:'Bonjour 👋\nJe suis votre assistant IA TerangaResto. Je peux analyser votre activité et préparer des modifications de votre espace. Les modifications demandant une action sont toujours soumises à votre confirmation.'}]};
+    const now=Date.now(), c={id:'chat_'+now+'_'+Math.random().toString(36).slice(2,8),title:'Nouveau chat',createdAt:now,updatedAt:now,entity:defaultAiEntity(),messages:[{role:'assistant',text:'Bonjour 👋\nJe suis votre assistante TerangaResto. Je peux analyser votre activité et préparer des modifications de votre espace. Les modifications demandant une action sont toujours soumises à votre confirmation.'}]};
     aiChats.unshift(c);aiChats=aiChats.slice(0,MAX_CHATS);activeChatId=c.id;pendingActions=null;persistChats();return c;
   }
   function persistChats(){try{localStorage.setItem(AI_CHATS_KEY+aid(),JSON.stringify(aiChats.map(c=>({...c,messages:(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT)}))));}catch(e){}}
-  function ensureChat(){if(!aiChats.length)return newChat();let c=aiChats.find(x=>x.id===activeChatId)||aiChats[0];activeChatId=c.id;return c;}
-  function migrateChats(){try{const r=localStorage.getItem(AI_CHATS_KEY+aid());if(r){const p=JSON.parse(r);if(Array.isArray(p)&&p.length){aiChats=p;activeChatId=aiChats[0].id;return;}}const l=localStorage.getItem(AI_LEGACY_HISTORY_KEY+aid());if(l){const p=JSON.parse(l);if(Array.isArray(p)&&p.length){aiChats=[{id:'legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),messages:p.map(m=>({role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')})).filter(m=>m.text).slice(-MAX_MESSAGES_PER_CHAT)}];activeChatId=aiChats[0].id;persistChats();return;}}}catch(e){}if(!aiChats.length)newChat();}
+  function ensureChat(){if(!aiChats.length)return newChat();let c=aiChats.find(x=>x.id===activeChatId)||aiChats[0];activeChatId=c.id;chatEntity(c);return c;}
+  function migrateChats(){try{const r=localStorage.getItem(AI_CHATS_KEY+aid());if(r){const p=JSON.parse(r);if(Array.isArray(p)&&p.length){aiChats=p;activeChatId=aiChats[0].id;return;}}const l=localStorage.getItem(AI_LEGACY_HISTORY_KEY+aid());if(l){const p=JSON.parse(l);if(Array.isArray(p)&&p.length){aiChats=[{id:'legacy_'+Date.now(),title:'Ancienne conversation',createdAt:Date.now(),updatedAt:Date.now(),entity:defaultAiEntity(),messages:p.map(m=>({role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')})).filter(m=>m.text).slice(-MAX_MESSAGES_PER_CHAT)}];activeChatId=aiChats[0].id;persistChats();return;}}}catch(e){}if(!aiChats.length)newChat();}
   function addMessage(role,text){const c=ensureChat();c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);c.messages.push({role:role==='assistant'?'assistant':'user',text:String(text??'')});c.updatedAt=Date.now();persistChats();}
 
   function safeOrder(o){
-    return {id:String(o?.id||''),num:String(o?.num||''),status:String(o?.status||''),type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items:Array.isArray(o?.items)?o.items.slice(0,50).map(it=>({productId:String(it?.productId||''),name:String(it?.name||''),variant:String(it?.variant||''),price:Number(it?.price||0),qty:Number(it?.qty||1)})):[],subtotal:Number(o?.subtotal||0),deliveryFee:Number(o?.deliveryFee||0),total:Number(o?.total||0),pay:String(o?.pay||''),payStatus:String(o?.payStatus||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};
+    return {id:String(o?.id||''),num:String(o?.num||''),client:String(o?.client||''),phone:String(o?.phone||''),table:o?.table==null?'':String(o.table),address:String(o?.address||''),notes:String(o?.notes||''),status:String(o?.status||''),type:String(o?.type||''),orderType:String(o?.orderType||''),deliveryMode:String(o?.deliveryMode||''),deliveryZone:String(o?.deliveryZone||''),items:Array.isArray(o?.items)?o.items.map(it=>({productId:String(it?.productId||''),name:String(it?.name||''),variant:String(it?.variant||''),price:Number(it?.price||0),qty:Number(it?.qty||1)})):[],subtotal:Number(o?.subtotal||0),deliveryFee:Number(o?.deliveryFee||0),total:Number(o?.total||0),pay:String(o?.pay||''),payStatus:String(o?.payStatus||''),createdAt:o?.createdAt instanceof Date?o.createdAt.toISOString():String(o?.createdAt||'')};
   }
   function buildStats(orders){
-    const valid=orders.filter(o=>o.status!=='cancelled');
-    const sum=a=>a.reduce((s,o)=>s+Number(o.total||0),0);
-    const now=new Date(), startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()), startMonth=new Date(now.getFullYear(),now.getMonth(),1), startYear=new Date(now.getFullYear(),0,1);
-    const inRange=(o,s)=>{const d=new Date(o.createdAt);return !Number.isNaN(d)&&d>=s;};
-    const byMonth={}, byYear={}, prod={};
-    valid.forEach(o=>{
-      const d=new Date(o.createdAt); if(!Number.isNaN(d)){const m=d.toISOString().slice(0,7),y=d.getFullYear();byMonth[m]=(byMonth[m]||0)+Number(o.total||0);byYear[y]=(byYear[y]||0)+Number(o.total||0);}
-      (o.items||[]).forEach(it=>{const k=String(it.name||'').trim();if(k)prod[k]=(prod[k]||0)+Number(it.qty||1);});
-    });
-    const top=Object.entries(prod).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([name,qty])=>({name,qty}));
-    return {orders_count:valid.length,revenue_total:sum(valid),revenue_today:sum(valid.filter(o=>inRange(o,startToday))),revenue_month:sum(valid.filter(o=>inRange(o,startMonth))),revenue_year:sum(valid.filter(o=>inRange(o,startYear))),average_order_value:valid.length?Math.round(sum(valid)/valid.length):0,revenue_by_month:byMonth,revenue_by_year:byYear,top_products:top};
+    const valid=orders.filter(o=>o.status!=='cancelled'), sum=a=>a.reduce((s,o)=>s+Number(o.total||0),0), now=new Date();
+    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()), startYesterday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1), startWeek=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)), startPrevWeek=new Date(startWeek);startPrevWeek.setDate(startPrevWeek.getDate()-7);const endPrevWeek=new Date(startWeek), startMonth=new Date(now.getFullYear(),now.getMonth(),1), startPrevMonth=new Date(now.getFullYear(),now.getMonth()-1,1), endPrevMonth=new Date(startMonth), startYear=new Date(now.getFullYear(),0,1);endPrevWeek.setDate(endPrevWeek.getDate()-7);endPrevMonth.setDate(endPrevMonth.getDate()-1);
+    const inRange=(o,a,b=null)=>{const d=new Date(o.createdAt);return !Number.isNaN(d.getTime())&&d>=a&&(!b||d<b)};
+    const byMonth={},byYear={},byDay={},productQty={},productRevenue={},payment={},typeDist={},clientAgg={};
+    valid.forEach(o=>{const d=new Date(o.createdAt);if(!Number.isNaN(d.getTime())){const m=d.toISOString().slice(0,7),y=d.getFullYear(),day=d.toISOString().slice(0,10);byMonth[m]=(byMonth[m]||0)+Number(o.total||0);byYear[y]=(byYear[y]||0)+Number(o.total||0);byDay[day]=(byDay[day]||0)+Number(o.total||0);}const pk=o.pay||'non_précisé';payment[pk]=(payment[pk]||0)+1;const tk=o.orderType||o.deliveryMode||o.type||'non_précisé';typeDist[tk]=(typeDist[tk]||0)+1;const ck=(o.phone||o.client||'').trim();if(ck){clientAgg[ck]??={name:o.client||ck,phone:o.phone||'',orders:0,spent:0};clientAgg[ck].orders++;clientAgg[ck].spent+=Number(o.total||0);}for(const it of o.items||[]){const n=String(it.name||'').trim();if(!n)continue;const q=Number(it.qty||1);productQty[n]=(productQty[n]||0)+q;productRevenue[n]=(productRevenue[n]||0)+Number(it.price||0)*q;}});
+    const productSales=Object.keys(productQty).map(name=>({name,quantity:productQty[name],revenue:Math.round(productRevenue[name]||0)}));
+    const top=productSales.slice().sort((a,b)=>b.quantity-a.quantity||b.revenue-a.revenue), least=productSales.slice().sort((a,b)=>a.quantity-b.quantity||a.revenue-b.revenue);
+    const topClients=Object.values(clientAgg).sort((a,b)=>b.orders-a.orders||b.spent-a.spent).slice(0,50), topSpenders=Object.values(clientAgg).sort((a,b)=>b.spent-a.spent).slice(0,50);
+    return {orders_count:valid.length,orders_today:valid.filter(o=>inRange(o,startToday)).length,orders_yesterday:valid.filter(o=>inRange(o,startYesterday,startToday)).length,orders_this_week:valid.filter(o=>inRange(o,startWeek)).length,orders_previous_week:valid.filter(o=>inRange(o,startPrevWeek,endPrevWeek)).length,cancelled_orders:orders.length-valid.length,revenue_total:sum(valid),revenue_today:sum(valid.filter(o=>inRange(o,startToday))),revenue_yesterday:sum(valid.filter(o=>inRange(o,startYesterday,startToday))),revenue_week:sum(valid.filter(o=>inRange(o,startWeek))),revenue_previous_week:sum(valid.filter(o=>inRange(o,startPrevWeek,endPrevWeek))),revenue_month:sum(valid.filter(o=>inRange(o,startMonth))),revenue_previous_month:sum(valid.filter(o=>inRange(o,startPrevMonth,endPrevMonth))),revenue_year:sum(valid.filter(o=>inRange(o,startYear))),average_order_value:valid.length?Math.round(sum(valid)/valid.length):0,items_sold_today:Math.round(valid.filter(o=>inRange(o,startToday)).reduce((s,o)=>s+(o.items||[]).reduce((q,it)=>q+Math.max(0,Number(it.qty||1)),0),0)),revenue_by_month:byMonth,revenue_by_year:byYear,revenue_by_day:byDay,top_products:top.slice(0,50),least_sold_products:least.slice(0,50),product_sales:productSales.sort((a,b)=>b.quantity-a.quantity||b.revenue-a.revenue),payment_distribution:payment,order_type_distribution:typeDist,top_clients:topClients,top_spenders:topSpenders};
   }
   function buildContext(){
     const rest={id:String(RESTAURANT?.id||''),name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),slug:String(RESTAURANT?.slug||''),type:String(RESTAURANT?.type||''),city:String(RESTAURANT?.city||''),phone:String(RESTAURANT?.phone||''),address:String(RESTAURANT?.address||''),hours:Array.isArray(RESTAURANT?.hours)?RESTAURANT.hours:[],delivery:RESTAURANT?.delivery||{},social:RESTAURANT?.social||{},show_map:!!RESTAURANT?.showMap,maps_link:String(RESTAURANT?.mapsLink||''),notifications_enabled:!!RESTAURANT?.notificationsEnabled,is_published:!!RESTAURANT?.isPublished,subscription_status:String(RESTAURANT?.subscriptionStatus||''),billing_cycle:String(RESTAURANT?.billingCycle||''),trial_ends_at:RESTAURANT?.trialEndsAt?new Date(RESTAURANT.trialEndsAt).toISOString():null,current_period_end:RESTAURANT?.currentPeriodEnd?new Date(RESTAURANT.currentPeriodEnd).toISOString():null,order_notification_email:String(RESTAURANT?.orderNotificationEmail||'')};
@@ -11424,7 +11424,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     const products=(Array.isArray(PRODUCTS)?PRODUCTS:[]).map(p=>({id:String(p?.id||''),name:String(p?.name||''),description:String(p?.desc||''),price:Number(p?.price||0),category:String(p?.cat||''),category_label:String(catsState?.[p?.cat]||''),prep:p?.prep==null?null:Number(p.prep),active:p?.active!==false,available:p?.available!==false,stock:p?.stock==null?null:Number(p.stock),threshold:p?.threshold==null?null:Number(p.threshold),variants:Array.isArray(p?.variants)?p.variants:[],variants_required:!!p?.variantsRequired}));
     const library_products=(Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[]).map(p=>({name:String(p.name||''),description:String(p.desc||''),price:Number(p.price||0),category:String(p.cat||''),category_label:String(catsState?.[p.cat]||p.cat||''),prep:Number(p.prep||15),photo:String(p.photo||'')}));
     const orders=(Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[]).map(safeOrder);
-    return {version:'terangaresto-ai-context-v5',generated_at:new Date().toISOString(),restaurant:rest,categories,products,library_products,recent_orders:orders,staff:(Array.isArray(staffState)?staffState:[]).map(s=>({id:String(s?.id||''),name:String(s?.name||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions:[]})),reviews:(Array.isArray(REVIEWS)?REVIEWS:[]).map(r=>({rating:Number(r?.rating??r?.stars??0),text:String(r?.comment??r?.text??r?.message??''),createdAt:String(r?.created_at??r?.createdAt??'')})),payments:(Array.isArray(paymentsHistory)?paymentsHistory:[]).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')})),payment_toggles:state.toggles||{},stats:buildStats(orders)};
+    return {version:'terangaresto-ai-context-v6',generated_at:new Date().toISOString(),restaurant:rest,categories,products,library_products,orders,recent_orders:orders,entity_context:chatEntity(ensureChat()),staff:(Array.isArray(staffState)?staffState:[]).map(s=>({id:String(s?.id||''),name:String(s?.name||''),email:String(s?.email||''),role:String(s?.role||''),status:String(s?.status||''),permissions:Array.isArray(s?.permissions)?s.permissions:[],expires_at:s?.expires_at||null})),reviews:(Array.isArray(REVIEWS)?REVIEWS:[]).map(r=>({id:String(r?.id||''),rating:Number(r?.rating??r?.stars??0),text:String(r?.comment??r?.text??r?.message??''),createdAt:String(r?.created_at??r?.createdAt??'')})),payments:(Array.isArray(paymentsHistory)?paymentsHistory:[]).map(p=>({status:String(p?.status||''),amount:Number(p?.amount||p?.price||0),plan:String(p?.plan||''),billingCycle:String(p?.billing_cycle||p?.billingCycle||''),createdAt:String(p?.created_at||p?.createdAt||'')})),payment_toggles:state.toggles||{},stats:buildStats(orders)};
   }
 
   function setStatus(html,show=true){const el=document.getElementById('tgAiStatus');if(el){el.innerHTML=html||'';el.hidden=!show;el.classList.toggle('processing',!!show);}}
@@ -11489,14 +11489,40 @@ function speakAiText(text,button){
   }
   function describeAction(a){return a.summary||'';}
 
+
+  function formatAiDateTime(v){const d=new Date(v||'');return Number.isNaN(d.getTime())?'':d.toLocaleString('fr-FR',{dateStyle:'long',timeStyle:'short'});}
+  function renderDomainUi(meta){
+    const rows=Array.isArray(meta?.domain)?meta.domain:[];if(!rows.length)return '';
+    return `<div class="tg-ai-entity-card"><div class="tg-ai-entity-name">Résultats de domaine</div><div class="tg-ai-entity-list">${rows.map((r,i)=>{const domain=String(r?.domain||r?.name||r?.fqdn||'');const available=r?.available===false?'Indisponible':(r?.available===true?'Disponible':String(r?.status||'').toLowerCase()==='available'?'Disponible':'');const price=r?.customer_price_xof??r?.client_price_xof??r?.client_price??r?.price_client??r?.customer_price??r?.price??r?.amount??null;return `<div class="tg-ai-entity-row"><div><strong>${esc(domain)}</strong><div class="tg-ai-entity-sub">${esc(available)}${price!=null?` · ${esc(fmt(price))}`:''}</div></div></div>`}).join('')}</div></div>`;
+  }
+
+  function renderCustomerUi(meta,index){
+    const c=meta?.customer;if(!c)return '';
+    if(c.matches?.length>1)return `<div class="tg-ai-entity-card"><div class="tg-ai-entity-name">${esc(c.matchCount||c.matches.length)} client${(c.matchCount||c.matches.length)>1?'s':''} correspondant${(c.matchCount||c.matches.length)>1?'s':''}</div><div class="tg-ai-entity-sub">Sélectionnez le client à consulter.</div><div class="tg-ai-entity-list">${c.matches.map((m)=>`<div class="tg-ai-entity-row"><div><strong>${esc(m.name||'Client')}</strong><div class="tg-ai-entity-sub">${m.phone?`Téléphone : ${esc(m.phone)}`:''}${m.lastOrderNum?`${m.phone?' · ':''}Dernière commande : #${esc(m.lastOrderNum)}`:''}${m.lastOrderAt?`${m.phone||m.lastOrderNum?' · ':''}${esc(formatAiDateTime(m.lastOrderAt))}`:''}</div></div><button type="button" data-ai-customer-select="${esc(String(m.phone||''))}" data-ai-customer-name="${esc(String(m.name||''))}" data-ai-customer-order="${esc(String(m.lastOrderNum||m.firstOrderNum||''))}" data-ai-customer-index="${index}">Voir les détails</button></div>`).join('')}</div></div>`;
+    const p=c.profile;
+    if(!p)return `<div class="tg-ai-entity-card"><div class="tg-ai-entity-name">${esc(c.name||'Client')}</div><div class="tg-ai-entity-sub">${esc(c.message||'Client retrouvé dans les données disponibles.')}</div><button type="button" data-ai-customer-detail="${esc(String(c.phone||''))}" data-ai-customer-name="${esc(String(c.name||''))}" data-ai-customer-order="${esc(String(c.order_num||''))}" data-ai-customer-index="${index}">Voir les détails</button></div>`;
+    const orders=Array.isArray(p.orders)?p.orders:[], last=orders[0]||p.last_order||null;
+    if(!orders.length)return `<div class="tg-ai-entity-card"><div class="tg-ai-entity-name">${esc(p.name||c.name||'Client')}</div><div class="tg-ai-entity-stats"><span>Total des commandes : <b>${Number(p.total_orders||0)}</b></span><span>Total dépensé : <b>${esc(fmt(p.total_spent||0))}</b></span></div>${p.cancelled_orders?`<div class="tg-ai-entity-sub">Commandes annulées : ${Number(p.cancelled_orders)}</div>`:''}<div class="tg-ai-entity-sub">${p.last_order_at?`Dernière commande : ${esc(formatAiDateTime(p.last_order_at))}${p.last_order_num?` · #${esc(p.last_order_num)}`:''}`:'Aucune commande disponible.'}</div>${p.phone?`<div class="tg-ai-entity-sub">Téléphone : ${esc(p.phone)}</div>`:''}<button type="button" data-ai-customer-detail="${esc(String(p.phone||c.phone||''))}" data-ai-customer-name="${esc(String(p.name||c.name||''))}" data-ai-customer-order="${esc(String(p.last_order_num||''))}" data-ai-customer-index="${index}">Voir les détails</button></div>`;
+    const formatOrder=(o)=>{
+      const items=(Array.isArray(o?.items)?o.items:[]).map(it=>`${Number(it?.qty||0)} × ${String(it?.name||'Produit')}${it?.variant?` (${String(it.variant)})`:''} — ${fmt(it?.price||0)}`).join('<br>');
+      return `<div class="tg-ai-order-row"><div><strong>Commande #${esc(o?.num||'')}</strong><div class="tg-ai-entity-sub">${esc(formatAiDateTime(o?.createdAt))} · ${esc(fmt(o?.total||0))}</div><div class="tg-ai-entity-sub">${esc(o?.type||o?.orderType||o?.deliveryMode||'')}${o?.table?` · Table ${esc(o.table)}`:''}${o?.pay?` · ${esc(o.pay)}`:''}${o?.status?` · ${esc(o.status)}`:''}</div>${o?.address?`<div class="tg-ai-entity-sub">Adresse : ${esc(o.address)}</div>`:''}${o?.notes?`<div class="tg-ai-entity-sub">Notes : ${esc(o.notes)}</div>`:''}${items?`<div class="tg-ai-entity-sub" style="margin-top:5px;">${items}</div>`:''}<div class="tg-ai-entity-sub">Sous-total : ${esc(fmt(o?.subtotal||0))} · Livraison : ${esc(fmt(o?.deliveryFee||0))} · Total : ${esc(fmt(o?.total||0))}</div></div><button type="button" data-ai-order-num="${esc(String(o?.num||''))}">Voir la commande</button></div>`;
+    };
+    const rows=orders.map(formatOrder).join('');
+    return `<div class="tg-ai-entity-card"><div class="tg-ai-entity-name">${esc(p.name||c.name||'Client')}</div><div class="tg-ai-entity-stats"><span>Total des commandes : <b>${Number(p.total_orders||0)}</b></span><span>Total dépensé : <b>${esc(fmt(p.total_spent||0))}</b></span></div>${p.cancelled_orders?`<div class="tg-ai-entity-sub">Commandes annulées : ${Number(p.cancelled_orders)}</div>`:''}<div class="tg-ai-entity-sub">${p.first_order_at?`Première commande : ${esc(formatAiDateTime(p.first_order_at))}`:'Première commande non disponible.'}${p.last_order_at?` · Dernière commande : ${esc(formatAiDateTime(p.last_order_at))}${last?.num?` · #${esc(last.num)}`:''}`:''}</div>${p.phone?`<div class="tg-ai-entity-sub">Téléphone : ${esc(p.phone)}</div>`:''}<div class="tg-ai-entity-sub" style="margin-top:8px;"><strong>Historique réel</strong></div><div class="tg-ai-entity-list">${rows}</div></div>`;
+  }
+  function toggleCustomerOrders(button){
+    const card=button?.closest('.tg-ai-entity-card');const panel=card?.querySelector('[data-ai-orders-list]');if(!panel)return;panel.hidden=!panel.hidden;button.textContent=panel.hidden?'Voir les commandes':'Masquer les commandes';
+  }
+
+
   function renderAi(keepBottom=true){
     if(!aiOpen||!enabled())return;
     const c=ensureChat(), old=document.getElementById('tgAiPanel');
     const panel=old||document.createElement('section');panel.id='tgAiPanel';panel.className='tg-ai-panel';
     const showSuggestions=(c.messages||[]).filter(m=>m.role==='user').length===0;
-    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Assistant IA TerangaResto</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à l’IA"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
+    panel.innerHTML=`<div class="tg-ai-head"><div class="tg-ai-title"><span class="spark">${aiSvg()}</span><div><div class="tg-ai-title-main">Votre assistante</div><div class="tg-ai-title-sub">${esc(c.title||'Nouveau chat')}</div></div></div><div class="tg-ai-head-actions"><button class="tg-ai-icon-btn" id="tgAiNewChat" type="button" title="Nouveau chat">＋</button><button class="tg-ai-icon-btn" id="tgAiHistory" type="button" title="Historique">☰</button><button class="tg-ai-icon-btn" id="tgAiClose" type="button" title="Fermer">×</button></div></div><div class="tg-ai-body"><div class="tg-ai-messages" id="tgAiMessages"></div><div id="tgAiLive" class="tg-ai-live" hidden></div>${renderPending()}<button class="tg-ai-suggestions-toggle" id="tgAiSuggestionsToggle" type="button" ${showSuggestions?'style="display:none"':''}>✦ Suggestions</button><div class="tg-ai-chips" id="tgAiChips" style="${showSuggestions?'':'display:none'}"><button class="tg-ai-chip" data-q="Combien ai-je vendu aujourd’hui ?">Ventes aujourd’hui</button><button class="tg-ai-chip" data-q="Quel est mon chiffre d’affaires ce mois-ci ?">CA du mois</button><button class="tg-ai-chip" data-q="Quels sont mes produits les plus vendus ?">Produits les plus vendus</button><button class="tg-ai-chip" data-q="Quels produits sont en rupture ou sous le seuil ?">Stock à réapprovisionner</button><button class="tg-ai-chip" data-q="Combien de temps me reste-t-il sur mon abonnement ?">Abonnement restant</button><button class="tg-ai-chip" data-q="Donne-moi des conseils concrets et personnalisés pour augmenter mes ventes.">Conseils pour augmenter mes ventes</button></div><form class="tg-ai-form" id="tgAiForm"><input id="tgAiInput" class="tg-ai-input" autocomplete="off" placeholder="Posez votre question…" aria-label="Question à votre assistante"><button class="tg-ai-mic" id="tgAiMic" type="button" aria-label="Parler" title="Parler et ajouter le texte sans effacer votre saisie">🎙</button><button class="tg-ai-send" id="tgAiSend" type="submit" aria-label="Envoyer">➤</button></form><div id="tgAiStatus" class="tg-ai-status" hidden></div><div class="tg-ai-history-panel" id="tgAiHistoryPanel"><div class="tg-ai-history-head"><div class="tg-ai-history-title">Conversations</div><button class="tg-ai-history-new" id="tgAiHistoryNew" type="button">＋</button></div><div class="tg-ai-history-list" id="tgAiHistoryList"></div></div></div>`;
     if(!old)document.body.appendChild(panel);
-    const list=panel.querySelector('#tgAiMessages');for(let idx=0;idx<(c.messages||[]).length;idx++){const m=c.messages[idx];if(m.role==='assistant'){const w=document.createElement('div');w.className='tg-ai-msg-wrap';const d=document.createElement('div');d.className='tg-ai-msg ai';d.textContent=m.text;w.appendChild(d);const b=document.createElement('button');b.type='button';b.className='tg-ai-read';b.dataset.aiReadIndex=String(idx);b.title='Lire la réponse';b.setAttribute('aria-label','Lire la réponse');b.textContent='🔊';w.appendChild(b);list.appendChild(w);}else{const d=document.createElement('div');d.className='tg-ai-msg user';d.textContent=m.text;list.appendChild(d);}}
+    const list=panel.querySelector('#tgAiMessages');for(let idx=0;idx<(c.messages||[]).length;idx++){const m=c.messages[idx];if(m.role==='assistant'){const w=document.createElement('div');w.className='tg-ai-msg-wrap';const d=document.createElement('div');d.className='tg-ai-msg ai';d.textContent=m.text;w.appendChild(d);if(m.meta?.customer){const u=document.createElement('div');u.innerHTML=renderCustomerUi(m.meta,m.meta.message_index??idx);const card=u.firstElementChild;if(card){w.appendChild(card);}}if(Array.isArray(m.meta?.domain)&&m.meta.domain.length){const u=document.createElement('div');u.innerHTML=renderDomainUi(m.meta);const card=u.firstElementChild;if(card){w.appendChild(card);}}const b=document.createElement('button');b.type='button';b.className='tg-ai-read';b.dataset.aiReadIndex=String(idx);b.title='Lire la réponse';b.setAttribute('aria-label','Lire la réponse');b.textContent='🔊';w.appendChild(b);list.appendChild(w);}else{const d=document.createElement('div');d.className='tg-ai-msg user';d.textContent=m.text;list.appendChild(d);}}
     panel.querySelector('#tgAiClose').onclick=closeAi;
     panel.querySelector('#tgAiNewChat').onclick=()=>{newChat();renderAi(true);};
     panel.querySelector('#tgAiHistory').onclick=()=>{const hp=panel.querySelector('#tgAiHistoryPanel');hp.classList.add('open');renderHistory();};
@@ -11506,38 +11532,59 @@ function speakAiText(text,button){
     panel.querySelectorAll('.tg-ai-chip').forEach(b=>b.onclick=()=>{panel.querySelector('#tgAiInput').value=b.dataset.q||'';panel.querySelector('#tgAiInput').focus();});
     panel.querySelector('[data-ai-action="cancel"]')?.addEventListener('click',()=>{pendingActions=null;renderAi(true);});
     panel.querySelector('[data-ai-action="confirm"]')?.addEventListener('click',confirmActions);
+    panel.querySelectorAll('[data-ai-customer-detail]').forEach(b=>b.onclick=()=>openCustomerDetailFromAssistant(String(b.dataset.aiCustomerName||''),String(b.dataset.aiCustomerDetail||''),String(b.dataset.aiCustomerOrder||''),Number(b.dataset.aiCustomerIndex||0)));
+    panel.querySelectorAll('[data-ai-customer-select]').forEach(b=>b.onclick=()=>openCustomerDetailFromAssistant(String(b.dataset.aiCustomerName||''),String(b.dataset.aiCustomerSelect||''),String(b.dataset.aiCustomerOrder||''),Number(b.dataset.aiCustomerIndex||0)));
+    panel.querySelectorAll('[data-ai-show-orders]').forEach(b=>b.onclick=()=>toggleCustomerOrders(b));
+    panel.querySelectorAll('[data-ai-order-num]').forEach(b=>b.onclick=()=>openOrderDetailByNum(String(b.dataset.aiOrderNum||'')));
+
     const f=document.getElementById('tgAiFloating');if(f)f.setAttribute('aria-expanded','true');
     if(keepBottom)scrollBottom();
   }
 
   function normalizeAction(a){
     if(!a||typeof a!=='object')return null;const type=String(a.type||'').trim();if(!type)return null;const common={type,summary:String(a.summary||'').trim()};if(!common.summary)return null;
-    if(type==='create_product')return {...common,source_template:String(a.source_template||''),template_snapshot:a.template_snapshot||null,name:String(a.name||''),description:a.description==null?'':String(a.description),price:Number(a.price),category:String(a.category||''),category_label:String(a.category_label||''),prep:Number(a.prep??15),stock:Number(a.stock),threshold:Number(a.threshold??5),active:a.active!==false,available:a.available!==false,variants:Array.isArray(a.variants)?a.variants.slice(0,20):[],variants_required:a.variants_required==null?false:Boolean(a.variants_required),photo_data_url:a.photo_data_url||null};
-    if(type==='update_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||a.name||''),changes:{name:a.changes?.name==null?null:String(a.changes.name),description:a.changes?.description==null?null:String(a.changes.description),price:a.changes?.price==null?null:Number(a.changes.price),category:a.changes?.category==null?null:String(a.changes.category),prep:a.changes?.prep==null?null:Number(a.changes.prep),active:a.changes?.active==null?null:Boolean(a.changes.active),available:a.changes?.available==null?null:Boolean(a.changes.available),stock:a.changes?.stock==null?null:Number(a.changes.stock),threshold:a.changes?.threshold==null?null:Number(a.changes.threshold),variants:Array.isArray(a.changes?.variants)?a.changes.variants.slice(0,20):null,variants_required:a.changes?.variants_required==null?null:Boolean(a.changes.variants_required),photo_data_url:a.changes?.photo_data_url||null}};
+    const boolOrNull=v=>v==null?null:Boolean(v), numOrNull=v=>v==null?null:Number(v);
+    if(type==='create_product')return {...common,source_template:String(a.source_template||''),template_snapshot:a.template_snapshot||null,name:String(a.name||''),description:a.description==null?'':String(a.description),price:Number(a.price),category:String(a.category||''),category_label:String(a.category_label||''),prep:Number(a.prep??15),stock:Number(a.stock),threshold:Number(a.threshold??5),active:a.active!==false,available:a.available!==false,variants:Array.isArray(a.variants)?a.variants:[],variants_required:a.variants_required==null?false:Boolean(a.variants_required),photo_data_url:a.photo_data_url||null,gallery_photos:Array.isArray(a.gallery_photos)?a.gallery_photos:[]};
+    if(type==='update_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||a.name||''),changes:{name:a.changes?.name==null?null:String(a.changes.name),description:a.changes?.description==null?null:String(a.changes.description),price:numOrNull(a.changes?.price),category:a.changes?.category==null?null:String(a.changes.category),prep:numOrNull(a.changes?.prep),active:boolOrNull(a.changes?.active),available:boolOrNull(a.changes?.available),stock:numOrNull(a.changes?.stock),threshold:numOrNull(a.changes?.threshold),variants:Array.isArray(a.changes?.variants)?a.changes.variants:null,variants_required:boolOrNull(a.changes?.variants_required),photo_data_url:a.changes?.photo_data_url||null,gallery_photos:Array.isArray(a.changes?.gallery_photos)?a.changes.gallery_photos:null}};
     if(type==='delete_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||'')};
+    if(type==='adjust_stock'||type==='restock_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||a.name||''),quantity:Number(a.quantity??a.amount??a.delta),mode:String(a.mode||'add').toLowerCase()==='set'?'set':'add'};
+    if(type==='update_variants')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||''),operation:['add','update','remove','replace'].includes(String(a.operation||'add').toLowerCase())?String(a.operation||'add').toLowerCase():'add',variants:Array.isArray(a.variants)?a.variants:[],variants_required:boolOrNull(a.variants_required)};
+    if(type==='remove_gallery_photo')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||''),index:a.index==null?null:Number(a.index),photo:a.photo==null?null:String(a.photo)};
     if(type==='update_hours')return {...common,day_index:Number(a.day_index),day_label:String(a.day_label||''),open:Boolean(a.open),from:String(a.from||''),to:String(a.to||'')};
-    if(type==='update_delivery_settings')return {...common,enabled:a.enabled==null?null:Boolean(a.enabled),fee:a.fee==null?null:Number(a.fee),min:a.min==null?null:Number(a.min),own_enabled:a.own_enabled==null?null:Boolean(a.own_enabled),own_cash_on_delivery:a.own_cash_on_delivery==null?null:Boolean(a.own_cash_on_delivery),express_enabled:a.express_enabled==null?null:Boolean(a.express_enabled),express_fee:a.express_fee==null?null:Number(a.express_fee)};
-    if(type==='create_delivery_zone')return {...common,name:String(a.name||''),fee:a.fee==null?0:Number(a.fee),enabled:a.enabled!==false};
-    if(type==='update_delivery_zone')return {...common,zone_id:String(a.zone_id||''),name:a.name==null?null:String(a.name),fee:a.fee==null?null:Number(a.fee),enabled:a.enabled==null?null:Boolean(a.enabled)};
+    if(type==='update_delivery_settings')return {...common,enabled:boolOrNull(a.enabled),fee:numOrNull(a.fee),min:numOrNull(a.min),own_enabled:boolOrNull(a.own_enabled),own_cash_on_delivery:boolOrNull(a.own_cash_on_delivery),express_enabled:boolOrNull(a.express_enabled),express_fee:numOrNull(a.express_fee)};
+    if(type==='create_delivery_zone')return {...common,name:String(a.name||''),fee:numOrNull(a.fee)??0,enabled:a.enabled!==false};
+    if(type==='update_delivery_zone')return {...common,zone_id:String(a.zone_id||''),name:a.name==null?null:String(a.name),fee:numOrNull(a.fee),enabled:boolOrNull(a.enabled)};
     if(type==='remove_delivery_zone')return {...common,zone_id:String(a.zone_id||'')};
     if(type==='update_restaurant_settings')return {...common,name:a.name==null?null:String(a.name),type_name:a.type_name==null?null:String(a.type_name),city:a.city==null?null:String(a.city),phone:a.phone==null?null:String(a.phone),address:a.address==null?null:String(a.address),hero_title:a.hero_title==null?null:String(a.hero_title),hero_subtitle:a.hero_subtitle==null?null:String(a.hero_subtitle),order_notification_email:a.order_notification_email==null?null:String(a.order_notification_email)};
     if(type==='update_branding')return {...common,name:a.name==null?null:String(a.name),hero_title:a.hero_title==null?null:String(a.hero_title),hero_subtitle:a.hero_subtitle==null?null:String(a.hero_subtitle),logo_data_url:a.logo_data_url||null,cover_data_url:a.cover_data_url||null,primary_color:a.primary_color==null?null:String(a.primary_color),secondary_color:a.secondary_color==null?null:String(a.secondary_color),text_color:a.text_color==null?null:String(a.text_color)};
+    if(type==='clear_logo'||type==='clear_cover'||type==='share_qr'||type==='cancel_subscription'||type==='reactivate_subscription')return {...common};
     if(type==='update_payment_toggles')return {...common,toggles:a.toggles&&typeof a.toggles==='object'?a.toggles:{}};
-    if(type==='update_social')return {...common,network:String(a.network||'').toLowerCase(),enabled:a.enabled==null?null:Boolean(a.enabled),value:a.value==null?null:String(a.value)};
-    if(type==='update_map')return {...common,show_map:a.show_map==null?null:Boolean(a.show_map),maps_link:a.maps_link==null?null:String(a.maps_link)};
+    if(type==='update_social')return {...common,network:String(a.network||'').toLowerCase(),enabled:boolOrNull(a.enabled),value:a.value==null?null:String(a.value)};
+    if(type==='remove_social')return {...common,network:String(a.network||'').toLowerCase()};
+    if(type==='update_map')return {...common,show_map:boolOrNull(a.show_map),maps_link:a.maps_link==null?null:String(a.maps_link)};
     if(type==='update_notifications')return {...common,enabled:Boolean(a.enabled)};
     if(type==='publish_site')return {...common,published:Boolean(a.published)};
-    if(type==='update_category')return {...common,category_key:String(a.category_key||''),label:a.label==null?null:String(a.label),visible_on_home:a.visible_on_home==null?null:Boolean(a.visible_on_home),sort_order:a.sort_order==null?null:Number(a.sort_order)};
+    if(type==='set_ai_enabled')return {...common,enabled:Boolean(a.enabled)};
+    if(type==='update_category')return {...common,category_key:String(a.category_key||''),label:a.label==null?null:String(a.label),visible_on_home:boolOrNull(a.visible_on_home),sort_order:numOrNull(a.sort_order)};
     if(type==='create_category')return {...common,key:String(a.key||''),label:String(a.label||''),visible_on_home:a.visible_on_home!==false,sort_order:a.sort_order==null?0:Number(a.sort_order)};
     if(type==='delete_category')return {...common,category_key:String(a.category_key||''),category_label:String(a.category_label||'')};
-    if(type==='update_staff')return {...common,staff_id:String(a.staff_id||''),name:a.name==null?null:String(a.name),role:a.role==null?null:String(a.role),status:a.status==null?null:String(a.status),permissions:Array.isArray(a.permissions)?a.permissions.slice(0,40):null};
-    if(type==='create_staff')return {...common,name:String(a.name||''),email:String(a.email||''),role:a.role==null?null:String(a.role),status:a.status==null?null:String(a.status),permissions:Array.isArray(a.permissions)?a.permissions.slice(0,40):[]};
+    if(type==='update_staff')return {...common,staff_id:String(a.staff_id||''),name:a.name==null?null:String(a.name),role:a.role==null?null:String(a.role),status:a.status==null?null:String(a.status),permissions:Array.isArray(a.permissions)?a.permissions:null};
+    if(type==='create_staff')return {...common,name:String(a.name||''),email:String(a.email||''),role:a.role==null?null:String(a.role),status:a.status==null?null:String(a.status),permissions:Array.isArray(a.permissions)?a.permissions:[]};
     if(type==='delete_staff')return {...common,staff_id:String(a.staff_id||''),staff_name:String(a.staff_name||a.name||'')};
+    if(type==='invite_staff')return {...common,name:String(a.name||''),email:String(a.email||''),role:a.role==null?null:String(a.role),permissions:Array.isArray(a.permissions)?a.permissions:[]};
+    if(type==='resend_staff_invite')return {...common,staff_id:String(a.staff_id||'')};
+    if(type==='cancel_staff_invite'||type==='deactivate_staff')return {...common,staff_id:String(a.staff_id||'')};
     if(type==='update_order_status')return {...common,order_id:String(a.order_id||''),order_num:String(a.order_num||''),status:String(a.status||'')};
-    if(type==='update_gallery')return {...common,photos:Array.isArray(a.photos)?a.photos.filter(Boolean).slice(0,3).map(String):[],mode:String(a.mode||'replace').toLowerCase()};
+    if(type==='update_gallery')return {...common,photos:Array.isArray(a.photos)?a.photos.filter(Boolean):[],mode:String(a.mode||'replace').toLowerCase()};
+    if(type==='delete_review')return {...common,review_id:String(a.review_id||'')};
+    if(type==='request_notification_email')return {...common,email:String(a.email||'')};
+    if(type==='verify_notification_email')return {...common,code:String(a.code||'')};
+    if(type==='search_domain')return {...common,query:String(a.query||a.domain||''),batch:a.batch==null?0:Number(a.batch),tlds:Array.isArray(a.tlds)?a.tlds.map(String):[]};
+    if(type==='purchase_domain')return {...common,domain:String(a.domain||''),kind:String(a.kind||'paid'),customer_price_xof:a.customer_price_xof==null?null:Number(a.customer_price_xof)};
+    if(type==='renew_domain')return {...common,domain:String(a.domain||'')};
+    if(type==='start_subscription_checkout')return {...common,plan:String(a.plan||''),billing_cycle:String(a.billing_cycle||a.cycle||'')};
     return null;
   }
-
   function enrichActions(actions){
     const out=[];
     for(const raw of Array.isArray(actions)?actions:[]){const a=normalizeAction(raw);if(!a)continue;
@@ -11549,7 +11596,7 @@ function speakAiText(text,button){
       }
       out.push(a);
     }
-    return out.slice(0,8);
+    return out;
   }
 
   function localActionFallback(text){
@@ -11557,39 +11604,37 @@ function speakAiText(text,button){
     const products=Array.isArray(PRODUCTS)?PRODUCTS:[], libs=Array.isArray(LIBRARY_ITEMS)?LIBRARY_ITEMS:[];
     const findByName=(list)=>list.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
     const product=findByName(products), library=findByName(libs);
-    const prior=(c=>{try{const chat=ensureChat();return (chat.messages||[]).slice(-12).map(m=>String(m.text||'')).join(' ')}catch(e){return ''}})();
-    const priorNorm=prior.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const prior=(c=>{try{const chat=ensureChat();return (chat.messages||[]).slice(-12).map(m=>String(m.text||'')).join(' ')}catch(e){return ''}})(), priorNorm=prior.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     const libraryFromHistory=library||libs.map(p=>({p,n:String(p?.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')})).filter(x=>x.n&&priorNorm.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.p;
-    const price=(()=>{const m=q.match(/(?:prix|a|à|pour|tarif|frais)\D{0,35}(\d{2,7})\s*(?:fcfa|f|fr)?/);return m?Number(m[1]):null})();
-    const stock=(()=>{const m=q.match(/(?:stock|stocks|quantite|quantité|nombre)\D{0,25}(\d{1,6})/);return m?Number(m[1]):null})();
-    const shortNums=[...q.matchAll(/\b(\d{1,8})\b/g)].map(m=>Number(m[1])).filter(Number.isFinite);
-    const fallbackPrice=price!=null?price:shortNums.find(n=>n>=100);
-    const fallbackStock=stock!=null?stock:shortNums.find(n=>n<100);
+    const price=(()=>{const m=q.match(/(?:prix|a|à|pour|tarif|frais)\D{0,35}(\d{2,7})\s*(?:fcfa|f|francs?)?/);return m?Number(m[1]):null})(), stock=(()=>{const m=q.match(/(?:stock|stocks|quantite|quantité|nombre)\D{0,25}(\d{1,6})/);return m?Number(m[1]):null})(), shortNums=[...q.matchAll(/\b(\d{1,8})\b/g)].map(m=>Number(m[1])).filter(Number.isFinite), fallbackPrice=price!=null?price:shortNums.find(n=>n>=100), fallbackStock=stock!=null?stock:shortNums.find(n=>n<100);
     if(libraryFromHistory&&/(ajouter|ajoute|creer|créer).*produit|ajoute|ajouter/.test(priorNorm+' '+q)&&fallbackPrice!=null&&fallbackStock!=null)actions.push({type:'create_product',summary:`Ajouter ${libraryFromHistory.name} à ${fallbackPrice.toLocaleString('fr-FR')} FCFA avec ${fallbackStock} en stock.`,source_template:libraryFromHistory.name,name:libraryFromHistory.name,description:libraryFromHistory.desc||'',price:fallbackPrice,stock:fallbackStock,category:libraryFromHistory.cat,category_label:catsState?.[libraryFromHistory.cat]||libraryFromHistory.cat,prep:Number(libraryFromHistory.prep||15),threshold:5,active:true,available:true,variants:[],variants_required:false});
     if(product&&price!=null&&/prix/.test(q)&&/(modifier|changer|mettre|passer|fixer|augmenter|baisser)/.test(q))actions.push({type:'update_product',summary:`Modifier le prix de ${product.name} à ${price.toLocaleString('fr-FR')} FCFA.`,product_id:String(product.id||''),product_name:product.name,changes:{price}});
     if(product&&stock!=null&&/(stock|quantite|quantité)/.test(q)&&/(modifier|changer|mettre|passer|fixer)/.test(q))actions.push({type:'update_product',summary:`Modifier le stock de ${product.name} à ${stock}.`,product_id:String(product.id||''),product_name:product.name,changes:{stock}});
-    const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]];
-    const mentionedDays=days.filter(([d])=>q.includes(d));
-    const day=mentionedDays[0];
+    const days=[['lundi',0],['mardi',1],['mercredi',2],['jeudi',3],['vendredi',4],['samedi',5],['dimanche',6]],mentionedDays=/(tous les jours|toute la semaine)/.test(q)?days:days.filter(([d])=>q.includes(d));
     const tm=q.match(/(?:de|a|à)?\s*(\d{1,2})\s*h?\s*(\d{0,2})?\s*(?:a|à|jusqua|jusqu'a|au|et|-)\s*(\d{1,2})\s*h?\s*(\d{0,2})?/);
-    if(mentionedDays.length&&/(horaire|heure|ouvre|ouvert|ferme|fermer|activer|désactiver|desactiver)/.test(q)&&tm){
-      const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;
-      mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Mettre ${label} de ${f} à ${t}.`,day_index:index,day_label:label,open:true,from:f,to:t}));
-    }
-    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm){
-      mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
-    }
-    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure)/.test(q)){
-      mentionedDays.forEach(([label,index])=>{
-        const h=RESTAURANT?.hours?.[index]||{}, end=String(h.to||'');
-        const mm=end.match(/^(\d{2}):(\d{2})$/);
-        if(mm){let mins=Number(mm[1])*60+Number(mm[2])+60; mins=Math.min(mins,23*60+59); const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`; actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(h.from||'11:00'),to:t});}
-      });
-    }
-    const zones=Array.isArray(RESTAURANT?.delivery?.zones)?RESTAURANT.delivery.zones:[],zone=zones.map(z=>({z,n:String(z?.name||'').toLowerCase()})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.z, zfee=q.match(/(?:prix|frais|tarif)\D{0,25}(\d{2,7})/);
-    if(zone&&zfee&&/(modifier|changer|mettre|fixer)/.test(q)&&/zone|livraison/.test(q))actions.push({type:'update_delivery_zone',summary:`Modifier ${zone.name} à ${Number(zfee[1]).toLocaleString('fr-FR')} FCFA.`,zone_id:String(zone.id),name:zone.name,fee:Number(zfee[1])});
-    return actions.slice(0,8);
+    if(mentionedDays.length&&/(horaire|heure|ouvre|ouvert|ferme|fermer|activer|désactiver|desactiver)/.test(q)&&tm){const f=`${String(tm[1]).padStart(2,'0')}:${String(tm[2]||'0').padStart(2,'0')}`,t=`${String(tm[3]).padStart(2,'0')}:${String(tm[4]||'0').padStart(2,'0')}`;mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Mettre ${label} de ${f} à ${t}.`,day_index:index,day_label:label,open:true,from:f,to:t}));}
+    if(mentionedDays.length&&/(desactiver|désactiver|fermer|ferme|fermé|arreter|arrêter|ferme ce jour)/.test(q)&&!tm)mentionedDays.forEach(([label,index])=>actions.push({type:'update_hours',summary:`Désactiver les horaires du ${label}.`,day_index:index,day_label:label,open:false,from:'',to:''}));
+    if(mentionedDays.length&&/(ajouter|prolonger|plus d'heure|une heure de plus|une heure supplementaire|une heure supplémentaire|ajoute une heure)/.test(q))mentionedDays.forEach(([label,index])=>{const h=RESTAURANT?.hours?.[index]||{},end=String(h.to||''),mm=end.match(/^(\d{2}):(\d{2})$/);if(mm){let mins=Math.min(23*60+59,Number(mm[1])*60+Number(mm[2])+60);const t=`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`;actions.push({type:'update_hours',summary:`Prolonger ${label} d'une heure, jusqu'à ${t}.`,day_index:index,day_label:label,open:true,from:String(h.from||'11:00'),to:t});}});
+    const zones=Array.isArray(RESTAURANT?.delivery?.zones)?RESTAURANT.delivery.zones:[],zone=zones.map(z=>({z,n:String(z?.name||'').toLowerCase()})).filter(x=>x.n&&q.includes(x.n)).sort((a,b)=>b.n.length-a.n.length)[0]?.z,zfee=q.match(/(?:prix|frais|tarif)\D{0,25}(\d{2,7})/);if(zone&&zfee&&/(modifier|changer|mettre|fixer)/.test(q)&&/zone|livraison/.test(q))actions.push({type:'update_delivery_zone',summary:`Modifier ${zone.name} à ${Number(zfee[1]).toLocaleString('fr-FR')} FCFA.`,zone_id:String(zone.id),name:zone.name,fee:Number(zfee[1])});
+    return actions;
   }
+
+
+  function normalizeAiName(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();}
+  function customerMatchesLocal(query){
+    const q=normalizeAiName(query), orders=Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[], grouped=new Map();
+    for(const o of orders){const name=normalizeAiName(o?.client);if(!name||q!==name)continue;const key=String(o?.phone||name);if(!grouped.has(key))grouped.set(key,{key,name:String(o?.client||''),phone:String(o?.phone||''),firstOrderNum:String(o?.num||''),lastOrderAt:String(o?.createdAt||''),lastOrderNum:String(o?.num||''),orders:0,spent:0});const c=grouped.get(key);if(o?.status!=='cancelled'){c.orders++;c.spent+=Number(o?.total||0);}if(String(o?.createdAt||'')>String(c.lastOrderAt||'')){c.lastOrderAt=String(o?.createdAt||'');c.lastOrderNum=String(o?.num||'');} }
+    return [...grouped.values()].sort((a,b)=>b.orders-a.orders||b.spent-a.spent);
+  }
+  function likelyCustomerQuery(text){const q=normalizeAiName(text);return /\b(client|commande|command[eé]|achete|depense|depens[eé]|derniere|dernier|ses commandes|son historique|qui est|combien de fois|combien.*depens|a deja commande|a déjà commandé|il|lui|ses|sa derniere|sa dernière|elle etait|elle était)\b/.test(q)||customerMatchesLocal(text).length>0;}
+  function prepareAiEntityContext(text,c){
+    const e=chatEntity(c),matches=customerMatchesLocal(text);
+    const out={customer:e.customer||null,domainResults:Array.isArray(e.domainResults)?e.domainResults:[],product:e.product||null,order:e.order||null};
+    if(matches.length>0)out.customer_query=String(matches[0].name||text).trim();
+    return out;
+  }
+  function domainSearchRequest(text){
+    const q=normalizeAiName(text);if(!/(cherche|recherche|trouve|disponib|domaine)/.test(q))return null;const tlds=[];if(/\.com\b|uniquement.*com|seulement.*com/.test(q))tlds.push('com');if(/\.sn\b|uniquement.*sn|seulement.*sn/.test(q))tlds.push('sn');let query=q.replace(/cherche[- ]moi|cherche|recherche|trouve|uniquement|seulement|les? disponibles?|disponibles?|un domaine pour mon restaurant|un domaine|des variantes?|seulement les?|uniquement les?/g,' ').replace(/\s+/g,' ').trim();if(!query)query=String(RESTAURANT?.name||RESTO_NAME||'restaurant');return {query,tlds};}
 
   async function callEdge(body){
     try{
@@ -11601,56 +11646,101 @@ function speakAiText(text,button){
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled'){
         return {success:false,error:data?.error||error?.message||'WRITE',human_message:String(data?.human_message||'La modification n’a pas pu être enregistrée.')};
       }
-      if(data?.human_message)return {success:true,answer:String(data.human_message),actions:[],chat_title:'TerangaResto'};
-      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
+      if(data?.human_message)return {success:true,answer:String(data.human_message),actions:[],chat_title:'Votre assistante'};
+      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'Votre assistante'};
     }catch(e){
       console.error('TerangaResto IA',e);
       if(body?.mode==='execute_action' || body?.mode==='set_ai_enabled') return {success:false,error:'ACCESS',human_message:'La modification n’a pas pu être enregistrée.'};
-      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'TerangaResto'};
+      return {success:false,answer:'Je souhaite vous apporter une réponse fiable. Pouvez-vous reformuler ou préciser votre demande ?',actions:[],chat_title:'Votre assistante'};
     }
   }
   async function ask(text){
-    const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')}));
-    const localContext=buildContext();
-    const result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,conversation_title:c.title||''});
-    const fallbackActions=localActionFallback(text);
-    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé la modification correspondante. Confirmez pour l’appliquer.';}
-    if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){
-      const qn=text.toLowerCase();
-      if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn)){
-        result.answer='En résumé : je peux vous conseiller sur vos ventes, vos produits, vos prix, votre livraison, votre menu et votre communication. Commencez par mettre en avant vos meilleures ventes, éviter les ruptures, proposer des formules simples et relancer vos clients avec des offres ciblées.';
-      }
+    const c=ensureChat(), messages=(c.messages||[]).slice(-60).map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.text||'')})), localContext=buildContext();
+    const entity_context=prepareAiEntityContext(text,c);
+    const domainReq=domainSearchRequest(text);
+    let result;
+    if(domainReq){
+      result=await callEdge({mode:'domain_search',restaurant_id:String(RESTAURANT?.id||''),query:domainReq.query,tlds:domainReq.tlds,entity_context});
+      if(Array.isArray(result?.domain_results))c.entity.domainResults=result.domain_results;
+      if(result?.answer){return result;}
     }
+    result=await callEdge({mode:'chat',question:text,message:text,restaurant_id:String(RESTAURANT?.id||''),restaurant_name:String(RESTAURANT?.name||RESTO_NAME||'TerangaResto'),user_id:String(currentUser?.id||''),messages,context:localContext,entity_context,conversation_title:c.title||''});
+    const fallbackActions=localActionFallback(text);
+    if((!Array.isArray(result.actions)||!result.actions.length)&&fallbackActions.length){result.actions=fallbackActions;result.answer='En résumé : j’ai compris votre demande et préparé les modifications correspondantes. Vérifiez-les puis confirmez pour les appliquer.';}
+    if(result?.customer_card){const card=result.customer_card;if(card.profile){c.entity.customer={name:card.profile.name,phone:card.profile.phone||'',key:card.profile.phone||card.profile.last_order_num||card.profile.name};c.entity.order=Array.isArray(card.profile.orders)&&card.profile.orders.length?card.profile.orders[0]:(card.profile.last_order||{num:card.profile.last_order_num||'',createdAt:card.profile.last_order_at||''});}else if(card.matches?.length===1)c.entity.customer={name:card.matches[0].name,phone:card.matches[0].phone,key:card.matches[0].phone||card.matches[0].key};else if(card.matches?.length>1){c.entity.customer=null;c.entity.order=null;}persistChats();}
+    if(!result.answer || /je n[’']ai pas cette information/i.test(String(result.answer))){const qn=text.toLowerCase();if(/augmenter|booster|vendre|clients|marketing|conseil/.test(qn))result.answer='En résumé : je peux vous conseiller sur vos ventes, vos produits, vos prix, votre livraison, votre menu et votre communication. Commencez par mettre en avant vos meilleures ventes, éviter les ruptures, proposer des formules simples et relancer vos clients avec des offres ciblées.';}
     return result;
   }
+
+  function formatCustomerProfileText(p){
+    const lines=[String(p?.name||'Client'),''];
+    lines.push(`${Number(p?.total_orders||0)} commande${Number(p?.total_orders||0)>1?'s':''}`);
+    lines.push(`${fmt(p?.total_spent||0)} dépensés`);
+    if(Number(p?.cancelled_orders||0)>0)lines.push(`${Number(p.cancelled_orders)} commande(s) annulée(s)`);
+    if(p?.first_order_at)lines.push(`Première commande : ${formatAiDateTime(p.first_order_at)}`);
+    if(p?.last_order_at)lines.push(`Dernière commande : ${formatAiDateTime(p.last_order_at)}`);
+    lines.push('');
+    for(const o of (Array.isArray(p?.orders)?p.orders:[])){
+      lines.push(`Commande #${String(o?.num||'')}`);
+      if(o?.createdAt)lines.push(formatAiDateTime(o.createdAt));
+      if(o?.type||o?.orderType||o?.deliveryMode)lines.push(`Type : ${String(o?.type||o?.orderType||o?.deliveryMode)}`);
+      if(o?.pay)lines.push(`Paiement : ${String(o.pay)}`);
+      if(o?.status)lines.push(`Statut : ${String(o.status)}`);
+      if(o?.table)lines.push(`Table : ${String(o.table)}`);
+      if(o?.address)lines.push(`Adresse : ${String(o.address)}`);
+      if(o?.notes)lines.push(`Notes : ${String(o.notes)}`);
+      const items=Array.isArray(o?.items)?o.items:[];
+      if(items.length){lines.push('Produits :');for(const it of items)lines.push(`${Number(it?.qty||0)} × ${String(it?.name||'Produit')}${it?.variant?` (${String(it.variant)})`:''} — ${fmt(it?.price||0)}`);}
+      lines.push(`Sous-total : ${fmt(o?.subtotal||0)}`);
+      lines.push(`Livraison : ${fmt(o?.deliveryFee||0)}`);
+      lines.push(`Total : ${fmt(o?.total||0)}`);
+      lines.push('');
+    }
+    return lines.join('\n').trim();
+  }
+
+  async function openCustomerDetailFromAssistant(name,phone,orderNum,index){
+    if(aiThinking)return;const c=ensureChat(),msgs=c.messages||[], target=Math.max(0,Math.min(index,msgs.length-1));
+    try{
+      const res=await callEdge({mode:'customer_detail',restaurant_id:String(RESTAURANT?.id||''),customer:{name,phone,order_num:orderNum}});
+      if(res?.success!==true||!res.customer_profile){setStatus('Aucun détail client correspondant n’a été trouvé.',true);return;}
+      const p=res.customer_profile,m=msgs[target];
+      if(m){m.text=formatCustomerProfileText(p);m.meta={...(m.meta||{}),customer:{name:p.name,key:phone||orderNum||name,phone:p.phone||phone,profile:p}};}
+      c.entity=chatEntity(c);c.entity.customer={name:p.name,phone:p.phone||phone,key:phone||orderNum||name};c.entity.order=Array.isArray(p.orders)&&p.orders.length?p.orders[0]:null;persistChats();renderAi(true);
+    }catch(e){console.warn('Assistant customer detail',e);setStatus('Les détails du client n’ont pas pu être récupérés.',true);}
+  }
+
   async function applyAction(a){
     const data=await callEdge({mode:'execute_action',restaurant_id:String(RESTAURANT?.id||''),action:a});
     return data;
   }
   function applyLocal(type,result){
     const d=result?.result||result?.data||result||{};
-    if(type==='update_product'||type==='create_product'){
-      const row=d?.data||d?.product||d; if(!row?.id)return;
-      const norm={id:String(row.id),name:String(row.name||''),desc:String(row.desc??row.description??''),price:Number(row.price||0),cat:String(row.cat??row.category??''),prep:Number(row.prep??15),active:row.active!==false,available:row.available!==false,stock:row.stock==null?null:Number(row.stock),threshold:row.threshold==null?null:Number(row.threshold),variants:Array.isArray(row.variants)?row.variants:[],variantsRequired:!!(row.variants_required??row.variantsRequired),photo:row.photo||null,photos:Array.isArray(row.gallery_photos)?row.gallery_photos:(row.photo?[row.photo]:[])};
-      const idx=PRODUCTS.findIndex(x=>String(x.id)===norm.id);if(idx>=0)PRODUCTS[idx]={...PRODUCTS[idx],...norm};else PRODUCTS.push(norm);
-    }else if(type==='update_hours' && Array.isArray(d.hours)){RESTAURANT.hours=d.hours;}
-    else if(['update_delivery_settings','create_delivery_zone','update_delivery_zone','remove_delivery_zone'].includes(type)&&d.delivery){RESTAURANT.delivery=d.delivery;}
+    const upsertProduct=row=>{if(!row?.id)return;const norm={id:String(row.id),name:String(row.name||''),desc:String(row.desc??row.description??''),price:Number(row.price||0),cat:String(row.cat??row.category??''),prep:Number(row.prep??15),active:row.active!==false,available:row.available!==false,stock:row.stock==null?null:Number(row.stock),threshold:row.threshold==null?null:Number(row.threshold),variants:Array.isArray(row.variants)?row.variants:[],variantsRequired:!!(row.variants_required??row.variantsRequired),photo:row.photo||null,photos:Array.isArray(row.gallery_photos)?row.gallery_photos:(row.photo?[row.photo]:[])};const i=PRODUCTS.findIndex(x=>String(x.id)===norm.id);if(i>=0)PRODUCTS[i]={...PRODUCTS[i],...norm};else PRODUCTS.push(norm);};
+    if(['update_product','create_product','adjust_stock','restock_product','update_variants','remove_gallery_photo'].includes(type))upsertProduct(d?.data||d?.product||d);
+    else if(type==='update_hours'&&Array.isArray(d.hours))RESTAURANT.hours=d.hours;
+    else if(['update_delivery_settings','create_delivery_zone','update_delivery_zone','remove_delivery_zone'].includes(type)&&d.delivery)RESTAURANT.delivery=d.delivery;
     else if(type==='update_restaurant_settings'&&d.id){RESTAURANT.name=d.name??RESTAURANT.name;RESTAURANT.type=d.type??RESTAURANT.type;RESTAURANT.city=d.city??RESTAURANT.city;RESTAURANT.phone=d.phone??RESTAURANT.phone;RESTAURANT.address=d.address??RESTAURANT.address;RESTAURANT.heroTitle=d.hero_title??RESTAURANT.heroTitle;RESTAURANT.heroSubtitle=d.hero_subtitle??RESTAURANT.heroSubtitle;applyRestaurantName(RESTAURANT.name);}
+    else if(type==='update_branding'&&d.id){RESTAURANT.logoDataUrl=d.logo_data_url??RESTAURANT.logoDataUrl;RESTAURANT.coverDataUrl=d.cover_data_url??RESTAURANT.coverDataUrl;RESTAURANT.heroTitle=d.hero_title??RESTAURANT.heroTitle;RESTAURANT.heroSubtitle=d.hero_subtitle??RESTAURANT.heroSubtitle;}
+    else if(type==='clear_logo'&&d.id){RESTAURANT.logoDataUrl=null;}
+    else if(type==='clear_cover'&&d.id){RESTAURANT.coverDataUrl=null;}
     else if(type==='update_payment_toggles'&&d.payment_toggles)state.toggles=d.payment_toggles;
     else if(type==='update_social'&&d.social)RESTAURANT.social=d.social;
+    else if(type==='remove_social'&&d.social)RESTAURANT.social=d.social;
     else if(type==='update_map'){if('show_map'in d)RESTAURANT.showMap=!!d.show_map;if('maps_link'in d)RESTAURANT.mapsLink=d.maps_link||'';}
     else if(type==='update_notifications'&&'notifications_enabled'in d)RESTAURANT.notificationsEnabled=!!d.notifications_enabled;
     else if(type==='publish_site'&&'is_published'in d)RESTAURANT.isPublished=!!d.is_published;
-    else if((type==='update_category'||type==='create_category')&&d.key){catsState[d.key]=d.label||catsState[d.key]||d.key;}
-    else if(type==='delete_category'&&d.key){delete catsState[d.key];}
-    else if((type==='update_staff'||type==='create_staff')&&d.id){const i=staffState.findIndex(s=>String(s.id)===String(d.id));if(i>=0)staffState[i]={...staffState[i],...d};else staffState.push(d);}
+    else if((type==='update_category'||type==='create_category')&&d.key)catsState[d.key]=d.label||catsState[d.key]||d.key;
+    else if(type==='delete_category'&&d.key)delete catsState[d.key];
+    else if(['update_staff','create_staff','invite_staff','resend_staff_invite','cancel_staff_invite','deactivate_staff'].includes(type)&&d.id){const i=staffState.findIndex(x=>String(x.id)===String(d.id));if(type==='cancel_staff_invite'){if(i>=0)staffState.splice(i,1);}else if(i>=0)staffState[i]={...staffState[i],...d};else staffState.push(d);}
     else if(type==='delete_staff'&&d.id){const i=staffState.findIndex(s=>String(s.id)===String(d.id));if(i>=0)staffState.splice(i,1);}
     else if(type==='update_gallery'&&d.social){RESTAURANT.social=d.social;try{RESTAURANT.galleryPhotos=Array.isArray(d.social.galleryPhotos)?d.social.galleryPhotos:RESTAURANT.galleryPhotos;}catch(e){}}
     else if(type==='update_order_status'&&d.id){const i=DEMO_ORDERS.findIndex(o=>String(o.id)===String(d.id));if(i>=0)DEMO_ORDERS[i]={...DEMO_ORDERS[i],status:d.status,payStatus:d.pay_status??DEMO_ORDERS[i].payStatus};}
+    else if(type==='delete_review'&&d.id){const i=REVIEWS.findIndex(r=>String(r.id)===String(d.id));if(i>=0)REVIEWS.splice(i,1);}
   }
 
   function refreshAfter(type){
-    if(type.startsWith('update_')||type.includes('delivery')||type==='create_product'||type==='delete_product'||type==='create_category'||type==='delete_category'||type==='create_staff'||type==='delete_staff'){
+    if(type.startsWith('update_')||type.includes('delivery')||['create_product','delete_product','adjust_stock','restock_product','update_variants','remove_gallery_photo','create_category','delete_category','create_staff','delete_staff','invite_staff','resend_staff_invite','cancel_staff_invite','deactivate_staff','update_order_status','delete_review','clear_logo','clear_cover','update_branding','update_payment_toggles','update_social','remove_social','update_map','update_notifications','publish_site'].includes(type)){
       try{renderDashSection(state.dashSection);}catch(e){}
       try{if(state.view==='storefront'){renderProductSections();renderStorefrontHero();}}catch(e){}
     }
@@ -11664,10 +11754,11 @@ function speakAiText(text,button){
       for(const a of actions){
         const res=await applyAction(a);
         if(res?.success!==true) throw new Error(String(res?.error||'WRITE'));
+        if(res?.verification && res.verification.verified===false) throw new Error('VERIFY');
         applyLocal(a.type,res);
         refreshAfter(a.type);
       }
-      addMessage('assistant',actions.length===1?'✅ Modification enregistrée avec succès.':'✅ Modifications enregistrées avec succès.');
+      addMessage('assistant',actions.length===1?'✅ Modification enregistrée et vérifiée.':'✅ Modifications enregistrées et vérifiées.');
       renderAi(true);
       // Le bandeau de traitement ne doit être visible que pendant le traitement.
       setStatus('',false);
@@ -11681,10 +11772,10 @@ function speakAiText(text,button){
     }finally{aiThinking=false;busy(false);}
   }
 
-  function addAssistantAnimated(text){
+  function addAssistantAnimated(text,meta=null){
     const c=ensureChat();
     c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
-    const m={role:'assistant',text:''};
+    const m={role:'assistant',text:'',...(meta?{meta}: {})};
     c.messages.push(m);c.updatedAt=Date.now();renderAi(true);
     const list=document.getElementById('tgAiMessages');
     const nodes=list?.querySelectorAll('.tg-ai-msg.ai');
@@ -11707,7 +11798,10 @@ function speakAiText(text,button){
     e.preventDefault();if(aiThinking)return;
     const input=document.getElementById('tgAiInput'), text=String(input?.value||'').trim();if(!text)return;
     const c=ensureChat();if(!(c.messages||[]).some(m=>m.role==='user'))c.title=titleFallback(text);
-    addMessage('user',text);if(input)input.value='';aiThinking=true;busy(true);
+    addMessage('user',text);if(input)input.value='';
+    const confirmation=/^(oui|oui\.|ok|d'accord|daccord|confirme|confirmer|c’est bon|c est bon)$/i.test(text),rejection=/^(non|non\.|annule|annuler)$/i.test(text);
+    if(pendingActions?.length&&(confirmation||rejection)){if(rejection){pendingActions=null;await addAssistantAnimated('D’accord, aucune modification n’a été appliquée.');renderAi(true);return;}await confirmActions();return;}
+    aiThinking=true;busy(true);
     const startedAt=performance.now();
     const long=text.length>120?'Je réfléchis à votre demande…':'Je réfléchis…';setStatus(`<span class="tg-ai-thinking">${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>`,true);renderAi(true);setLiveProcessing(`<span class="tg-ai-thinking">✨ ${long} <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span><small>Je prépare votre réponse.</small>`,true);
     try{
@@ -11719,7 +11813,7 @@ function speakAiText(text,button){
       // a bien été prise en charge.
       const elapsed=performance.now()-startedAt, wait=Math.max(0,420-elapsed);
       if(wait) await new Promise(r=>setTimeout(r,wait));
-      await addAssistantAnimated(String(result.answer||'Je vais vous aider à partir des informations disponibles.'));
+      await addAssistantAnimated(String(result.answer||'Je vais vous aider à partir des informations disponibles.'),result.customer_card||result.domain_results?{...(result.customer_card?{customer:result.customer_card}:{}),...(Array.isArray(result.domain_results)?{domain:result.domain_results}:{} )}:null);
       // Fin du traitement : le bandeau disparaît immédiatement.
       setStatus('',false);setLiveProcessing('',false);renderAi(true);
     }catch(err){
@@ -11782,7 +11876,7 @@ function speakAiText(text,button){
   function syncVisibility(){ syncAiVisibility(); }
   function showAi(){
     if(!currentUser||!viewerIsStaff||state.view!=='dashboard'||!enabled()||isAccessBlocked())return;
-    let b=document.getElementById('tgAiFloating');if(!b){b=document.createElement('button');b.id='tgAiFloating';b.className='tg-ai-floating';b.type='button';b.title='Ouvrir / fermer l’IA';b.setAttribute('aria-label','Ouvrir / fermer l’IA');b.innerHTML=aiSvg();b.onclick=toggleAi;document.body.appendChild(b);}b.setAttribute('aria-expanded',aiOpen?'true':'false');
+    let b=document.getElementById('tgAiFloating');if(!b){b=document.createElement('button');b.id='tgAiFloating';b.className='tg-ai-floating';b.type='button';b.title='Ouvrir / fermer votre assistante';b.setAttribute('aria-label','Ouvrir / fermer votre assistante');b.innerHTML=aiSvg();b.onclick=toggleAi;document.body.appendChild(b);}b.setAttribute('aria-expanded',aiOpen?'true':'false');
   }
 
   window.toggleTerangaAI=toggleTerangaAI;window.openAi=openAi;window.closeAi=closeAi;window.toggleAi=toggleAi;window.syncAiVisibility=syncAiVisibility;
