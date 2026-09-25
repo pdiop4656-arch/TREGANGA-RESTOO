@@ -2515,8 +2515,8 @@ async function loadRestaurantSecondaryData(restaurantId){
 
   DEMO_ORDERS.length = 0;
   ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
-    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? o.table_number ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', items:o.items,
-    total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? o.table_number ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', deliveryZone:o.deliveryZone ?? o.delivery_zone ?? '', items:o.items,
+    subtotal:Number(o.subtotal||0), deliveryFee:Number(o.deliveryFee ?? o.delivery_fee ?? 0), total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
     createdAt:new Date(o.created_at),
   }));
 
@@ -11409,10 +11409,10 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
   function buildStats(orders){
     const valid=orders.filter(o=>o.status!=='cancelled'), sum=a=>a.reduce((s,o)=>s+Number(o.total||0),0), now=new Date();
-    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()), startYesterday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1), startWeek=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)), startPrevWeek=new Date(startWeek);startPrevWeek.setDate(startPrevWeek.getDate()-7);const endPrevWeek=new Date(startWeek), startMonth=new Date(now.getFullYear(),now.getMonth(),1), startPrevMonth=new Date(now.getFullYear(),now.getMonth()-1,1), endPrevMonth=new Date(startMonth), startYear=new Date(now.getFullYear(),0,1);endPrevWeek.setDate(endPrevWeek.getDate()-7);endPrevMonth.setDate(endPrevMonth.getDate()-1);
+    const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()), startYesterday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1), startWeek=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)), startPrevWeek=new Date(startWeek);startPrevWeek.setDate(startPrevWeek.getDate()-7);const endPrevWeek=new Date(startWeek), startMonth=new Date(now.getFullYear(),now.getMonth(),1), startPrevMonth=new Date(now.getFullYear(),now.getMonth()-1,1), endPrevMonth=new Date(startMonth), startYear=new Date(now.getFullYear(),0,1);
     const inRange=(o,a,b=null)=>{const d=new Date(o.createdAt);return !Number.isNaN(d.getTime())&&d>=a&&(!b||d<b)};
     const byMonth={},byYear={},byDay={},productQty={},productRevenue={},payment={},typeDist={},clientAgg={};
-    valid.forEach(o=>{const d=new Date(o.createdAt);if(!Number.isNaN(d.getTime())){const m=d.toISOString().slice(0,7),y=d.getFullYear(),day=d.toISOString().slice(0,10);byMonth[m]=(byMonth[m]||0)+Number(o.total||0);byYear[y]=(byYear[y]||0)+Number(o.total||0);byDay[day]=(byDay[day]||0)+Number(o.total||0);}const pk=o.pay||'non_précisé';payment[pk]=(payment[pk]||0)+1;const tk=o.orderType||o.deliveryMode||o.type||'non_précisé';typeDist[tk]=(typeDist[tk]||0)+1;const ck=(o.phone||o.client||'').trim();if(ck){clientAgg[ck]??={name:o.client||ck,phone:o.phone||'',orders:0,spent:0};clientAgg[ck].orders++;clientAgg[ck].spent+=Number(o.total||0);}for(const it of o.items||[]){const n=String(it.name||'').trim();if(!n)continue;const q=Number(it.qty||1);productQty[n]=(productQty[n]||0)+q;productRevenue[n]=(productRevenue[n]||0)+Number(it.price||0)*q;}});
+    valid.forEach(o=>{const d=new Date(o.createdAt);if(!Number.isNaN(d.getTime())){const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,y=d.getFullYear(),day=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;byMonth[m]=(byMonth[m]||0)+Number(o.total||0);byYear[y]=(byYear[y]||0)+Number(o.total||0);byDay[day]=(byDay[day]||0)+Number(o.total||0);}const pk=o.pay||'non_précisé';payment[pk]=(payment[pk]||0)+1;const tk=o.orderType||o.deliveryMode||o.type||'non_précisé';typeDist[tk]=(typeDist[tk]||0)+1;const ck=(o.phone||o.client||'').trim();if(ck){clientAgg[ck]??={name:o.client||ck,phone:o.phone||'',orders:0,spent:0};clientAgg[ck].orders++;clientAgg[ck].spent+=Number(o.total||0);}for(const it of o.items||[]){const n=String(it.name||'').trim();if(!n)continue;const q=Number(it.qty||1);productQty[n]=(productQty[n]||0)+q;productRevenue[n]=(productRevenue[n]||0)+Number(it.price||0)*q;}});
     const productSales=Object.keys(productQty).map(name=>({name,quantity:productQty[name],revenue:Math.round(productRevenue[name]||0)}));
     const top=productSales.slice().sort((a,b)=>b.quantity-a.quantity||b.revenue-a.revenue), least=productSales.slice().sort((a,b)=>a.quantity-b.quantity||a.revenue-b.revenue);
     const topClients=Object.values(clientAgg).sort((a,b)=>b.orders-a.orders||b.spent-a.spent).slice(0,50), topSpenders=Object.values(clientAgg).sort((a,b)=>b.spent-a.spent).slice(0,50);
@@ -11432,6 +11432,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   function scrollBottom(){const l=document.getElementById('tgAiMessages');if(l)requestAnimationFrame(()=>{l.scrollTop=l.scrollHeight;});}
 
   let activeSpeechButton=null;
+  let customerDetailBusy=false;
   function stopAiSpeech(){try{window.speechSynthesis?.cancel();}catch(e){}if(activeSpeechButton){activeSpeechButton.textContent='🔊';activeSpeechButton.classList.remove('active');activeSpeechButton.title='Lire la réponse';activeSpeechButton=null;}}
   function cleanAiSpeechText(text){
   let s=String(text||'');
@@ -11483,8 +11484,8 @@ function speakAiText(text,button){
     return `<div class="tg-ai-action" id="tgAiPendingAction"><div class="tg-ai-action-title">Confirmation requise</div><div class="tg-ai-action-list">${pendingActions.map(a=>`<div class="tg-ai-action-item"><strong>${esc(actionTitle(a))}</strong><span>${esc(a.summary||describeAction(a))}</span></div>`).join('')}</div><div class="tg-ai-action-actions"><button type="button" data-ai-action="cancel">Annuler</button><button type="button" class="primary" data-ai-action="confirm">Confirmer</button></div></div>`;
   }
   function actionTitle(a){
-    const n=a.product_name||a.name||a.day_label||a.network||'Modification';
-    const map={create_product:'Ajouter un produit',update_product:'Modifier un produit',delete_product:'Supprimer un produit',update_hours:'Modifier les horaires',update_delivery_settings:'Modifier la livraison',create_delivery_zone:'Ajouter une zone de livraison',update_delivery_zone:'Modifier une zone de livraison',remove_delivery_zone:'Supprimer une zone de livraison',update_restaurant_settings:'Modifier les informations du restaurant',update_branding:'Modifier la présentation du site',update_payment_toggles:'Modifier les moyens de paiement',update_social:'Modifier un réseau social',update_map:'Modifier Google Maps',update_notifications:'Modifier les notifications',publish_site:'Modifier la publication du site',update_category:'Modifier une catégorie',update_staff:'Modifier le personnel',create_staff:'Ajouter un membre du personnel',delete_staff:'Supprimer un membre du personnel',update_order_status:'Modifier le statut d’une commande',update_gallery:'Modifier les photos du site'};
+    const n=a.product_name||a.name||a.day_label||a.network||a.domain||'';
+    const map={create_product:'Ajouter un produit',update_product:'Modifier un produit',delete_product:'Supprimer un produit',adjust_stock:'Modifier le stock',restock_product:'Réapprovisionner un produit',update_variants:'Modifier les variantes',remove_gallery_photo:'Supprimer une photo produit',update_hours:'Modifier les horaires',update_delivery_settings:'Modifier la livraison',create_delivery_zone:'Ajouter une zone de livraison',update_delivery_zone:'Modifier une zone de livraison',remove_delivery_zone:'Supprimer une zone de livraison',update_restaurant_settings:'Modifier les informations du restaurant',update_branding:'Modifier la présentation du site',clear_logo:'Supprimer le logo',clear_cover:'Supprimer la couverture',update_payment_toggles:'Modifier les moyens de paiement',update_social:'Modifier un réseau social',remove_social:'Supprimer un réseau social',update_map:'Modifier Google Maps',update_notifications:'Modifier les notifications',publish_site:'Modifier la publication du site',set_ai_enabled:'Modifier l’assistant IA',share_qr:'Partager le QR code',update_category:'Modifier une catégorie',create_category:'Ajouter une catégorie',delete_category:'Supprimer une catégorie',update_staff:'Modifier le personnel',create_staff:'Ajouter un membre du personnel',delete_staff:'Supprimer un membre du personnel',invite_staff:'Inviter un membre du personnel',resend_staff_invite:'Renvoyer l’invitation',cancel_staff_invite:'Annuler l’invitation',deactivate_staff:'Désactiver un membre du personnel',update_order_status:'Modifier le statut d’une commande',update_gallery:'Modifier les photos du site',delete_review:'Supprimer un avis',request_notification_email:'Demander la vérification de l’email',verify_notification_email:'Vérifier l’email',search_domain:'Rechercher un domaine',purchase_domain:'Acheter un domaine',renew_domain:'Renouveler le domaine',start_subscription_checkout:'Démarrer l’abonnement',cancel_subscription:'Annuler l’abonnement',reactivate_subscription:'Réactiver l’abonnement'};
     return `${map[a.type]||'Modification'}${n?` — ${n}`:''}`;
   }
   function describeAction(a){return a.summary||'';}
@@ -11543,16 +11544,18 @@ function speakAiText(text,button){
 
   function normalizeAction(a){
     if(!a||typeof a!=='object')return null;const type=String(a.type||'').trim();if(!type)return null;const common={type,summary:String(a.summary||'').trim()};if(!common.summary)return null;
-    const boolOrNull=v=>v==null?null:Boolean(v), numOrNull=v=>v==null?null:Number(v);
-    if(type==='create_product')return {...common,source_template:String(a.source_template||''),template_snapshot:a.template_snapshot||null,name:String(a.name||''),description:a.description==null?'':String(a.description),price:Number(a.price),category:String(a.category||''),category_label:String(a.category_label||''),prep:Number(a.prep??15),stock:Number(a.stock),threshold:Number(a.threshold??5),active:a.active!==false,available:a.available!==false,variants:Array.isArray(a.variants)?a.variants:[],variants_required:a.variants_required==null?false:Boolean(a.variants_required),photo_data_url:a.photo_data_url||null,gallery_photos:Array.isArray(a.gallery_photos)?a.gallery_photos:[]};
+    const boolish=(v,fallback)=>{if(v==null)return fallback;if(typeof v==='boolean')return v;if(typeof v==='number')return v!==0;const x=String(v).trim().toLowerCase();if(['true','1','oui','yes','on'].includes(x))return true;if(['false','0','non','no','off'].includes(x))return false;return fallback;};
+    const boolOrNull=v=>v==null?null:boolish(v,false);
+    const numOrNull=v=>{if(v==null||String(v).trim()==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;};
+    if(type==='create_product')return {...common,source_template:String(a.source_template||''),template_snapshot:a.template_snapshot||null,name:String(a.name||''),description:a.description==null?'':String(a.description),price:Number(a.price),category:String(a.category||''),category_label:String(a.category_label||''),prep:Number(a.prep??15),stock:Number(a.stock),threshold:Number(a.threshold??5),active:boolish(a.active,true),available:boolish(a.available,true),variants:Array.isArray(a.variants)?a.variants:[],variants_required:boolish(a.variants_required,false),photo_data_url:a.photo_data_url||null,gallery_photos:Array.isArray(a.gallery_photos)?a.gallery_photos:[]};
     if(type==='update_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||a.name||''),changes:{name:a.changes?.name==null?null:String(a.changes.name),description:a.changes?.description==null?null:String(a.changes.description),price:numOrNull(a.changes?.price),category:a.changes?.category==null?null:String(a.changes.category),prep:numOrNull(a.changes?.prep),active:boolOrNull(a.changes?.active),available:boolOrNull(a.changes?.available),stock:numOrNull(a.changes?.stock),threshold:numOrNull(a.changes?.threshold),variants:Array.isArray(a.changes?.variants)?a.changes.variants:null,variants_required:boolOrNull(a.changes?.variants_required),photo_data_url:a.changes?.photo_data_url||null,gallery_photos:Array.isArray(a.changes?.gallery_photos)?a.changes.gallery_photos:null}};
     if(type==='delete_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||'')};
     if(type==='adjust_stock'||type==='restock_product')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||a.name||''),quantity:Number(a.quantity??a.amount??a.delta),mode:String(a.mode||'add').toLowerCase()==='set'?'set':'add'};
     if(type==='update_variants')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||''),operation:['add','update','remove','replace'].includes(String(a.operation||'add').toLowerCase())?String(a.operation||'add').toLowerCase():'add',variants:Array.isArray(a.variants)?a.variants:[],variants_required:boolOrNull(a.variants_required)};
     if(type==='remove_gallery_photo')return {...common,product_id:String(a.product_id||''),product_name:String(a.product_name||''),index:a.index==null?null:Number(a.index),photo:a.photo==null?null:String(a.photo)};
-    if(type==='update_hours')return {...common,day_index:Number(a.day_index),day_label:String(a.day_label||''),open:Boolean(a.open),from:String(a.from||''),to:String(a.to||'')};
+    if(type==='update_hours')return {...common,day_index:Number(a.day_index),day_label:String(a.day_label||''),open:boolish(a.open,false),from:String(a.from||''),to:String(a.to||'')};
     if(type==='update_delivery_settings')return {...common,enabled:boolOrNull(a.enabled),fee:numOrNull(a.fee),min:numOrNull(a.min),own_enabled:boolOrNull(a.own_enabled),own_cash_on_delivery:boolOrNull(a.own_cash_on_delivery),express_enabled:boolOrNull(a.express_enabled),express_fee:numOrNull(a.express_fee)};
-    if(type==='create_delivery_zone')return {...common,name:String(a.name||''),fee:numOrNull(a.fee)??0,enabled:a.enabled!==false};
+    if(type==='create_delivery_zone')return {...common,name:String(a.name||''),fee:numOrNull(a.fee)??0,enabled:boolish(a.enabled,true)};
     if(type==='update_delivery_zone')return {...common,zone_id:String(a.zone_id||''),name:a.name==null?null:String(a.name),fee:numOrNull(a.fee),enabled:boolOrNull(a.enabled)};
     if(type==='remove_delivery_zone')return {...common,zone_id:String(a.zone_id||'')};
     if(type==='update_restaurant_settings')return {...common,name:a.name==null?null:String(a.name),type_name:a.type_name==null?null:String(a.type_name),city:a.city==null?null:String(a.city),phone:a.phone==null?null:String(a.phone),address:a.address==null?null:String(a.address),hero_title:a.hero_title==null?null:String(a.hero_title),hero_subtitle:a.hero_subtitle==null?null:String(a.hero_subtitle),order_notification_email:a.order_notification_email==null?null:String(a.order_notification_email)};
@@ -11562,9 +11565,9 @@ function speakAiText(text,button){
     if(type==='update_social')return {...common,network:String(a.network||'').toLowerCase(),enabled:boolOrNull(a.enabled),value:a.value==null?null:String(a.value)};
     if(type==='remove_social')return {...common,network:String(a.network||'').toLowerCase()};
     if(type==='update_map')return {...common,show_map:boolOrNull(a.show_map),maps_link:a.maps_link==null?null:String(a.maps_link)};
-    if(type==='update_notifications')return {...common,enabled:Boolean(a.enabled)};
-    if(type==='publish_site')return {...common,published:Boolean(a.published)};
-    if(type==='set_ai_enabled')return {...common,enabled:Boolean(a.enabled)};
+    if(type==='update_notifications')return {...common,enabled:boolish(a.enabled,false)};
+    if(type==='publish_site')return {...common,published:boolish(a.published,false)};
+    if(type==='set_ai_enabled')return {...common,enabled:boolish(a.enabled,false)};
     if(type==='update_category')return {...common,category_key:String(a.category_key||''),label:a.label==null?null:String(a.label),visible_on_home:boolOrNull(a.visible_on_home),sort_order:numOrNull(a.sort_order)};
     if(type==='create_category')return {...common,key:String(a.key||''),label:String(a.label||''),visible_on_home:a.visible_on_home!==false,sort_order:a.sort_order==null?0:Number(a.sort_order)};
     if(type==='delete_category')return {...common,category_key:String(a.category_key||''),category_label:String(a.category_label||'')};
@@ -11620,7 +11623,7 @@ function speakAiText(text,button){
   }
 
 
-  function normalizeAiName(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();}
+  function normalizeAiName(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/^[\s.,!?;:]+|[\s.,!?;:]+$/g,'').replace(/\s+/g,' ').trim();}
   function customerMatchesLocal(query){
     const q=normalizeAiName(query), orders=Array.isArray(DEMO_ORDERS)?DEMO_ORDERS:[], grouped=new Map();
     for(const o of orders){const name=normalizeAiName(o?.client);if(!name||q!==name)continue;const key=String(o?.phone||name);if(!grouped.has(key))grouped.set(key,{key,name:String(o?.client||''),phone:String(o?.phone||''),firstOrderNum:String(o?.num||''),lastOrderAt:String(o?.createdAt||''),lastOrderNum:String(o?.num||''),orders:0,spent:0});const c=grouped.get(key);if(o?.status!=='cancelled'){c.orders++;c.spent+=Number(o?.total||0);}if(String(o?.createdAt||'')>String(c.lastOrderAt||'')){c.lastOrderAt=String(o?.createdAt||'');c.lastOrderNum=String(o?.num||'');} }
@@ -11634,7 +11637,19 @@ function speakAiText(text,button){
     return out;
   }
   function domainSearchRequest(text){
-    const q=normalizeAiName(text);if(!/(cherche|recherche|trouve|disponib|domaine)/.test(q))return null;const tlds=[];if(/\.com\b|uniquement.*com|seulement.*com/.test(q))tlds.push('com');if(/\.sn\b|uniquement.*sn|seulement.*sn/.test(q))tlds.push('sn');let query=q.replace(/cherche[- ]moi|cherche|recherche|trouve|uniquement|seulement|les? disponibles?|disponibles?|un domaine pour mon restaurant|un domaine|des variantes?|seulement les?|uniquement les?/g,' ').replace(/\s+/g,' ').trim();if(!query)query=String(RESTAURANT?.name||RESTO_NAME||'restaurant');return {query,tlds};}
+    const q=normalizeAiName(text);
+    const hasSearchVerb=/(cherche|recherche|trouve)/.test(q);
+    const hasAvailabilityIntent=/disponib/.test(q);
+    const hasAvailabilityTarget=/(\.com\b|\.sn\b|quel(?:s)? domaine|domaine .*pour|disponib.*pour)/.test(q);
+    const hasDomainTarget=/(\bdomaine\b|\.com\b|\.sn\b|nom de domaine)/.test(q);
+    if(!hasDomainTarget||(!hasSearchVerb&&!(hasAvailabilityIntent&&hasAvailabilityTarget)))return null;
+    const tlds=[];
+    if(/\.com\b|uniquement.*com|seulement.*com/.test(q))tlds.push('com');
+    if(/\.sn\b|uniquement.*sn|seulement.*sn/.test(q))tlds.push('sn');
+    let query=q.replace(/cherche[- ]moi|cherche|recherche|trouve|uniquement|seulement|les? disponibles?|disponibles?|un domaine pour mon restaurant|un domaine|des variantes?|seulement les?|uniquement les?/g,' ').replace(/\s+/g,' ').trim();
+    if(!query)query=String(RESTAURANT?.name||RESTO_NAME||'restaurant');
+    return {query,tlds};
+  }
 
   async function callEdge(body){
     try{
@@ -11730,6 +11745,7 @@ function speakAiText(text,button){
     else if(type==='update_map'){if('show_map'in d)RESTAURANT.showMap=!!d.show_map;if('maps_link'in d)RESTAURANT.mapsLink=d.maps_link||'';}
     else if(type==='update_notifications'&&'notifications_enabled'in d)RESTAURANT.notificationsEnabled=!!d.notifications_enabled;
     else if(type==='publish_site'&&'is_published'in d)RESTAURANT.isPublished=!!d.is_published;
+    else if(type==='set_ai_enabled'&&'ai_enabled'in d){RESTAURANT.aiEnabled=!!d.ai_enabled;saveEnabledLocal(RESTAURANT.aiEnabled);}
     else if((type==='update_category'||type==='create_category')&&d.key)catsState[d.key]=d.label||catsState[d.key]||d.key;
     else if(type==='delete_category'&&d.key)delete catsState[d.key];
     else if(['update_staff','create_staff','invite_staff','resend_staff_invite','cancel_staff_invite','deactivate_staff'].includes(type)&&d.id){const i=staffState.findIndex(x=>String(x.id)===String(d.id));if(type==='cancel_staff_invite'){if(i>=0)staffState.splice(i,1);}else if(i>=0)staffState[i]={...staffState[i],...d};else staffState.push(d);}
@@ -11749,6 +11765,7 @@ function speakAiText(text,button){
   async function confirmActions(){
     if(!pendingActions?.length||aiThinking)return;
     const actions=[...pendingActions];pendingActions=null;aiThinking=true;busy(true);
+    let completed=0;
     setLiveProcessing('<span class="tg-ai-thinking">⚙️ Application des modifications… <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span><small>Veuillez patienter.</small>',true);setStatus('<span class="tg-ai-thinking">Application des modifications <span class="tg-ai-thinking-dots"><i></i><i></i><i></i></span></span>',true);
     try{
       for(const a of actions){
@@ -11757,21 +11774,29 @@ function speakAiText(text,button){
         if(res?.verification && res.verification.verified===false) throw new Error('VERIFY');
         applyLocal(a.type,res);
         refreshAfter(a.type);
+        completed++;
       }
+      try{await loadRestaurantIntoState(String(RESTAURANT?.id||''));}catch(refreshErr){console.warn('AI authoritative refresh',refreshErr);}
       addMessage('assistant',actions.length===1?'✅ Modification enregistrée et vérifiée.':'✅ Modifications enregistrées et vérifiées.');
       renderAi(true);
-      // Le bandeau de traitement ne doit être visible que pendant le traitement.
       setStatus('',false);
       setLiveProcessing('',false);
     }catch(err){
       console.error('ai action',err);
-      addMessage('assistant','❌ La modification n’a pas pu être enregistrée.');
+      pendingActions=actions.slice(Math.max(0,completed));
+      try{await loadRestaurantIntoState(String(RESTAURANT?.id||''));}catch(refreshErr){console.warn('AI partial refresh',refreshErr);}
+      if(completed>0){
+        const failed=actions.length-completed;
+        const msg=failed===1?`⚠️ ${completed} modification${completed>1?'s':''} enregistrée${completed>1?'s':''}. La suivante n’a pas pu être enregistrée. Elle reste prête à être retentée.`:`⚠️ ${completed} modification${completed>1?'s':''} enregistrée${completed>1?'s':''}. ${failed} modification${failed>1?'s':''} n’ont pas pu être enregistrées. Elles restent prêtes à être retentées.`;
+        addMessage('assistant',msg);
+      }else{
+        addMessage('assistant','❌ La modification n’a pas pu être enregistrée. Elle reste prête à être retentée.');
+      }
       renderAi(true);
-      setStatus('<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
-      setLiveProcessing('<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
+      setStatus(completed>0?'<strong>⚠️ Traitement partiel : certaines modifications ont été enregistrées.</strong>':'<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
+      setLiveProcessing(completed>0?'<strong>⚠️ Traitement partiel : certaines modifications ont été enregistrées.</strong>':'<strong>❌ La modification n’a pas pu être enregistrée.</strong>',true);
     }finally{aiThinking=false;busy(false);}
   }
-
   function addAssistantAnimated(text,meta=null){
     const c=ensureChat();
     c.messages=(c.messages||[]).slice(-MAX_MESSAGES_PER_CHAT+1);
@@ -11829,7 +11854,10 @@ function speakAiText(text,button){
     aiRecognition=new C();aiRecognition.lang='fr-FR';aiRecognition.interimResults=false;aiRecognition.maxAlternatives=1;
     aiRecognition.onstart=()=>{aiListening=true;mic?.classList.add('recording');setStatus('Parlez…',true)};
     aiRecognition.onresult=e=>{const v=String(e.results?.[0]?.[0]?.transcript||'').trim();const i=document.getElementById('tgAiInput');if(i&&v){const before=String(i.value||'').trim();i.value=before?(before+' '+v):v;i.focus();try{i.setSelectionRange(i.value.length,i.value.length);}catch(_e){}}};
-    aiRecognition.onerror=()=>setStatus('',false);aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');setStatus('',false)};aiRecognition.start();
+    aiRecognition.onerror=()=>{aiListening=false;mic?.classList.remove('recording');setStatus('La saisie vocale n’a pas pu démarrer.',true);};
+    aiRecognition.onend=()=>{aiListening=false;mic?.classList.remove('recording');setStatus('',false)};
+    try{aiRecognition.start();}catch(e){aiListening=false;mic?.classList.remove('recording');setStatus('La saisie vocale n’a pas pu démarrer.',true);}
+
   }
 
   function openAi(){if(!enabled()||!currentUser||!viewerIsStaff)return;migrateChats();aiOpen=true;renderAi(true);}
@@ -11854,12 +11882,12 @@ function speakAiText(text,button){
       RESTAURANT.aiEnabled=Boolean(data.ai_enabled);
       saveEnabledLocal(RESTAURANT.aiEnabled);
     }catch(e){
-      // Le choix explicite du restaurateur reste l'état local actif : une erreur
-      // réseau/écriture ne doit jamais réactiver ou désactiver l'IA à sa place.
-      RESTAURANT.aiEnabled=next;
-      saveEnabledLocal(next);
-      if(toggle){toggle.classList.toggle('on',next);toggle.setAttribute('aria-checked',next?'true':'false');}
-      if(next)showAi();else{closeAi();syncVisibility();}
+      // En cas d’échec d’écriture, l’état local revient à la dernière valeur connue
+      // afin d’éviter une IA affichée différemment de l’état enregistré.
+      RESTAURANT.aiEnabled=previous;
+      saveEnabledLocal(previous);
+      if(toggle){toggle.classList.toggle('on',previous);toggle.setAttribute('aria-checked',previous?'true':'false');}
+      if(previous)showAi();else{closeAi();syncVisibility();}
       console.warn('ai_enabled',e);
     }
   }
