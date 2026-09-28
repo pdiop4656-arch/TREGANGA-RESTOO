@@ -402,6 +402,37 @@ button,a,input,select,textarea{font-family:inherit;}
 }
 </style>
 
+
+<style id="teranga-multi-restaurant-checklist-css">
+.tr-restaurant-switcher{display:flex;align-items:center;gap:6px;max-width:min(50vw,430px);min-width:0;}
+.tr-restaurant-switcher select{height:32px;max-width:210px;min-width:0;border:1px solid var(--cream-line);background:var(--surface);border-radius:9px;padding:0 26px 0 9px;font-size:11px;font-weight:700;color:var(--ink);text-overflow:ellipsis;}
+.tr-single-restaurant{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700;color:var(--ink-soft);}
+.tr-add-restaurant-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--cream-line);background:var(--surface);color:var(--ink-soft);border-radius:9px;padding:7px 8px;font-size:10px;font-weight:700;white-space:nowrap;}
+.tr-setup-card{background:var(--surface);border:1px solid var(--cream-line);border-radius:20px;padding:17px 17px 13px;margin:0 0 18px;box-shadow:0 8px 28px rgba(43,24,16,.055);}
+.tr-setup-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.tr-setup-eyebrow{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);margin-bottom:3px;}
+.tr-setup-card h2{font-size:19px;margin:0;}
+.tr-setup-subtitle{font-size:12px;color:var(--ink-soft);line-height:1.45;margin-top:4px;max-width:700px;}
+.tr-setup-close{width:30px;height:30px;border-radius:999px;border:1px solid var(--cream-line);background:var(--surface);color:var(--ink-soft);display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;flex:0 0 30px;}
+.tr-setup-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:14px;}
+.tr-setup-step{display:flex;align-items:center;gap:8px;text-align:left;width:100%;border:1px solid var(--cream-line);background:rgba(255,255,255,.65);border-radius:12px;padding:9px 10px;color:var(--ink);min-width:0;}
+.tr-setup-step.done{background:rgba(31,107,69,.045);}
+.tr-setup-step-icon{width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex:0 0 22px;border:1px solid var(--cream-line);color:var(--ink-faint);font-size:13px;}
+.tr-setup-step.done .tr-setup-step-icon{border-color:rgba(31,107,69,.18);background:rgba(31,107,69,.08);}
+.tr-setup-step-label{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden;}
+.tr-setup-step-label strong{font-size:11.3px;line-height:1.3;overflow-wrap:anywhere;}
+.tr-setup-step-label span{font-size:10px;color:var(--forest);font-weight:700;}
+.tr-setup-footer{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px solid var(--cream-line);}
+.tr-setup-hint{font-size:10.5px;color:var(--ink-faint);}
+.tr-restaurant-list-card{border:1px solid var(--cream-line);border-radius:16px;padding:14px 15px;margin-bottom:15px;background:var(--surface);}
+.tr-restaurant-list-title{font-size:12.5px;font-weight:800;}
+.tr-restaurant-list-sub{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+.tr-restaurant-settings-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.tr-restaurant-row{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%;text-align:left;border:1px solid var(--cream-line);background:#fff;border-radius:10px;padding:9px 10px;font-size:12px;min-width:0;}
+.tr-restaurant-row.active{border-color:rgba(31,107,69,.28);background:rgba(31,107,69,.045);}
+@media(max-width:760px){.tr-restaurant-switcher{max-width:52vw}.tr-restaurant-switcher select{max-width:135px;height:30px;font-size:10px}.tr-single-restaurant{max-width:115px;font-size:10px}.tr-add-restaurant-btn{padding:6px 7px;font-size:9.5px}.tr-add-restaurant-btn span{display:none}.tr-setup-card{padding:14px 12px 11px;border-radius:17px}.tr-setup-subtitle{font-size:11.5px}.tr-setup-steps{grid-template-columns:1fr;gap:6px}.tr-setup-step{min-height:44px;padding:9px}.tr-setup-step-label strong{font-size:11.1px}}
+@media(max-width:430px){.tr-restaurant-switcher{max-width:49vw}.tr-restaurant-switcher select{max-width:110px}.tr-single-restaurant{max-width:88px}.tr-setup-footer .btn{width:100%;justify-content:center}.tr-setup-hint{width:100%}}
+</style>
 </head>
 <body>
 
@@ -1042,6 +1073,7 @@ body{min-width:0;}
           <div class="flex items-center gap-2" style="margin-top:1px;">
             <p style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" class="resto-name">Votre restaurant</p>
             <span id="planBadgeTop" style="flex-shrink:0;"></span>
+            <span id="restaurantSwitcherHost"></span>
           </div>
         </div>
         <div class="flex items-center gap-2" style="flex-shrink:0;">
@@ -2348,6 +2380,10 @@ async function resolvePublicRestaurantFromHostname(){
    public affiche donc le restaurant Supabase le plus récemment créé. */
 let currentUser = null; // session Supabase courante, ou null si visiteur anonyme
 let viewerIsStaff = false; // true si le visiteur actuel est propriétaire/personnel du restaurant chargé (autorise la prévisualisation même non publiée)
+let accessibleRestaurants = [];
+let activeRestaurantId = null;
+let restaurantSetupMeta = {version:1,eligible:false,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
+let signupRestaurantCreationInFlight = false;
 
 /* CORRECTION ARCHITECTURALE (pas juste une re-vérification) :
    auparavant, une seule fonction attendait TOUJOURS les 7 requêtes
@@ -2401,6 +2437,7 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalo
   if(!r) return false;
 
   RESTAURANT.id = r.id;
+  activeRestaurantId = String(r.id);
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
@@ -2421,6 +2458,7 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalo
     RESTAURANT.delivery.zones=[{id:'zone-general',name:'Zone générale',fee:Number(RESTAURANT.delivery.fee)||1000,enabled:true}];
   }
   RESTAURANT.social = cleanSlugRedirects((r.social && Object.keys(r.social).length) ? r.social : defaultSocial());
+  restaurantSetupMeta = restaurantSetupMetaFromSocial();
   RESTAURANT.social.galleryPhotos = Array.isArray(RESTAURANT.social.galleryPhotos) ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3) : [];
   RESTAURANT.galleryPhotos = RESTAURANT.social.galleryPhotos.slice();
   RESTAURANT.showMap = r.show_map; RESTAURANT.mapsLink = r.maps_link;
@@ -3771,6 +3809,139 @@ async function findMyRestaurantId(p_knownUserId){
   return staffRow ? staffRow.restaurant_id : null;
 }
 
+
+/* ---------------- MULTI-RESTAURANT + CHECKLIST ---------------- */
+async function loadAccessibleRestaurants(userId=currentUser?.id){
+  if(!userId){ accessibleRestaurants=[]; return []; }
+  const [ownedRes,staffRes]=await Promise.all([
+    supabaseClient.from('restaurants').select('id,name,slug,plan,subscription_status,owner_id,created_at').eq('owner_id',userId).order('created_at',{ascending:true}),
+    supabaseClient.from('staff').select('restaurant_id').eq('user_id',userId).eq('status','Actif')
+  ]);
+  const rows=[],seen=new Set();
+  (ownedRes?.data||[]).forEach(r=>{if(!r?.id||seen.has(r.id))return;seen.add(r.id);rows.push({...r,access_kind:'owner'});});
+  const ids=[...new Set((staffRes?.data||[]).map(x=>x?.restaurant_id).filter(Boolean))].filter(x=>!seen.has(x));
+  if(ids.length){
+    const {data,error}=await supabaseClient.from('restaurants').select('id,name,slug,plan,subscription_status,owner_id,created_at').in('id',ids);
+    if(!error)(data||[]).forEach(r=>{if(!r?.id||seen.has(r.id))return;seen.add(r.id);rows.push({...r,access_kind:'staff'});});
+  }
+  accessibleRestaurants=rows;
+  return rows;
+}
+function ownedRestaurants(){return accessibleRestaurants.filter(r=>r.access_kind==='owner');}
+function accountHasActivePremium(){return ownedRestaurants().some(r=>String(r.plan||'').toLowerCase()==='pro' && String(r.subscription_status||'').toLowerCase()==='active');}
+function restaurantSetupMetaFromSocial(){
+  const raw=RESTAURANT.social && typeof RESTAURANT.social==='object' ? RESTAURANT.social.__teranga_setup : null;
+  if(!raw||typeof raw!=='object') return {version:1,eligible:false,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
+  return {version:1,eligible:!!raw.eligible,closed:!!raw.closed,completed:!!raw.completed,hoursConfigured:!!raw.hoursConfigured,deliveryConfigured:!!raw.deliveryConfigured};
+}
+function syncRestaurantSetupMetaToSocial(){
+  RESTAURANT.social=RESTAURANT.social&&typeof RESTAURANT.social==='object'?RESTAURANT.social:defaultSocial();
+  RESTAURANT.social.__teranga_setup={version:1,eligible:!!restaurantSetupMeta.eligible,closed:!!restaurantSetupMeta.closed,completed:!!restaurantSetupMeta.completed,hoursConfigured:!!restaurantSetupMeta.hoursConfigured,deliveryConfigured:!!restaurantSetupMeta.deliveryConfigured};
+}
+async function persistRestaurantSetupMeta(patch={}){
+  if(!RESTAURANT.id) return false;
+  restaurantSetupMeta={...restaurantSetupMeta,...patch,version:1};
+  syncRestaurantSetupMetaToSocial();
+  return await persistRestaurant();
+}
+function restaurantSetupStatuses(){
+  const name=String(RESTAURANT.name||'').trim();
+  return {
+    restaurant:true,
+    info:!!(name && !/^mon restaurant$/i.test(name) && !/^votre restaurant$/i.test(name) && String(RESTAURANT.type||'').trim() && String(RESTAURANT.city||'').trim() && String(RESTAURANT.phone||'').replace(/\D/g,'').length>=6 && String(RESTAURANT.address||'').trim()),
+    logoCover:!!(RESTAURANT.logoDataUrl&&RESTAURANT.coverDataUrl),
+    products:Array.isArray(PRODUCTS)&&PRODUCTS.length>0,
+    whatsapp:RESTAURANT.orderNotificationChannel==='whatsapp'&&Array.isArray(RESTAURANT.orderNotificationWhatsappRecipients)&&RESTAURANT.orderNotificationWhatsappRecipients.length>0,
+    hours:!!restaurantSetupMeta.hoursConfigured,
+    delivery:!!restaurantSetupMeta.deliveryConfigured,
+  };
+}
+function restaurantSetupFirstPending(){const s=restaurantSetupStatuses();if(!s.info)return 2;if(!s.logoCover)return 3;if(!s.products)return 4;if(!s.whatsapp)return 5;if(!s.hours)return 6;if(!s.delivery)return 7;return 0;}
+function restaurantSetupChecklistHtml(){
+  if(!RESTAURANT.id||realAccessKind!=='owner'||!restaurantSetupMeta.eligible||restaurantSetupMeta.closed||restaurantSetupMeta.completed)return '';
+  const s=restaurantSetupStatuses();
+  if(Object.values(s).every(Boolean)){ if(!restaurantSetupMeta.completed){restaurantSetupMeta.completed=true;syncRestaurantSetupMetaToSocial();void persistRestaurant();} return ''; }
+  const steps=[
+    [1,'restaurant','Créer mon restaurant'],[2,'info','Informations du restaurant'],[3,'logoCover','Ajouter mon logo et ma couverture'],[4,'products','Ajouter mes premiers produits'],[5,'whatsapp','Ajouter le numéro WhatsApp qui reçoit les commandes'],[6,'hours','Ajouter mes horaires'],[7,'delivery','Configurer mes livraisons']
+  ];
+  return `<section class="tr-setup-card" aria-labelledby="trSetupTitle"><div class="tr-setup-head"><div><p class="tr-setup-eyebrow">Configuration initiale</p><h2 id="trSetupTitle" class="font-display">👋 Bienvenue</h2><p class="tr-setup-subtitle">Configurez votre restaurant étape par étape. L'état affiché vient de vos données enregistrées.</p></div><button type="button" class="tr-setup-close" aria-label="Fermer la configuration" title="Fermer la configuration" onclick="closeRestaurantSetupChecklist()">×</button></div><div class="tr-setup-steps">${steps.map(([n,key,label])=>`<button type="button" class="tr-setup-step ${s[key]?'done':''}" onclick="openRestaurantSetupStep(${n})"><span class="tr-setup-step-icon">${s[key]?ic('check',14,{stroke:'var(--forest)'}):'○'}</span><span class="tr-setup-step-label"><strong>${n}. ${label}</strong>${s[key]?'<span>Terminé</span>':''}</span></button>`).join('')}</div><div class="tr-setup-footer"><button type="button" class="btn btn-secondary btn-sm" onclick="continueRestaurantSetup()">Continuer la configuration</button><span class="tr-setup-hint">7 étapes · aucune étape de publication ni de paiement.</span></div></section>`;
+}
+function closeRestaurantSetupChecklist(){
+  if(!RESTAURANT.id||realAccessKind!=='owner')return;
+  const prev=restaurantSetupMeta.closed; restaurantSetupMeta.closed=true; syncRestaurantSetupMetaToSocial();
+  persistRestaurantSetupMeta({closed:true}).then(ok=>{if(ok){renderDashSection(state.dashSection);toast('Configuration masquée pour ce restaurant.');}else{restaurantSetupMeta.closed=prev;syncRestaurantSetupMetaToSocial();toast('La fermeture n’a pas pu être enregistrée.');}});
+}
+function continueRestaurantSetup(){const n=restaurantSetupFirstPending();if(n)openRestaurantSetupStep(n);}
+function openRestaurantSetupStep(n){
+  n=Number(n);
+  if(n===2){settingsTab='Général';setDashSection('settings');setTimeout(()=>document.getElementById('setName')?.focus(),80);return;}
+  if(n===3){settingsTab='Général';setDashSection('settings');setTimeout(()=>document.getElementById('setLogoCard')?.scrollIntoView({behavior:'smooth',block:'center'}),100);return;}
+  if(n===4){setDashSection('products');setTimeout(()=>openProductForm(),120);return;}
+  if(n===5){settingsTab='Général';setDashSection('settings');setTimeout(()=>document.getElementById('orderNotificationSettingsCard')?.scrollIntoView({behavior:'smooth',block:'center'}),100);return;}
+  if(n===6){settingsTab='Horaires & IA';setDashSection('settings');setTimeout(()=>document.getElementById('settingsBody')?.scrollIntoView({behavior:'smooth',block:'center'}),100);return;}
+  if(n===7){settingsTab='Livraison';setDashSection('settings');setTimeout(()=>document.getElementById('settingsBody')?.scrollIntoView({behavior:'smooth',block:'center'}),100);return;}
+  setDashSection('overview');
+}
+function restaurantSettingsSwitcherHtml(){
+  if(accessibleRestaurants.length<2)return '';
+  return `<div class="tr-restaurant-list-card"><p class="tr-restaurant-list-title">Mes restaurants</p><p class="tr-restaurant-list-sub">Sélectionnez le restaurant actif.</p><div class="tr-restaurant-settings-list">${accessibleRestaurants.map(r=>`<button type="button" class="tr-restaurant-row ${String(r.id)===String(activeRestaurantId)?'active':''}" onclick="switchActiveRestaurant('${escapeAttr(r.id)}')"><span style="min-width:0;display:flex;align-items:center;gap:7px;">${String(r.id)===String(activeRestaurantId)?ic('check',14,{stroke:'var(--forest)'}):'<span style="width:14px"></span>'}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.name||'Restaurant')}</span></span><span style="font-size:10.5px;color:var(--ink-faint);">${r.access_kind==='staff'?'Équipe':'Propriétaire'}</span></button>`).join('')}</div></div>`;
+}
+function renderRestaurantSwitcher(){
+  const host=document.getElementById('restaurantSwitcherHost');if(!host)return;
+  if(!accessibleRestaurants.length){host.innerHTML='';return;}
+  const canCreate=realAccessKind==='owner' && ownedRestaurants().length<2;
+  const label=ownedRestaurants().length>=2?'Limite atteinte':canCreate?'+ Ajouter un restaurant':'🔒 Propriétaire requis';
+  host.innerHTML=`<div class="tr-restaurant-switcher">${accessibleRestaurants.length>1?`<label class="sr-only" for="trActiveRestaurantSelect">Restaurant actif</label><select id="trActiveRestaurantSelect" onchange="switchActiveRestaurant(this.value)" aria-label="Restaurant actif">${accessibleRestaurants.map(r=>`<option value="${escapeAttr(r.id)}" ${String(r.id)===String(activeRestaurantId)?'selected':''}>${escapeHtml(r.name||'Restaurant')}</option>`).join('')}</select>`:`<span class="tr-single-restaurant">${escapeHtml(RESTAURANT.name||accessibleRestaurants[0]?.name||'Restaurant')}</span>`}<button type="button" class="tr-add-restaurant-btn" onclick="${canCreate?'requestAddRestaurant()':ownedRestaurants().length>=2?"toast('Vous avez atteint la limite de 2 restaurants par compte.')":"toast('Seul le propriétaire peut créer un restaurant.')"}">${ic('plus',13)}<span>${label}</span></button></div>`;
+  hydrateIcons(host);
+}
+async function switchActiveRestaurant(rid,section=null){
+  const target=accessibleRestaurants.find(r=>String(r.id)===String(rid));if(!target){toast('Restaurant inaccessible.');return false;}
+  const oldRid=activeRestaurantId; activeRestaurantId=String(rid);
+  if(currentUser?.id){try{localStorage.setItem('tg_last_restaurant_'+String(currentUser.id),String(rid));}catch(e){}}
+  const dc=document.getElementById('dashContent');if(dc)dc.innerHTML=`<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('loader',28,{className:'spin',stroke:'var(--amber-deep)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Chargement du restaurant…</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Les données sont en cours de chargement.</p></div>`;
+  PRODUCTS.length=0;DEMO_ORDERS.length=0;staffState.length=0;REVIEWS.length=0;catsState={};catsHomeVisible={};
+  const [ok,access]=await Promise.all([loadRestaurantCore(rid,true,true),resolveRealAccess(rid,currentUser.id)]);
+  if(!ok||!access){activeRestaurantId=oldRid;toast('Impossible de charger ce restaurant.');return false;}
+  viewerIsStaff=true;setView('dashboard');renderRestaurantSwitcher();setDashSection(section||'overview');
+  void loadRestaurantCatalogSecondaryData(rid);void loadRestaurantSecondaryData(rid);return true;
+}
+async function requestAddRestaurant(){
+  if(!currentUser?.id){openLogin('login');return false;}
+  await loadAccessibleRestaurants(currentUser.id);
+  if(ownedRestaurants().length>=2){toast('Vous avez atteint la limite de 2 restaurants par compte.');return false;}
+  if(realAccessKind!=='owner'){toast('Seul le propriétaire du compte peut créer un restaurant.');return false;}
+  if(!accountHasActivePremium()){toast('🔒 Ajouter un deuxième restaurant est réservé au plan Premium actif.');setDashSection('abonnement');return false;}
+  if(signupRestaurantCreationInFlight){toast('Création du restaurant déjà en cours…');return false;}
+  Object.assign(obState,{step:0,restoName:'Mon restaurant',restoType:'Cuisine sénégalaise',city:RESTAURANT.city||'Dakar',phone:RESTAURANT.phone||'',address:'',logoPhoto:null,coverPhoto:null,galleryPhotos:[],deliveryEnabled:true,plan:'free',billing:'monthly',paymentMethod:'',paying:false,obPrimary:'#E8871E',obSecondary:'#1F6B45',obTextColor:'#2B1810'});
+  const row=await createRestaurantFromOnboarding();
+  if(!row)return false;
+  await loadAccessibleRestaurants(currentUser.id);
+  const ok=await switchActiveRestaurant(row.id,'overview');
+  if(ok){toast(ic('checkCircle',15)+' Nouveau restaurant créé et sélectionné.',true);}
+  return ok;
+}
+async function completeSignupAfterAuth(){
+  if(signupRestaurantCreationInFlight)return false;
+  signupRestaurantCreationInFlight=true;
+  try{
+    const {data:userData,error:userError}=await supabaseClient.auth.getUser();const user=userData?.user;
+    if(userError||!user){toast('Session invalide — reconnectez-vous puis réessayez.');return false;}
+    currentUser=user;
+    const rows=await loadAccessibleRestaurants(user.id);
+    if(rows.length){
+      const last=(()=>{try{return localStorage.getItem('tg_last_restaurant_'+String(user.id));}catch(e){return null;}})();
+      const target=rows.find(r=>String(r.id)===String(last))||rows.find(r=>r.access_kind==='owner')||rows[0];
+      await switchActiveRestaurant(target.id,'overview');clearPendingOnboarding();return true;
+    }
+    Object.assign(obState,{step:0,accountName:obState.accountName||user.user_metadata?.name||'',accountEmail:(user.email||'').toLowerCase(),accountPassword:'',restoName:'Mon restaurant',restoType:'Cuisine sénégalaise',city:'Dakar',phone:'',address:'',logoPhoto:null,coverPhoto:null,galleryPhotos:[],deliveryEnabled:true,plan:'free',billing:'monthly',paymentMethod:'',paying:false,emailConfirmationPending:false,pendingEmail:user.email||''});
+    const row=await createRestaurantFromOnboarding();if(!row)return false;
+    clearPendingOnboarding();activeRestaurantId=String(row.id);try{localStorage.setItem('tg_last_restaurant_'+String(user.id),String(row.id));}catch(e){}
+    const [ok,access]=await Promise.all([loadRestaurantCore(row.id,true,true),resolveRealAccess(row.id,user.id)]);
+    if(!ok||!access){toast('Le restaurant a été créé mais son accès n’a pas pu être confirmé.');return false;}
+    viewerIsStaff=true;hideRestoSplash();hideAuthCheckSplash();closeLogin();setView('dashboard');setDashSection('overview');renderRestaurantSwitcher();void loadRestaurantCatalogSecondaryData(row.id);void loadRestaurantSecondaryData(row.id);toast(ic('checkCircle',15)+' Compte confirmé — votre restaurant est prêt.',true);return true;
+  }finally{signupRestaurantCreationInFlight=false;}
+}
+
 /* Empêche définitivement le bug "affiche le restaurant le plus
    récemment créé" : SANS lien direct (?resto=slug) ET sans compte
    connecté possédant un restaurant, la racine du site affiche la page
@@ -3846,72 +4017,23 @@ async function restoreSession(){
     }
 
     // PRIORITÉ 3 : session TerangaResto / dashboard.
-    const {data:{session}} = await supabaseClient.auth.getSession();
-    currentUser = session ? session.user : null;
-
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    currentUser=session ? session.user : null;
     if(currentUser){
-      const desiredSection = requestedDashSection() || 'overview';
-      const lastRidKey = 'tg_last_restaurant_' + String(currentUser.id);
-      let rid = null;
-      try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
-
-      /* Ne jamais afficher un tableau de bord intermédiaire.
-         On charge d'abord le restaurant de l'utilisateur, puis seulement
-         après succès on affiche le VRAI tableau de bord avec ses données. */
-      viewerIsStaff = true;
-      state.dashSection = desiredSection;
-
-      /* Utilisateur déjà connu : accès direct au restaurant mémorisé. */
-      if(rid){
-        try{
-          const [ok,access] = await Promise.all([
-            loadRestaurantCore(rid,true,true),
-            resolveRealAccess(rid,currentUser.id),
-          ]);
-          if(ok && access){
-            hideAuthCheckSplash();
-            hideRestoSplash();
-            setView('dashboard');
-            setDashSection(desiredSection);
-            if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-            loadRestaurantCatalogSecondaryData(rid);
-            loadRestaurantSecondaryData(rid);
-            return;
-          }
-        }catch(e){
-          console.warn('Chargement direct du restaurant mémorisé:', e);
+      const desiredSection=requestedDashSection()||'overview';
+      viewerIsStaff=true;state.dashSection=desiredSection;
+      try{
+        const rows=await loadAccessibleRestaurants(currentUser.id);
+        if(rows.length){
+          let stored=null;try{stored=localStorage.getItem('tg_last_restaurant_'+String(currentUser.id));}catch(e){}
+          const target=rows.find(r=>String(r.id)===String(stored))||rows.find(r=>r.access_kind==='owner')||rows[0];
+          await switchActiveRestaurant(target.id,desiredSection);
+          hideAuthCheckSplash();hideRestoSplash();return;
         }
-      }
-
-      /* Premier passage ou restaurant mémorisé devenu inaccessible :
-         seulement ici on retrouve l'association propriétaire/personnel. */
-      rid = await findMyRestaurantId(currentUser.id);
-      if(rid){
-        try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-        const [ok,access] = await Promise.all([
-          loadRestaurantCore(rid,true,true),
-          resolveRealAccess(rid,currentUser.id),
-        ]);
-        if(!ok || !access){
-          viewerIsStaff = false;
-          setView('landing');
-          return;
-        }
-        hideAuthCheckSplash();
-        hideRestoSplash();
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantCatalogSecondaryData(rid);
-        loadRestaurantSecondaryData(rid);
-        return;
-      }
-
-      viewerIsStaff = false;
-      setView('landing');
-    }else{
-      hideAuthCheckSplash();
-    }
+        if(await tryResumePendingOnboarding())return;
+      }catch(e){console.error('Chargement des restaurants du compte:',e);}
+      viewerIsStaff=false;setView('landing');
+    }else{hideAuthCheckSplash();}
 
     // Aucun restaurant ciblé et aucune session : comportement général actuel.
     const pendingOtp = loadPendingOnboarding();
@@ -4058,177 +4180,41 @@ function showDashboardBootScreen(section='overview'){
 
 
 async function submitSignup(){
-  const name = (document.getElementById('signupName')?.value || '').trim();
-  const email = (document.getElementById('signupEmail')?.value || '').trim().toLowerCase();
-  const password = document.getElementById('signupPassword')?.value || '';
-  const password2 = document.getElementById('signupPassword2')?.value || '';
-
-  if(!name || !email || !password || !password2){
-    toast('Complétez toutes les informations pour créer votre compte.');
-    return;
-  }
-
-  const pwError = validateStrongPassword(password);
-  if(pwError){
-    toast(pwError);
-    return;
-  }
-
-  if(password !== password2){
-    toast('Les deux mots de passe ne correspondent pas.');
-    return;
-  }
-
-  const btn = document.getElementById('signupSubmitBtn');
-  setLoginVerifying(true, 'signupSubmitBtn', 'Création de votre compte…');
-
+  const name=(document.getElementById('signupName')?.value||'').trim();
+  const email=(document.getElementById('signupEmail')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('signupPassword')?.value||'';
+  const password2=document.getElementById('signupPassword2')?.value||'';
+  if(!name||!email||!password||!password2){toast('Complétez toutes les informations pour créer votre compte.');return;}
+  const pwError=validateStrongPassword(password);if(pwError){toast(pwError);return;}
+  if(password!==password2){toast('Les deux mots de passe ne correspondent pas.');return;}
+  setLoginVerifying(true,'signupSubmitBtn','Création de votre compte…');
   try{
-    const {data, error} = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options:{
-        data:{name},
-        emailRedirectTo:getPublicSiteOrigin()
-      }
-    });
-
-    const signupAlreadyExists =
-      !!(data?.user &&
-         Array.isArray(data.user.identities) &&
-         data.user.identities.length === 0);
-
-    if(error || signupAlreadyExists){
-      setLoginVerifying(false, 'signupSubmitBtn');
-      toast(
-        signupAlreadyExists
-          ? 'Ce compte existe déjà. Connectez-vous avec cet e-mail.'
-          : supabaseErrorFr(error, 'Impossible de créer ce compte.')
-      );
-      return;
-    }
-
-    // Le compte vient d'être créé : on prépare exactement le même
-    // parcours d'onboarding que celui du bouton "Créer mon restaurant".
-    Object.assign(obState, {
-      step: 0,
-      accountName: name,
-      accountEmail: email,
-      accountPassword: password,
-      emailConfirmationPending: !data.session,
-      pendingEmail: email
-    });
-
-    otpPendingEmail = email;
-    otpPendingName = name;
-    otpPendingSource = 'onboarding';
-
-    if(!data.session){
-      savePendingOnboarding();
-      setLoginVerifying(false, 'signupSubmitBtn');
-      closeLogin();
-      setView('onboarding');
-      renderOnboardingOtpScreen();
-      startOnboardingOtpResendCountdown(30);
-      return;
-    }
-
-    currentUser = data.user;
-    obState.emailConfirmationPending = false;
-    obState.pendingEmail = email;
-
-    setLoginVerifying(false, 'signupSubmitBtn');
-    closeLogin();
-    setView('onboarding');
-    obState.step = 1;
-    savePendingOnboarding();
-    renderOnboarding();
-    toast(ic('checkCircle',14)+' Compte créé — poursuivez la création de votre restaurant.', true);
-
-  }catch(e){
-    console.error('Création du compte:', e);
-    setLoginVerifying(false, 'signupSubmitBtn');
-    toast('Impossible de créer votre compte. Vérifiez votre connexion Internet puis réessayez.');
-  }
+    const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
+    const alreadyExists=!!(data?.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0);
+    if(error||alreadyExists){toast(alreadyExists?'Ce compte existe déjà. Connectez-vous avec cet e-mail.':supabaseErrorFr(error,'Impossible de créer ce compte.'));return;}
+    Object.assign(obState,{step:0,accountName:name,accountEmail:email,accountPassword:password,emailConfirmationPending:!data.session,pendingEmail:email,plan:'free',billing:'monthly'});
+    otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';
+    if(!data.session){savePendingOnboarding();closeLogin();setView('onboarding');renderOnboardingOtpScreen();startOnboardingOtpResendCountdown(30);return;}
+    currentUser=data.user;obState.emailConfirmationPending=false;closeLogin();await completeSignupAfterAuth();
+  }catch(e){console.error('Création du compte:',e);toast('Impossible de créer votre compte. Vérifiez votre connexion Internet puis réessayez.');}
+  finally{setLoginVerifying(false,'signupSubmitBtn');}
 }
-
 async function submitLogin(){
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  if(!email || !password){ toast('Entrez votre e-mail et votre mot de passe.'); return; }
+  const email=(document.getElementById('loginEmail')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('loginPassword')?.value||'';
+  if(!email||!password){toast('Entrez votre e-mail et votre mot de passe.');return;}
   setLoginVerifying(true);
-  const {data, error} = await supabaseClient.auth.signInWithPassword({email, password});
-  if(error){ setLoginVerifying(false); toast(supabaseErrorFr(error,'Connexion impossible.')); return; }
-
-  currentUser = data.user;
-  const desiredSection = requestedDashSection() || 'overview';
-  const lastRidKey = 'tg_last_restaurant_' + String(data.user.id);
-  let rid = null;
-  try{ rid = localStorage.getItem(lastRidKey) || null; }catch(e){}
-
-  /* Ne ferme pas la connexion et n'affiche pas un faux tableau de bord
-     avant que le restaurant réel soit chargé. */
-  viewerIsStaff = true;
-  state.dashSection = desiredSection;
-
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){setLoginVerifying(false);toast(supabaseErrorFr(error,'Connexion impossible.'));return;}
+  currentUser=data.user;viewerIsStaff=true;state.dashSection=requestedDashSection()||'overview';
   try{
-    /* Compte déjà connu : on charge directement le restaurant mémorisé. */
-    if(rid){
-      const [ok,access] = await Promise.all([
-        loadRestaurantCore(rid,true,true),
-        resolveRealAccess(rid,data.user.id),
-      ]);
-      if(ok && access){
-        setLoginVerifying(false);
-        closeLogin();
-        hideRestoSplash();
-        hideAuthCheckSplash();
-        setView('dashboard');
-        setDashSection(desiredSection);
-        if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-        loadRestaurantCatalogSecondaryData(rid);
-        loadRestaurantSecondaryData(rid);
-        return;
-      }
-    }
-
-    rid = await findMyRestaurantId(data.user.id);
-    if(!rid){
-      viewerIsStaff = false;
-      setView('landing');
-      openLogin('login');
-      toast('Aucun restaurant trouvé pour ce compte — créez-le pour continuer.');
-      startOnboarding();
-      return;
-    }
-
-    try{ localStorage.setItem(lastRidKey, String(rid)); }catch(e){}
-    const [ok,access] = await Promise.all([
-      loadRestaurantCore(rid,true,true),
-      resolveRealAccess(rid,data.user.id),
-    ]);
-    if(!ok || !access){
-      throw new Error('Accès au restaurant impossible.');
-    }
-    setLoginVerifying(false);
-    closeLogin();
-    hideRestoSplash();
-    hideAuthCheckSplash();
-    setView('dashboard');
-    setDashSection(desiredSection);
-    if(typeof window.syncAiVisibility==='function') window.syncAiVisibility();
-    loadRestaurantCatalogSecondaryData(rid);
-    loadRestaurantSecondaryData(rid);
-    toast('Connecté — bienvenue sur votre tableau de bord.');
-  }catch(e){
-    console.error('Connexion — chargement du restaurant:', e);
-    viewerIsStaff = false;
-    setLoginVerifying(false);
-    setView('landing');
-    openLogin('login');
-    toast('Impossible de charger votre espace. Vérifiez votre connexion Internet puis réessayez.');
-  }
+    const rows=await loadAccessibleRestaurants(data.user.id);
+    if(!rows.length){setLoginVerifying(false);viewerIsStaff=false;closeLogin();startOnboarding();return;}
+    const last=(()=>{try{return localStorage.getItem('tg_last_restaurant_'+String(data.user.id));}catch(e){return null;}})();
+    const target=rows.find(r=>String(r.id)===String(last))||rows.find(r=>r.access_kind==='owner')||rows[0];
+    await switchActiveRestaurant(target.id,state.dashSection);setLoginVerifying(false);closeLogin();hideRestoSplash();hideAuthCheckSplash();toast('Connecté — bienvenue sur votre tableau de bord.');
+  }catch(e){console.error('Connexion — chargement des restaurants:',e);viewerIsStaff=false;setLoginVerifying(false);toast('Impossible de charger votre espace. Réessayez.');}
 }
-
 async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail')?.value.trim().toLowerCase() || '';
   const code = document.getElementById('inviteCode')?.value.trim().toUpperCase() || '';
@@ -5813,7 +5799,7 @@ function renderPricing(){
    ONBOARDING — espace de création, séparé du tableau de bord.
    Compte → Restaurant → Thème → Configuration → Abonnement → Paiement → Confirmation
    ============================================================ */
-const OB_STEPS = ['Compte','Restaurant','Logo','Configuration','Abonnement','Paiement','Activé'];
+const OB_STEPS = ['Compte'];
 
 /* ---------------- SOUS-DOMAINE — génération automatique et unique ----------------
    Reproduit ce que ferait le vrai backend à la création du restaurant :
@@ -6043,12 +6029,12 @@ async function resolveUniqueSlugForCreation(name){
 
 const obState = {
   step:0,
-  accountName:'', accountEmail:'', accountPassword:'',
-  restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
+  accountName:'', accountEmail:'', accountPassword:'', accountPassword2:'',
+  restoName:'Mon restaurant', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
   obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, galleryPhotos:[],
   address:'', deliveryEnabled:true,
   paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
-  plan:null, billing:'monthly', paymentMethod:'', // aucun moyen de paiement présélectionné — le client doit cliquer
+  plan:'free', billing:'monthly', paymentMethod:'',
   paying:false,
   emailConfirmationPending:false, pendingEmail:'',
 };
@@ -6202,15 +6188,14 @@ async function verifyOnboardingOtp(){
     otpPendingEmail = email;
     obState.emailConfirmationPending = false;
     obState.pendingEmail = email;
-    obState.step = 1;
+    obState.step = 0;
 
     if(otpResendInterval) clearInterval(otpResendInterval);
     otpResendInterval = null;
     otpResendTimer = 0;
 
-    savePendingOnboarding();
-    renderOnboarding();
-    toast(ic('checkCircle',14)+' E-mail vérifié — poursuivez la création de votre restaurant.', true);
+    clearPendingOnboarding();
+    await completeSignupAfterAuth();
   }catch(e){
     console.error('Vérification e-mail du compte:', e);
     if(btn){
@@ -6240,90 +6225,55 @@ function clearPendingOnboarding(){
    terminer automatiquement la création. Après confirmation, on revient
    à l'étape Restaurant (2/7) et le parcours continue normalement. */
 async function tryResumePendingOnboarding(){
-  if(!currentUser) return false;
-  if(resumingOnboarding) return true;
-  const saved = loadPendingOnboarding();
-  if(!saved) return false;
-  const savedEmail = (saved.pendingEmail || saved.accountEmail || '').toLowerCase();
-  const sessionEmail = (currentUser.email || '').toLowerCase();
-  if(savedEmail && sessionEmail && savedEmail !== sessionEmail) return false;
-
-  resumingOnboarding = true;
-  Object.assign(obState, saved);
-  obState.emailConfirmationPending = false;
-  obState.pendingEmail = sessionEmail || obState.pendingEmail || obState.accountEmail;
-  hideRestoSplash();
-  hideAuthCheckSplash();
-  closeLogin();
-  setView('onboarding');
-
-  // Reprendre exactement à l'étape enregistrée, sans retour forcé à l'étape 2.
-  obState.step = Math.max(0, Math.min(6, Number(obState.step)||0));
-  savePendingOnboarding();
-  renderOnboarding();
-  toast(ic('checkCircle',14)+' E-mail confirmé — poursuivez la création de votre restaurant.', true);
-  resumingOnboarding = false;
-  return true;
+  if(!currentUser||resumingOnboarding)return !!currentUser;
+  const saved=loadPendingOnboarding();if(!saved)return false;
+  const savedEmail=(saved.pendingEmail||saved.accountEmail||'').toLowerCase();const sessionEmail=(currentUser.email||'').toLowerCase();
+  if(savedEmail&&sessionEmail&&savedEmail!==sessionEmail)return false;
+  resumingOnboarding=true;
+  try{Object.assign(obState,saved,{emailConfirmationPending:false,pendingEmail:sessionEmail||saved.pendingEmail||saved.accountEmail});return await completeSignupAfterAuth();}
+  finally{resumingOnboarding=false;}
 }
-
-function startOnboarding(presetPlan){
-  Object.assign(obState, {
-    step:0, accountName:'', accountEmail:'', accountPassword:'',
-    restoName:'', restoType:'Cuisine sénégalaise', city:'Dakar', phone:'', slug:null,
-    obPrimary:'#E8871E', obSecondary:'#1F6B45', obTextColor:'#2B1810', logoPhoto:null, coverPhoto:null, galleryPhotos:[], address:'', deliveryEnabled:true,
-    paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},
-    // presetPlan reste honoré s'il vient d'un clic explicite sur une
-    // carte de tarif précise ("Commencer avec Premium" par exemple).
-    // Le cycle choisi sur la page Tarifs est conservé dans l'assistant.
-    plan: presetPlan || null, billing: state.yearly ? 'annual' : 'monthly', paymentMethod:'', paying:false,
-    emailConfirmationPending:false, pendingEmail:'',
-  });
-  setView('onboarding');
+function startOnboarding(){
+  Object.assign(obState,{step:0,accountName:'',accountEmail:'',accountPassword:'',accountPassword2:'',restoName:'Mon restaurant',restoType:'Cuisine sénégalaise',city:'Dakar',phone:'',slug:null,obPrimary:'#E8871E',obSecondary:'#1F6B45',obTextColor:'#2B1810',logoPhoto:null,coverPhoto:null,galleryPhotos:[],address:'',deliveryEnabled:true,paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},plan:'free',billing:'monthly',paymentMethod:'',paying:false,emailConfirmationPending:false,pendingEmail:''});
+  if(currentUser?.id){requestAddRestaurant();return;}
+  setView('onboarding');renderOnboarding();
 }
-
-function obField(key,val){ obState[key]=val; savePendingOnboarding(); }
-function obGoStep(i){ obState.step=i; savePendingOnboarding(); renderOnboarding(); }
-
+function obField(key,val){obState[key]=val;savePendingOnboarding();}
+function obGoStep(){return;}
 async function obNext(){
-  const o = obState;
-  if(o.step===0 && (!o.accountName.trim()||!o.accountEmail.trim()||!o.accountPassword.trim())){ toast('Complétez vos informations de compte.'); return; }
-  if(o.step===0 && !currentUser){
-    if(o.accountPassword.length < 8){ toast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
-    setLoginVerifying(true, 'obNextBtn', 'Création de votre compte…');
-    const email=o.accountEmail.trim().toLowerCase();
-    const name=o.accountName.trim();
-    const {data,error}=await supabaseClient.auth.signUp({email,password:o.accountPassword,options:{data:{name},emailRedirectTo:getPublicSiteOrigin()}});
-    setLoginVerifying(false,'obNextBtn');
-    const signupAlreadyExists = !!(data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
-    if(error || signupAlreadyExists){
-      toast(error ? supabaseErrorFr(error,'Impossible de créer ce compte.') : 'Cette adresse e-mail est déjà utilisée.');
+  if(obState.step!==0)return;
+  const name=(document.getElementById('obAccountName')?.value||'').trim();
+  const email=(document.getElementById('obAccountEmail')?.value||'').trim().toLowerCase();
+  const password=document.getElementById('obAccountPassword')?.value||'';
+  const password2=document.getElementById('obAccountPassword2')?.value||'';
+  if(name.length<2){toast('Entrez votre nom complet.');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Entrez une adresse e-mail valide.');return;}
+  if(password.length<8){toast('Le mot de passe doit contenir au moins 8 caractères.');return;}
+  if(password!==password2){toast('Les deux mots de passe ne correspondent pas.');return;}
+  Object.assign(obState,{accountName:name,accountEmail:email,accountPassword:password,accountPassword2:password2,emailConfirmationPending:false,pendingEmail:email});
+  savePendingOnboarding();
+  setLoginVerifying(true,'obNextBtn','Création de votre compte…');
+  try{
+    const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:getPublicSiteOrigin()}});
+    if(error){toast(supabaseErrorFr(error,'Impossible de créer votre compte.'));return;}
+    currentUser=data?.user||null;
+    otpPendingEmail=email; otpPendingName=name;
+    if(!data?.session){
+      obState.emailConfirmationPending=true; obState.pendingEmail=email; savePendingOnboarding();
+      renderOnboardingOtpScreen();
+      startOnboardingOtpResendCountdown(30);
       return;
     }
-    if(!data.session){otpPendingEmail=email;otpPendingName=name;otpPendingSource='onboarding';o.emailConfirmationPending=true;o.pendingEmail=email;savePendingOnboarding();renderOnboardingOtpScreen();startOnboardingOtpResendCountdown(30);return;}
-    currentUser=data.user; o.emailConfirmationPending=false;
-    savePendingOnboarding();
+    clearPendingOnboarding();
+    await completeSignupAfterAuth();
+  }catch(e){
+    console.error('Création du compte:',e);
+    toast('Impossible de créer le compte. Vérifiez vos informations puis réessayez.');
+  }finally{
+    setLoginVerifying(false,'obNextBtn');
   }
-  if(o.step===1 && !o.restoName.trim()){ toast('Le nom du restaurant est requis.'); return; }
-  // Le nom commercial peut être identique à celui d'un autre restaurant.
-  // Seul le sous-domaine public doit être unique (géré automatiquement
-  // par resolveUniqueSlugForCreation()).
-  if(o.step===4 && !o.plan){ toast('Choisissez un forfait (Gratuit, Starter ou Premium) pour continuer.'); return; }
-  if(o.step===4 && o.plan==='free'){ o.step=6; savePendingOnboarding(); renderOnboarding(); return; } // aucun paiement requis pour Gratuit — passe directement à la confirmation
-  o.step++;
-  savePendingOnboarding();
-  renderOnboarding();
 }
-function obPrev(){
-  obState.step = (obState.step===6 && obState.plan==='free') ? 4 : obState.step-1;
-  savePendingOnboarding();
-  renderOnboarding();
-}
-
-/* Logique de création partagée entre le chemin Gratuit (finishOnboarding,
-   pas de paiement) et les chemins Starter/Premium (createRestaurantAndPay,
-   paiement immédiat) — évite de dupliquer la validation de session, la
-   résolution de slug et l'appel RPC. Renvoie la ligne restaurant créée,
-   ou null si quelque chose a échoué (déjà annoncé via toast). */
+function obPrev(){return;}
 async function createRestaurantFromOnboarding(){
   // Source de vérité pour owner_id : jamais la variable JS `currentUser`
   // (qui peut être en retard d'une frappe sur la vraie session — c'est
@@ -6344,17 +6294,8 @@ async function createRestaurantFromOnboarding(){
   }
   currentUser = user; // resynchronise la variable globale sur la vraie session
 
-  // Le forfait n'est jamais choisi automatiquement à la place du
-  // client — s'il n'a explicitement rien sélectionné à l'étape
-  // "Abonnement", on l'y renvoie plutôt que de laisser passer une
-  // valeur par défaut silencieuse.
-  if(!obState.plan){
-    toast('Choisissez un forfait (Gratuit, Starter ou Premium) avant de continuer.');
-    obState.step = 4;
-    renderOnboarding();
-    return null;
-  }
-
+  // Le nouvel onboarding crée automatiquement le restaurant sur Gratuit.
+  obState.plan='free'; obState.billing='monthly';
   RESTAURANT.created = true;
   RESTAURANT.createdAt = Date.now();
   state.plan = obState.plan;
@@ -6450,6 +6391,9 @@ async function createRestaurantFromOnboarding(){
   }
 
   RESTAURANT.id = restaurantRow.id;
+  activeRestaurantId=String(RESTAURANT.id);
+  restaurantSetupMeta={version:1,eligible:true,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
+  syncRestaurantSetupMetaToSocial();
   // Nouveau restaurant : WhatsApp est le canal de réception par défaut.
   // Le destinataire réel provient de WASENDER_DEFAULT_RECIPIENT côté serveur.
   RESTAURANT.orderNotificationChannel = 'whatsapp';
@@ -6498,9 +6442,10 @@ async function createRestaurantFromOnboarding(){
   subscribeToOrdersRealtime(RESTAURANT.id);
   subscribeToReviewsRealtime(RESTAURANT.id);
 
-  // Les écritures secondaires continuent après l'ouverture du vrai tableau de bord.
+  // Les données initiales doivent être confirmées en base avant le dashboard.
+  const initialPersisted=await persistRestaurant();
+  if(!initialPersisted){toast('Le restaurant a été créé mais ses données initiales n’ont pas pu être confirmées.');return null;}
   void (async()=>{
-    await persistRestaurant();
     const catRows = Object.entries(catsState).map(([key,label],i) => ({
       restaurant_id: RESTAURANT.id, key, label, sort_order:i,
     }));
@@ -6570,49 +6515,9 @@ function validateStrongPassword(pw){
 
 
 async function finishOnboarding(){
-  if(obState.emailConfirmationPending){
-    savePendingOnboarding();
-    renderOnboardingEmailPendingScreen();
-    return;
-  }
-  const btn = document.getElementById('obFinishBtn');
-  if(btn){ btn.disabled = true; btn.textContent = 'Création en cours…'; }
-
-  const existingRid = currentUser?.id ? await findMyRestaurantId(currentUser.id) : null;
-  if(existingRid){
-    try{ localStorage.setItem('tg_last_restaurant_'+String(currentUser.id), String(existingRid)); }catch(e){}
-    const ok = await loadRestaurantCore(existingRid,true,true);
-    if(ok){
-      viewerIsStaff = true;
-      if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
-      clearPendingOnboarding();
-      setView('dashboard');
-      setDashSection('overview');
-      loadRestaurantCatalogSecondaryData(existingRid);
-      loadRestaurantSecondaryData(existingRid);
-      toast(ic('checkCircle',15)+` Votre restaurant existant est maintenant accessible depuis le tableau de bord.`, true);
-      return;
-    }
-  }
-
-  const row = await createRestaurantFromOnboarding();
-  if(btn){ btn.disabled = false; btn.textContent = 'Aller à mon tableau de bord'; }
-  if(!row) return;
-
-  clearPendingOnboarding();
-  setView('dashboard');
-  setDashSection('overview');
-  toast(ic('checkCircle',15)+` Restaurant créé — ${escapeHtml(obState.restoName)} est maintenant accessible publiquement.`, true);
+  if(obState.emailConfirmationPending){renderOnboardingEmailPendingScreen();return;}
+  await completeSignupAfterAuth();
 }
-
-/* Chemin Starter/Premium : crée le restaurant (forfait choisi, mais
-   subscription_status='pending_payment' — jamais actif tout de suite),
-   puis lance IMMÉDIATEMENT PayTech pour ce restaurant. L'accès aux
-   fonctionnalités payantes reste bloqué (isPremiumActive/isPaidPlanActive)
-   tant que paytech-webhook n'a pas confirmé le paiement et fait passer
-   subscription_status à 'active' — jamais avant, jamais parce que ce
-   bouton a simplement été cliqué. Réutilise l'infrastructure PayTech
-   déjà déployée (fonction Edge "paytech-checkout"), sans la modifier. */
 async function createRestaurantAndPay(){
   if(obState.emailConfirmationPending){
     savePendingOnboarding();
@@ -6675,23 +6580,9 @@ async function createRestaurantAndPay(){
 }
 
 function renderOnboarding(){
-  document.getElementById('obProgress').innerHTML = OB_STEPS.map((label,i)=>`
-    <div class="flex-col items-center" style="flex:1;min-width:74px;">
-      <div class="flex items-center w-full">
-        <span onclick="${i<obState.step?`obGoStep(${i})`:''}" style="height:26px;width:26px;border-radius:999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;${i<obState.step?'cursor:pointer;':''}
-          background:${i<obState.step?'var(--forest)':i===obState.step?'var(--amber-deep)':'#fff'};
-          color:${i<=obState.step?'#fff':'var(--ink-faint)'};
-          border:1px solid ${i<=obState.step?'transparent':'var(--cream-line)'};" title="${i<obState.step?'Revenir à cette étape':''}">${i<obState.step?ic('check',13,{stroke:'#fff'}):i+1}</span>
-        ${i<OB_STEPS.length-1?`<span style="height:1px;flex:1;background:${i<obState.step?'var(--forest)':'var(--cream-line)'};"></span>`:''}
-      </div>
-    </div>`).join('') + `<style>#obProgress > div:last-child span[style*="flex:1"]{display:none;}</style>`;
-
-  document.getElementById('obCard').innerHTML = obStepHtml();
-  hydrateIcons(document.getElementById('obCard'));
-  if(obState.step===1) updateSlugPreview();
-
+  const p=document.getElementById('obProgress');if(p)p.innerHTML='<div class="flex items-center" style="padding:2px 0 16px;"><span style="height:28px;width:28px;border-radius:999px;background:var(--amber-deep);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">1</span><span style="height:1px;flex:1;background:var(--cream-line);margin-left:8px;"></span></div>';
+  const c=document.getElementById('obCard');if(c){c.innerHTML=obStepHtml();hydrateIcons(c);}
 }
-
 function updateSlugPreview(){
   const el = document.getElementById('obSlugPreview');
   if(!el) return;
@@ -6716,167 +6607,9 @@ function updateSlugPreview(){
 }
 
 function obStepHtml(){
-  const o = obState;
-  const step = o.step;
-
-  if(step===0) return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre compte</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Première étape — indépendante de la gestion de votre restaurant.</p>
-    <label class="field-label">Nom complet</label>
-    <input class="field-input" style="margin-bottom:12px;" placeholder="Fatou Diop" value="${o.accountName}" oninput="obField('accountName',this.value)">
-    <label class="field-label">E-mail</label>
-    <input class="field-input" style="margin-bottom:12px;" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="vous@restaurant.sn" value="${o.accountEmail}" oninput="obField('accountEmail',this.value)">
-    <label class="field-label">Mot de passe</label>
-    <div style="position:relative;">
-      <input class="field-input" id="obAccountPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;" value="${o.accountPassword}" oninput="obField('accountPassword',this.value);renderPasswordStrength(this.value,'obPwStrength')">
-      <button type="button" onclick="togglePasswordVisibility('obAccountPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button>
-    </div>
-    <div id="obPwStrength" style="margin-bottom:6px;"></div>
-    ${obNav(false)}`;
-
-  if(step===1) return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre restaurant</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Ces informations seront visibles sur votre page publique.</p>
-    <label class="field-label">Nom du restaurant</label>
-    <input class="field-input" id="obRestoNameInput" style="margin-bottom:8px;" placeholder="TerangaResto.com" value="${o.restoName}" oninput="obField('restoName',this.value);updateSlugPreview();">
-    <div id="obSlugPreview" style="margin-bottom:14px;"></div>
-    <label class="field-label">Type de restaurant</label>
-    <select class="field-input" style="margin-bottom:12px;" onchange="obField('restoType',this.value)">
-      ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${o.restoType===t?'selected':''}>${t}</option>`).join('')}
-    </select>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;">
-      <div><label class="field-label">Ville</label><input class="field-input" value="${o.city}" oninput="obField('city',this.value)"></div>
-      <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="770000000" value="${o.phone}" oninput="this.value=this.value.replace(/\D/g,'');obField('phone',this.value)"></div>
-    </div>
-    ${obNav(true)}`;
-
-  if(step===2){
-    return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Logo et couverture</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Facultatif — vous pourrez les ajouter ou les modifier à tout moment depuis Paramètres.</p>
-
-    <p class="field-label">Logo et couverture (facultatif)</p>
-    <div class="flex gap-3">
-      <div style="position:relative;width:76px;height:76px;flex-shrink:0;">
-        <button onclick="triggerImagePicker((d)=>{obField('logoPhoto',d);renderOnboarding();})" style="width:76px;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;background:#fff;">
-          ${o.logoPhoto?`<img src="${o.logoPhoto}" style="width:100%;height:100%;object-fit:cover;">`:ic('plus',20,{stroke:'var(--ink-faint)'})}
-        </button>
-        ${o.logoPhoto?`<button type="button" aria-label="Supprimer le logo" title="Supprimer le logo" onclick="obField('logoPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
-      </div>
-      <div style="position:relative;flex:1;height:76px;">
-        <button onclick="triggerImagePicker((d)=>{obField('coverPhoto',d);renderOnboarding();})" style="width:100%;height:76px;border-radius:14px;overflow:hidden;border:2px dashed var(--cream-line);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;color:var(--ink-faint);background:${o.coverPhoto?`center/cover no-repeat url('${o.coverPhoto}')`:'#fff'};">
-          ${o.coverPhoto?'':ic('upload',16)+' Ajouter une couverture'}
-        </button>
-        ${o.coverPhoto?`<button type="button" aria-label="Supprimer la couverture" title="Supprimer la couverture" onclick="obField('coverPhoto',null);renderOnboarding();" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 3px 8px rgba(0,0,0,.25);">${ic('x',12,{stroke:'#fff'})}</button>`:''}
-      </div>
-    </div>
-    
-    ${obNav(true)}`;
-  }
-
-  if(step===3) return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Configuration</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Adresse, livraison et moyens de paiement acceptés.</p>
-    <label class="field-label">Adresse</label>
-    <input class="field-input" style="margin-bottom:14px;" placeholder="Rue 12, Point E" value="${o.address}" oninput="obField('address',this.value)">
-    <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
-      <span style="font-size:13px;font-weight:500;">Livraison activée</span>
-      <div class="toggle ${o.deliveryEnabled?'on':''}" onclick="obField('deliveryEnabled',!obState.deliveryEnabled);renderOnboarding();"><div class="dot"></div></div>
-    </div>
-    <p class="field-label">Moyens de paiement acceptés par vos clients</p>
-    <div class="flex-col gap-2">
-      ${['cash','on_delivery','wave','orange_money'].map(m=>{
-        const premiumOnly = m==='wave' || m==='orange_money';
-        const locked = premiumOnly;
-        if(locked) o.paymentToggles[m]=false;
-        return `<div class="flex items-center gap-3" style="border:1px solid var(--cream-line);border-radius:12px;padding:9px 12px;${locked?'opacity:.82;':''}">
-          ${paymentMark(m,26)}<span style="flex:1;font-size:13px;">${PAYMENT_LABELS[m]}${locked?` <span class="pill pill-amber" style="margin-left:6px;font-size:10px;display:inline-flex;align-items:center;gap:3px;">${ic('lock',10)}Premium</span>`:''}</span>
-          <div class="toggle ${o.paymentToggles[m]?'on':''}" style="${locked?'cursor:not-allowed;':''}" onclick='obTogglePayMethod("${m}")'><div class="dot"></div></div>
-        </div>`;
-      }).join('')}
-    </div>
-    ${obNav(true)}`;
-
-  if(step===4){
-    const plans = [
-      {code:'free',name:'Gratuit',price:0,duration:'10 jours',features:['Site restaurant','QR Code','Jusqu\'à 5 catalogues','Jusqu\'à 10 produits','Gestion de base du restaurant']},
-      {code:'starter',name:'Starter',price:STARTER_PRICE,features:['Catalogue et commandes illimités','QR Code personnalisé','Paiement à la livraison & espèces','Gestion essentielle du restaurant']},
-      {code:'pro',name:'Premium',price:PREMIUM_PRICE,features:['Tout Starter','Wave & Orange Money','Personnel & permissions','Analyses avancées']},
-    ];
-    const cycle = o.billing==='annual' ? 'annual' : 'monthly';
-    return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Choisissez votre abonnement</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Choisissez votre cycle. L'annuel économise 16 %. Le domaine personnalisé est offert uniquement avec Premium annuel.</p>
-    <div role="group" aria-label="Choisir le cycle de facturation" style="margin:0 auto 16px;display:flex;align-items:stretch;justify-content:center;width:min(100%,360px);border:1px solid var(--cream-line);border-radius:999px;background:#fff;padding:4px;box-shadow:0 4px 14px rgba(43,24,16,.05);">
-      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" aria-pressed="${cycle==='monthly'?'true':'false'}" style="flex:1;min-width:0;border:0;border-radius:999px;padding:10px 12px;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'var(--ink-soft)'};font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;">Mensuel</button>
-      <button type="button" onclick="obField('billing',obState.billing==='annual'?'monthly':'annual');renderOnboarding();" aria-pressed="${cycle==='annual'?'true':'false'}" style="flex:1.25;min-width:0;border:0;border-radius:999px;padding:10px 10px;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'var(--ink-soft)'};font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;">Annuel <span style="color:${cycle==='annual'?'#fff':'#008000'};font-size:10.5px;font-weight:700;">Économisez 16 %</span></button>
-    </div>
-    <div class="grid ob-plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch;">
-      ${plans.map(p=>{
-        const displayMonthly = cycle==='annual' && p.code!=='free' ? monthlyEquivalent(p.code,cycle) : p.price;
-        const displayAnnual = cycle==='annual' && p.code!=='free' ? priceForPlanCycle(p.code,cycle) : null;
-        return `<button class="ob-plan-card" onclick="obField('plan','${p.code}');renderOnboarding();" style="border:2px solid ${o.plan===p.code?'var(--amber-deep)':'var(--cream-line)'};${o.plan===p.code?'background:rgba(232,135,30,.05);':''}border-radius:16px;padding:14px;text-align:left;">
-          <p style="font-size:13.5px;font-weight:700;">${p.name}</p>
-          <p class="font-tabular" style="font-size:17px;font-weight:700;margin:4px 0 2px;">${fmt(displayMonthly)}${p.code!=='free'?'<span style="font-size:11px;font-weight:400;color:var(--ink-faint);">/mois</span>':''}</p>
-          ${displayAnnual?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:700;margin:3px 0 8px;">${fmt(displayAnnual)} / an</p>`:''}
-          ${p.duration?`<p style="font-size:10.5px;color:var(--amber-deep);font-weight:600;margin-bottom:8px;">${p.duration}</p>`:'<p style="margin-bottom:8px;"></p>'}
-          ${p.features.map(f=>`<p style="font-size:10.5px;color:var(--ink-soft);margin-bottom:3px;display:flex;align-items:center;gap:5px;">${ic('check',11,{stroke:'var(--forest)'})}${f}</p>`).join('')}
-          ${p.code==='pro' ? `<div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--cream-line);font-size:10px;line-height:1.35;color:${cycle==='annual'?'var(--amber-deep)':'var(--terracotta)'};">${cycle==='annual'?'🎁 Domaine .com standard offert 1 an':'Domaine offert uniquement avec Premium annuel'}</div>` : ''}
-        </button>`;
-      }).join('')}
-    </div>
-    ${!o.plan ? `<p style="font-size:11px;color:var(--terracotta);margin-top:10px;">Choisissez un forfait pour continuer.</p>` : ''}
-    ${obNav(true)}`;
-  }
-
-  if(step===5){
-    const planName = o.plan==='pro' ? 'Premium' : 'Starter';
-    const cycle = o.billing==='annual' ? 'annual' : 'monthly';
-    const price = priceForPlanCycle(o.plan, cycle);
-    const cycleLabel = cycle==='annual' ? 'Annuel' : 'Mensuel';
-    const cyclePrice = cycle==='annual' ? `${fmt(price)} / an` : `${fmt(price)} / mois`;
-    return `
-    <h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Paiement — Forfait ${planName}</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;">Forfait choisi : <b>${planName}</b> — <b>${cycleLabel}</b> · ${cyclePrice}</p>
-    <div style="margin-bottom:16px;">
-      <p class="field-label">Choisissez votre moyen de paiement</p>
-      <div class="flex gap-2">
-        ${[['Wave','wave'],['Orange Money','orange_money']].map(([label,key])=>`<button type="button" aria-label="Payer avec ${label}" aria-pressed="${o.paymentMethod===label?'true':'false'}" onclick="obState.paymentMethod='${label}';savePendingOnboarding();renderOnboarding();" style="flex:1;min-height:96px;border:2px solid ${o.paymentMethod===label?'var(--amber-deep)':'var(--cream-line)'};${o.paymentMethod===label?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;">${mobileSubscriptionPaymentLogo(key,label)}</button>`).join('')}
-      </div>
-    </div>
-    <div class="flex-col gap-2" style="margin-bottom:18px;">
-      <div><label class="field-label">Nom complet</label><input class="field-input" autocomplete="name" value="${escapeAttr(o.accountName||'')}" oninput="obField('accountName',this.value)"></div>
-      <div><label class="field-label">Téléphone</label><input class="field-input" type="tel" inputmode="numeric" autocomplete="tel" value="${escapeAttr(o.phone||'')}" oninput="this.value=this.value.replace(/\D/g,'');obField('phone',this.value)"></div>
-    </div>
-    <div class="card" style="padding:14px 16px;margin-bottom:18px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
-      <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
-      <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${cyclePrice}. Le forfait ${planName} ne sera activé qu'après confirmation RÉELLE du paiement par PayTech — jamais avant, jamais simplement parce que vous avez cliqué. Le simple choix de ce forfait ne débloque aucune fonctionnalité payante.</p>
-    </div>
-    <button id="obPayBtn" class="btn btn-secondary btn-lg w-full" onclick="createRestaurantAndPay()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
-    <div style="margin-top:14px;">${obNavBackOnly()}</div>`;
-  }
-
-  if(step===6) return `
-    <div class="text-center">
-      <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:12px;">${ic('checkCircle',44)}</div>
-      <h2 class="font-display" style="font-size:20px;margin-bottom:6px;">${o.restoName || 'Votre restaurant'} est prêt à être créé</h2>
-      <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Forfait choisi : <b>${o.plan==='pro'?'Premium':'Gratuit'}</b>. ${o.plan==='pro' ? "Votre restaurant démarrera avec l'accès du forfait Gratuit — activez réellement Premium depuis Abonnement → Payer avec PayTech, une fois dans votre tableau de bord." : ''} Votre site public est activé automatiquement dès la création.</p>
-      <div class="card" style="padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;justify-content:center;">
-        ${ic('link',15,{stroke:'var(--forest)'})}
-        <span class="font-tabular" style="font-size:13px;font-weight:600;overflow-wrap:anywhere;">${publicRestaurantUrl(o.slug || slugify(o.restoName))}</span>
-      </div>
-      <div class="card" style="padding:16px;text-align:left;margin-bottom:20px;background:var(--cream);">
-        <p style="font-size:12px;color:var(--ink-faint);">Prochaines étapes dans votre tableau de bord :</p>
-        <p style="font-size:12.5px;margin-top:6px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ajouter vos catégories et produits</p>
-        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Récupérer votre QR Code</p>
-        <p style="font-size:12.5px;display:flex;align-items:center;gap:6px;">${ic('check',13,{stroke:'var(--forest)'})}Ouvrir votre site public</p>
-      </div>
-      <button id="obFinishBtn" class="btn btn-secondary btn-lg w-full" onclick="finishOnboarding()">Créer mon restaurant ${ic('arrowRight',16)}</button>
-    </div>`;
-
-  return '';
+  const o=obState;
+  return `<h2 class="font-display" style="font-size:19px;margin-bottom:4px;">Créez votre compte</h2><p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Après confirmation du code reçu par e-mail, votre restaurant sera créé automatiquement et vous arriverez directement dans le dashboard.</p><label class="field-label">Nom complet</label><input class="field-input" id="obAccountName" style="margin-bottom:12px;" placeholder="Fatou Diop" value="${escapeAttr(o.accountName)}" oninput="obField('accountName',this.value)"><label class="field-label">E-mail</label><input class="field-input" id="obAccountEmail" style="margin-bottom:12px;" type="email" inputmode="email" autocomplete="email" placeholder="vous@restaurant.sn" value="${escapeAttr(o.accountEmail)}" oninput="obField('accountEmail',this.value)"><label class="field-label">Mot de passe</label><div style="position:relative;"><input class="field-input" id="obAccountPassword" type="password" placeholder="8 caractères minimum" style="padding-right:40px;margin-bottom:5px;" value="${escapeAttr(o.accountPassword)}" oninput="obField('accountPassword',this.value);renderPasswordStrength(this.value,'obPwStrength')"><button type="button" onclick="togglePasswordVisibility('obAccountPassword',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('eye',15)}</button></div><div id="obPwStrength" style="margin-bottom:10px;"></div><label class="field-label">Confirmation du mot de passe</label><input class="field-input" id="obAccountPassword2" type="password" placeholder="••••••••" style="margin-bottom:16px;" value="${escapeAttr(o.accountPassword2||'')}" oninput="obState.accountPassword2=this.value"><button id="obNextBtn" class="btn btn-secondary btn-lg w-full" onclick="obNext()">Créer mon compte</button>`;
 }
-
 function addOnboardingGalleryPhotos(){
   const existing=Array.isArray(obState.galleryPhotos)?obState.galleryPhotos.filter(Boolean):[];
   const remaining=Math.max(0,3-existing.length);
@@ -8312,7 +8045,9 @@ function renderDashSection(key){
     staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
   };
   const bodyHtml = (renderers[key]||dashOverview)();
-  el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
+  const setupHtml = restaurantSetupChecklistHtml();
+  el.innerHTML = setupHtml + (key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml);
+  renderRestaurantSwitcher();
   if(key==='qrcode'){}
   if(key==='analytics') drawRevenueChart();
   hydrateIcons();
@@ -9056,6 +8791,7 @@ async function saveProductForm(){
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   await persistProduct(p);
+  if(RESTAURANT.id && Array.isArray(PRODUCTS) && PRODUCTS.length>0 && state.view==='dashboard') renderDashSection(state.dashSection);
 }
 
 /* ---------------- BIBLIOTHÈQUE TERANGARESTO (données de référence,
@@ -9129,7 +8865,7 @@ function toggleLibraryItem(i){
     const p = {id:'p_'+Date.now(), name:item.name, desc:item.desc, price:item.price, cat:item.cat, prep:item.prep, active:true, available:true, variants:[], photo:item.photo||null, stock:20, threshold:5};
     PRODUCTS.push(p);
     toast(`${item.name} ajouté à votre catalogue — vous pouvez le modifier.`);
-    persistProduct(p);
+    persistProduct(p).then(()=>{if(RESTAURANT.id && state.view==='dashboard') renderDashSection(state.dashSection);});
   }
   renderLibraryList();
   if(state.dashSection==='products'){ document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons(); }
@@ -10057,6 +9793,7 @@ function dashSettings(){
     <div><h1 class="font-display" style="font-size:22px;">Paramètres</h1><p style="font-size:13px;color:var(--ink-soft);">Toute modification, une fois enregistrée, apparaît sur votre site public.</p></div>
     <a href="#" onclick="setDashSection('abonnement');return false;" style="font-size:13px;color:var(--amber-ink);font-weight:600;">Gérer mon abonnement</a>
   </div>
+  ${restaurantSettingsSwitcherHtml()}
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:16px;">
     ${['Général','Horaires & IA','Livraison','Réseaux & carte','Domaine'].map(t=>`<button class="btn ${settingsTab===t?'btn-primary':'btn-outline'} btn-sm" onclick="settingsTab='${t}';renderDashSection('settings');">${t}</button>`).join('')}
   </div>
@@ -10104,8 +9841,8 @@ function settingsBodyHtml(){
       <input class="field-input" id="setHeroSubtitle" placeholder="${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}" value="${RESTAURANT.heroSubtitle}">
       <p style="font-size:11px;color:var(--ink-faint);margin-top:8px;">Laissez vide pour utiliser un texte généré automatiquement à partir du nom, du type et de la ville.</p>
     </div>
-    <div class="flex gap-3">
-      <div class="flex-col items-center" style="flex:1;max-width:120px;">
+    <div class="flex gap-3" id="setLogoCardWrap">
+      <div class="flex-col items-center" id="setLogoCard" style="flex:1;max-width:120px;">
         <label class="field-label w-full">Logo</label>
         <div style="position:relative;width:100%;">
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
@@ -10115,7 +9852,7 @@ function settingsBodyHtml(){
         </div>
         ${RESTAURANT.logoDataUrl?`<button onclick="pickLogo()" style="font-size:10.5px;color:var(--amber-ink);font-weight:600;margin-top:6px;">Remplacer</button>`:''}
       </div>
-      <div class="flex-col items-center" style="flex:2;">
+      <div class="flex-col items-center" id="setCoverCard" style="flex:2;">
         <label class="field-label w-full">Couverture</label>
         <div style="position:relative;width:100%;">
           <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
@@ -10136,10 +9873,10 @@ function settingsBodyHtml(){
     const h = RESTAURANT.hours[i];
     return `<div class="flex items-center gap-3 flex-wrap" style="padding:9px 0;border-top:1px solid var(--cream-line);">
       <span style="width:84px;font-size:13.5px;font-weight:500;">${d}</span>
-      <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
-      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value;persistRestaurant();">
+      <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">
         <span style="color:var(--ink-faint);font-size:12px;">à</span>
-        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;persistRestaurant();">`
+        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">`
         : `<span style="font-size:12px;color:var(--ink-faint);">Fermé</span>`}
     </div>`;
   }).join('')}
@@ -10160,7 +9897,7 @@ function settingsBodyHtml(){
   if(settingsTab==='Livraison') return `
     <div class="flex items-center justify-between" style="background:var(--cream);border-radius:14px;padding:12px 16px;margin-bottom:14px;">
       <span style="font-size:13.5px;font-weight:500;">Livraison activée</span>
-      <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+      <div class="toggle ${RESTAURANT.delivery.enabled?'on':''}" onclick="RESTAURANT.delivery.enabled=!RESTAURANT.delivery.enabled;restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
     </div>
     ${RESTAURANT.delivery.enabled?`
     <div class="grid tg-delivery-main-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
@@ -10173,19 +9910,19 @@ function settingsBodyHtml(){
     <div class="card" style="padding:14px 16px;margin-bottom:12px;">
       <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.own.enabled?'12px':'0'};">
         <div><p style="font-size:13.5px;font-weight:600;">Livraison du restaurant</p><p style="font-size:11.5px;color:var(--ink-faint);">Remise en main propre par votre propre livreur.</p></div>
-        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.own.enabled=!RESTAURANT.delivery.modes.own.enabled;restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>
       ${RESTAURANT.delivery.modes.own.enabled?`
       <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
         <span style="font-size:12.5px;">${ic('card',13)} Autoriser le paiement à la livraison</span>
-        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.own.allowCashOnDelivery?'on':''}" onclick="RESTAURANT.delivery.modes.own.allowCashOnDelivery=!RESTAURANT.delivery.modes.own.allowCashOnDelivery;restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>`:''}
     </div>
 
     <div class="card" style="padding:14px 16px;margin-bottom:14px;">
       <div class="flex items-center justify-between" style="margin-bottom:${RESTAURANT.delivery.modes.express.enabled?'12px':'0'};">
         <div><p style="font-size:13.5px;font-weight:600;">Livraison Express</p><p style="font-size:11.5px;color:var(--ink-faint);">Coursier tiers — ne peut pas encaisser pour votre compte.</p></div>
-        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
+        <div class="toggle ${RESTAURANT.delivery.modes.express.enabled?'on':''}" onclick="RESTAURANT.delivery.modes.express.enabled=!RESTAURANT.delivery.modes.express.enabled;restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
       </div>
       ${RESTAURANT.delivery.modes.express.enabled?`
       <div style="border-top:1px solid var(--cream-line);padding-top:12px;">
@@ -10316,6 +10053,7 @@ function addDeliveryZone(){
   if(!name){toast('Indiquez le nom de la zone de livraison.');return;}
   if(!Array.isArray(RESTAURANT.delivery.zones)) RESTAURANT.delivery.zones=[];
   RESTAURANT.delivery.zones.push({id:'zone-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name,fee,enabled:true});
+  restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();
   renderDashSection('settings');
   persistRestaurant();
 }
@@ -10325,6 +10063,7 @@ function updateDeliveryZone(index,key,value){
   if(!z) return;
   if(key==='name') z.name=String(value||'').trim();
   if(key==='fee') z.fee=Math.max(0,Number(value)||0);
+  restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();
   clearTimeout(deliveryZoneSaveTimer);
   deliveryZoneSaveTimer=setTimeout(()=>persistRestaurant(),250);
 }
@@ -10335,6 +10074,7 @@ function removeDeliveryZone(index){
   const all=Array.isArray(RESTAURANT.delivery.zones)?RESTAURANT.delivery.zones:[];
   const realIndex=all.indexOf(z);
   if(realIndex>=0) all.splice(realIndex,1);
+  restaurantSetupMeta.deliveryConfigured=true;syncRestaurantSetupMetaToSocial();
   renderDashSection('settings');
   persistRestaurant();
 }
@@ -10400,6 +10140,7 @@ async function setOrderNotificationChannel(channel){
     return;
   }
   RESTAURANT.orderNotificationChannel = next;
+  if(state.view==='dashboard') renderDashSection(state.dashSection);
   try{
     const key = 'teranga_order_notification_none_' + String(RESTAURANT.id||'');
     if(next===null) localStorage.setItem(key,'1');
@@ -10485,6 +10226,7 @@ async function saveOrderWhatsappRecipient(mode='add', recipientId=''){
   }
   closeOrderWhatsappRecipientModal();
   await loadOrderWhatsappRecipients(RESTAURANT.id);
+  if(state.view==='dashboard') renderDashSection(state.dashSection);
   toast(mode === 'edit' ? 'Numéro WhatsApp modifié.' : 'Numéro WhatsApp ajouté.', true);
   if(mode === 'add' && RESTAURANT.orderNotificationChannel !== 'whatsapp'){
     // Le numéro est maintenant réellement configuré ; le restaurateur peut choisir WhatsApp via le toggle.
@@ -10602,7 +10344,7 @@ function renderOrderWhatsappRecipientRows(){
 function orderNotificationSettingsHtml(){
   const waActive = RESTAURANT.orderNotificationChannel === 'whatsapp';
   const gmailActive = RESTAURANT.orderNotificationChannel === 'email';
-  return `<div class="card" style="padding:16px;margin-top:16px;border:1px solid var(--cream-line);background:var(--surface);">
+  return `<div class="card" id="orderNotificationSettingsCard" style="padding:16px;margin-top:16px;border:1px solid var(--cream-line);background:var(--surface);">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
       <div><p style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);">NOTIFICATION DE NOUVELLE COMMANDE</p><p style="font-size:11.8px;color:var(--ink-soft);margin-top:4px;">Choisissez un seul canal pour recevoir automatiquement vos nouvelles commandes.</p><p style="font-size:11px;color:var(--ink-faint);margin-top:2px;">Une seule option peut être active à la fois.</p></div>
     </div>
@@ -10677,7 +10419,11 @@ async function saveSettings(){
   const expressFeeEl = document.getElementById('setExpressFee'); if(expressFeeEl) RESTAURANT.delivery.modes.express.fee = Number(expressFeeEl.value)||0;
   renderStorefrontHero();
   const saved = await persistRestaurant();
-  if(saved) toast('Modifications enregistrées — visibles sur votre site public.');
+  if(saved){
+    if(settingsTab==='Livraison') await persistRestaurantSetupMeta({deliveryConfigured:true});
+    renderDashSection('settings');
+    toast('Modifications enregistrées — visibles sur votre site public.');
+  }
 }
 function applyRestaurantVisuals(){ renderDashSection('settings'); renderSidebarLogo(); if(state.view==='storefront') renderStorefrontHero(); persistRestaurant(); }
 
