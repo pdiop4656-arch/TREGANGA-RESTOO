@@ -2505,126 +2505,20 @@ async function loadRestaurantCore(restaurantId, fastDashboard=false, deferCatalo
    données "cœur" ; redessine la section actuellement visible une fois
    arrivée, pour que les vrais chiffres remplacent silencieusement les
    listes vides initiales, sans jamais avoir bloqué l'accès au compte. */
-const ORDER_HISTORY_PAGE_SIZE = 50;
-let orderHistoryPage = 0;
-let orderHistoryHasMore = false;
-let orderHistoryLoading = false;
-
-async function fetchOrdersPage(restaurantId, page = 0){
-  const from = page * ORDER_HISTORY_PAGE_SIZE;
-  const to = from + ORDER_HISTORY_PAGE_SIZE - 1;
-  const {data, error} = await supabaseClient
-    .from('orders')
-    .select('*')
-    .eq('restaurant_id', restaurantId)
-    .order('created_at', {ascending:false})
-    .range(from, to);
-  if(error){
-    console.error('Erreur de chargement des commandes:', error);
-    return {data:[], error, hasMore:false};
-  }
-  const rows = Array.isArray(data) ? data : [];
-  return {data:rows, error:null, hasMore:rows.length===ORDER_HISTORY_PAGE_SIZE};
-}
-
-function normalizeOrderRow(o){
-  return {
-    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? o.table_number ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', deliveryZone:o.deliveryZone ?? o.delivery_zone ?? '', items:o.items,
-    subtotal:Number(o.subtotal||0), deliveryFee:Number(o.deliveryFee ?? o.delivery_fee ?? 0), total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
-    createdAt:new Date(o.created_at),
-  };
-}
-
-async function loadOrdersPage(restaurantId, page = 0, replace = false){
-  if(orderHistoryLoading) return false;
-  orderHistoryLoading = true;
-  try{
-    const result = await fetchOrdersPage(restaurantId, page);
-    if(result.error) return false;
-    const mapped = result.data.map(normalizeOrderRow);
-    if(replace){
-      DEMO_ORDERS.length = 0;
-      orderHistoryPage = 0;
-    }
-    mapped.forEach(o => {
-      if(!DEMO_ORDERS.some(existing => String(existing.id)===String(o.id))) DEMO_ORDERS.push(o);
-    });
-    orderHistoryPage = page;
-    orderHistoryHasMore = result.hasMore;
-    return true;
-  }finally{
-    orderHistoryLoading = false;
-  }
-}
-
-async function loadMoreOrders(){
-  if(!RESTAURANT.id || !orderHistoryHasMore) return;
-  const nextPage = orderHistoryPage + 1;
-  const ok = await loadOrdersPage(RESTAURANT.id, nextPage, false);
-  if(ok && state.view==='dashboard' && state.dashSection==='orders') renderDashSection('orders');
-}
-
-/* Données dédiées aux métriques : elles ne dépendent plus du cache historique
-   DEMO_ORDERS. Les pages sont limitées à la période demandée et parcourues
-   avec .range() pour rester exactes même au-delà de 1 000 lignes. */
-let dashboardPeriodOrders = [];
-let dashboardPeriodCacheKey = '';
-
-async function fetchDashboardPeriodOrders(restaurantId){
-  const {from,to} = periodRange(dashPeriod, dashPeriodFrom, dashPeriodTo);
-  const cacheKey = [String(restaurantId||''), dashPeriod, dashPeriodFrom, dashPeriodTo, from.toISOString(), to.toISOString()].join('|');
-  if(dashboardPeriodCacheKey===cacheKey) return dashboardPeriodOrders;
-  try{
-    const rows = [];
-    for(let page=0;;page++){
-      const fromRow = page * ORDER_HISTORY_PAGE_SIZE;
-      const toRow = fromRow + ORDER_HISTORY_PAGE_SIZE - 1;
-      const {data,error} = await supabaseClient
-        .from('orders')
-        .select('id,num,client,phone,type,items,total,pay,pay_status,status,created_at')
-        .eq('restaurant_id', restaurantId)
-        .gte('created_at', from.toISOString())
-        .lt('created_at', to.toISOString())
-        .order('created_at', {ascending:false})
-        .range(fromRow, toRow);
-      if(error){
-        console.error('Erreur de chargement des métriques de commandes:', error);
-        throw error;
-      }
-      const batch = Array.isArray(data) ? data : [];
-      rows.push(...batch.map(normalizeOrderRow));
-      if(batch.length < ORDER_HISTORY_PAGE_SIZE) break;
-    }
-    dashboardPeriodOrders = rows;
-    dashboardPeriodCacheKey = cacheKey;
-    return dashboardPeriodOrders;
-  }catch(e){
-    throw e;
-  }
-}
-
-async function ensureDashboardPeriodData(restaurantId){
-  try{
-    await fetchDashboardPeriodOrders(restaurantId);
-    return true;
-  }catch(e){
-    dashboardPeriodOrders = [];
-    dashboardPeriodCacheKey = '';
-    toast('Impossible de charger les données de cette période.');
-    return false;
-  }
-}
-
 async function loadRestaurantSecondaryData(restaurantId){
-  const [staffRes, paymentsRes, reviewsRes] = await Promise.all([
+  const [ordersRes, staffRes, paymentsRes, reviewsRes] = await Promise.all([
+    supabaseClient.from('orders').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
     supabaseClient.from('staff').select('*').eq('restaurant_id', restaurantId),
     supabaseClient.from('payments').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}).limit(10),
     supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).order('created_at', {ascending:false}),
   ]);
 
-  dashboardPeriodOrders = [];
-  dashboardPeriodCacheKey = '';
-  await loadOrdersPage(restaurantId, 0, true);
+  DEMO_ORDERS.length = 0;
+  ((ordersRes && ordersRes.data)||[]).forEach(o => DEMO_ORDERS.push({
+    id:o.id, num:o.num, client:o.client, phone:o.phone, type:o.type, orderType:o.orderType ?? o.order_type ?? '', table:o.table ?? o.table_number ?? '', deliveryMode:o.deliveryMode ?? o.delivery_mode ?? '', deliveryZone:o.deliveryZone ?? o.delivery_zone ?? '', items:o.items,
+    subtotal:Number(o.subtotal||0), deliveryFee:Number(o.deliveryFee ?? o.delivery_fee ?? 0), total:Number(o.total), pay:o.pay, payStatus:o.pay_status, status:o.status, notes:o.notes, address:o.address,
+    createdAt:new Date(o.created_at),
+  }));
 
   staffState.length = 0;
   ((staffRes && staffRes.data)||[]).forEach(s => staffState.push({
@@ -2737,7 +2631,6 @@ function onRealtimeNewReview(row){
   }
 }
 function onRealtimeNewOrder(row){
-  dashboardPeriodCacheKey = '';
   // Déduplication : si cette commande est déjà dans DEMO_ORDERS (par
   // exemple parce que ce même onglet vient de la créer via submitOrder),
   // ne déclenche pas une seconde alerte pour la même commande.
@@ -2767,7 +2660,6 @@ function onRealtimeNewOrder(row){
    VRAIE nouvelle commande (onRealtimeNewOrder ci-dessus) ; une mise à
    jour de statut doit rester silencieuse mais visible immédiatement. */
 function onRealtimeOrderUpdated(row){
-  dashboardPeriodCacheKey = '';
   const i = DEMO_ORDERS.findIndex(o => o.id === row.id);
   if(i === -1){
     // Commande pas encore connue de cet onglet (ex: créée sur cet
@@ -4792,7 +4684,8 @@ function periodRange(key, customFrom, customTo){
   }
 }
 function ordersForPeriod(){
-  return Array.isArray(dashboardPeriodOrders) ? dashboardPeriodOrders : [];
+  const {from,to} = periodRange(dashPeriod, dashPeriodFrom, dashPeriodTo);
+  return DEMO_ORDERS.filter(o => o.createdAt >= from && o.createdAt < to);
 }
 function setDashPeriod(key){
   dashPeriod = key;
@@ -7138,27 +7031,15 @@ function renderStorefrontHero(){
     if(!v) return '#';
     return /^https?:\/\//i.test(v) ? v : 'https://' + v;
   }
-  function safeExternalUrl(value){
-    const raw=String(value||'').trim();
-    if(!raw) return '#';
-    const normalized=/^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    try{
-      const url=new URL(normalized);
-      if(url.protocol!=='https:' && url.protocol!=='http:') return '#';
-      return escapeAttr(url.href);
-    }catch(e){
-      return '#';
-    }
-  }
   const socialHrefMap = {
-    whatsapp: safeExternalUrl(whatsappLink()),
-    instagram: safeExternalUrl(RESTAURANT.social.instagram.value),
-    tiktok: safeExternalUrl(RESTAURANT.social.tiktok.value),
-    facebook: safeExternalUrl(RESTAURANT.social.facebook.value),
+    whatsapp: whatsappLink(),
+    instagram: normalizeUrl(RESTAURANT.social.instagram.value),
+    tiktok: normalizeUrl(RESTAURANT.social.tiktok.value),
+    facebook: normalizeUrl(RESTAURANT.social.facebook.value),
   };
   const activeSocials = ['whatsapp','instagram','tiktok','facebook'].filter(k=>RESTAURANT.social[k]?.enabled && RESTAURANT.social[k]?.value?.trim());
   document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
-    `<a href="${socialHrefMap[k]}" target="_blank" rel="noopener noreferrer">${socialLogo(k,28)}</a>`
+    `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
   ).join('');
 
   // Localisation — vraie carte intégrée (iframe Google Maps sans clé
@@ -7172,12 +7053,10 @@ function renderStorefrontHero(){
   if(locationCard) locationCard.style.display = RESTAURANT.showMap ? '' : 'none';
   const mapQuery = [RESTAURANT.name, RESTAURANT.address, RESTAURANT.city].filter(Boolean).join(', ').trim();
   if(RESTAURANT.showMap && mapQuery){
-    const rawMapLinkHref = RESTAURANT.mapsLink.trim() ? normalizeUrl(RESTAURANT.mapsLink) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
-    const mapLinkHref = safeExternalUrl(rawMapLinkHref);
-    const safeRestoName = escapeAttr(RESTO_NAME);
+    const mapLinkHref = RESTAURANT.mapsLink.trim() ? normalizeUrl(RESTAURANT.mapsLink) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
     mapEl.innerHTML = `
       <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);margin-top:0.75rem;">
-        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${safeRestoName}"></iframe>
+        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${RESTO_NAME}"></iframe>
       </div>
       <a href="${mapLinkHref}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Itinéraire sur Google Maps</a>`;
   } else {
@@ -7772,41 +7651,7 @@ async function submitOrderInternal(){
     restaurant_id:RESTAURANT.id
   };
 
-  /* La commande n'est considérée comme envoyée qu'après confirmation serveur.
-     Aucun vidage du panier, aucun écran de succès et aucune diffusion locale
-     ne doivent avoir lieu avant la réussite réelle de save_public_order. */
-  let savedOrder;
-  let savedOrderError;
-
-  try{
-    const rpcResult = await supabaseClient.rpc('save_public_order', {
-      p_restaurant_id: RESTAURANT.id,
-      p_order: orderSnapshot
-    });
-    savedOrder = rpcResult?.data;
-    savedOrderError = rpcResult?.error;
-  }catch(e){
-    console.error('save_public_order:', e);
-    throw new Error("Impossible d'enregistrer la commande sur le serveur. Votre panier a été conservé.");
-  }
-
-  if(savedOrderError){
-    console.error('save_public_order:', savedOrderError);
-    throw new Error("Impossible d'enregistrer la commande sur le serveur. Votre panier a été conservé.");
-  }
-
-  const saved = Array.isArray(savedOrder) ? savedOrder[0] : savedOrder;
-  if(!saved || !saved.id){
-    console.error('save_public_order: confirmation serveur absente.');
-    throw new Error("La commande n'a pas reçu de confirmation du serveur. Votre panier a été conservé.");
-  }
-
-  const localOrderNum = orderSnapshot.num;
-  orderSnapshot.id = saved.id;
-  orderSnapshot.num = String(saved.num);
-  orderSnapshot.createdAt = saved.created_at ? new Date(saved.created_at) : orderSnapshot.createdAt;
-
-  /* À partir d'ici seulement, la commande est confirmée côté client. */
+  /* Affichage immédiat : le client ne reste plus sur « Envoi de la commande… ». */
   state.lastOrder = {
     num:orderSnapshot.num,
     items:orderSnapshot.items,
@@ -7830,34 +7675,69 @@ async function submitOrderInternal(){
   renderProductSections();
   renderTrackOrderButton();
 
-  syncRememberedMyOrderNumber(localOrderNum, orderSnapshot.num, c.phone);
-
-  try{
-    const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
-    const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
-    existing.unshift({...orderSnapshot});
-    localStorage.setItem(orderStorageKey, JSON.stringify(existing.slice(0,500)));
-    if('BroadcastChannel' in window){
-      if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
-      window.__terangaOrderChannel.postMessage({type:'NEW_ORDER', restaurantId:RESTAURANT.id, order:{...orderSnapshot}});
+  /* La persistance Supabase continue en arrière-plan; elle ne bloque plus l'interface. */
+  Promise.resolve(supabaseClient.rpc('save_public_order', {
+    p_restaurant_id: RESTAURANT.id,
+    p_order: orderSnapshot
+  })).then(({data:savedOrder,error:savedOrderError})=>{
+    if(savedOrderError){
+      console.error('save_public_order:', savedOrderError);
+      toast('Commande affichée immédiatement, mais son enregistrement a rencontré un problème. Réessayez si elle n’apparaît pas dans le suivi.', false);
+      return;
     }
-    localStorage.setItem('teranga_order_event', JSON.stringify({restaurantId:RESTAURANT.id, order:{...orderSnapshot}, at:Date.now()}));
-  }catch(e){ console.warn('Diffusion locale de commande:',e); }
+    const saved = Array.isArray(savedOrder) ? savedOrder[0] : savedOrder;
+    if(!saved || !saved.id){
+      console.error('save_public_order: confirmation serveur absente.');
+      return;
+    }
 
-  const emailNotifyToken = saved.email_notify_token || null;
-  if(emailNotifyToken && RESTAURANT.orderNotificationChannel === 'whatsapp'){
-    Promise.resolve(supabaseClient.functions.invoke('send-order-whatsapp-notification', {
-      body:{ restaurant_id:RESTAURANT.id, order_id:saved.id, token:emailNotifyToken, action:'send' }
-    })).then(whatsappResult=>{
-      if(whatsappResult?.error || whatsappResult?.data?.error) console.error('send-order-whatsapp-notification:', whatsappResult.error || whatsappResult.data.error);
-    }).catch(whatsappInvokeError=>console.error('send-order-whatsapp-notification:', whatsappInvokeError));
-  }else if(emailNotifyToken && RESTAURANT.orderNotificationChannel === 'email'){
-    Promise.resolve(supabaseClient.functions.invoke('send-order-email', {
-      body:{ restaurant_id:RESTAURANT.id, order_id:saved.id, token:emailNotifyToken }
-    })).then(emailResult=>{
-      if(emailResult?.error || emailResult?.data?.error) console.error('send-order-email:', emailResult.error || emailResult.data.error);
-    }).catch(emailInvokeError=>console.error('send-order-email:', emailInvokeError));
-  }
+    const localOrderNum = orderSnapshot.num;
+    orderSnapshot.id = saved.id;
+    orderSnapshot.num = String(saved.num);
+    orderSnapshot.createdAt = saved.created_at ? new Date(saved.created_at) : orderSnapshot.createdAt;
+    syncRememberedMyOrderNumber(localOrderNum, orderSnapshot.num, c.phone);
+    state.lastOrder.num = orderSnapshot.num;
+    renderConfirmation();
+    const live = DEMO_ORDERS.find(o=>o===orderSnapshot || String(o.id)===String(orderId));
+    if(live){
+      live.id = orderSnapshot.id;
+      live.num = orderSnapshot.num;
+      live.createdAt = orderSnapshot.createdAt;
+    }
+
+    try{
+      const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
+      const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
+      existing.unshift({...orderSnapshot});
+      localStorage.setItem(orderStorageKey, JSON.stringify(existing.slice(0,500)));
+      if('BroadcastChannel' in window){
+        if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
+        window.__terangaOrderChannel.postMessage({type:'NEW_ORDER', restaurantId:RESTAURANT.id, order:{...orderSnapshot}});
+      }
+      localStorage.setItem('teranga_order_event', JSON.stringify({restaurantId:RESTAURANT.id, order:{...orderSnapshot}, at:Date.now()}));
+    }catch(e){ console.warn('Diffusion locale de commande:',e); }
+
+    renderConfirmation();
+    renderTrackOrderButton();
+
+    const emailNotifyToken = saved.email_notify_token || null;
+    if(emailNotifyToken && RESTAURANT.orderNotificationChannel === 'whatsapp'){
+      Promise.resolve(supabaseClient.functions.invoke('send-order-whatsapp-notification', {
+        body:{ restaurant_id:RESTAURANT.id, order_id:saved.id, token:emailNotifyToken, action:'send' }
+      })).then(whatsappResult=>{
+        if(whatsappResult?.error || whatsappResult?.data?.error) console.error('send-order-whatsapp-notification:', whatsappResult.error || whatsappResult.data.error);
+      }).catch(whatsappInvokeError=>console.error('send-order-whatsapp-notification:', whatsappInvokeError));
+    }else if(emailNotifyToken && RESTAURANT.orderNotificationChannel === 'email'){
+      Promise.resolve(supabaseClient.functions.invoke('send-order-email', {
+        body:{ restaurant_id:RESTAURANT.id, order_id:saved.id, token:emailNotifyToken }
+      })).then(emailResult=>{
+        if(emailResult?.error || emailResult?.data?.error) console.error('send-order-email:', emailResult.error || emailResult.data.error);
+      }).catch(emailInvokeError=>console.error('send-order-email:', emailInvokeError));
+    }
+  }).catch(e=>{
+    console.error('save_public_order:',e);
+    toast('Commande affichée immédiatement, mais sa synchronisation a rencontré un problème.', false);
+  });
 
   /* Paiement : liens configurés par le restaurateur inchangés. */
   if(c.payment==='wave' && isSafeHttpUrl(state.toggles.wave_link)){
@@ -8431,31 +8311,11 @@ function renderDashSection(key){
     payments: dashPayments, customers: dashCustomers, qrcode: dashQrcode,
     staff: dashStaff, library: dashLibrary, settings: dashSettings, abonnement: dashAbonnement,
   };
-  const metricSections = new Set(['overview','pos','analytics','accounting']);
-  if(!metricSections.has(key)){
-    const bodyHtml = (renderers[key]||dashOverview)();
-    el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
-    if(key==='qrcode'){}
-    hydrateIcons();
-    return;
-  }
-  const render = async()=>{
-    const ok = await ensureDashboardPeriodData(RESTAURANT.id);
-    if(!ok) return '';
-    return (renderers[key]||dashOverview)();
-  };
-  el.innerHTML = `<div class="empty-state" style="padding:32px 20px;">${ic('loader',24,{stroke:'var(--ink-faint)'})}<p style="margin-top:10px;font-size:13px;color:var(--ink-soft);">Chargement…</p></div>`;
-  Promise.resolve().then(render).then(bodyHtml=>{
-    if(state.dashSection!==key || !bodyHtml) return;
-    el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
-    if(key==='analytics') drawRevenueChart();
-    hydrateIcons();
-  }).catch(e=>{
-    console.error('Rendu du tableau de bord:',e);
-    if(state.dashSection!==key) return;
-    el.innerHTML = `<div class="empty-state" style="padding:32px 20px;"><p style="font-size:13px;color:var(--ink-soft);">Impossible de charger cette section. Réessayez.</p></div>`;
-    hydrateIcons();
-  });
+  const bodyHtml = (renderers[key]||dashOverview)();
+  el.innerHTML = key==='overview' ? bodyHtml : dashboardHomeButton() + bodyHtml;
+  if(key==='qrcode'){}
+  if(key==='analytics') drawRevenueChart();
+  hydrateIcons();
 }
 
 /* ---------------- OVERVIEW ---------------- */
@@ -8581,7 +8441,7 @@ const ORDER_STATUS_FILTERS = [['all','Toutes'],['new','Nouvelles'],['preparing',
 function dashOrders(){
   return `
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
-  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)} — affichées par pages de ${ORDER_HISTORY_PAGE_SIZE}.</p>
+  <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)}.</p>
   ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
   <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
@@ -8593,7 +8453,6 @@ function dashOrders(){
       <tbody id="ordersTableBody">${ordersRowsHtml()}</tbody>
     </table>
   </div>`}
-  ${orderHistoryHasMore ? `<div style="display:flex;justify-content:center;margin:14px 0 8px;"><button class="btn btn-outline" onclick="loadMoreOrders()" ${orderHistoryLoading?'disabled':''}>${orderHistoryLoading?'Chargement…':'Charger les commandes suivantes'}</button></div>` : ''}
   <div id="orderDetailOverlay" class="hidden" style="position:fixed;inset:0;z-index:100;">
     <div style="position:absolute;inset:0;background:rgba(43,24,16,.4);" onclick="closeOrderDetail()"></div>
     <div id="orderDetailPanel" style="position:absolute;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--surface);overflow-y:auto;box-shadow:-10px 0 30px rgba(0,0,0,.15);"></div>
@@ -8869,53 +8728,39 @@ function dashAnalytics(){
     <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Premium.</p>
   </div>`}`;
 }
-async function drawRevenueChart(){
+function drawRevenueChart(){
   const el = document.getElementById('revenueChart');
-  if(!el || !RESTAURANT.id) return;
-  try{
-    const days=[];
-    for(let i=6;i>=0;i--){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i); days.push(d); }
-    const from=days[0], to=new Date(days[days.length-1].getTime()+86400000), orders=[];
-    for(let page=0;;page++){
-      const fromRow=page*ORDER_HISTORY_PAGE_SIZE, toRow=fromRow+ORDER_HISTORY_PAGE_SIZE-1;
-      const {data,error}=await supabaseClient
-        .from('orders').select('total,status,created_at')
-        .eq('restaurant_id',RESTAURANT.id)
-        .gte('created_at',from.toISOString())
-        .lt('created_at',to.toISOString())
-        .order('created_at',{ascending:false})
-        .range(fromRow,toRow);
-      if(error) throw error;
-      const batch=Array.isArray(data)?data:[];
-      orders.push(...batch);
-      if(batch.length<ORDER_HISTORY_PAGE_SIZE) break;
-    }
-    const labels=[], totals=days.map(d=>{
-      const next=new Date(d.getTime()+86400000); let total=0;
-      orders.forEach(o=>{const created=new Date(o.created_at);if(o.status!=='cancelled'&&created>=d&&created<next) total+=Number(o.total)||0;});
-      labels.push(d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','').slice(0,3));
-      return total;
-    });
-    const max=Math.max(...totals,1), w=560,h=180,pad=28, step=(w-pad*2)/(totals.length-1);
-    const pts=totals.map((v,i)=>[pad+i*step,h-pad-((v/max)*(h-pad*2))]);
-    const path='M'+pts.map(p=>p.join(',')).join(' L');
-    const area=path+` L${pts[pts.length-1][0]},${h-pad} L${pts[0][0]},${h-pad} Z`;
-    if(totals.every(v=>v===0)){
-      el.innerHTML=`<div class="empty-state">${ic('chart',22,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune vente sur les 7 derniers jours.</p></div>`;
-      return;
-    }
-    el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:200px;">
-      <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8871E" stop-opacity="0.35"/><stop offset="100%" stop-color="#E8871E" stop-opacity="0"/></linearGradient></defs>
-      <path d="${area}" fill="url(#rg)"/><path d="${path}" fill="none" stroke="#F5B24E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#F5B24E"><title>${fmt(totals[i])}</title></circle>`).join('')}
-      ${labels.map((d,i)=>`<text x="${pad+i*step}" y="${h-6}" font-size="10" fill="#CBD5E1" text-anchor="middle">${d}</text>`).join('')}
-    </svg>`;
-  }catch(e){
-    console.error('Chargement de la courbe de chiffre d’affaires:',e);
-    el.innerHTML=`<div class="empty-state"><p style="font-size:13px;color:var(--ink-soft);">Impossible de charger la courbe.</p></div>`;
+  if(!el) return;
+  // Série réelle : somme du chiffre d'affaires (commandes non annulées)
+  // par jour calendaire, sur les 7 derniers jours — calculée à partir
+  // de DEMO_ORDERS, jamais une courbe inventée.
+  const days = [];
+  const labels = [];
+  for(let i=6; i>=0; i--){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
+    const next = new Date(d.getTime()+86400000);
+    const total = DEMO_ORDERS.filter(o=>o.status!=='cancelled' && o.createdAt>=d && o.createdAt<next).reduce((s,o)=>s+o.total,0);
+    days.push(total);
+    labels.push(d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.','').slice(0,3));
   }
+  const max = Math.max(...days, 1);
+  const w=560,h=180,pad=28;
+  const step = (w-pad*2)/(days.length-1);
+  const pts = days.map((v,i)=>[pad+i*step, h-pad-((v/max)*(h-pad*2))]);
+  const path = 'M'+pts.map(p=>p.join(',')).join(' L');
+  const area = path + ` L${pts[pts.length-1][0]},${h-pad} L${pts[0][0]},${h-pad} Z`;
+  if(days.every(v=>v===0)){
+    el.innerHTML = `<div class="empty-state">${ic('chart',22,{stroke:'var(--ink-faint)'})}<p style="margin-top:8px;font-size:13px;color:var(--ink-soft);">Aucune vente sur les 7 derniers jours.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:200px;">
+    <defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8871E" stop-opacity="0.35"/><stop offset="100%" stop-color="#E8871E" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#rg)"/>
+    <path d="${path}" fill="none" stroke="#F5B24E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#F5B24E"><title>${fmt(days[i])}</title></circle>`).join('')}
+    ${labels.map((d,i)=>`<text x="${pad+i*step}" y="${h-6}" font-size="10" fill="#CBD5E1" text-anchor="middle">${d}</text>`).join('')}
+  </svg>`;
 }
-
 </script>
 
 <script>
