@@ -6442,19 +6442,34 @@ async function createRestaurantFromOnboarding(){
   subscribeToOrdersRealtime(RESTAURANT.id);
   subscribeToReviewsRealtime(RESTAURANT.id);
 
-  // Les données initiales doivent être confirmées en base avant le dashboard.
-  const initialPersisted=await persistRestaurant();
-  if(!initialPersisted){toast('Le restaurant a été créé mais ses données initiales n’ont pas pu être confirmées.');return null;}
+  // Le restaurant vient d’être réellement créé par create_my_restaurant.
+  // Les synchronisations secondaires ne doivent jamais bloquer l’accès au dashboard.
   void (async()=>{
-    const catRows = Object.entries(catsState).map(([key,label],i) => ({
-      restaurant_id: RESTAURANT.id, key, label, sort_order:i,
-    }));
-    if(catRows.length){
-      const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
-      if(catErr) toast('Catégories par défaut non enregistrées : ' + catErr.message);
+    try{
+      const initialPersisted=await persistRestaurant();
+      if(!initialPersisted){
+        console.warn('Synchronisation initiale du restaurant non confirmée après sa création.');
+      }
+    }catch(e){
+      console.warn('Synchronisation initiale du restaurant:',e);
     }
-  })().catch(e=>console.warn('Données secondaires de création du restaurant:',e));
 
+    try{
+      const catRows = Object.entries(catsState).map(([key,label],i) => ({
+        restaurant_id: RESTAURANT.id, key, label, sort_order:i,
+      }));
+      if(catRows.length){
+        const {error:catErr} = await supabaseClient.from('categories').insert(catRows);
+        if(catErr) console.warn('Catégories par défaut non enregistrées:', catErr);
+      }
+    }catch(e){
+      console.warn('Données secondaires de création du restaurant:',e);
+    }
+  })();
+
+  // L’id retourné par create_my_restaurant est la preuve de la création réelle.
+  // On retourne immédiatement la ligne afin que completeSignupAfterAuth()
+  // puisse charger le restaurant et ouvrir le dashboard sans reconnexion.
   return restaurantRow;
 }
 
