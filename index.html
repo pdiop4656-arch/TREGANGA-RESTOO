@@ -8468,6 +8468,29 @@ function dashAnalytics(){
   validOrders.forEach(o=>o.items.forEach(it=>{ const [name,qty]=orderItemNameQty(it); tally[name]=(tally[name]||0)+qty; }));
   const topProductEntry = Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];
 
+  /* Analyses avancées — uniquement pour Premium.
+     Les deux listes utilisent exclusivement les commandes réelles de la période :
+     - meilleures commandes : classement par montant total décroissant ;
+     - meilleurs produits : classement par chiffre d'affaires généré, avec quantité vendue. */
+  const topOrders = validOrders.slice().sort((a,b)=>Number(b.total||0)-Number(a.total||0)).slice(0,3);
+  const advancedProducts = {};
+  validOrders.forEach(o=>{
+    (o.items||[]).forEach(it=>{
+      const [name,qtyRaw] = orderItemNameQty(it);
+      const qty = Math.max(1, Number(qtyRaw)||1);
+      if(!name) return;
+      const key = String(name).trim();
+      if(!advancedProducts[key]) advancedProducts[key] = {name:key,qty:0,revenue:0};
+      advancedProducts[key].qty += qty;
+      const unit = orderItemPrice(it);
+      if(unit!==null) advancedProducts[key].revenue += unit * qty;
+    });
+  });
+  const topProducts = Object.values(advancedProducts).sort((a,b)=>{
+    if(b.revenue!==a.revenue) return b.revenue-a.revenue;
+    return b.qty-a.qty;
+  }).slice(0,3);
+
   return `
   
   <h1 class="font-display" style="font-size:22px;margin-bottom:4px;">Analyses</h1>
@@ -8484,9 +8507,48 @@ function dashAnalytics(){
     <div id="revenueChart"></div>
   </div>
   ${!isPremiumActive() ? lockedNotice('Analyses avancées (comparaison de périodes, cohortes clients)') : `
+  <style>
+    #advancedAnalyticsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+    #advancedAnalyticsGrid .aa-panel{min-width:0;border:1px solid var(--cream-line);border-radius:16px;padding:14px;background:rgba(255,255,255,.018);}
+    #advancedAnalyticsGrid .aa-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--cream-line);}
+    #advancedAnalyticsGrid .aa-row:first-child{border-top:none;padding-top:2px;}
+    #advancedAnalyticsGrid .aa-rank{width:28px;height:28px;border-radius:9px;background:rgba(232,135,30,.12);color:var(--amber-ink);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:0 0 28px;}
+    #advancedAnalyticsGrid .aa-title{font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    #advancedAnalyticsGrid .aa-sub{font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
+    #advancedAnalyticsGrid .aa-value{font-size:12.5px;font-weight:700;text-align:right;white-space:nowrap;}
+    @media(max-width:720px){#advancedAnalyticsGrid{grid-template-columns:1fr;gap:10px;}#advancedAnalyticsGrid .aa-panel{padding:13px;}#advancedAnalyticsGrid .aa-value{font-size:12px;}}
+  </style>
   <div class="card" style="padding:18px;">
-    <h2 class="font-display" style="font-size:16px;margin-bottom:10px;">Analyses avancées</h2>
-    <p style="font-size:12.5px;color:var(--ink-soft);">Comparaison de périodes, cohortes clients et prévisions — débloquées avec le plan Premium.</p>
+    <div style="margin-bottom:12px;">
+      <h2 class="font-display" style="font-size:16px;margin-bottom:4px;">Analyses avancées</h2>
+      <p style="font-size:11.5px;color:var(--ink-soft);">Les informations les plus utiles de la période sélectionnée.</p>
+    </div>
+    <div id="advancedAnalyticsGrid">
+      <div class="aa-panel">
+        <p style="font-size:12px;font-weight:800;margin-bottom:8px;">3 meilleures commandes</p>
+        ${topOrders.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);padding:8px 0;">Aucune commande sur cette période.</p>` : topOrders.map((o,i)=>`
+          <div class="aa-row">
+            <span class="aa-rank">${i+1}</span>
+            <div style="min-width:0;">
+              <p class="aa-title">#${escapeHtml(o.num)}</p>
+              <p class="aa-sub">${escapeHtml(o.client||'Client')}</p>
+            </div>
+            <span class="aa-value font-tabular">${fmt(o.total)}</span>
+          </div>`).join('')}
+      </div>
+      <div class="aa-panel">
+        <p style="font-size:12px;font-weight:800;margin-bottom:8px;">3 meilleurs produits</p>
+        ${topProducts.length===0 ? `<p style="font-size:11.5px;color:var(--ink-faint);padding:8px 0;">Aucune vente sur cette période.</p>` : topProducts.map((p,i)=>`
+          <div class="aa-row">
+            <span class="aa-rank">${i+1}</span>
+            <div style="min-width:0;">
+              <p class="aa-title">${escapeHtml(p.name)}</p>
+              <p class="aa-sub">${p.qty} vendu${p.qty>1?'s':''}</p>
+            </div>
+            <span class="aa-value font-tabular">${fmt(p.revenue)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
   </div>`}`;
 }
 function drawRevenueChart(){
