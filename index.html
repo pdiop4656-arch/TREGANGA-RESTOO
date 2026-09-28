@@ -2384,7 +2384,6 @@ let accessibleRestaurants = [];
 let activeRestaurantId = null;
 let restaurantSetupMeta = {version:1,eligible:false,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
 let signupRestaurantCreationInFlight = false;
-let addRestaurantCreationInFlight = false;
 
 /* CORRECTION ARCHITECTURALE (pas juste une re-vérification) :
    auparavant, une seule fonction attendait TOUJOURS les 7 requêtes
@@ -3832,8 +3831,6 @@ async function loadAccessibleRestaurants(userId=currentUser?.id){
   accessibleRestaurants=rows;
   return rows;
 }
-function ownedRestaurants(){return accessibleRestaurants.filter(r=>r.access_kind==='owner');}
-function accountHasActivePremium(){return ownedRestaurants().some(r=>String(r.plan||'').toLowerCase()==='pro' && String(r.subscription_status||'').toLowerCase()==='active');}
 function restaurantSetupMetaFromSocial(){
   const raw=RESTAURANT.social && typeof RESTAURANT.social==='object' ? RESTAURANT.social.__teranga_setup : null;
   if(!raw||typeof raw!=='object') return {version:1,eligible:false,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
@@ -3902,16 +3899,7 @@ function restaurantSettingsSwitcherHtml(){
 function renderRestaurantSwitcher(){
   const host=document.getElementById('restaurantSwitcherHost');if(!host)return;
   if(!accessibleRestaurants.length){host.innerHTML='';return;}
-  const ownedCount=ownedRestaurants().length;
-  const premiumForSecond=ownedCount===0 || accountHasActivePremium();
-  const canCreate=realAccessKind==='owner' && ownedCount<2 && premiumForSecond;
-  const label=ownedCount>=2?'Limite atteinte':canCreate?'+ Ajouter un restaurant':ownedCount===1?'🔒 Premium requis':'🔒 Propriétaire requis';
-  const blockedAction=ownedCount>=2
-    ?"toast('Vous avez atteint la limite de 2 restaurants par compte.')"
-    :ownedCount===1&&!accountHasActivePremium()
-      ?"toast('🔒 Ajouter un deuxième restaurant est réservé au plan Premium actif.')"
-      :"toast('Seul le propriétaire peut créer un restaurant.')";
-  host.innerHTML=`<div class="tr-restaurant-switcher">${accessibleRestaurants.length>1?`<label class="sr-only" for="trActiveRestaurantSelect">Restaurant actif</label><select id="trActiveRestaurantSelect" onchange="switchActiveRestaurant(this.value)" aria-label="Restaurant actif">${accessibleRestaurants.map(r=>`<option value="${escapeAttr(r.id)}" ${String(r.id)===String(activeRestaurantId)?'selected':''}>${escapeHtml(r.name||'Restaurant')}</option>`).join('')}</select>`:`<span class="tr-single-restaurant">${escapeHtml(RESTAURANT.name||accessibleRestaurants[0]?.name||'Restaurant')}</span>`}<button type="button" class="tr-add-restaurant-btn" onclick="${canCreate?'requestAddRestaurant()':blockedAction}">${ic('plus',13)}<span>${label}</span></button></div>`;
+  host.innerHTML=`<div class="tr-restaurant-switcher">${accessibleRestaurants.length>1?`<label class="sr-only" for="trActiveRestaurantSelect">Restaurant actif</label><select id="trActiveRestaurantSelect" onchange="switchActiveRestaurant(this.value)" aria-label="Restaurant actif">${accessibleRestaurants.map(r=>`<option value="${escapeAttr(r.id)}" ${String(r.id)===String(activeRestaurantId)?'selected':''}>${escapeHtml(r.name||'Restaurant')}</option>`).join('')}</select>`:`<span class="tr-single-restaurant">${escapeHtml(RESTAURANT.name||accessibleRestaurants[0]?.name||'Restaurant')}</span>`}</div>`;
   hydrateIcons(host);
 }
 async function switchActiveRestaurant(rid,section=null){
@@ -3925,27 +3913,6 @@ async function switchActiveRestaurant(rid,section=null){
   if(!ok||!access){activeRestaurantId=oldRid;toast('Impossible de charger ce restaurant.');return false;}
   viewerIsStaff=true;setView('dashboard');renderRestaurantSwitcher();setDashSection(section||'overview');
   void loadRestaurantCatalogSecondaryData(rid);void loadRestaurantSecondaryData(rid);return true;
-}
-async function requestAddRestaurant(){
-  if(!currentUser?.id){openLogin('login');return false;}
-  if(addRestaurantCreationInFlight || signupRestaurantCreationInFlight){toast('Création du restaurant déjà en cours…');return false;}
-  await loadAccessibleRestaurants(currentUser.id);
-  const ownedCount=ownedRestaurants().length;
-  if(ownedCount>=2){toast('Vous avez atteint la limite de 2 restaurants par compte.');return false;}
-  if(realAccessKind!=='owner'){toast('Seul le propriétaire du compte peut créer un restaurant.');return false;}
-  if(ownedCount===1 && !accountHasActivePremium()){toast('🔒 Ajouter un deuxième restaurant est réservé au plan Premium actif.');setDashSection('abonnement');return false;}
-  addRestaurantCreationInFlight=true;
-  try{
-    Object.assign(obState,{step:0,restoName:'Mon restaurant',restoType:'Cuisine sénégalaise',city:RESTAURANT.city||'Dakar',phone:RESTAURANT.phone||'',address:'',logoPhoto:null,coverPhoto:null,galleryPhotos:[],deliveryEnabled:true,plan:'free',billing:'monthly',paymentMethod:'',paying:false,obPrimary:'#E8871E',obSecondary:'#1F6B45',obTextColor:'#2B1810'});
-    const row=await createRestaurantFromOnboarding();
-    if(!row)return false;
-    await loadAccessibleRestaurants(currentUser.id);
-    const ok=await switchActiveRestaurant(row.id,'overview');
-    if(ok){toast(ic('checkCircle',15)+' Nouveau restaurant créé et sélectionné.',true);}
-    return ok;
-  }finally{
-    addRestaurantCreationInFlight=false;
-  }
 }
 async function completeSignupAfterAuth(){
   if(signupRestaurantCreationInFlight)return false;
@@ -6262,7 +6229,9 @@ async function tryResumePendingOnboarding(){
 }
 function startOnboarding(){
   Object.assign(obState,{step:0,accountName:'',accountEmail:'',accountPassword:'',accountPassword2:'',restoName:'Mon restaurant',restoType:'Cuisine sénégalaise',city:'Dakar',phone:'',slug:null,obPrimary:'#E8871E',obSecondary:'#1F6B45',obTextColor:'#2B1810',logoPhoto:null,coverPhoto:null,galleryPhotos:[],address:'',deliveryEnabled:true,paymentToggles:{cash:true,on_delivery:true,wave:false,orange_money:false,card:false},plan:'free',billing:'monthly',paymentMethod:'',paying:false,emailConfirmationPending:false,pendingEmail:''});
-  if(currentUser?.id){requestAddRestaurant();return;}
+  if(currentUser?.id){
+    if(accessibleRestaurants.length)return;
+  }
   setView('onboarding');renderOnboarding();
 }
 function obField(key,val){obState[key]=val;savePendingOnboarding();}
@@ -6324,53 +6293,10 @@ async function createRestaurantFromOnboarding(){
   // Vérification réelle avant CHAQUE création : les limites sont basées sur
   // les restaurants réellement possédés par le compte, jamais sur le navigateur.
   await loadAccessibleRestaurants(user.id);
-  const ownedCountBeforeCreation = ownedRestaurants().length;
-  if(ownedCountBeforeCreation >= 2){
-    toast('Vous avez atteint la limite de 2 restaurants par compte.');
+  const ownedCountBeforeCreation = accessibleRestaurants.filter(r=>r.access_kind==='owner').length;
+  if(ownedCountBeforeCreation >= 1){
+    toast('Un seul restaurant est autorisé par compte.');
     return null;
-  }
-  if(ownedCountBeforeCreation === 1 && !accountHasActivePremium()){
-    toast('🔒 Ajouter un deuxième restaurant est réservé au plan Premium actif.');
-    return null;
-  }
-  const isAdditionalRestaurant = ownedCountBeforeCreation === 1;
-
-  if(isAdditionalRestaurant){
-    // Nouveau restaurant = état totalement indépendant du restaurant précédent.
-    RESTAURANT.hours = defaultHours();
-    RESTAURANT.delivery = defaultDelivery();
-    RESTAURANT.social = defaultSocial();
-    RESTAURANT.galleryPhotos = [];
-    RESTAURANT.logoDataUrl = null;
-    RESTAURANT.coverDataUrl = null;
-    RESTAURANT.showMap = false;
-    RESTAURANT.mapsLink = '';
-    RESTAURANT.notificationsEnabled = true;
-    RESTAURANT.aiEnabled = true;
-    RESTAURANT.orderNotificationEmail = (user.email || '').toLowerCase();
-    RESTAURANT.orderNotificationEmailVerified = !!RESTAURANT.orderNotificationEmail;
-    RESTAURANT.orderNotificationEmailPending = '';
-    RESTAURANT.orderNotificationChannel = 'whatsapp';
-    RESTAURANT.orderNotificationWhatsappRecipients = [];
-    RESTAURANT.isPublished = false;
-    RESTAURANT.heroTitle = '';
-    RESTAURANT.heroSubtitle = '';
-    RESTAURANT.subscriptionStatus = 'trialing';
-    RESTAURANT.billingCycle = 'monthly';
-    RESTAURANT.trialEndsAt = null;
-    RESTAURANT.currentPeriodEnd = null;
-    RESTAURANT.lastRenewedAt = null;
-    catsState = {};
-    catsHomeVisible = {};
-    PRODUCTS.length = 0;
-    DEMO_ORDERS.length = 0;
-    staffState.length = 0;
-    REVIEWS.length = 0;
-    paymentsHistory = [];
-    variantsSelectedProduct = null;
-    abonSelectedPlan = null;
-    abonSelectedCycle = null;
-    obState.paymentToggles = {cash:true,on_delivery:true,wave:false,orange_money:false,card:false};
   }
 
   // Le nouvel onboarding crée automatiquement le restaurant sur Gratuit.
@@ -6419,6 +6345,12 @@ async function createRestaurantFromOnboarding(){
     RESTAURANT.trialEndsAt = null;
     RESTAURANT.currentPeriodEnd = null;
   }
+
+  // Le nouveau restaurant doit être éligible à la checklist dès sa création.
+  // On l'inscrit dans le social envoyé au RPC afin que l'état survive au
+  // rechargement immédiat du restaurant depuis Supabase.
+  restaurantSetupMeta={version:1,eligible:true,closed:false,completed:false,hoursConfigured:false,deliveryConfigured:false};
+  syncRestaurantSetupMetaToSocial();
 
   // Création réelle du restaurant via une fonction RPC côté serveur
   // (voir create_my_restaurant dans supabase_schema.sql). Le client
