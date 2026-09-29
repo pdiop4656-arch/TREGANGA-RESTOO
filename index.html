@@ -5000,6 +5000,16 @@ function isPremiumActive(){
 function isPaidPlanActive(){
   return (state.plan==='starter' || state.plan==='pro') && computeEffectiveSubscriptionStatus()==='active';
 }
+/* Un restaurant peut utiliser Gratuit uniquement avant son premier paiement.
+   lastRenewedAt est la preuve persistée d'au moins un abonnement payé ;
+   les états active/cancelled/expired d'un plan payant couvrent aussi le cas
+   où cette preuve n'est pas encore disponible localement. */
+function hasEverPaidSubscription(){
+  const status = computeEffectiveSubscriptionStatus();
+  return Number.isFinite(RESTAURANT.lastRenewedAt) ||
+    ((state.plan==='starter' || state.plan==='pro') &&
+     ['active','cancelled','expired'].includes(status));
+}
 function trialDaysRemaining(){
   if(!RESTAURANT.trialEndsAt) return FREE_TRIAL_DAYS;
   return Math.max(0, Math.ceil((RESTAURANT.trialEndsAt - Date.now()) / 86400000));
@@ -5214,7 +5224,7 @@ function renderPlanBadgeAndBanner(){
   } else if(status==='cancelled'){
     banner.innerHTML = `<div style="background:rgba(43,24,16,.06);color:var(--ink-soft);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('info',15)}Abonnement annulé — accès encore valide ${periodLeft} jour${periodLeft>1?'s':''}. <a href="#" onclick="setDashSection('abonnement');return false;" style="text-decoration:underline;font-weight:600;">Réactiver</a></div>`;
   } else {
-    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel}, confirmé par PayTech. Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''}.</div>`;
+    banner.innerHTML = `<div style="background:var(--forest-soft);color:var(--forest);padding:9px 20px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${ic('checkCircle',15)}Abonnement actif — Plan ${planLabel}. Accès valide encore ${periodLeft} jour${periodLeft>1?'s':''}.</div>`;
   }
 }
 
@@ -10878,7 +10888,7 @@ function dashAbonnement(){
     <p style="font-size:11.5px;color:var(--ink-faint);margin-top:10px;">
       ${(state.plan==='starter'||state.plan==='pro') && !paidActive ? `${planName} sélectionné mais pas encore payé — aucune fonctionnalité payante n'est débloquée. Terminez le paiement PayTech ci-dessous pour l'activer réellement.`
         : status==='trialing' ? `Fin de l'essai dans ${trialDaysRemaining()} jour${trialDaysRemaining()>1?'s':''}.`
-        : status==='active' ? `Accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, confirmé par PayTech.`
+        : status==='active' ? `Accès valide encore ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}.`
         : status==='cancelled' ? `Annulé — accès encore valide ${periodDaysRemaining()} jour${periodDaysRemaining()>1?'s':''}, puis passera automatiquement en Expiré.`
         : `Votre accès complet est suspendu. Choisissez un forfait ci-dessous pour le rétablir.`}
     </p>
@@ -10892,13 +10902,14 @@ function dashAbonnement(){
 function abonCardHtml(){
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
+  const freeForbidden = hasEverPaidSubscription();
   const price = priceForPlanCycle(abonSelectedPlan, cycle);
   if(!abonCustomerName) abonCustomerName = String(currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || '');
   if(!abonCustomerPhone) abonCustomerPhone = String(RESTAURANT?.phone||'').replace(/\D/g,'');
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
-    <button onclick="abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+    <button ${freeForbidden?'disabled title="Le forfait Gratuit n’est plus disponible après un premier paiement Starter ou Premium."':''} onclick="${freeForbidden?'return false;':"abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();"}" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}${freeForbidden?'opacity:.55;cursor:not-allowed;':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Gratuit</p><p style="font-size:11.5px;color:var(--ink-faint);">0 FCFA</p></button>
     <button onclick="abonSelectedPlan='starter';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='starter'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='starter'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Starter</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(STARTER_PRICE)}/mois</p></button>
@@ -10929,8 +10940,8 @@ function abonCardHtml(){
     <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <p style="font-size:12px;color:var(--ink-soft);">Aucun paiement requis pour le forfait Gratuit.</p>
-    <button class="btn btn-secondary" onclick="abonApplyPlan()" ${state.plan==='free'?'disabled':''}>${state.plan==='free'?'Forfait actuel':'Passer en Gratuit'}</button>
+    <p style="font-size:12px;color:var(--ink-soft);">${freeForbidden?'Le forfait Gratuit n’est plus disponible après un paiement Starter ou Premium.':'Aucun paiement requis pour le forfait Gratuit.'}</p>
+    <button class="btn btn-secondary" onclick="abonApplyPlan()" ${(state.plan==='free'||freeForbidden)?'disabled':''}>${state.plan==='free'?'Forfait actuel':freeForbidden?'Gratuit indisponible':'Passer en Gratuit'}</button>
   </div>`}`;
 }
 
@@ -10947,6 +10958,13 @@ function paymentsHistoryHtml(){
 
 async function abonApplyPlan(){
   if(abonSelectedPlan === 'free'){
+    if(hasEverPaidSubscription()){
+      abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
+      renderDashSection('abonnement');
+      renderPlanBadgeAndBanner();
+      toast('Le forfait Gratuit n’est plus disponible après un premier paiement Starter ou Premium.', true);
+      return;
+    }
     state.plan = 'free';
     renderDashSection('abonnement');
     renderPlanBadgeAndBanner();
@@ -11016,7 +11034,7 @@ async function startPayTechCheckout(plan){
 }
 
 async function cancelSubscription(){
-  if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre forfait repassera en Gratuit.")) return;
+  if(!confirm("Résilier votre abonnement Premium ? Vous garderez l'accès jusqu'à la fin de la période déjà payée, puis votre abonnement deviendra expiré et vous devrez renouveler un forfait payant.")) return;
   // Passe par la RPC dédiée cancel_my_subscription — subscription_status
   // n'est plus modifiable par une simple mise à jour de paramètres
   // (voir "VERROU CRITIQUE" dans supabase_schema.sql).
