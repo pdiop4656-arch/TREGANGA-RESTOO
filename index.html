@@ -6587,14 +6587,6 @@ async function createRestaurantAndPay(){
     toast('Choisissez Wave ou Orange Money pour continuer.');
     return;
   }
-  if(!customerName){
-    toast('Veuillez renseigner votre nom complet.');
-    return;
-  }
-  if(!customerPhone){
-    toast('Veuillez renseigner votre numéro de téléphone.');
-    return;
-  }
   const btn = document.getElementById('obPayBtn');
   if(btn){ btn.disabled = true; btn.innerHTML = 'Création de votre restaurant…'; }
 
@@ -11004,14 +10996,6 @@ async function startPayTechCheckout(plan){
   const clientDevice = window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
   if(!['Wave','Orange Money'].includes(paymentMethod)){
     toast('Choisissez Wave ou Orange Money pour continuer.');
-    return;
-  }
-  if(!customerName){
-    toast('Veuillez renseigner votre nom complet.');
-    return;
-  }
-  if(!customerPhone){
-    toast('Veuillez renseigner votre numéro de téléphone.');
     return;
   }
   if(btn){ btn.disabled = true; btn.textContent = 'Préparation du paiement PayTech…'; }
