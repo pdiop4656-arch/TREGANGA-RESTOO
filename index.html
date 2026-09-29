@@ -6582,6 +6582,7 @@ async function createRestaurantAndPay(){
   const paymentMethod = String(obState.paymentMethod||'').trim();
   const customerName = String(obState.accountName||'').trim();
   const customerPhone = String(obState.phone||'').replace(/\D/g,'');
+  const clientDevice = window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
   if(!['Wave','Orange Money'].includes(paymentMethod)){
     toast('Choisissez Wave ou Orange Money pour continuer.');
     return;
@@ -6619,16 +6620,19 @@ async function createRestaurantAndPay(){
       target_payment: paymentMethod,
       customer_name: customerName,
       customer_phone: customerPhone,
+      client_device: clientDevice,
     },
   });
-  if(error || !data || !data.redirect_url){
+  const mobileRedirectUrl = clientDevice === 'mobile' && isSafeHttpUrl(data?.mobile_redirect_url) ? data.mobile_redirect_url : '';
+  const paymentUrl = mobileRedirectUrl || data?.redirect_url;
+  if(error || !data || !paymentUrl){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"réponse invalide du serveur.") : "réponse invalide du serveur.") + " Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez terminer le paiement depuis Abonnement.");
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('abonnement');
     return;
   }
-  window.location.href = data.redirect_url;
+  window.location.href = paymentUrl;
 }
 
 function renderOnboarding(){
@@ -10997,6 +11001,7 @@ async function startPayTechCheckout(plan){
   const paymentMethod = String(abonPaymentMethod||'').trim();
   const customerName = String(abonCustomerName||'').trim();
   const customerPhone = String(abonCustomerPhone||'').replace(/\D/g,'');
+  const clientDevice = window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
   if(!['Wave','Orange Money'].includes(paymentMethod)){
     toast('Choisissez Wave ou Orange Money pour continuer.');
     return;
@@ -11023,14 +11028,17 @@ async function startPayTechCheckout(plan){
       target_payment: paymentMethod,
       customer_name: customerName,
       customer_phone: customerPhone,
+      client_device: clientDevice,
     },
   });
-  if(error || !data || !data.redirect_url){
+  const mobileRedirectUrl = clientDevice === 'mobile' && isSafeHttpUrl(data?.mobile_redirect_url) ? data.mobile_redirect_url : '';
+  const paymentUrl = mobileRedirectUrl || data?.redirect_url;
+  if(error || !data || !paymentUrl){
     toast("Impossible de démarrer le paiement PayTech : " + (error ? supabaseErrorFr(error,"Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée.") : "Réponse invalide du serveur — vérifiez que la fonction Edge paytech-checkout est bien déployée."));
     if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
     return;
   }
-  window.location.href = data.redirect_url;
+  window.location.href = paymentUrl;
 }
 
 async function cancelSubscription(){
