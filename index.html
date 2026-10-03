@@ -3572,7 +3572,7 @@ async function preloadRestaurantPublicBySlug(slug){
     'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
     'address,city,phone,hours,delivery,social,show_map,maps_link,' +
     'notifications_enabled,order_notification_email,order_notification_email_verified,' +
-    'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,' +
+    'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
     'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
     'plan,payment_toggles'
   ).eq('slug', clean).maybeSingle();
@@ -3591,6 +3591,7 @@ async function preloadRestaurantPublicBySlug(slug){
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
+  const categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
 
   return {
     clean,
@@ -3599,6 +3600,7 @@ async function preloadRestaurantPublicBySlug(slug){
     restaurantResult,
     categoriesResult,
     productsResult,
+    categoryCoverPhotos,
     reviewsPromise
   };
 }
@@ -3621,18 +3623,20 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   let restaurantResult;
   let categoriesResult;
   let productsResult;
+  let categoryCoverPhotos = [];
 
   if(preloaded){
     restaurantResult = preloaded.restaurantResult;
     categoriesResult = preloaded.categoriesResult;
     productsResult = preloaded.productsResult;
+    categoryCoverPhotos = Array.isArray(preloaded.categoryCoverPhotos) ? preloaded.categoryCoverPhotos : [];
   }else{
     [restaurantResult, categoriesResult, productsResult] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
       'notifications_enabled,order_notification_email,order_notification_email_verified,' +
-      'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,' +
+      'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
       'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
       'plan,payment_toggles'
     ).eq('id', restaurantId).single(),
@@ -3643,6 +3647,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
+    categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
   }
 
   if(restaurantResult.error || categoriesResult.error || productsResult.error || !restaurantResult.data){
@@ -3659,10 +3664,10 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  // Le logo fait partie des données critiques du premier affichage : il
-  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  // Le logo et la couverture font partie des données critiques du premier affichage :
+  // ils sont chargés avec le restaurant, pas dans le chargement secondaire.
   RESTAURANT.logoDataUrl = r.logo_data_url || '';
-  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.coverDataUrl = r.cover_data_url || '';
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
@@ -3723,15 +3728,67 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  // Seules la couverture et les photos produits restent différées ; le logo
-  // est déjà disponible pour le premier rendu.
-  loadRestaurantPublicImagesFast(restaurantId);
+  // Les photos nécessaires aux couvertures des catégories visibles font
+  // partie du premier affichage ; toutes les autres restent différées.
+  applyPublicProductPhotoRows(categoryCoverPhotos);
+  loadRestaurantPublicImagesFast(restaurantId, categoryCoverPhotos.map(x => String(x.id)));
   loadRestaurantPublicReviewsSecondaryData(restaurantId, preloaded?.reviewsPromise || null);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
   return true;
 }
 
 let publicImageLoadGeneration = 0;
+
+async function loadPublicCategoryCoverPhotos(restaurantId, cats, prods){
+  const homeCats = new Set((cats||[])
+    .filter(c => c && c.visible_on_home !== false)
+    .map(c => c.key)
+    .filter(Boolean));
+  if(!homeCats.size) return [];
+
+  // `products` est déjà trié par created_at dans le chargement public.
+  // On ne récupère ici que la première photo du premier produit actif
+  // de chaque catégorie visible sur l'accueil — jamais toutes les photos.
+  const firstProductByCat = new Map();
+  (prods||[]).forEach(p => {
+    if(!p || !p.active || !p.id || !homeCats.has(p.cat) || firstProductByCat.has(p.cat)) return;
+    firstProductByCat.set(p.cat, p);
+  });
+  const ids = Array.from(firstProductByCat.values()).map(p => p.id);
+  if(!ids.length) return [];
+
+  try{
+    const {data,error} = await supabaseClient
+      .from('products')
+      .select('id,photo,gallery_photos')
+      .in('id', ids);
+    if(error) return [];
+
+    const rowsById = new Map((data||[]).map(row => [String(row.id), row]));
+    return ids.map(id => {
+      const row = rowsById.get(String(id));
+      const photos = normalizeProductPhotos(row?.gallery_photos, row?.photo);
+      const source = firstProductByCat.get((prods||[]).find(p => String(p.id)===String(id))?.cat);
+      return row && photos.length
+        ? {id:row.id,photo:photos[0],photos,cat:source?.cat||''}
+        : null;
+    }).filter(Boolean);
+  }catch(e){
+    return [];
+  }
+}
+
+function applyPublicProductPhotoRows(photoRows){
+  (photoRows||[]).forEach(row => {
+    const p = PRODUCTS.find(item => String(item.id) === String(row?.id));
+    if(!p) return;
+    const photos = normalizeProductPhotos(row.gallery_photos, row.photo);
+    if(!photos.length) return;
+    p.photos = photos;
+    p.photo = photos[0] || '';
+    updatePublicProductPhotoDom(p);
+  });
+}
 
 function publicProductPhotoMarkup(p){
   return p.photo
@@ -3740,81 +3797,38 @@ function publicProductPhotoMarkup(p){
 }
 
 function updatePublicProductPhotoDom(p){
-  const nodes = document.querySelectorAll('#view-storefront .product-img-wrapper[data-public-product-id]');
-  nodes.forEach(node=>{
-    if(String(node.dataset.publicProductId||'') !== String(p.id||'')) return;
-    node.innerHTML = publicProductPhotoMarkup(p) +
-      (!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : '');
-  });
+  if(state.view!=='storefront') return;
+  const wrappers = document.querySelectorAll('.product-img-wrapper[data-public-product-id]');
+  for(const wrapper of wrappers){
+    if(String(wrapper.dataset.publicProductId) !== String(p.id)) continue;
+    const badge = wrapper.querySelector('.badge')?.outerHTML || '';
+    wrapper.innerHTML = publicProductPhotoMarkup(p) + badge;
+    return;
+  }
 }
 
-function applyPublicProductPhotoBatch(photoRows, generation){
-  if(generation !== publicImageLoadGeneration) return;
-  const rows = Array.isArray(photoRows) ? photoRows : [];
-  rows.forEach(row=>{
-    const p = PRODUCTS.find(item=>String(item.id)===String(row.id));
-    if(!p) return;
-    p.photos = normalizeProductPhotos(row.gallery_photos, row.photo);
-    p.photo = p.photos[0] || '';
-    updatePublicProductPhotoDom(p);
-  });
-}
-
-async function loadRestaurantPublicImagesFast(restaurantId){
+async function loadRestaurantPublicImagesFast(restaurantId, initialPhotoIds=[]){
   const generation = ++publicImageLoadGeneration;
-  const productIds = PRODUCTS
-    .filter(p=>p.active && p.id)
-    .map(p=>p.id);
+  const skip = new Set((initialPhotoIds||[]).map(String));
+  const queue = PRODUCTS
+    .filter(p => p && p.active && p.id && !skip.has(String(p.id)))
+    .map(p => String(p.id));
 
-  try{
-    const firstIds = productIds.slice(0,2);
-    const [{data:r}, firstPhotosResult] = await Promise.all([
-      supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
-      firstIds.length
-        ? supabaseClient.from('products').select('id,photo,gallery_photos').in('id', firstIds)
-        : Promise.resolve({data:[]})
-    ]);
-
+  for(let offset=0; offset<queue.length; offset+=2){
     if(generation !== publicImageLoadGeneration) return;
-
-    if(r){
-      RESTAURANT.logoDataUrl = r.logo_data_url || '';
-      RESTAURANT.coverDataUrl = r.cover_data_url || '';
-      RESTAURANT.galleryPhotos = Array.isArray(RESTAURANT.social?.galleryPhotos)
-        ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3)
-        : [];
-      if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
-
-      const hero = document.getElementById('tgHeroBg');
-      if(hero){
-        hero.style.backgroundImage = RESTAURANT.coverDataUrl
-          ? `url('${safeImageSrc(RESTAURANT.coverDataUrl)}')`
-          : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
-      }
-    }
-
-    applyPublicProductPhotoBatch(firstPhotosResult?.data || [], generation);
-
-    for(let offset=2; offset<productIds.length && generation===publicImageLoadGeneration; offset+=2){
-      await new Promise(resolve=>requestAnimationFrame(resolve));
-      if(generation !== publicImageLoadGeneration) break;
-
-      const batchIds = productIds.slice(offset,offset+2);
-      const {data:photos,error} = await supabaseClient
+    if(offset) await new Promise(resolve => requestAnimationFrame(resolve));
+    if(generation !== publicImageLoadGeneration) return;
+    const batchIds = queue.slice(offset, offset+2);
+    try{
+      const {data,error} = await supabaseClient
         .from('products')
         .select('id,photo,gallery_photos')
         .in('id', batchIds);
-
-      if(generation !== publicImageLoadGeneration) break;
-      if(error){
-        console.warn('Chargement progressif des images du restaurant:', error);
-        continue;
-      }
-      applyPublicProductPhotoBatch(photos || [], generation);
-    }
-  }catch(e){
-    if(generation === publicImageLoadGeneration){
-      console.warn('Chargement différé des images du restaurant:', e);
+      if(generation !== publicImageLoadGeneration) return;
+      if(!error) applyPublicProductPhotoRows(data||[]);
+    }catch(e){
+      if(generation !== publicImageLoadGeneration) return;
+      console.warn('Chargement différé des images produits:', e);
     }
   }
 }
@@ -5452,6 +5466,7 @@ let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
 let passwordRecoveryEmail = '';
 let passwordRecoveryActive = false;
+let passwordRecoverySession = null;
 let passwordRecoveryResendTimer = 0;
 let passwordRecoveryResendInterval = null;
 function startPasswordRecoveryResendCountdown(seconds=30){
@@ -5586,7 +5601,44 @@ async function verifyPasswordRecoveryOtp(){
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
     toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
   }
-  currentUser=data.user||currentUser;
+
+  /* Conserve explicitement la session DE RÉCUPÉRATION retournée par
+     verifyOtp(). Elle est la référence d'authentification à utiliser pour
+     l'étape suivante : le changement de mot de passe ne doit jamais
+     dépendre d'une autre session éventuellement présente dans localStorage. */
+  if(!data?.session){
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
+    toast('La vérification du code a réussi, mais aucune session de récupération n’a été établie. Demandez un nouveau code.');
+    return;
+  }
+  passwordRecoverySession=data.session;
+  passwordRecoveryActive=true;
+  currentUser=data.session.user||data.user||currentUser;
+  try{
+    const {data:sessionCheck}=await supabaseClient.auth.getSession();
+    const currentSession=sessionCheck?.session||null;
+    if(!currentSession || currentSession.user?.id!==data.session.user?.id){
+      const {error:setSessionError}=await supabaseClient.auth.setSession({
+        access_token:data.session.access_token,
+        refresh_token:data.session.refresh_token
+      });
+      if(setSessionError){
+        console.error('RECOVERY SESSION RESTORE ERROR', {
+          message:setSessionError?.message||null,
+          code:setSessionError?.code||null,
+          status:setSessionError?.status||null
+        });
+        if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
+        toast('Impossible d’établir la session nécessaire à la réinitialisation du mot de passe.');
+        return;
+      }
+    }
+  }catch(e){
+    console.error('RECOVERY SESSION CHECK ERROR', e);
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
+    toast('Impossible d’établir la session nécessaire à la réinitialisation du mot de passe.');
+    return;
+  }
   if(passwordRecoveryResendInterval) clearInterval(passwordRecoveryResendInterval);
   passwordRecoveryResendInterval=null;
   passwordRecoveryResendTimer=0;
@@ -5599,12 +5651,63 @@ async function saveRecoveredPassword(){
   const validation=validateStrongPassword(pw);
   if(validation){toast(validation);return;}
   if(pw!==pw2){toast('Les mots de passe ne correspondent pas.');return;}
-  const {data:sessionData}=await supabaseClient.auth.getSession();
-  if(!sessionData?.session){toast('Le code de réinitialisation n’est plus valide. Demandez un nouveau code.');return;}
+
+  /* Utilise d'abord la session réellement obtenue par verifyOtp(type:'recovery').
+     Si un autre état d'authentification l'a remplacée, on rétablit cette même
+     session avant l'appel updateUser(). Cela évite qu'une session normale,
+     ancienne ou provenant d'un autre onglet soit utilisée pour le changement. */
+  let recoverySession=passwordRecoverySession||null;
+  try{
+    const {data:sessionData}=await supabaseClient.auth.getSession();
+    const currentSession=sessionData?.session||null;
+    if(!recoverySession && currentSession) recoverySession=currentSession;
+
+    if(!recoverySession){
+      toast('Le code de réinitialisation n’est plus valide. Demandez un nouveau code.');
+      return;
+    }
+
+    if(currentSession?.user?.id!==recoverySession.user?.id){
+      const {error:setSessionError}=await supabaseClient.auth.setSession({
+        access_token:recoverySession.access_token,
+        refresh_token:recoverySession.refresh_token
+      });
+      if(setSessionError){
+        console.error('RECOVERY SESSION RESTORE BEFORE PASSWORD ERROR', {
+          message:setSessionError?.message||null,
+          code:setSessionError?.code||null,
+          status:setSessionError?.status||null
+        });
+        toast('La session de récupération n’est plus valide. Demandez un nouveau code.');
+        return;
+      }
+    }
+
+    const {data:verifiedSessionData}=await supabaseClient.auth.getSession();
+    const verifiedSession=verifiedSessionData?.session||null;
+    if(!verifiedSession || verifiedSession.user?.id!==recoverySession.user?.id){
+      toast('La session de récupération n’est plus valide. Demandez un nouveau code.');
+      return;
+    }
+    passwordRecoverySession=verifiedSession;
+  }catch(e){
+    console.error('RECOVERY SESSION PREPARE ERROR',e);
+    toast('Impossible de préparer la session de récupération. Demandez un nouveau code.');
+    return;
+  }
+
   const btn=document.getElementById('saveRecoveryBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
   const {error}=await supabaseClient.auth.updateUser({password:pw});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
+  if(error){
+    console.error('UPDATE PASSWORD ERROR', {
+      message:error?.message || null,
+      code:error?.code || null,
+      status:error?.status || null
+    }, error);
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;
+  }
 
   /* Le changement de mot de passe ne nécessite pas de nouvelle connexion :
      le client Supabase conserve/rafraîchit la session authentifiée. On la
@@ -5650,6 +5753,7 @@ async function saveRecoveredPassword(){
     }
 
     passwordRecoveryEmail='';
+    passwordRecoverySession=null;
     passwordRecoveryActive=false;
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
     toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
