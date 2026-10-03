@@ -2832,7 +2832,7 @@ async function openTrackOrderModal(){
   }));
 
   body.innerHTML = `
-    <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
       <button type="button" class="btn" style="background:var(--amber);color:#fff;min-height:52px;">
         ${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
       </button>
@@ -2910,7 +2910,7 @@ function renderOrderTrackingDetail(row, phone){
   const currentIdx = steps.indexOf(row.status);
   const itemsLabel = (row.items||[]).map(orderItemNameQty);
   body.innerHTML = `
-    <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
       <button class="btn" style="background:var(--amber);color:#fff;min-height:52px;" onclick="openOrderTrackingDetail('${row.num}','${phone||''}')">
         ${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
       </button>
@@ -2999,7 +2999,7 @@ async function openReviewOrdersModal(){
   }));
 
   body.innerHTML = `
-    <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
       <button type="button" class="btn btn-outline" style="min-height:52px;" onclick="closeReviewOrdersModal();openTrackOrderModal();">
         ${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
       </button>
@@ -3572,7 +3572,7 @@ async function preloadRestaurantPublicBySlug(slug){
     'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
     'address,city,phone,hours,delivery,social,show_map,maps_link,' +
     'notifications_enabled,order_notification_email,order_notification_email_verified,' +
-    'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,' +
+    'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
     'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
     'plan,payment_toggles'
   ).eq('slug', clean).maybeSingle();
@@ -3591,6 +3591,7 @@ async function preloadRestaurantPublicBySlug(slug){
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
+  const categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || []);
 
   return {
     clean,
@@ -3599,6 +3600,7 @@ async function preloadRestaurantPublicBySlug(slug){
     restaurantResult,
     categoriesResult,
     productsResult,
+    categoryCoverPhotos,
     reviewsPromise
   };
 }
@@ -3621,18 +3623,20 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   let restaurantResult;
   let categoriesResult;
   let productsResult;
+  let categoryCoverPhotos = [];
 
   if(preloaded){
     restaurantResult = preloaded.restaurantResult;
     categoriesResult = preloaded.categoriesResult;
     productsResult = preloaded.productsResult;
+    categoryCoverPhotos = Array.isArray(preloaded.categoryCoverPhotos) ? preloaded.categoryCoverPhotos : [];
   }else{
     [restaurantResult, categoriesResult, productsResult] = await Promise.all([
     supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
       'notifications_enabled,order_notification_email,order_notification_email_verified,' +
-      'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,' +
+      'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
       'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
       'plan,payment_toggles'
     ).eq('id', restaurantId).single(),
@@ -3643,6 +3647,7 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
     ).eq('restaurant_id', restaurantId).order('created_at')
   ]);
+    categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || []);
   }
 
   if(restaurantResult.error || categoriesResult.error || productsResult.error || !restaurantResult.data){
@@ -3659,10 +3664,10 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   RESTAURANT.created = true;
   RESTAURANT.createdAt = new Date(r.created_at).getTime();
   RESTAURANT.name = r.name; RESTAURANT.slug = r.slug; RESTAURANT.type = r.type;
-  // Le logo fait partie des données critiques du premier affichage : il
-  // est chargé avec le restaurant, pas dans le chargement secondaire.
+  // Le logo et la couverture font partie des données critiques du premier affichage :
+  // ils sont chargés avec le restaurant, pas dans le chargement secondaire.
   RESTAURANT.logoDataUrl = r.logo_data_url || '';
-  RESTAURANT.coverDataUrl = '';
+  RESTAURANT.coverDataUrl = r.cover_data_url || '';
   RESTAURANT.primary = r.primary_color; RESTAURANT.secondary = r.secondary_color; RESTAURANT.textColor = r.text_color;
   RESTAURANT.address = r.address; RESTAURANT.city = r.city; RESTAURANT.phone = r.phone;
   RESTAURANT.hours = (r.hours && r.hours.length) ? r.hours : defaultHours();
@@ -3723,15 +3728,59 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  // Seules la couverture et les photos produits restent différées ; le logo
-  // est déjà disponible pour le premier rendu.
-  loadRestaurantPublicImagesFast(restaurantId);
+  // Les photos nécessaires aux couvertures des catégories visibles font
+  // partie du premier affichage ; toutes les autres restent différées.
+  applyPublicProductPhotoRows(categoryCoverPhotos);
+  loadRestaurantPublicImagesFast(restaurantId, categoryCoverPhotos.map(x => String(x.id)));
   loadRestaurantPublicReviewsSecondaryData(restaurantId, preloaded?.reviewsPromise || null);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
   return true;
 }
 
 let publicImageLoadGeneration = 0;
+
+async function loadPublicCategoryCoverPhotos(restaurantId, cats){
+  const homeCats = (cats||[])
+    .filter(c => c && c.visible_on_home !== false)
+    .map(c => c.key)
+    .filter(Boolean);
+  if(!homeCats.length) return [];
+
+  const results = await Promise.all(homeCats.map(async cat => {
+    try{
+      const {data,error} = await supabaseClient
+        .from('products')
+        .select('id,photo,gallery_photos')
+        .eq('restaurant_id', restaurantId)
+        .eq('cat', cat)
+        .eq('active', true)
+        .not('photo', 'is', null)
+        .neq('photo', '')
+        .order('created_at')
+        .limit(1);
+      if(error) return null;
+      const row = data?.[0];
+      const photos = normalizeProductPhotos(row?.gallery_photos, row?.photo);
+      return row && photos.length ? {id:row.id,photo:photos[0],photos,cat} : null;
+    }catch(e){
+      return null;
+    }
+  }));
+
+  return results.filter(Boolean);
+}
+
+function applyPublicProductPhotoRows(photoRows){
+  (photoRows||[]).forEach(row => {
+    const p = PRODUCTS.find(item => String(item.id) === String(row?.id));
+    if(!p) return;
+    const photos = normalizeProductPhotos(row.gallery_photos, row.photo);
+    if(!photos.length) return;
+    p.photos = photos;
+    p.photo = photos[0] || '';
+    updatePublicProductPhotoDom(p);
+  });
+}
 
 function publicProductPhotoMarkup(p){
   return p.photo
@@ -3740,81 +3789,38 @@ function publicProductPhotoMarkup(p){
 }
 
 function updatePublicProductPhotoDom(p){
-  const nodes = document.querySelectorAll('#view-storefront .product-img-wrapper[data-public-product-id]');
-  nodes.forEach(node=>{
-    if(String(node.dataset.publicProductId||'') !== String(p.id||'')) return;
-    node.innerHTML = publicProductPhotoMarkup(p) +
-      (!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : '');
-  });
+  if(state.view!=='storefront') return;
+  const wrappers = document.querySelectorAll('.product-img-wrapper[data-public-product-id]');
+  for(const wrapper of wrappers){
+    if(String(wrapper.dataset.publicProductId) !== String(p.id)) continue;
+    const badge = wrapper.querySelector('.badge')?.outerHTML || '';
+    wrapper.innerHTML = publicProductPhotoMarkup(p) + badge;
+    return;
+  }
 }
 
-function applyPublicProductPhotoBatch(photoRows, generation){
-  if(generation !== publicImageLoadGeneration) return;
-  const rows = Array.isArray(photoRows) ? photoRows : [];
-  rows.forEach(row=>{
-    const p = PRODUCTS.find(item=>String(item.id)===String(row.id));
-    if(!p) return;
-    p.photos = normalizeProductPhotos(row.gallery_photos, row.photo);
-    p.photo = p.photos[0] || '';
-    updatePublicProductPhotoDom(p);
-  });
-}
-
-async function loadRestaurantPublicImagesFast(restaurantId){
+async function loadRestaurantPublicImagesFast(restaurantId, initialPhotoIds=[]){
   const generation = ++publicImageLoadGeneration;
-  const productIds = PRODUCTS
-    .filter(p=>p.active && p.id)
-    .map(p=>p.id);
+  const skip = new Set((initialPhotoIds||[]).map(String));
+  const queue = PRODUCTS
+    .filter(p => p && p.active && p.id && !skip.has(String(p.id)))
+    .map(p => String(p.id));
 
-  try{
-    const firstIds = productIds.slice(0,2);
-    const [{data:r}, firstPhotosResult] = await Promise.all([
-      supabaseClient.from('restaurants').select('logo_data_url,cover_data_url').eq('id', restaurantId).single(),
-      firstIds.length
-        ? supabaseClient.from('products').select('id,photo,gallery_photos').in('id', firstIds)
-        : Promise.resolve({data:[]})
-    ]);
-
+  for(let offset=0; offset<queue.length; offset+=2){
     if(generation !== publicImageLoadGeneration) return;
-
-    if(r){
-      RESTAURANT.logoDataUrl = r.logo_data_url || '';
-      RESTAURANT.coverDataUrl = r.cover_data_url || '';
-      RESTAURANT.galleryPhotos = Array.isArray(RESTAURANT.social?.galleryPhotos)
-        ? RESTAURANT.social.galleryPhotos.filter(Boolean).slice(0,3)
-        : [];
-      if(typeof setRestaurantFavicon === 'function') setRestaurantFavicon();
-
-      const hero = document.getElementById('tgHeroBg');
-      if(hero){
-        hero.style.backgroundImage = RESTAURANT.coverDataUrl
-          ? `url('${safeImageSrc(RESTAURANT.coverDataUrl)}')`
-          : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
-      }
-    }
-
-    applyPublicProductPhotoBatch(firstPhotosResult?.data || [], generation);
-
-    for(let offset=2; offset<productIds.length && generation===publicImageLoadGeneration; offset+=2){
-      await new Promise(resolve=>requestAnimationFrame(resolve));
-      if(generation !== publicImageLoadGeneration) break;
-
-      const batchIds = productIds.slice(offset,offset+2);
-      const {data:photos,error} = await supabaseClient
+    if(offset) await new Promise(resolve => requestAnimationFrame(resolve));
+    if(generation !== publicImageLoadGeneration) return;
+    const batchIds = queue.slice(offset, offset+2);
+    try{
+      const {data,error} = await supabaseClient
         .from('products')
         .select('id,photo,gallery_photos')
         .in('id', batchIds);
-
-      if(generation !== publicImageLoadGeneration) break;
-      if(error){
-        console.warn('Chargement progressif des images du restaurant:', error);
-        continue;
-      }
-      applyPublicProductPhotoBatch(photos || [], generation);
-    }
-  }catch(e){
-    if(generation === publicImageLoadGeneration){
-      console.warn('Chargement différé des images du restaurant:', e);
+      if(generation !== publicImageLoadGeneration) return;
+      if(!error) applyPublicProductPhotoRows(data||[]);
+    }catch(e){
+      if(generation !== publicImageLoadGeneration) return;
+      console.warn('Chargement différé des images produits:', e);
     }
   }
 }
@@ -4190,7 +4196,6 @@ function setLoginVerifying(on, btnId, label){
 let loginTab = 'login';
 function setLoginTab(tab){
   loginTab = tab;
-  if(tab==='login') passwordRecoveryActive = false;
   ['login','signup','invite'].forEach(t=>{
     const btn = document.getElementById('loginTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(btn){ btn.className = t===tab ? 'btn btn-sm' : 'btn btn-sm btn-ghost'; btn.style.background = t===tab ? '#fff' : ''; }
@@ -5451,7 +5456,6 @@ function scrollToId(id){ setView('landing'); requestAnimationFrame(()=>{ const e
 let activeToasts = [];
 /* ---------------- MOT DE PASSE — visibilité + indicateur de robustesse ---------------- */
 let passwordRecoveryEmail = '';
-let passwordRecoveryActive = false;
 let passwordRecoveryResendTimer = 0;
 let passwordRecoveryResendInterval = null;
 function startPasswordRecoveryResendCountdown(seconds=30){
@@ -5485,17 +5489,15 @@ async function resendPasswordRecoveryOtp(){
   }
   const btn=document.getElementById('resendRecoveryOtpBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';}
-  /* Récupération de mot de passe Supabase : le modèle e-mail "Reset password"
-     peut exposer {{ .Token }} pour conserver l'expérience de saisie d'un OTP.
-     La vérification ci-dessous utilise ensuite type:'recovery'. */
-  passwordRecoveryActive = true;
-  const {error}=await supabaseClient.auth.resetPasswordForEmail(
-    passwordRecoveryEmail,
-    { redirectTo:getPublicSiteOrigin() }
-  );
+  /* Réinitialisation par OTP Supabase : on renvoie un vrai OTP e-mail,
+     sans lien de récupération susceptible d'être ouvert/préchargé par
+     Gmail ou un outil de sécurité. Le compte doit déjà exister. */
+  const {error}=await supabaseClient.auth.signInWithOtp({
+    email: passwordRecoveryEmail,
+    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+  });
   if(error){
     if(btn){btn.disabled=false;btn.style.opacity='';}
-    passwordRecoveryActive = true;
     toast(supabaseErrorFr(error,'Impossible de renvoyer le code de réinitialisation.'));
     return;
   }
@@ -5512,20 +5514,16 @@ async function sendPasswordReset(){
     return;
   }
   setLoginVerifying(true, 'loginSubmitBtn', 'Envoi du code…');
-  /* Flux officiel de récupération Supabase : l'e-mail de reset établit le
-     contexte de récupération. Le modèle "Reset password" peut utiliser
-     {{ .Token }} pour conserver la saisie manuelle du code OTP. */
-  passwordRecoveryActive = true;
-  const {error} = await supabaseClient.auth.resetPasswordForEmail(
+  /* Pour éviter le problème de code immédiatement expiré lié aux liens de
+     récupération, le flux « Mot de passe oublié » utilise ici le vrai OTP
+     e-mail Supabase. Le code reçu est ensuite vérifié avant d'autoriser le
+     changement de mot de passe. Aucun nouveau compte n'est créé. */
+  const {error} = await supabaseClient.auth.signInWithOtp({
     email,
-    { redirectTo:getPublicSiteOrigin() }
-  );
+    options: { shouldCreateUser:false, emailRedirectTo:getPublicSiteOrigin() }
+  });
   setLoginVerifying(false, 'loginSubmitBtn');
-  if(error){
-    passwordRecoveryActive = false;
-    toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.'));
-    return;
-  }
+  if(error){ toast(supabaseErrorFr(error, 'Impossible d’envoyer le code de réinitialisation.')); return; }
   passwordRecoveryEmail = email;
   renderPasswordRecoveryCodeScreen();
   startPasswordRecoveryResendCountdown(30);
@@ -5580,8 +5578,7 @@ async function verifyPasswordRecoveryOtp(){
   if(!/^\d{6,8}$/.test(token)){ toast('Entrez le code reçu par e-mail.'); return; }
   const btn=document.getElementById('verifyRecoveryOtpBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Vérification…';}
-  passwordRecoveryActive = true;
-  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'recovery'});
+  const {data,error}=await supabaseClient.auth.verifyOtp({email:passwordRecoveryEmail,token,type:'email'});
   if(error){
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Vérifier le code';}
     toast(supabaseErrorFr(error,'Code incorrect ou expiré.')); return;
@@ -5650,7 +5647,6 @@ async function saveRecoveredPassword(){
     }
 
     passwordRecoveryEmail='';
-    passwordRecoveryActive=false;
     if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
     toast(ic('checkCircle',14)+' Mot de passe modifié avec succès.',true);
     closeLogin();
@@ -5669,7 +5665,6 @@ async function saveRecoveredPassword(){
 }
 function showPasswordRecoveryFormFromSession(session){
   if(!session) return;
-  passwordRecoveryActive = true;
   currentUser=session.user||currentUser;
   passwordRecoveryEmail=session.user?.email||passwordRecoveryEmail||'';
   if(document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('hidden');
@@ -7621,7 +7616,7 @@ function renderConfirmation(){
       </div>
     </div>
     <button class="btn btn-ghost w-full" style="margin-top:20px;" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');">Retourner au menu</button>
-    <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       <button class="btn" style="background:var(--ink);color:var(--cream);" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openOrderTrackingDetail('${o.num}','${o.phone||''}');">${ic('receipt',15)} Suivre ma commande</button>
       <button class="btn btn-outline" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openReviewModal('${o.num}');">${ic('star',15)} Avis client</button>
     </div>`;
@@ -11279,24 +11274,6 @@ async function reactivateSubscription(){
   section#view-storefront .grid{ grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
   h1.font-display{ font-size:20px !important; }
   #productsList .grid{ grid-template-columns:1fr 1fr !important; }
-  #trackOrderBody .order-action-tabs,
-  #reviewOrdersBody .order-action-tabs,
-  #confirmationBody .order-action-tabs{
-    grid-template-columns:1fr !important;
-    min-width:0 !important;
-  }
-  #trackOrderBody .order-action-tabs > .btn,
-  #reviewOrdersBody .order-action-tabs > .btn,
-  #confirmationBody .order-action-tabs > .btn{
-    width:100% !important;
-    min-width:0 !important;
-    max-width:100% !important;
-    box-sizing:border-box !important;
-    white-space:normal !important;
-    overflow-wrap:anywhere;
-    padding-left:12px !important;
-    padding-right:12px !important;
-  }
 }
 @media (max-width: 480px){
   #view-landing h1{ font-size:30px !important; }
@@ -11398,7 +11375,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   // rien à reprendre).
   if(event === 'SIGNED_IN' && session){
     currentUser = session.user;
-    if(!passwordRecoveryActive) tryResumePendingOnboarding();
+    tryResumePendingOnboarding();
   }
 });
 </script>
