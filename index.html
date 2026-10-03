@@ -5618,7 +5618,15 @@ async function saveRecoveredPassword(){
   const btn=document.getElementById('saveRecoveryBtn');
   if(btn){btn.disabled=true;btn.style.opacity='.7';btn.textContent='Enregistrement…';}
   const {error}=await supabaseClient.auth.updateUser({password:pw});
-  if(error){if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;}
+  if(error){
+    console.error('UPDATE PASSWORD ERROR', {
+      message:error?.message || null,
+      code:error?.code || null,
+      status:error?.status || null
+    }, error);
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent='Enregistrer le nouveau mot de passe';}
+    toast(supabaseErrorFr(error,'Impossible de modifier le mot de passe.'));return;
+  }
 
   /* Le changement de mot de passe ne nécessite pas de nouvelle connexion :
      le client Supabase conserve/rafraîchit la session authentifiée. On la
