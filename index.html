@@ -1210,6 +1210,13 @@ body{min-width:0;}
   .tr-country-button{min-width:96px;}
   .tr-country-menu{left:0;right:auto;min-width:240px;}
 }
+@media (max-width:640px){
+  .tr-settings-phone-city-row{display:flex !important;flex-direction:column !important;}
+  .tr-settings-phone-city-row > div:first-child{order:2;}
+  .tr-settings-phone-city-row > div:nth-child(2){order:1;}
+  .tr-settings-phone-city-row .tr-phone-control{width:100%;} 
+  .tr-settings-phone-city-row .tr-local-phone-input{min-width:0;}
+}
 
 /* =====================================================================
    THÈME "DARK PREMIUM" — exclusif au tableau de bord restaurateur.
@@ -10525,7 +10532,7 @@ function settingsBodyHtml(){
     <select class="field-input" id="setType" style="margin-bottom:14px;">
       ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${RESTAURANT.type===t?'selected':''}>${t}</option>`).join('')}
     </select>
-    <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+    <div class="grid tr-settings-phone-city-row" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div><label class="field-label">Téléphone</label>${countryPickerHtml('setPhone',RESTAURANT.phone,'77 123 45 67')}</div>
       <div><label class="field-label">Ville</label><input class="field-input" id="setCity" value="${RESTAURANT.city}"></div>
     </div>
