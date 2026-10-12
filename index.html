@@ -1277,6 +1277,184 @@ body.admin-auth-flow #loginTabSignup,body.admin-auth-flow #loginTabInvite{displa
 @media(max-width:820px){#view-admin-console .tr-admin-shell{grid-template-columns:1fr}#view-admin-console .tr-admin-sidebar{position:sticky;top:0;width:100%;height:auto;padding:10px 12px 8px;gap:8px;z-index:30;box-shadow:0 6px 18px rgba(16,24,39,.11)}#view-admin-console .tr-admin-brand{padding:1px 3px 8px;border-bottom:0}#view-admin-console .tr-admin-brand-mark{width:34px;height:34px;border-radius:11px}#view-admin-console .tr-admin-nav{display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;padding:0 1px 5px;scrollbar-width:thin}#view-admin-console .tr-admin-nav button{width:auto;flex:0 0 auto;min-height:36px;padding:7px 10px;font-size:10.5px}#view-admin-console .tr-admin-nav button.active{box-shadow:inset 0 -2px 0 var(--tra-gold)}#view-admin-console .tr-admin-sidebar-foot{display:none}#view-admin-console .tr-admin-main{padding:19px 13px 14px}#view-admin-console .tr-admin-header{align-items:flex-start;flex-direction:column;gap:13px;padding-bottom:16px;margin-bottom:17px}#view-admin-console .tr-admin-toolbar{width:100%;justify-content:flex-start}#view-admin-console .tr-admin-grid{gap:9px}#view-admin-console .tr-admin-stat{padding:13px}#view-admin-console .tr-admin-stat-label{font-size:10px;margin-bottom:9px}#view-admin-console .tr-admin-grid.tr-admin-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}#view-admin-console .tr-admin-panel{padding:14px}#view-admin-console .tr-admin-template-layout{grid-template-columns:1fr}#view-admin-console .tr-admin-template-preview-wrap{padding:9px}}
 @media(max-width:520px){#view-admin-console .tr-admin-grid,#view-admin-console .tr-admin-grid.tr-admin-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}#view-admin-console .tr-admin-detail-grid{grid-template-columns:1fr}#view-admin-console .tr-admin-plan-layout{grid-template-columns:108px minmax(0,1fr);gap:12px}#view-admin-console .tr-admin-plan-donut{width:108px;height:108px}#view-admin-console .tr-admin-plan-donut:after{inset:14px}#view-admin-console .tr-admin-plan-center strong{font-size:20px}#view-admin-console .tr-admin-panel-head{flex-direction:column}#view-admin-console .tr-admin-btn{padding:8px 10px;font-size:10.5px;white-space:normal}#view-admin-console .tr-admin-input.search{min-width:100%}#view-admin-console .tr-admin-filters>*{max-width:100%}#view-admin-console .tr-admin-template-fields{grid-template-columns:1fr}#view-admin-console .tr-admin-template-preview-head{padding:18px}#view-admin-console .tr-admin-template-preview-body{padding:18px}#view-admin-console .tr-admin-template-preview-foot{padding:13px 18px}}
 @media(prefers-reduced-motion:reduce){#view-admin-console .tr-admin-content,#view-admin-console .tr-admin-btn,#view-admin-console .tr-admin-nav button{animation:none;transition:none}#view-admin-console .tr-admin-spinner{animation-duration:1.8s}}
+
+/* Design system harmonisé — limité à la console administrateur. */
+#view-admin-console{
+  --tr-admin-navy:#111827;--tr-admin-blue:#356AE6;--tr-admin-teal:#13A89E;
+  --tr-admin-violet:#8064D8;--tr-admin-starter:#4778C7;--tr-admin-slate:#7B8798;
+  --tr-admin-amber:#E7A93B;--tr-admin-success:#168A62;--tr-admin-danger:#D94B55;
+  --tr-admin-bg:#F4F7FB;--tr-admin-border:#E4EAF2;--tr-admin-muted:#6B778B;
+  background:var(--tr-admin-bg);color:#182338;
+}
+#view-admin-console .tr-admin-shell{background:var(--tr-admin-bg);grid-template-columns:252px minmax(0,1fr);}
+#view-admin-console .tr-admin-sidebar{position:sticky;top:0;height:100vh;max-height:100vh;overflow:hidden;background:var(--tr-admin-navy);padding:22px 14px 14px;gap:17px;}
+#view-admin-console .tr-admin-brand{padding:3px 7px 18px;gap:11px;border-bottom:1px solid rgba(255,255,255,.12);}
+#view-admin-console .tr-admin-brand-mark{background:linear-gradient(135deg,#356AE6,#13A89E);color:white;box-shadow:0 7px 18px rgba(53,106,230,.25);border-radius:12px;}
+#view-admin-console .tr-admin-nav{display:grid;gap:4px;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(203,213,225,.35) transparent;align-content:start;}
+#view-admin-console .tr-admin-nav button{position:relative;min-height:41px;padding:9px 10px;gap:11px;border-radius:9px;font-size:12.5px;font-weight:560;color:#c3ccda;transition:background-color .15s ease,color .15s ease;}
+#view-admin-console .tr-admin-nav button:focus-visible{outline:2px solid #79a2ff;outline-offset:2px;}
+#view-admin-console .tr-admin-nav button:hover{background:rgba(255,255,255,.075);color:#fff;}
+#view-admin-console .tr-admin-nav button.active{background:rgba(53,106,230,.22);color:#fff;font-weight:750;box-shadow:inset 3px 0 0 var(--tr-admin-blue);}
+#view-admin-console .tr-admin-nav-icon{width:20px;min-width:20px;display:inline-flex;align-items:center;justify-content:center;color:currentColor;}
+#view-admin-console .tr-admin-svg-icon{display:block;width:18px;height:18px;flex:0 0 18px;}
+#view-admin-console .tr-admin-nav-label{min-width:0;white-space:normal;line-height:1.3;}
+#view-admin-console .tr-admin-sidebar-foot{margin-top:8px;padding-top:13px;border-top:1px solid rgba(255,255,255,.12);line-height:1.4;}
+#view-admin-console .tr-admin-main{padding:28px clamp(16px,3vw,40px) 22px;background:var(--tr-admin-bg);}
+#view-admin-console .tr-admin-header{align-items:center;margin-bottom:22px;padding:0 0 20px;border-bottom:1px solid #e0e6ef;}
+#view-admin-console .tr-admin-kicker{color:#356AE6;font-size:10px;letter-spacing:.13em;}
+#view-admin-console h1{color:#111827;letter-spacing:-.035em;font-weight:780;}
+#view-admin-console #trAdminSubtitle{color:#6b778b;font-size:12.5px;}
+#view-admin-console .tr-admin-identity{color:#637086;background:#fff;border:1px solid #e1e8f1;border-radius:999px;padding:8px 11px;max-width:none;white-space:nowrap;}
+#view-admin-console .tr-admin-btn{min-height:38px;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:720;transition:background-color .15s ease,border-color .15s ease,transform .15s ease;}
+#view-admin-console .tr-admin-btn:focus-visible,#view-admin-console .tr-admin-inline-link:focus-visible{outline:2px solid #356AE6;outline-offset:2px;}
+#view-admin-console .tr-admin-btn-light{background:#fff;border-color:#dce4ef;color:#344256;}
+#view-admin-console .tr-admin-btn-light:hover{background:#f7f9fd;border-color:#bac9e0;}
+#view-admin-console .tr-admin-btn-dark{background:#111827;color:#fff;}
+#view-admin-console .tr-admin-btn-dark:hover{background:#24324b;}
+#view-admin-console .tr-admin-btn-gold{background:#356AE6;border-color:#356AE6;color:#fff;box-shadow:0 4px 10px rgba(53,106,230,.15);}
+#view-admin-console .tr-admin-btn-gold:hover{background:#2958c9;border-color:#2958c9;}
+#view-admin-console .tr-admin-btn-quiet{background:#f3f6fb;color:#58667c;border-color:#e3e9f2;}
+#view-admin-console .tr-admin-content{min-width:0;}
+#view-admin-console .tr-admin-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:20px;}
+#view-admin-console .tr-admin-grid.tr-admin-grid-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+#view-admin-console .tr-admin-grid.tr-admin-grid-5{grid-template-columns:repeat(5,minmax(0,1fr));}
+#view-admin-console .tr-admin-stat{position:relative;overflow:hidden;background:#fff;border:1px solid var(--tr-admin-border);border-radius:15px;padding:16px 17px 15px;box-shadow:0 4px 14px rgba(22,39,69,.035);}
+#view-admin-console .tr-admin-stat:before{content:"";position:absolute;left:0;top:0;width:100%;height:3px;background:var(--tr-stat-tone,var(--tr-admin-blue));}
+#view-admin-console .tr-admin-stat[data-tone="neutral"]{--tr-stat-tone:var(--tr-admin-slate);}
+#view-admin-console .tr-admin-stat[data-tone="blue"]{--tr-stat-tone:var(--tr-admin-blue);}
+#view-admin-console .tr-admin-stat[data-tone="teal"]{--tr-stat-tone:var(--tr-admin-teal);}
+#view-admin-console .tr-admin-stat[data-tone="success"]{--tr-stat-tone:var(--tr-admin-success);}
+#view-admin-console .tr-admin-stat[data-tone="warning"]{--tr-stat-tone:var(--tr-admin-amber);}
+#view-admin-console .tr-admin-stat[data-tone="danger"]{--tr-stat-tone:var(--tr-admin-danger);}
+#view-admin-console .tr-admin-stat[data-tone="starter"]{--tr-stat-tone:var(--tr-admin-starter);}
+#view-admin-console .tr-admin-stat[data-tone="premium"]{--tr-stat-tone:var(--tr-admin-violet);}
+#view-admin-console .tr-admin-stat-label{margin-bottom:9px;color:#6d798d;font-size:11px;font-weight:650;letter-spacing:.01em;}
+#view-admin-console .tr-admin-stat-value{color:#111827;font-size:clamp(21px,2.1vw,27px);font-weight:800;letter-spacing:-.035em;line-height:1.15;overflow-wrap:anywhere;}
+#view-admin-console .tr-admin-stat-hint{margin-top:8px;font-size:10.5px;line-height:1.45;color:#7b8798;}
+#view-admin-console .tr-admin-panel{margin-bottom:16px;border:1px solid var(--tr-admin-border);border-radius:16px;padding:18px;background:#fff;box-shadow:0 4px 16px rgba(22,39,69,.035);min-width:0;}
+#view-admin-console .tr-admin-panel-head{gap:12px;align-items:flex-start;margin-bottom:15px;}
+#view-admin-console .tr-admin-panel h2{font-size:15px;font-weight:770;letter-spacing:-.02em;color:#172238;}
+#view-admin-console .tr-admin-muted{color:#6f7b8f;line-height:1.55;}
+#view-admin-console .tr-admin-overview-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:stretch;}
+#view-admin-console .tr-admin-overview-grid>.tr-admin-panel{min-width:0;}
+#view-admin-console .tr-admin-chart-wrap{min-width:0;}
+#view-admin-console .tr-admin-chart-note{margin:10px 0 0;font-size:10.5px;line-height:1.55;}
+#view-admin-console .tr-admin-chart-legend{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:10px;}
+#view-admin-console .tr-admin-chart-key{display:inline-flex;align-items:center;gap:7px;color:#5d6b81;font-size:11px;}
+#view-admin-console .tr-admin-chart-key i{display:inline-block;width:9px;height:9px;flex:0 0 9px;border-radius:50%;}
+#view-admin-console .tr-admin-plan-layout{display:grid;grid-template-columns:minmax(140px,.8fr) minmax(0,1fr);gap:20px;align-items:center;padding:3px 0;}
+#view-admin-console .tr-admin-plan-donut{width:min(100%,176px);aspect-ratio:1;border-radius:50%;margin:auto;position:relative;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.65);}
+#view-admin-console .tr-admin-plan-donut:after{content:"";position:absolute;inset:17%;border-radius:50%;background:#fff;box-shadow:0 1px 7px rgba(22,39,69,.07);}
+#view-admin-console .tr-admin-plan-center{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#view-admin-console .tr-admin-plan-center strong{font-size:21px;line-height:1.1;color:#111827;font-weight:800;}
+#view-admin-console .tr-admin-plan-center span{margin-top:4px;font-size:10px;color:#7b8798;}
+#view-admin-console .tr-admin-plan-legend{display:grid;gap:12px;min-width:0;}
+#view-admin-console .tr-admin-plan-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:9px;align-items:center;color:#26354b;font-size:11px;}
+#view-admin-console .tr-admin-plan-dot{width:9px;height:9px;border-radius:50%;display:block;}
+#view-admin-console .tr-admin-plan-name{display:flex;flex-direction:column;gap:3px;min-width:0;font-weight:700;}
+#view-admin-console .tr-admin-plan-row small{font-size:10px;color:#7b8798;font-weight:500;}
+#view-admin-console .tr-admin-plan-row strong{font-size:12px;font-variant-numeric:tabular-nums;color:#182338;}
+#view-admin-console .tr-admin-filters{gap:9px;padding:12px;margin:0 0 14px;border:1px solid #e6ebf3;border-radius:12px;background:#f8fafe;}
+#view-admin-console .tr-admin-input,#view-admin-console .tr-admin-select,#view-admin-console .tr-admin-textarea{min-height:38px;border-color:#dce4ef;border-radius:9px;background:#fff;color:#1e293b;font-size:12px;}
+#view-admin-console .tr-admin-input:focus,#view-admin-console .tr-admin-select:focus,#view-admin-console .tr-admin-textarea:focus{outline:2px solid rgba(53,106,230,.2);border-color:#356AE6;}
+#view-admin-console .tr-admin-table-wrap{overflow-x:auto;max-width:100%;border:1px solid #e6ebf3;border-radius:12px;background:#fff;}
+#view-admin-console table{min-width:760px;border-collapse:separate;border-spacing:0;}
+#view-admin-console table thead th{position:sticky;top:0;z-index:1;background:#f6f8fc;color:#66748a;font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:760;border-bottom:1px solid #e3e9f2;}
+#view-admin-console table tbody td{border-bottom:1px solid #edf1f6;color:#344256;font-size:11.5px;vertical-align:top;}
+#view-admin-console table tbody tr:hover{background:#f8faff;}
+#view-admin-console .tr-admin-chip{border-radius:999px;font-weight:700;letter-spacing:0;}
+#view-admin-console .tr-admin-chip.good{background:#e9f7f0;color:#168A62;}
+#view-admin-console .tr-admin-chip.bad{background:#fff0f1;color:#C93D4B;}
+#view-admin-console .tr-admin-chip.warn{background:#fff6e5;color:#9a6509;}
+#view-admin-console .tr-admin-chip.blue{background:#edf3ff;color:#356AE6;}
+#view-admin-console .tr-admin-pagination{gap:12px;padding-top:14px;}
+#view-admin-console .tr-admin-inline-link{color:#356AE6;font-weight:750;}
+#view-admin-console .tr-admin-empty{border:1px dashed #dce4ef;border-radius:12px;background:#fafcff;padding:22px;color:#6f7b8f;line-height:1.55;}
+#view-admin-console .tr-admin-inline-note{margin:2px 0 15px;padding:10px 13px;border-left:3px solid #c9d9f8;background:#eef4ff;border-radius:0 9px 9px 0;color:#53627a;font-size:11px;line-height:1.55;}
+#view-admin-console .tr-admin-inline-note strong{color:#233854;}
+#view-admin-console .tr-admin-inline-note.is-warning{border-left-color:#E7A93B;background:#fff8ea;}
+#view-admin-console .tr-admin-report-intro{margin:0 0 14px;padding:0 2px 2px;color:#69768b;font-size:12px;line-height:1.6;}
+#view-admin-console .tr-admin-report-kicker{margin:0 0 5px;color:#356AE6;font-size:9.5px;font-weight:850;letter-spacing:.13em;}
+#view-admin-console .tr-admin-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch;}
+#view-admin-console .tr-admin-report-grid>.tr-admin-panel{min-width:0;margin-bottom:0;}
+#view-admin-console .tr-admin-report-grid .tr-admin-panel .tr-admin-grid{margin-top:8px;}
+#view-admin-console .tr-admin-report-empty{display:flex;align-items:flex-start;gap:12px;border:1px solid #e8edf5;background:#fafcff;border-radius:12px;padding:15px;}
+#view-admin-console .tr-admin-empty-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:#edf3ff;color:#356AE6;}
+#view-admin-console .tr-admin-empty-icon .tr-admin-svg-icon{width:19px;height:19px;}
+#view-admin-console .tr-admin-report-empty strong{display:block;color:#26354b;font-size:12px;}
+#view-admin-console .tr-admin-report-empty p{margin:5px 0 10px;color:#6f7b8f;font-size:11px;line-height:1.55;}
+#view-admin-console .tr-admin-report-links{display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px;}
+#view-admin-console .tr-admin-report-links .tr-admin-muted{flex-basis:100%;margin:3px 0 0;font-size:11px;}
+#view-admin-console .tr-admin-empty-state{max-width:680px;margin:8px auto;padding:30px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;}
+#view-admin-console .tr-admin-empty-state-compact{padding:20px 16px;}
+#view-admin-console .tr-admin-empty-state h2{margin:0;color:#25334a;font-size:15px;}
+#view-admin-console .tr-admin-empty-state p{max-width:540px;margin:0 0 4px;color:#718097;font-size:12px;line-height:1.6;}
+#view-admin-console .tr-admin-template-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.92fr);gap:22px;align-items:start;}
+#view-admin-console .tr-admin-template-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;}
+#view-admin-console .tr-admin-template-field label{display:block;margin-bottom:7px;color:#5c6b81;font-weight:700;font-size:11px;}
+#view-admin-console .tr-admin-color-field{display:flex;align-items:center;gap:9px;padding:7px 9px;background:#fff;border:1px solid #e1e8f1;border-radius:10px;}
+#view-admin-console .tr-admin-color-field input{width:30px;height:30px;padding:2px;border:0;background:transparent;cursor:pointer;}
+#view-admin-console .tr-admin-color-field code{color:#59677d;font-size:10px;}
+#view-admin-console .tr-admin-template-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+#view-admin-console .tr-admin-template-eyebrow{margin:0 0 10px;font-weight:800;font-size:9.5px;letter-spacing:.12em;color:#6c7890;}
+#view-admin-console .tr-admin-template-preview{overflow:hidden;border:1px solid #dfe6ef;border-radius:14px;box-shadow:0 6px 18px rgba(22,39,69,.07);background:#fff;}
+#view-admin-console .tr-admin-template-preview-head{padding:22px 22px 18px;color:#fff;display:flex;flex-direction:column;gap:7px;}
+#view-admin-console .tr-admin-template-preview-head strong{font-size:23px;letter-spacing:-.04em;}
+#view-admin-console .tr-admin-template-preview-head span{font-size:11px;line-height:1.4;}
+#view-admin-console .tr-admin-template-preview-body{padding:24px 22px;min-height:130px;color:#344256;font-size:13px;line-height:1.8;white-space:normal;overflow-wrap:anywhere;}
+#view-admin-console .tr-admin-template-preview-sign{margin-top:20px;font-weight:800;}
+#view-admin-console .tr-admin-template-preview-foot{padding:16px 22px;font-size:11px;line-height:1.6;overflow-wrap:anywhere;}
+#view-admin-console .tr-admin-callout{border-color:#e2e9f3;background:#f8faff;color:#5e6c82;}
+#view-admin-console .tr-admin-callout strong{color:#26354b;}
+#view-admin-console .tr-admin-footer{border-color:#e1e7ef;color:#8793a6;}
+#view-admin-console .tr-admin-loading{min-height:180px;border:1px solid #e4eaf2;border-radius:15px;background:#fff;}
+@media(max-width:1100px){
+  #view-admin-console .tr-admin-shell{grid-template-columns:226px minmax(0,1fr);}
+  #view-admin-console .tr-admin-main{padding:22px 18px;}
+  #view-admin-console .tr-admin-grid.tr-admin-grid-4{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #view-admin-console .tr-admin-grid.tr-admin-grid-5{grid-template-columns:repeat(3,minmax(0,1fr));}
+  #view-admin-console .tr-admin-template-layout{grid-template-columns:minmax(0,1fr);}
+  #view-admin-console .tr-admin-template-preview-wrap{max-width:680px;}
+}
+@media(max-width:760px){
+  #view-admin-console .tr-admin-shell{display:grid;grid-template-columns:minmax(0,1fr);}
+  #view-admin-console .tr-admin-sidebar{position:relative;top:auto;height:auto;max-height:none;padding:12px 12px 10px;gap:10px;}
+  #view-admin-console .tr-admin-brand{padding:0 4px 10px;}
+  #view-admin-console .tr-admin-brand-mark{width:34px;height:34px;}
+  #view-admin-console .tr-admin-nav{grid-template-columns:repeat(2,minmax(0,1fr));max-height:250px;gap:4px;overflow-y:auto;padding:0 2px 2px;}
+  #view-admin-console .tr-admin-nav button{min-width:0;min-height:38px;padding:8px;border-radius:8px;gap:8px;font-size:11.5px;}
+  #view-admin-console .tr-admin-nav-icon{width:18px;min-width:18px;}
+  #view-admin-console .tr-admin-svg-icon{width:17px;height:17px;flex-basis:17px;}
+  #view-admin-console .tr-admin-nav-label{overflow-wrap:anywhere;}
+  #view-admin-console .tr-admin-sidebar-foot{margin-top:0;padding:8px 4px 0;font-size:10px;}
+  #view-admin-console .tr-admin-main{padding:17px 12px 18px;}
+  #view-admin-console .tr-admin-header{align-items:flex-start;flex-direction:column;gap:13px;padding-bottom:16px;margin-bottom:17px;}
+  #view-admin-console .tr-admin-toolbar{justify-content:flex-start;width:100%;}
+  #view-admin-console .tr-admin-identity{white-space:normal;}
+  #view-admin-console .tr-admin-overview-grid,#view-admin-console .tr-admin-report-grid{grid-template-columns:minmax(0,1fr);gap:10px;}
+  #view-admin-console .tr-admin-panel{padding:14px;margin-bottom:12px;border-radius:13px;}
+  #view-admin-console .tr-admin-grid.tr-admin-grid-3{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #view-admin-console .tr-admin-grid.tr-admin-grid-5{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #view-admin-console .tr-admin-plan-layout{grid-template-columns:minmax(110px,.7fr) minmax(0,1fr);gap:12px;}
+  #view-admin-console .tr-admin-plan-donut{max-width:138px;}
+  #view-admin-console .tr-admin-filters{display:flex;flex-wrap:wrap;}
+  #view-admin-console .tr-admin-filters>*{max-width:100%;}
+  #view-admin-console .tr-admin-period-toolbar .tr-admin-select{flex:1 1 190px;}
+  #view-admin-console .tr-admin-pagination{align-items:flex-start;flex-direction:column;}
+  #view-admin-console .tr-admin-page-buttons{width:100%;justify-content:space-between;}
+  #view-admin-console .tr-admin-template-fields{grid-template-columns:minmax(0,1fr);}
+}
+@media(max-width:440px){
+  #view-admin-console .tr-admin-grid.tr-admin-grid-4,#view-admin-console .tr-admin-grid.tr-admin-grid-3,#view-admin-console .tr-admin-grid.tr-admin-grid-5{grid-template-columns:minmax(0,1fr);}
+  #view-admin-console .tr-admin-plan-layout{grid-template-columns:minmax(0,1fr);}
+  #view-admin-console .tr-admin-plan-donut{max-width:160px;}
+  #view-admin-console .tr-admin-toolbar .tr-admin-btn{flex:1 1 auto;}
+  #view-admin-console .tr-admin-identity{order:-1;}
+  #view-admin-console .tr-admin-report-empty{padding:12px;}
+}
+@media(prefers-reduced-motion:reduce){
+  #view-admin-console *,#view-admin-console *::before,#view-admin-console *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+}
 </style>
 
 <style>
@@ -4222,18 +4400,18 @@ async function completeSignupAfterAuth(){
    admin-console-api. Aucune requête administrative directe du navigateur.
    ============================================================ */
 const TR_ADMIN_SECTIONS = [
-  {id:'overview', label:'Vue d’ensemble', icon:'▦', title:'Vue d’ensemble', subtitle:'Les indicateurs essentiels calculés à partir des données réellement disponibles.'},
-  {id:'restaurants', label:'Restaurants', icon:'♙', title:'Restaurants', subtitle:'Recherche, filtres et consultation paginée des établissements enregistrés.'},
-  {id:'subscriptions', label:'Abonnements', icon:'◇', title:'Abonnements', subtitle:'Offres, statuts, périodes d’essai et échéances telles qu’enregistrées.'},
-  {id:'payments', label:'Paiements', icon:'↗', title:'Paiements', subtitle:'Transactions d’abonnement et montants par statut, sans confondre attente et encaissement.'},
-  {id:'orders', label:'Commandes', icon:'▤', title:'Commandes', subtitle:'Consultation des commandes globales : nécessite une action de lecture dédiée dans le backend.'},
-  {id:'domains', label:'Domaines personnalisés', icon:'◎', title:'Domaines personnalisés', subtitle:'État observé des domaines à partir des champs enregistrés.'},
-  {id:'channels', label:'Canaux de réception', icon:'✉', title:'Canaux de réception', subtitle:'Canal configuré et coordonnées réellement disponibles.'},
-  {id:'notifications', label:'Notifications', icon:'◉', title:'Notifications', subtitle:'Historique uniquement lorsque la source réelle de journalisation est disponible.'},
-  {id:'reminders', label:'Rappels d’abonnement', icon:'◷', title:'Rappels d’abonnement', subtitle:'Consultation en lecture seule du journal des rappels raccordé.'},
-  {id:'campaigns', label:'Mail collectif', icon:'✉', title:'Mail collectif', subtitle:'Préparation, sélection, contrôle de quota et historique des campagnes Gmail.'},
-  {id:'reports', label:'Rapports et statistiques', icon:'▤', title:'Rapports et statistiques', subtitle:'Synthèse des indicateurs disponibles, avec leurs limites historiques.'},
-  {id:'settings', label:'Sécurité et paramètres', icon:'⚙', title:'Sécurité et paramètres', subtitle:'Accès administrateur, connexion Gmail, journal et personnalisation des modèles.'}
+  {id:'overview', label:'Vue d’ensemble', icon:'dashboard', title:'Vue d’ensemble', subtitle:'Les indicateurs essentiels de la plateforme, calculés à partir des données enregistrées.'},
+  {id:'restaurants', label:'Restaurants', icon:'store', title:'Restaurants', subtitle:'Recherche, filtres et consultation paginée des établissements enregistrés.'},
+  {id:'subscriptions', label:'Abonnements', icon:'badge-check', title:'Abonnements', subtitle:'Offres, statuts, essais et échéances tels qu’enregistrés.'},
+  {id:'payments', label:'Paiements', icon:'credit-card', title:'Paiements', subtitle:'Historique des transactions et montants confirmés, sans confondre attente et encaissement.'},
+  {id:'orders', label:'Commandes', icon:'receipt', title:'Commandes', subtitle:'Consultation des commandes réellement disponibles dans les données administratives.'},
+  {id:'domains', label:'Domaines personnalisés', icon:'globe', title:'Domaines personnalisés', subtitle:'Domaines enregistrés et états réellement consignés.'},
+  {id:'channels', label:'Canaux de réception', icon:'inbox', title:'Canaux de réception', subtitle:'Canal choisi et coordonnées disponibles pour chaque restaurant.'},
+  {id:'notifications', label:'Notifications', icon:'bell', title:'Notifications', subtitle:'Consultation des résultats effectivement consignés, lorsqu’une source est disponible.'},
+  {id:'reminders', label:'Rappels d’abonnement', icon:'calendar-clock', title:'Rappels d’abonnement', subtitle:'Historique des rappels consignés, en lecture seule.'},
+  {id:'campaigns', label:'Mail collectif', icon:'send', title:'Mail collectif', subtitle:'Préparation, sélection, contrôle de quota et suivi des campagnes Gmail.'},
+  {id:'reports', label:'Rapports et statistiques', icon:'chart', title:'Rapports et statistiques', subtitle:'Synthèse structurée des indicateurs réellement disponibles.'},
+  {id:'settings', label:'Sécurité et paramètres', icon:'shield-cog', title:'Sécurité et paramètres', subtitle:'Contrôles d’accès, connexion Gmail, journal administratif et personnalisation des modèles.'}
 ];
 let trAdminSessionVerified = false;
 let trAdminInitializing = null;
@@ -4268,16 +4446,35 @@ function trAdminStatus(value){
 function trAdminSetNotice(message,show=true){
   const el=document.getElementById('trAdminNotice');if(!el)return;el.textContent=String(message||'');el.hidden=!show||!message;
 }
+function trAdminIcon(name){
+  const shapes={
+    dashboard:'<rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="5" rx="1.4"/><rect x="14" y="12" width="7" height="9" rx="1.4"/><rect x="3" y="13" width="7" height="8" rx="1.4"/>',
+    store:'<path d="M3 10.5 5 4h14l2 6.5"/><path d="M4 10v10h16V10"/><path d="M9 20v-6h6v6"/><path d="M3 10.5c0 1.3 1 2.3 2.2 2.3S7.5 11.8 7.5 10.5c0 1.3 1 2.3 2.2 2.3s2.3-1 2.3-2.3c0 1.3 1 2.3 2.3 2.3s2.2-1 2.2-2.3c0 1.3 1 2.3 2.3 2.3S21 11.8 21 10.5"/>',
+    'badge-check':'<path d="M12 3 14.4 4.4 17.2 4.2 18.5 6.7 21 8.2 20.4 11 21 13.8 18.5 15.3 17.2 17.8 14.4 17.6 12 19 9.6 17.6 6.8 17.8 5.5 15.3 3 13.8 3.6 11 3 8.2 5.5 6.7 6.8 4.2 9.6 4.4Z"/><path d="m8.5 11.5 2.2 2.2 4.8-5"/>',
+    'credit-card':'<rect x="2.5" y="4.5" width="19" height="15" rx="2.2"/><path d="M2.5 9.5h19"/><path d="M6.5 15h4"/>',
+    receipt:'<path d="M6 3.5h12v17l-3-1.7-3 1.7-3-1.7-3 1.7z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    inbox:'<path d="M4 4h16l2 10v5H2v-5z"/><path d="M2.5 14h5l1.5 2h6l1.5-2h5"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+    'calendar-clock':'<rect x="3" y="4.5" width="13" height="16" rx="2"/><path d="M7 2.5v4M12 2.5v4M3 9h13"/><circle cx="17.5" cy="16.5" r="4"/><path d="M17.5 14.5v2.2l1.5 1"/>',
+    send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+    chart:'<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/><path d="M17 6h3v3"/>',
+    'shield-cog':'<path d="M12 3 20 6v5c0 5-3.2 8.2-8 10-4.8-1.8-8-5-8-10V6z"/><path d="m9.5 12 1.7 1.7 3.5-3.8"/>'
+  };
+  return `<svg class="tr-admin-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${shapes[name]||shapes.dashboard}</svg>`;
+}
 function trAdminRenderNav(){
   const el=document.getElementById('trAdminNav');if(!el)return;
-  el.innerHTML=TR_ADMIN_SECTIONS.map(s=>{const active=trAdminState.section===s.id||(trAdminState.section==='detail'&&s.id==='restaurants');return `<button type="button" class="${active?'active':''}" aria-current="${active?'page':'false'}" onclick="trAdminOpenSection('${s.id}')"><span class="tr-admin-nav-icon" aria-hidden="true">${s.icon}</span><span>${trAdminEscape(s.label)}</span></button>`;}).join('');
+  el.innerHTML=TR_ADMIN_SECTIONS.map(s=>{const active=trAdminState.section===s.id||(trAdminState.section==='detail'&&s.id==='restaurants');return `<button type="button" class="${active?'active':''}" aria-current="${active?'page':'false'}" onclick="trAdminOpenSection('${s.id}')"><span class="tr-admin-nav-icon">${trAdminIcon(s.icon)}</span><span class="tr-admin-nav-label">${trAdminEscape(s.label)}</span></button>`;}).join('');
 }
 function trAdminRenderLoading(){const el=document.getElementById('trAdminContent');if(el)el.innerHTML='<div class="tr-admin-loading"><span class="tr-admin-spinner"></span><p>Chargement des données autorisées…</p></div>';}
 function trAdminSetHeader(section){
   const meta=TR_ADMIN_SECTIONS.find(x=>x.id===section)||TR_ADMIN_SECTIONS[0];
   const title=document.getElementById('trAdminTitle'),subtitle=document.getElementById('trAdminSubtitle');
-  if(title)title.textContent=meta.title;if(subtitle)subtitle.textContent=meta.subtitle;
-  if(trAdminState.identity?.email){const el=document.getElementById('trAdminIdentity');if(el)el.textContent=trAdminState.identity.email;}
+  if(title)title.textContent=meta.title;
+  if(subtitle)subtitle.textContent=meta.subtitle;
+  const identity=document.getElementById('trAdminIdentity');
+  if(identity)identity.textContent=trAdminSessionVerified?'Session administrateur vérifiée':'Session non vérifiée';
   trAdminRenderNav();
 }
 function trAdminLockConsole(message){
@@ -4390,43 +4587,66 @@ function trAdminPeriodArgs(){
   if(['custom','yesterday','30d','previous_month'].includes(trAdminState.period))return {period:'custom',from:trAdminState.from,to:trAdminState.to};
   return {period:trAdminState.period};
 }
-function trAdminStat(label,value,hint=''){return `<div class="tr-admin-stat"><div class="tr-admin-stat-label">${trAdminEscape(label)}</div><div class="tr-admin-stat-value">${trAdminEscape(value)}</div>${hint?`<div class="tr-admin-stat-hint">${trAdminEscape(hint)}</div>`:''}</div>`;}
+function trAdminStat(label,value,hint=''){
+  const text=String(label||'').toLowerCase();
+  let tone='blue';
+  if(/premium/.test(text))tone='premium';
+  else if(/starter|standard/.test(text))tone='starter';
+  else if(/gratuit|restaurants enregistrés|restaurants concernés|offre non classée/.test(text))tone='neutral';
+  else if(/expir|échou|annul/.test(text))tone='danger';
+  else if(/attente|essai|autres statut|inconnu|non actif/.test(text))tone='warning';
+  else if(/confirm|actif|réussi|montant encaissé|revenu/.test(text))tone='success';
+  else if(/inscription|commande|paiement|domaine/.test(text))tone='blue';
+  else if(/whatsapp|canal e-mail|e-mail choisi/.test(text))tone='teal';
+  return `<div class="tr-admin-stat" data-tone="${tone}"><div class="tr-admin-stat-label">${trAdminEscape(label)}</div><div class="tr-admin-stat-value">${trAdminEscape(value)}</div>${hint?`<div class="tr-admin-stat-hint">${trAdminEscape(hint)}</div>`:''}</div>`;
+}
 function trAdminPanel(title,body,description=''){return `<section class="tr-admin-panel"><div class="tr-admin-panel-head"><div><h2>${trAdminEscape(title)}</h2>${description?`<p class="tr-admin-muted">${trAdminEscape(description)}</p>`:''}</div></div>${body}</section>`;}
 function trAdminRenderTrend(data){
   const rows=Array.isArray(data?.trend)?data.trend:[];
-  if(!rows.length)return '<div class="tr-admin-empty">Aucune série temporelle disponible pour cette période.</div>';
-  const W=760,H=196,padL=30,padR=16,padT=18,padB=30;
-  const a=rows.map(r=>Math.max(0,Number(r.signups)||0));
-  const b=rows.map(r=>Math.max(0,Number(r.restaurants_with_last_renewal_date)||0));
-  const max=Math.max(1,...a,...b);
-  const x=i=>rows.length===1?W/2:padL+(i/(rows.length-1))*(W-padL-padR);
-  const y=v=>H-padB-(v/max)*(H-padT-padB);
-  const pointString=vals=>vals.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
-  const first=trAdminDay(rows[0].day),last=trAdminDay(rows[rows.length-1].day);
-  const markers=rows.length<=45?rows.map((r,i)=>`<circle cx="${x(i)}" cy="${y(a[i])}" r="3" fill="#3868aa" stroke="#fff" stroke-width="1.5"><title>${trAdminEscape(trAdminDay(r.day))} · Inscriptions : ${a[i]}</title></circle><circle cx="${x(i)}" cy="${y(b[i])}" r="3" fill="#DDAF4B" stroke="#fff" stroke-width="1.5"><title>${trAdminEscape(trAdminDay(r.day))} · Dernière date de renouvellement connue : ${b[i]}</title></circle>`).join(''):'';
-  return `<div style="width:100%;overflow:hidden"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe réelle des inscriptions et des restaurants dont la dernière date de renouvellement connue tombe dans la période sélectionnée" style="width:100%;height:auto;display:block;min-height:128px"><line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#e4e9f1" stroke-width="1"/><line x1="${padL}" y1="${padT}" x2="${W-padR}" y2="${padT}" stroke="#eef1f6" stroke-width="1"/><polyline points="${pointString(a)}" fill="none" stroke="#3868aa" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${pointString(b)}" fill="none" stroke="#DDAF4B" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"/>${markers}<text x="${padL}" y="${H-8}" fill="#778399" font-size="10" text-anchor="start">${trAdminEscape(first)}</text><text x="${W-padR}" y="${H-8}" fill="#778399" font-size="10" text-anchor="end">${trAdminEscape(last)}</text></svg><div class="tr-admin-chart-legend"><span class="tr-admin-chart-key"><i style="background:#3868aa"></i>Inscriptions</span><span class="tr-admin-chart-key"><i style="background:#DDAF4B"></i>Dernière date de renouvellement connue</span></div><p class="tr-admin-muted">La deuxième série correspond à la dernière date enregistrée par restaurant, et non à un historique exhaustif des événements de renouvellement. L’API administrative actuelle ne fournit pas de série de commandes : aucune courbe de commandes n’est simulée.</p></div>`;
+  if(!rows.length)return '<div class="tr-admin-empty">Aucun historique d’inscriptions disponible pour cette période.</div>';
+  if(rows.some(r=>!r||!r.day||r.signups===null||r.signups===undefined||!Number.isFinite(Number(r.signups)))){
+    return '<div class="tr-admin-empty">L’historique quotidien est incomplet ; la courbe n’est pas affichée afin de ne pas inventer de valeurs.</div>';
+  }
+  const values=rows.map(r=>Math.max(0,Number(r.signups)));
+  const maxValue=Math.max(1,...values);
+  const niceMax=maxValue<=4?maxValue:Math.ceil(maxValue/5)*5;
+  const W=760,H=224,padL=44,padR=18,padT=18,padB=38;
+  const plotW=W-padL-padR,plotH=H-padT-padB;
+  const x=i=>rows.length===1?padL+plotW/2:padL+(i/(rows.length-1))*plotW;
+  const y=v=>padT+plotH-(v/niceMax)*plotH;
+  const points=values.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
+  const ticks=[0,Math.round(niceMax/2),niceMax].filter((v,i,a)=>a.indexOf(v)===i);
+  const grid=ticks.map(v=>`<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="#e8edf5" stroke-width="1"/><text x="${padL-10}" y="${y(v)+3.5}" fill="#7b8798" font-size="10" text-anchor="end">${v}</text>`).join('');
+  const area=`${padL},${padT+plotH} ${points} ${W-padR},${padT+plotH}`;
+  const markers=rows.length<=70?rows.map((r,i)=>`<circle cx="${x(i)}" cy="${y(values[i])}" r="3.5" fill="#356AE6" stroke="#fff" stroke-width="1.5"><title>${trAdminEscape(trAdminDay(r.day))} · ${values[i]} inscription(s)</title></circle>`).join(''):'';
+  const labelIndexes=[0,Math.floor((rows.length-1)/2),rows.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+  const labels=labelIndexes.map(i=>`<text x="${x(i)}" y="${H-12}" fill="#7b8798" font-size="10" text-anchor="${i===0?'start':i===rows.length-1?'end':'middle'}">${trAdminEscape(trAdminDay(rows[i].day))}</text>`).join('');
+  return `<div class="tr-admin-chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Nombre réel d’inscriptions quotidiennes pendant la période sélectionnée" style="width:100%;height:auto;display:block"><title>Évolution quotidienne des inscriptions</title><desc>Une seule série est représentée : le nombre d’inscriptions enregistrées par jour.</desc>${grid}<polygon points="${area}" fill="rgba(53,106,230,.08)"/><polyline points="${points}" fill="none" stroke="#356AE6" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>${markers}${labels}</svg><div class="tr-admin-chart-legend"><span class="tr-admin-chart-key"><i style="background:#356AE6"></i>Inscriptions quotidiennes</span></div><p class="tr-admin-muted tr-admin-chart-note">Les dates de renouvellement ne sont pas mélangées aux inscriptions : elles ne représentent pas une série quotidienne comparable.</p></div>`;
 }
 function trAdminRenderPlanDistribution(data){
-  const totalRaw=Number(data?.restaurants?.total);
-  const plans=data?.plans||{};
+  const totalValue=data?.restaurants?.total;
+  if(totalValue===null||totalValue===undefined||!Number.isFinite(Number(totalValue))||Number(totalValue)<0){
+    return '<div class="tr-admin-empty">La répartition des offres n’est pas disponible.</div>';
+  }
+  const total=Number(totalValue),plans=data?.plans||{};
+  const planValues=[plans.free,plans.starter,plans.premium];
+  if(planValues.some(value=>value===null||value===undefined||!Number.isFinite(Number(value))||Number(value)<0))return '<div class="tr-admin-empty">Les effectifs des offres sont incomplets ; la répartition n’est pas affichée.</div>';
   const items=[
-    {label:'Gratuit',value:Math.max(0,Number(plans.free)||0),color:'#DDAF4B'},
-    {label:'Starter',value:Math.max(0,Number(plans.starter)||0),color:'#3868aa'},
-    {label:'Premium',value:Math.max(0,Number(plans.premium)||0),color:'#19835c'}
+    {key:'free',label:'Gratuit',value:Number(plans.free),color:'#7B8798'},
+    {key:'starter',label:'Starter',value:Number(plans.starter),color:'#4778C7'},
+    {key:'premium',label:'Premium',value:Number(plans.premium),color:'#8064D8'}
   ];
   const known=items.reduce((sum,item)=>sum+item.value,0);
-  if(!Number.isFinite(totalRaw)||totalRaw<0)return `<div class="tr-admin-empty">Le total des restaurants n’est pas disponible : la répartition ne peut pas être calculée.</div>`;
-  if(known>totalRaw)return `<div class="tr-admin-callout" style="margin:0"><strong>Répartition non affichée</strong>La somme des offres (${known}) dépasse le total des restaurants (${totalRaw}). Vérifiez les agrégats du backend avant d’afficher des pourcentages.</div>`;
-  const unknown=Math.max(0,totalRaw-known);
-  if(unknown)items.push({label:'Offre non classée',value:unknown,color:'#9aa5b5'});
-  const denom=totalRaw;
+  if(known>total){return `<div class="tr-admin-inline-note is-warning"><strong>Répartition indisponible.</strong> Les agrégats des offres dépassent le total enregistré ; les pourcentages ne sont pas calculés.</div>`;}
+  const unknown=total-known;
+  if(unknown>0)items.push({key:'unknown',label:'Offre non classée',value:unknown,color:'#c6cfdb'});
   let cursor=0;
-  const stops=items.map(item=>{const begin=cursor;cursor+=denom?item.value/denom*100:0;return `${item.color} ${begin.toFixed(3)}% ${cursor.toFixed(3)}%`;});
-  const background=denom?`conic-gradient(${stops.join(',')})`:'conic-gradient(#e8edf4 0% 100%)';
-  const legend=items.map(item=>{const pct=denom?item.value/denom*100:0;return `<div class="tr-admin-plan-row"><i class="tr-admin-plan-dot" style="background:${item.color}"></i><div>${trAdminEscape(item.label)}<small>${pct.toFixed(1)} % du total</small></div><strong>${new Intl.NumberFormat('fr-SN').format(item.value)}</strong></div>`;}).join('');
-  return `<div class="tr-admin-plan-layout"><div class="tr-admin-plan-donut" role="img" aria-label="Répartition des offres sur ${denom} restaurants" style="background:${background}"><div class="tr-admin-plan-center"><strong>${new Intl.NumberFormat('fr-SN').format(denom)}</strong><span>restaurants</span></div></div><div class="tr-admin-plan-legend">${legend}</div></div><p class="tr-admin-muted">Le pourcentage utilise comme dénominateur le total enregistré des restaurants. Les plans non reconnus sont gardés séparément, sans les attribuer à une offre connue.</p>`;
+  const stops=items.map(item=>{const begin=cursor;cursor+=total?item.value/total*100:0;return `${item.color} ${begin.toFixed(3)}% ${cursor.toFixed(3)}%`;});
+  const background=total?`conic-gradient(${stops.join(',')})`:'conic-gradient(#e8edf4 0% 100%)';
+  const fmtCount=v=>new Intl.NumberFormat('fr-SN',{maximumFractionDigits:0}).format(v);
+  const legend=items.map(item=>{const pct=total?item.value/total*100:0;return `<div class="tr-admin-plan-row"><i class="tr-admin-plan-dot" style="background:${item.color}"></i><div class="tr-admin-plan-name">${trAdminEscape(item.label)}<small>${pct.toFixed(1).replace('.',',')} %</small></div><strong>${fmtCount(item.value)}</strong></div>`;}).join('');
+  return `<div class="tr-admin-plan-layout"><div class="tr-admin-plan-donut" role="img" aria-label="Répartition des offres parmi ${total} restaurants enregistrés" style="background:${background}"><div class="tr-admin-plan-center"><strong>${fmtCount(total)}</strong><span>restaurants</span></div></div><div class="tr-admin-plan-legend">${legend}</div></div><p class="tr-admin-muted">Les catégories correspondent aux plans enregistrés. Les restaurants dont le plan ne correspond pas aux trois offres connues restent dans « Offre non classée ».</p>`;
 }
-
 let trAdminUserCounterTimer = null;
 let trAdminUserCounterRequest = 0;
 function trAdminStopUserCounterRefresh(){
@@ -4472,32 +4692,37 @@ if(!window.__trAdminUserCounterVisibilityBound){
   window.__trAdminUserCounterVisibilityBound=true;
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden)trAdminStopUserCounterRefresh();
-    else if(trAdminSessionVerified&&trAdminState.section==='overview')trAdminStartUserCounterRefresh();
+    else trAdminStopUserCounterRefresh();
   });
 }
 
 function trAdminRenderOverview(data, reports=false){
   const el=document.getElementById('trAdminContent');if(!el)return;
-  const r=data?.restaurants||{},p=data?.plans||{},subs=data?.subscriptions||{},reg=data?.registrations||{},renew=data?.renewals||{},pay=data?.payments||{};
+  const r=data?.restaurants||{},plans=data?.plans||{},subs=data?.subscriptions||{},reg=data?.registrations||{},renew=data?.renewals||{},pay=data?.payments||{},domains=data?.domains||{},channels=data?.channels||{};
   const period=trAdminPeriodControls();
-  const registered= r.total??'—';
-  const registeredInPeriod=reg.period??'—';
-  const activeSubs=subs.active??'—';
-  const confirmedAmount=pay.confirmed_amount==null?'—':trAdminMoney(pay.confirmed_amount);
-  const metrics=`<div class="tr-admin-grid">${trAdminStat('Restaurants enregistrés',registered,'Total actuel enregistré')}${trAdminStat('Nouvelles inscriptions',registeredInPeriod,'Période sélectionnée')}${trAdminStat('Abonnements actifs',activeSubs,'Statut enregistré : active')}${trAdminStat('Paiements confirmés',confirmedAmount,'Montant confirmé de la période')}</div>`;
-  const distribution=trAdminPanel('Répartition des offres',trAdminRenderPlanDistribution(data),'Effectifs et pourcentages calculés à partir des plans enregistrés.');
-  const trend=trAdminPanel('Évolution des inscriptions',trAdminRenderTrend(data),'Les courbes montrent uniquement les séries temporelles réellement retournées par le serveur.');
-  const authCountCard=`<div class="tr-admin-grid"><div class="tr-admin-stat"><div class="tr-admin-stat-label">Comptes utilisateurs enregistrés</div><div class="tr-admin-stat-value" id="trAdminAuthUserCount">—</div><div class="tr-admin-stat-hint" id="trAdminAuthUserCountUpdated">Aucune lecture réussie.</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px"><button id="trAdminAuthUserCountRefresh" type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminRefreshUserCounter(true)">↻ Actualiser le compteur</button><span id="trAdminAuthUserCountStatus" class="tr-admin-muted" aria-live="polite">Compteur en attente.</span></div></div></div>`;
-  const context=`<div class="tr-admin-callout"><strong>Comment lire ces chiffres</strong>Les abonnements reflètent le statut actuellement enregistré ; cette vue ne synchronise ni ne modifie les abonnements. Les paiements confirmés sont distingués des échecs et des attentes. Les commandes ne sont pas incluses dans les indicateurs tant qu’une action paginée et sécurisée n’est pas exposée par l’API administrative.</div>`;
-  let detailed='';
-  if(reports){
-    detailed=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Offre Gratuit',p.free??'—','Plan enregistré : free')}${trAdminStat('Offre Starter',p.starter??'—','Plan enregistré : starter')}${trAdminStat('Offre Premium',p.premium??'—','Plans pro / premium')}${trAdminStat('En période d’essai',subs.trialing??'—','subscription_status = trialing')}${trAdminStat('Abonnements expirés',subs.expired??'—','Statut enregistré, pas recalculé ici')}${trAdminStat('Paiement en attente',subs.pending_payment??'—','Statut abonnement en attente')}${trAdminStat('Paiements confirmés',pay.confirmed??'—','payments.status = confirmed')}${trAdminStat('Paiements échoués',pay.failed??'—','payments.status = failed')}${trAdminStat('Autres statuts de paiement',pay.other_status??'—','États non classés dans confirmé/échoué')}</div>`;
-    detailed+=`<div class="tr-admin-callout"><strong>Limite de l’historique de renouvellement</strong>${trAdminEscape(renew.restaurants_with_last_renewal_date_in_period??'—')} restaurant(s) ont une date de dernier renouvellement connue dans la période. Cette colonne ne constitue pas un historique exhaustif d’événements de renouvellement.</div>`;
+  const fmtCount=value=>value===null||value===undefined||!Number.isFinite(Number(value))?'—':new Intl.NumberFormat('fr-SN',{maximumFractionDigits:0}).format(Number(value));
+  const registrationValue=fmtCount(reg.period);
+  const activeValue=fmtCount(subs.active);
+  const amountValue=pay.confirmed_amount===null||pay.confirmed_amount===undefined?'—':trAdminMoney(pay.confirmed_amount);
+  const summaryNote=`<p class="tr-admin-inline-note">Le total des restaurants et les abonnements actifs décrivent l’état actuellement enregistré. Les nouvelles inscriptions et les paiements confirmés suivent la période sélectionnée.</p>`;
+  const metrics=`<div class="tr-admin-grid tr-admin-grid-4">${trAdminStat('Restaurants enregistrés',fmtCount(r.total),'Total actuel de la plateforme')}${trAdminStat('Nouvelles inscriptions',registrationValue,'Pendant la période sélectionnée')}${trAdminStat('Abonnements actifs',activeValue,'Statut enregistré actuellement')}${trAdminStat('Montant confirmé',amountValue,'Paiements confirmés de la période')}</div>`;
+  const distribution=trAdminPanel('Répartition des offres',trAdminRenderPlanDistribution(data),'Effectifs et pourcentages parmi les restaurants enregistrés.');
+  const trend=trAdminPanel('Inscriptions au fil du temps',trAdminRenderTrend(data),'Nombre d’inscriptions par jour, avec une échelle et une unité cohérentes.');
+  if(!reports){
+    el.innerHTML=period+metrics+summaryNote+`<div class="tr-admin-overview-grid">${distribution}${trend}</div>`;
+    trAdminStopUserCounterRefresh();
+    return;
   }
-  el.innerHTML=period+metrics+`<div class="tr-admin-overview-grid">${distribution}${trend}</div>`+authCountCard+context+detailed;
-  if(!reports&&trAdminState.section==='overview')trAdminStartUserCounterRefresh();else trAdminStopUserCounterRefresh();
+  const subscriptionStats=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Abonnements actifs',fmtCount(subs.active),'Statut active')}${trAdminStat('En période d’essai',fmtCount(subs.trialing),'Statut trialing')}${trAdminStat('Abonnements expirés',fmtCount(subs.expired),'Statut expired, distinct du plan')}${trAdminStat('Paiement en attente',fmtCount(subs.pending_payment),'Statut d’abonnement enregistré')}${trAdminStat('Annulés',fmtCount(subs.cancelled),'Statut cancelled')}</div>`;
+  const paymentStats=`<div class="tr-admin-grid tr-admin-grid-4">${trAdminStat('Paiements confirmés',fmtCount(pay.confirmed),'payments.status = confirmed')}${trAdminStat('Montant confirmé',amountValue,'Somme des paiements confirmés')}${trAdminStat('Paiements échoués',fmtCount(pay.failed),'payments.status = failed')}${trAdminStat('En attente / autres états',fmtCount(pay.other_status),'Statuts différents de confirmed et failed')}</div><p class="tr-admin-muted">Les compteurs par offre pour les paiements ne sont pas fournis par l’agrégat administratif actuel ; ils ne sont pas estimés à partir d’une page de résultats.</p>`;
+  const domainStats=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Domaines personnalisés',fmtCount(domains.configured),'Domaine renseigné')}${trAdminStat('Domaines marqués actifs',fmtCount(domains.active),'Statut stocké « active », pas une nouvelle vérification DNS')}${trAdminStat('Autres états de domaine',fmtCount(domains.non_active_or_unknown),'Non actifs ou statut inconnu')}</div>`;
+  const channelStats=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Canal e-mail choisi',fmtCount(channels.email),'Préférence enregistrée')}${trAdminStat('Canal WhatsApp choisi',fmtCount(channels.whatsapp),'Préférence enregistrée')}${trAdminStat('Canal non reconnu',fmtCount(channels.unknown),'Aucun canal connu ou valeur autre')}</div><p class="tr-admin-muted">Ces chiffres reflètent les préférences stockées. Ils ne prouvent ni l’envoi, ni la livraison, ni la lecture d’un message.</p>`;
+  const renewalStats=`<div class="tr-admin-stat" data-tone="neutral"><div class="tr-admin-stat-label">Restaurants avec une date de dernier renouvellement connue</div><div class="tr-admin-stat-value">${fmtCount(renew.restaurants_with_last_renewal_date_in_period)}</div><div class="tr-admin-stat-hint">Valeur de last_renewed_at dans la période ; pas un journal exhaustif des renouvellements.</div></div>`;
+  const ordersNote=`<div class="tr-admin-report-empty"><span class="tr-admin-empty-icon">${trAdminIcon('receipt')}</span><div><strong>Indicateurs de commandes indisponibles</strong><p>Les résultats restent masqués tant que des données vérifiables ne sont pas disponibles.</p><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminOpenSection('orders')">Ouvrir Commandes</button></div></div>`;
+  const notificationsNote=`<div class="tr-admin-report-links"><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminOpenSection('notifications')">Consulter les notifications</button><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminOpenSection('reminders')">Consulter les rappels</button><p class="tr-admin-muted">Les événements détaillés sont consultés dans leurs rubriques dédiées. Aucun total n’est ajouté ici sans agrégat vérifié.</p></div>`;
+  el.innerHTML=period+`<div class="tr-admin-report-intro"><span class="tr-admin-report-kicker">RAPPORTS OPÉRATIONNELS</span><p>Les indicateurs ci-dessous réutilisent les mêmes définitions que les rubriques de supervision. Les absences d’historique sont signalées sans être converties en zéro.</p></div><div class="tr-admin-report-grid">${trAdminPanel('Restaurants et inscriptions',metrics+trend,'Total actuel et nouvelles inscriptions pendant la période choisie.')}${trAdminPanel('Offres et abonnements',distribution+subscriptionStats,'Les plans et les statuts représentent deux dimensions différentes.')}${trAdminPanel('Paiements',paymentStats,'Les montants affichés comprennent uniquement les transactions dont le statut est confirmé.')}${trAdminPanel('Domaines personnalisés',domainStats,'Un statut enregistré « active » n’est pas présenté comme une vérification DNS en direct.')}${trAdminPanel('Canaux de réception',channelStats,'Une préférence de canal ne prouve pas qu’un message a été livré.')}${trAdminPanel('Renouvellements connus',renewalStats,'Le champ de dernier renouvellement n’est pas un historique complet d’événements.')}${trAdminPanel('Commandes et revenus',ordersNote,'Aucun chiffre n’est simulé lorsque la source de commandes manque.')}${trAdminPanel('Notifications et rappels',notificationsNote,'Accéder aux journaux dédiés sans dupliquer des chiffres non vérifiés.')}</div>`;
+  trAdminStopUserCounterRefresh();
 }
-
 function trAdminFilterBar(kind){
   const search=kind==='payments'?'':`<input id="trAdminSearch" class="tr-admin-input search" type="search" placeholder="Rechercher par nom, e-mail de réception, slug ou ID…" value="${trAdminEscape(trAdminState.search)}" onkeydown="if(event.key==='Enter')trAdminApplyFilters()">`;
   let filters='';
@@ -4523,39 +4748,57 @@ function trAdminPagination(data){
 }
 function trAdminGoPage(delta){trAdminState.page=Math.max(1,trAdminState.page+delta);void trAdminLoadSection(trAdminState.section);}
 function trAdminCell(primary,secondary=''){return `<span class="tr-admin-table-primary">${trAdminEscape(primary??'—')}</span>${secondary?`<span class="tr-admin-table-sub">${trAdminEscape(secondary)}</span>`:''}`;}
-function trAdminRenderRestaurants(data,kind){
-  const el=document.getElementById('trAdminContent');if(!el)return;const rows=data.rows||[];
+function trAdminRenderRestaurants(data,kind,overviewData=null){
+  const el=document.getElementById('trAdminContent');if(!el)return;
+  const rows=Array.isArray(data?.rows)?data.rows:[];
+  const ov=overviewData||{};const p=ov.plans||{};const subs=ov.subscriptions||{};const rStats=ov.restaurants||{};const domainStats=ov.domains||{};const channelStats=ov.channels||{};
+  const fmtCount=value=>value===null||value===undefined||!Number.isFinite(Number(value))?'—':new Intl.NumberFormat('fr-SN',{maximumFractionDigits:0}).format(Number(value));
+  const minus=(a,b)=>a===null||a===undefined||b===null||b===undefined||!Number.isFinite(Number(a))||!Number.isFinite(Number(b))?'—':fmtCount(Math.max(0,Number(a)-Number(b)));
   const heading=kind==='subscriptions'?'Abonnements et échéances':kind==='domains'?'Domaines enregistrés':kind==='channels'?'Canaux et destinataires':'Tous les restaurants';
-  const callout=kind==='channels'?`<div class="tr-admin-callout"><strong>Précision sur les canaux</strong>Le schéma exposé par l’HTML possède un champ order_notification_channel unique par restaurant. Les compteurs décrivent donc la préférence enregistrée, et non la livraison réelle d’une notification. Un canal WhatsApp sans numéro actif est signalé comme incomplet.</div>`:'';
+  let summary='';
+  if(kind==='restaurants'){
+    summary=`<div class="tr-admin-grid tr-admin-grid-4">${trAdminStat('Gratuit',fmtCount(p.free),'Plan enregistré : free')}${trAdminStat('Starter',fmtCount(p.starter),'Plan enregistré : starter')}${trAdminStat('Premium',fmtCount(p.premium),'Plans pro / premium')}${trAdminStat('Expirés',fmtCount(subs.expired),'Statut subscription_status = expired ; recoupe les plans')}</div>`;
+  }else if(kind==='subscriptions'){
+    summary=`<div class="tr-admin-grid tr-admin-grid-5">${trAdminStat('Restaurants enregistrés',fmtCount(rStats.total),'Total actuel, indépendamment du statut')}${trAdminStat('Gratuit',fmtCount(p.free),'Plan enregistré')}${trAdminStat('Starter',fmtCount(p.starter),'Plan enregistré')}${trAdminStat('Premium',fmtCount(p.premium),'Plans pro / premium')}${trAdminStat('Expirés',fmtCount(subs.expired),'Statut indépendant du plan')}</div><p class="tr-admin-inline-note">Les compteurs par offre et par statut peuvent se recouper : un abonnement expiré conserve son offre enregistrée.</p>`;
+  }else if(kind==='domains'){
+    summary=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Domaines personnalisés',fmtCount(domainStats.configured),'Domaine personnalisé renseigné')}${trAdminStat('Domaines par défaut',minus(rStats.total,domainStats.configured),'Calculé à partir du total actuel et des domaines renseignés')}${trAdminStat('Autres états',fmtCount(domainStats.non_active_or_unknown),'Domaines personnalisés non actifs ou au statut inconnu')}</div>`;
+  }else if(kind==='channels'){
+    summary=`<div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('WhatsApp choisi',fmtCount(channelStats.whatsapp),'Préférence actuellement enregistrée')}${trAdminStat('E-mail choisi',fmtCount(channelStats.email),'Préférence actuellement enregistrée')}${trAdminStat('Sans canal reconnu',fmtCount(channelStats.unknown),'Aucun canal connu ou valeur autre')}</div><p class="tr-admin-inline-note">Le modèle utilise un seul champ de canal par restaurant. Ces compteurs décrivent le choix enregistré, pas la livraison réelle des notifications.</p>`;
+  }
   let headers='',body='';
   if(kind==='restaurants'){
     headers='<th>Restaurant</th><th>Propriétaire</th><th>Inscription</th><th>Offre</th><th>Statut enregistré</th><th>Canal</th><th></th>';
-    body=rows.map(r=>`<tr><td>${trAdminCell(r.name,r.slug)}</td><td>${trAdminCell(r.owner_email||'E-mail indisponible',String(r.owner_id||''))}</td><td>${trAdminEscape(trAdminDay(r.created_at))}</td><td>${trAdminEscape(trAdminPlanLabel(r.plan))}</td><td>${trAdminStatus(r.subscription_status)}</td><td>${trAdminEscape(({email:'E-mail',whatsapp:'WhatsApp'})[String(r.order_notification_channel||'').toLowerCase()]||'Inconnu')}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(r.id))}')">Fiche →</button></td></tr>`).join('');
+    body=rows.map(row=>{const restaurantName=String(row.name||'').trim()||'Restaurant sans nom';return `<tr><td>${trAdminCell(restaurantName,row.slug)}</td><td>${trAdminCell(row.owner_email||'E-mail indisponible',String(row.owner_id||''))}</td><td>${trAdminEscape(trAdminDay(row.created_at))}</td><td>${trAdminEscape(trAdminPlanLabel(row.plan))}</td><td>${trAdminStatus(row.subscription_status)}</td><td>${trAdminEscape(({email:'E-mail',whatsapp:'WhatsApp'})[String(row.order_notification_channel||'').toLowerCase()]||'Inconnu')}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(row.id))}')">Fiche <span aria-hidden="true">→</span></button></td></tr>`;}).join('');
   }else if(kind==='subscriptions'){
     headers='<th>Restaurant</th><th>Offre enregistrée</th><th>Statut enregistré</th><th>Facturation</th><th>Fin d’essai</th><th>Échéance</th><th>Dernier renouvellement connu</th><th></th>';
-    body=rows.map(r=>`<tr><td>${trAdminCell(r.name,r.owner_email||r.slug)}</td><td>${trAdminEscape(trAdminPlanLabel(r.plan))}</td><td>${trAdminStatus(r.subscription_status)}</td><td>${trAdminEscape(({monthly:'Mensuelle',annual:'Annuelle'})[r.billing_cycle]||'—')}</td><td>${trAdminEscape(trAdminDate(r.trial_ends_at))}</td><td>${trAdminEscape(trAdminDate(r.current_period_end))}</td><td>${trAdminEscape(trAdminDate(r.last_renewed_at))}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(r.id))}')">Fiche →</button></td></tr>`).join('');
+    body=rows.map(row=>`<tr><td>${trAdminCell(String(row.name||'').trim()||'Restaurant sans nom',row.owner_email||row.slug)}</td><td>${trAdminEscape(trAdminPlanLabel(row.plan))}</td><td>${trAdminStatus(row.subscription_status)}</td><td>${trAdminEscape(({monthly:'Mensuelle',annual:'Annuelle'})[row.billing_cycle]||'—')}</td><td>${trAdminEscape(trAdminDate(row.trial_ends_at))}</td><td>${trAdminEscape(trAdminDate(row.current_period_end))}</td><td>${trAdminEscape(trAdminDate(row.last_renewed_at))}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(row.id))}')">Fiche <span aria-hidden="true">→</span></button></td></tr>`).join('');
   }else if(kind==='domains'){
-    headers='<th>Restaurant</th><th>Domaine</th><th>Statut stocké</th><th>Dernière mise à jour connue</th><th></th>';
-    body=rows.map(r=>`<tr><td>${trAdminCell(r.name,r.owner_email||r.slug)}</td><td>${r.custom_domain?`<span class="tr-admin-table-primary">${trAdminEscape(r.custom_domain)}</span>`:'Domaine par défaut'}</td><td>${trAdminStatus(r.domain_status||r.custom_domain_status)}</td><td>${trAdminEscape(trAdminDate(r.custom_domain_updated_at))}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(r.id))}')">Fiche →</button></td></tr>`).join('');
+    headers='<th>Restaurant</th><th>Domaine</th><th>Statut enregistré</th><th>Dernière mise à jour connue</th><th></th>';
+    body=rows.map(row=>`<tr><td>${trAdminCell(String(row.name||'').trim()||'Restaurant sans nom',row.slug)}</td><td>${row.custom_domain?`<span class="tr-admin-table-primary">${trAdminEscape(row.custom_domain)}</span>`:'Domaine par défaut'}</td><td>${trAdminStatus(row.domain_status||row.custom_domain_status||'unknown')}</td><td>${trAdminEscape(trAdminDate(row.custom_domain_updated_at))}</td><td><button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(row.id))}')">Fiche <span aria-hidden="true">→</span></button></td></tr>`).join('');
   }else{
     headers='<th>Restaurant</th><th>Canal paramétré</th><th>Adresse e-mail</th><th>Destinataires WhatsApp actifs</th><th>Configuration</th><th></th>';
-    body=rows.map(r=>{const ch=String(r.order_notification_channel||'').toLowerCase();const phones=Array.isArray(r.whatsapp_phones)?r.whatsapp_phones:[];const label=ch==='email'?'E-mail':ch==='whatsapp'?'WhatsApp':'Inconnu';const state=r.channel_status==='configured'?'Configuré':r.channel_status==='missing_recipient'?'Numéro manquant':r.channel_status==='missing_email'?'E-mail manquant':'Canal inconnu';return `<tr><td>${trAdminCell(r.name,r.owner_email||r.slug)}</td><td>${trAdminEscape(label)}</td><td>${trAdminEscape(r.order_notification_email||'—')}${r.order_notification_email_verified===false?'<span class="tr-admin-table-sub">Adresse non vérifiée</span>':''}</td><td>${trAdminEscape(ch==='whatsapp'?(phones.length?phones.join(' · '):'—'):'Non sélectionné')}</td><td>${trAdminStatus(r.channel_status==='configured'?'active':r.channel_status==='unknown'?'unknown':'pending')}</td><td>${trAdminEscape(state)} <button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(r.id))}')">Fiche →</button></td></tr>`;}).join('');
+    body=rows.map(row=>{const ch=String(row.order_notification_channel||'').toLowerCase();const phones=Array.isArray(row.whatsapp_phones)?row.whatsapp_phones:[];const label=ch==='email'?'E-mail':ch==='whatsapp'?'WhatsApp':'Inconnu';const state=row.channel_status==='configured'?'Coordonnées disponibles':row.channel_status==='missing_recipient'?'Numéro manquant':row.channel_status==='missing_email'?'E-mail manquant':'Canal non reconnu';return `<tr><td>${trAdminCell(String(row.name||'').trim()||'Restaurant sans nom',row.slug)}</td><td>${trAdminEscape(label)}</td><td>${trAdminEscape(row.order_notification_email||'—')}${row.order_notification_email_verified===false?'<span class="tr-admin-table-sub">Adresse non vérifiée</span>':''}</td><td>${trAdminEscape(ch==='whatsapp'?(phones.length?phones.join(' · '):'—'):'Non sélectionné')}</td><td>${trAdminStatus(row.channel_status==='configured'?'active':row.channel_status==='unknown'?'unknown':'pending')}</td><td>${trAdminEscape(state)} <button type="button" class="tr-admin-inline-link" onclick="trAdminOpenDetail('${trAdminEscape(String(row.id))}')">Fiche <span aria-hidden="true">→</span></button></td></tr>`;}).join('');
   }
-  const empty=`<div class="tr-admin-empty">${data.total?'Aucun résultat pour ces filtres.':'Aucun enregistrement correspondant dans les données accessibles.'}</div>`;
-  el.innerHTML=(kind==='channels'?callout:'')+trAdminPanel(heading,`${trAdminFilterBar(kind)}${rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`:empty}${trAdminPagination(data)}`,kind==='subscriptions'?'Consultation uniquement : aucune résiliation, facturation ou modification d’offre ne peut être déclenchée depuis cette page.':'Les résultats sont chargés par pages côté serveur ; la base complète n’est pas envoyée au navigateur.');
+  const empty=`<div class="tr-admin-empty">${data.total?'Aucun résultat pour les filtres choisis.':'Aucune donnée correspondante n’est disponible.'}</div>`;
+  const searchAndFilters=trAdminFilterBar(kind);
+  const extraNote=kind==='subscriptions'?'Lecture seule : cette page ne déclenche ni résiliation, ni facturation, ni modification d’offre.':kind==='domains'?'Un domaine renseigné ne prouve pas qu’une vérification DNS récente a réussi.':kind==='restaurants'?'Les résultats sont paginés côté serveur ; un nom absent est signalé explicitement.':'';
+  el.innerHTML=summary+trAdminPanel(heading,`${searchAndFilters}${rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`:empty}${trAdminPagination(data)}`,extraNote);
 }
-function trAdminRenderPayments(data){
-  const el=document.getElementById('trAdminContent');if(!el)return;const rows=data.rows||[];
-  const body=rows.map(r=>`<tr><td>${trAdminEscape(trAdminDate(r.created_at))}</td><td>${trAdminCell(r.restaurant_name,r.restaurant_id)}</td><td>${trAdminEscape(trAdminPlanLabel(r.plan))}<span class="tr-admin-table-sub">${trAdminEscape(({monthly:'Mensuel',annual:'Annuel'})[r.billing_cycle]||'Cycle inconnu')}</span></td><td>${trAdminEscape(trAdminMoney(r.amount))}</td><td>${trAdminStatus(r.status)}</td><td>${trAdminEscape(String(r.id||''))}</td></tr>`).join('');
-  const heads='<th>Date</th><th>Restaurant</th><th>Offre/cycle enregistré</th><th>Montant</th><th>Statut</th><th>Référence</th>';
-  const note=`<div class="tr-admin-callout"><strong>Ce que l’historique permet de dire</strong>Les paiements sont classés selon le champ status réellement enregistré : confirmed est présenté comme confirmé, failed comme échoué, et les autres états restent distincts. Le HTML transmis ne permet pas d’identifier avec certitude si chaque transaction correspond à un nouvel abonnement, à un renouvellement ou à un domaine : la console ne leur invente donc pas de type. Le filtre restaurant fonctionne par identifiant afin d’éviter de charger inutilement une liste complète de comptes.</div>`;
-  el.innerHTML=trAdminPeriodControls()+note+trAdminPanel('Transactions d’abonnement',`${trAdminFilterBar('payments')}${rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr>${heads}</tr></thead><tbody>${body}</tbody></table></div>`:'<div class="tr-admin-empty">Aucun paiement enregistré dans cette période.</div>'}${trAdminPagination(data)}`,`Résultats ${trAdminEscape(trAdminDay(data.period?.start))} – ${trAdminEscape(trAdminDay(data.period?.end))}. Période personnalisée plafonnée à 366 jours.`);
+function trAdminRenderPayments(data,overviewData=null){
+  const el=document.getElementById('trAdminContent');if(!el)return;
+  const rows=Array.isArray(data?.rows)?data.rows:[];const pay=overviewData?.payments||{};
+  const fmtCount=value=>value===null||value===undefined||!Number.isFinite(Number(value))?'—':new Intl.NumberFormat('fr-SN',{maximumFractionDigits:0}).format(Number(value));
+  const summary=`<div class="tr-admin-grid tr-admin-grid-4">${trAdminStat('Montant confirmé',pay.confirmed_amount===null||pay.confirmed_amount===undefined?'—':trAdminMoney(pay.confirmed_amount),'Somme des paiements confirmés de la période')}${trAdminStat('Paiements confirmés',fmtCount(pay.confirmed),'Statut confirmed')}${trAdminStat('Paiements échoués',fmtCount(pay.failed),'Statut failed')}${trAdminStat('En attente / autres états',fmtCount(pay.other_status),'Autres statuts, distincts des paiements confirmés')}</div>`;
+  const body=rows.map(row=>`<tr><td>${trAdminEscape(trAdminDate(row.created_at))}</td><td>${trAdminCell(row.restaurant_name||'Restaurant sans nom',row.restaurant_id)}</td><td>${trAdminEscape(trAdminPlanLabel(row.plan))}<span class="tr-admin-table-sub">${trAdminEscape(({monthly:'Mensuel',annual:'Annuel'})[row.billing_cycle]||'Cycle inconnu')}</span></td><td>${trAdminEscape(trAdminMoney(row.amount))}</td><td>${trAdminStatus(row.status)}</td><td>${trAdminEscape(String(row.id||''))}</td></tr>`).join('');
+  const heads='<th>Date</th><th>Restaurant</th><th>Offre/cycle enregistré</th><th>Montant</th><th>Statut</th><th>Identifiant</th>';
+  const note=`<p class="tr-admin-inline-note">Seuls les paiements au statut « confirmé » sont inclus dans le montant confirmé. Le compteur « En attente / autres états » regroupe les statuts autres que confirmed et failed ; il ne prétend pas isoler un statut unique.</p>`;
+  el.innerHTML=trAdminPeriodControls()+summary+note+trAdminPanel('Transactions d’abonnement',`${trAdminFilterBar('payments')}${rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr>${heads}</tr></thead><tbody>${body}</tbody></table></div>`:'<div class="tr-admin-empty">Aucun paiement enregistré pour la période et les filtres sélectionnés.</div>'}${trAdminPagination(data)}`,`Période sélectionnée : ${trAdminEscape(trAdminDay(data?.period?.start))} — ${trAdminEscape(trAdminDay(data?.period?.end))}.`);
 }
 function trAdminOpenDetail(id){if(!trAdminSessionVerified||!id)return;trAdminState.detailId=String(id);trAdminState.section='detail';trAdminSetHeader('restaurants');const t=document.getElementById('trAdminTitle'),sub=document.getElementById('trAdminSubtitle');if(t)t.textContent='Fiche restaurant';if(sub)sub.textContent='Informations administratives utiles, sans consultation des commandes individuelles.';trAdminRenderNav();void trAdminLoadSection('detail');}
 function trAdminRenderDetail(data){
   const el=document.getElementById('trAdminContent');if(!el)return;const r=data.restaurant||{};
   const items=[['Identifiant',r.id],['Propriétaire',r.owner_email||'E-mail indisponible'],['Inscription',trAdminDate(r.created_at)],['Offre',trAdminPlanLabel(r.plan)],['Statut abonnement enregistré',r.subscription_status||'Inconnu'],['Cycle de facturation',r.billing_cycle||'—'],['Fin d’essai',trAdminDate(r.trial_ends_at)],['Fin de période',trAdminDate(r.current_period_end)],['Dernier renouvellement connu',trAdminDate(r.last_renewed_at)],['Domaine personnalisé',r.custom_domain||'Domaine par défaut'],['État du domaine',r.custom_domain_status==='default'?'Domaine par défaut':(r.custom_domain_status||'Inconnu')],['Canal de réception',({email:'E-mail',whatsapp:'WhatsApp'})[String(r.order_notification_channel||'').toLowerCase()]||'Inconnu'],['E-mail de réception',r.order_notification_email||'—'],['E-mail vérifié',r.order_notification_email_verified===true?'Oui':r.order_notification_email_verified===false?'Non':'Inconnu'],['Produits enregistrés',data.product_count??'—'],['Employés enregistrés',data.staff_count??'—'],['Paiements enregistrés',data.payment_count??'—'],['Destinataires WhatsApp actifs',Array.isArray(data.whatsapp_phones)&&data.whatsapp_phones.length?data.whatsapp_phones.join(' · '):'Aucun numéro actif']];
-  el.innerHTML=`<div style="margin-bottom:12px"><button class="tr-admin-btn tr-admin-btn-light" onclick="trAdminOpenSection('restaurants')">← Retour aux restaurants</button></div>${trAdminPanel(r.name||'Restaurant',`<div class="tr-admin-detail-grid">${items.map(([label,value])=>`<div class="tr-admin-detail-item"><span>${trAdminEscape(label)}</span><strong>${trAdminEscape(value??'—')}</strong></div>`).join('')}</div>`,'Données et nombres issus des tables actuellement vérifiées. Aucune opération de modification n’est proposée ici.')}<div class="tr-admin-callout"><strong>Limite volontaire</strong>${trAdminEscape(`Les détails des commandes ne sont pas chargés. La date de dernière activité, les historiques de changements d’offre et l’historique complet de renouvellement ne sont pas exposés car ils ne sont pas confirmés dans le modèle de données transmis.`)}</div>`;
+  el.innerHTML=`<div style="margin-bottom:12px"><button class="tr-admin-btn tr-admin-btn-light" onclick="trAdminOpenSection('restaurants')">← Retour aux restaurants</button></div>${trAdminPanel(String(r.name||'').trim()||'Restaurant sans nom',`<div class="tr-admin-detail-grid">${items.map(([label,value])=>`<div class="tr-admin-detail-item"><span>${trAdminEscape(label)}</span><strong>${trAdminEscape(value??'—')}</strong></div>`).join('')}</div>`,'Données et nombres issus des tables actuellement vérifiées. Aucune opération de modification n’est proposée ici.')}`;
 }
 const TR_ADMIN_CAMPAIGN_DEFAULT_BODY = `Bonjour,\n\nNous vous informons que les notifications WhatsApp peuvent actuellement rencontrer un problème technique.\n\nNous travaillons à résoudre le problème et nous vous informerons lorsque la situation sera rétablie.\n\nMerci pour votre compréhension et votre confiance.`;
 const trAdminCampaignState = {
@@ -4833,10 +5076,10 @@ function trAdminReminderRender(data,list){
   const el=document.getElementById('trAdminContent');if(!el)return;const summary=data||{};const rows=list?.rows||[];
   const max=Math.max(1,...(summary.daily||[]).map(x=>Number(x.accepted)||0));
   const daily=Array.isArray(summary.daily)&&summary.daily.length?`<div class="tr-admin-table-wrap"><table><thead><tr><th>Jour (${trAdminEscape(summary.month||trAdminReminderState.month)})</th><th>Rappels acceptés par le fournisseur</th><th>Volume relatif</th></tr></thead><tbody>${summary.daily.map(day=>`<tr><td>${trAdminEscape(day.day)}</td><td>${Number(day.accepted||0)}</td><td><div style="background:#f0f2f6;height:9px;border-radius:6px;min-width:90px;overflow:hidden"><div style="height:9px;background:#13835b;width:${Math.max(0,Math.min(100,(Number(day.accepted||0)/max)*100))}%"></div></div></td></tr>`).join('')}</tbody></table></div>`:'<div class="tr-admin-empty">Aucun comptage journalier enregistré pour ce mois.</div>';
-  const table=rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr><th>Date réelle / journal</th><th>Restaurant</th><th>Destinataire</th><th>Type</th><th>Objet</th><th>Résultat</th><th></th></tr></thead><tbody>${rows.map(row=>`<tr><td>${trAdminEscape(trAdminDate(row.accepted_at||row.created_at))}</td><td>${trAdminEscape(row.restaurant_name||'Restaurant')}</td><td>${trAdminEscape(row.recipient_email)}</td><td>${trAdminEscape(row.reminder_type)}</td><td>${trAdminEscape(row.subject||'Non conservé')}</td><td>${trAdminReminderStatus(row.status)}</td><td><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminReminderOpenDetail('${trAdminEscape(row.id)}')">Détails</button></td></tr>`).join('')}</tbody></table></div>${trAdminCampaignPagination(list,'trAdminReminderChangePage')}`:'<div class="tr-admin-empty">Aucun événement de rappel présent dans le journal raccordé pour cette période. Cela ne prouve pas qu’aucun rappel ancien n’a été envoyé : la source historique existante doit être reliée séparément.</div>';
+  const table=rows.length?`<div class="tr-admin-table-wrap"><table><thead><tr><th>Date réelle / journal</th><th>Restaurant</th><th>Destinataire</th><th>Type</th><th>Objet</th><th>Résultat</th><th></th></tr></thead><tbody>${rows.map(row=>`<tr><td>${trAdminEscape(trAdminDate(row.accepted_at||row.created_at))}</td><td>${trAdminEscape(row.restaurant_name||'Restaurant')}</td><td>${trAdminEscape(row.recipient_email)}</td><td>${trAdminEscape(row.reminder_type)}</td><td>${trAdminEscape(row.subject||'Non conservé')}</td><td>${trAdminReminderStatus(row.status)}</td><td><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminReminderOpenDetail('${trAdminEscape(row.id)}')">Détails</button></td></tr>`).join('')}</tbody></table></div>${trAdminCampaignPagination(list,'trAdminReminderChangePage')}`:'<div class="tr-admin-empty">Aucun événement n’est enregistré pour cette période dans l’historique disponible. L’absence d’une ligne ne garantit pas qu’aucun rappel n’a eu lieu.</div>';
   el.innerHTML=`<div class="tr-admin-filters"><label class="tr-admin-muted" for="trAdminReminderMonth" style="margin:0">Mois</label><input id="trAdminReminderMonth" class="tr-admin-input" type="month" value="${trAdminEscape(trAdminReminderState.month)}"><select id="trAdminReminderStatus" class="tr-admin-select" aria-label="Statut"><option value="">Tous les résultats</option><option value="accepted" ${trAdminReminderState.status==='accepted'?'selected':''}>Acceptés par le fournisseur</option><option value="failed" ${trAdminReminderState.status==='failed'?'selected':''}>Échecs</option><option value="indeterminate" ${trAdminReminderState.status==='indeterminate'?'selected':''}>Indéterminés</option></select><input id="trAdminReminderSearch" class="tr-admin-input search" placeholder="Rechercher restaurant, adresse, type…" value="${trAdminEscape(trAdminReminderState.search)}"><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminReminderApplyFilters()">Appliquer</button></div>
-    <div class="tr-admin-callout"><strong>Source et exactitude</strong>Ce tableau ne lit que les événements présents dans le journal de rappel raccordé. Il ne lance aucun rappel, ne change aucune échéance et ne tente aucun renvoi. Un e-mail « accepté » a été accepté par le fournisseur, ce qui ne confirme pas sa livraison ou sa lecture. Les anciens rappels apparaîtront seulement si leur historique existant a pu être raccordé ; aucune ligne historique n’est recréée artificiellement.</div>
-    <div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Acceptés aujourd’hui',summary.sent_today??'—','Fournisseur · Africa/Dakar · journal raccordé')}${trAdminStat('Acceptés ce mois-ci',summary.sent_this_month??'—','Fournisseur · journal raccordé')}${trAdminStat('Acceptés le mois sélectionné',summary.sent_selected_month??'—',summary.month||trAdminReminderState.month)}${trAdminStat('Échecs du mois',summary.failed_selected_month??'—','Résultat explicitement échoué')}${trAdminStat('Résultats indéterminés',summary.indeterminate_selected_month??'—','Pas de renvoi automatique')}${trAdminStat('En attente / planifiés','—','Non enregistrés par ce journal miroir')}</div>
+    <div class="tr-admin-callout"><strong>À propos des statuts</strong>Cette page est en consultation seule et ne déclenche aucun rappel ni renvoi. Un e-mail « accepté » par le fournisseur n’est pas une preuve de livraison ou de lecture.</div>
+    <div class="tr-admin-grid tr-admin-grid-3">${trAdminStat('Acceptés aujourd’hui',summary.sent_today??'—','Fournisseur · Africa/Dakar · journal raccordé')}${trAdminStat('Acceptés ce mois-ci',summary.sent_this_month??'—','Fournisseur · journal raccordé')}${trAdminStat('Acceptés le mois sélectionné',summary.sent_selected_month??'—',summary.month||trAdminReminderState.month)}${trAdminStat('Échecs du mois',summary.failed_selected_month??'—','Résultat explicitement échoué')}${trAdminStat('Résultats indéterminés',summary.indeterminate_selected_month??'—','Pas de renvoi automatique')}${trAdminStat('En attente / planifiés','—','Aucune valeur vérifiée disponible')}</div>
     ${trAdminPanel('Comptage journalier',daily,'Nombre d’e-mails de rappel acceptés par le fournisseur, par date réelle d’acceptation dans le mois sélectionné.')}
     ${trAdminPanel('Historique des rappels',table,'Le détail donne le destinataire, le type, l’échéance d’abonnement et le contenu uniquement lorsqu’il a été conservé.')}`;
 }
@@ -4857,27 +5100,27 @@ async function trAdminLoadReminderSection(token){
     trAdminRequest('reminder_summary',{month:trAdminReminderState.month}),
     trAdminRequest('reminders_list',{month:trAdminReminderState.month,page:trAdminReminderState.page,page_size:trAdminReminderState.pageSize,status:trAdminReminderState.status,search:trAdminReminderState.search})
   ]);if(token!==trAdminLoadToken)return;trAdminReminderState.summary=summary;trAdminReminderState.list=list;trAdminReminderRender(summary,list);}
-  catch(error){if(token!==trAdminLoadToken)return;const el=document.getElementById('trAdminContent');if(el)el.innerHTML=`<div class="tr-admin-panel"><h2>Historique de rappels indisponible</h2><p class="tr-admin-muted" style="margin-top:8px">${trAdminEscape(error?.message||'Le journal ne peut pas être lu.')}</p><p class="tr-admin-muted">La migration crée seulement un journal miroir. Pour afficher les anciens rappels, il faut raccorder la source historique réelle. Le moteur existant doit appeler l’adaptateur de journalisation après son traitement, sans remplacer son anti-doublon.</p><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminRefresh()" style="margin-top:12px">Réessayer</button></div>`;}
+  catch(error){if(token!==trAdminLoadToken)return;const el=document.getElementById('trAdminContent');if(el)el.innerHTML=`<div class="tr-admin-panel"><div class="tr-admin-empty-state tr-admin-empty-state-compact"><h2>Historique de rappels indisponible</h2><p>Impossible de consulter les événements pour le moment. Aucun rappel ne sera recréé ou renvoyé depuis cette page.</p><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminRefresh()">Réessayer</button></div></div>`;}
 }
 
 function trAdminRenderOrdersUnavailable(){
   const el=document.getElementById('trAdminContent');if(!el)return;
-  el.innerHTML=`<section class="tr-admin-panel tr-admin-orders-unavailable"><div class="tr-admin-panel-head"><div><h2>Consultation globale des commandes</h2><p class="tr-admin-muted">La rubrique Commandes est rétablie dans la navigation, mais aucune liste globale n’est chargée tant que l’API serveur ne l’expose pas.</p></div><span class="tr-admin-chip warn">Backend requis</span></div><div class="tr-admin-callout"><strong>Pourquoi la liste n’apparaît-elle pas ?</strong>L’action actuellement connue de <code>admin-console-api</code> n’inclut pas de lecture paginée des commandes. Pour afficher des chiffres exacts, le backend doit exposer une action sécurisée qui retourne les commandes réellement enregistrées, avec pagination, filtres par date, restaurant et statut, et des règles cohérentes pour les montants encaissés. Cette modification dépasse la mission actuelle, qui autorise uniquement le HTML.</div><div class="tr-admin-detail-grid"><div class="tr-admin-detail-item"><span>Source utilisée</span><strong>Aucune source de commandes connectée à l’API administrative</strong></div><div class="tr-admin-detail-item"><span>Chiffres affichés</span><strong>Aucun chiffre fictif ou simulé</strong></div><div class="tr-admin-detail-item"><span>Modification des commandes</span><strong>Aucune opération déclenchée</strong></div><div class="tr-admin-detail-item"><span>Prochaine dépendance</span><strong>Action backend de lecture avec filtres et autorisations</strong></div></div></section>`;
+  el.innerHTML=`<section class="tr-admin-panel tr-admin-orders-unavailable"><div class="tr-admin-empty-state tr-admin-empty-state-compact"><span class="tr-admin-empty-icon">${trAdminIcon('receipt')}</span><h2>Historique des commandes indisponible</h2><p>Les indicateurs restent masqués tant que des données vérifiables ne sont pas accessibles.</p><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminRefresh()">Actualiser</button></div></section>`;
 }
 function trAdminRenderUnsupported(section){
   const el=document.getElementById('trAdminContent');if(!el)return;
-  const content={
-    notifications:{heading:'Journal de notifications indisponible',body:'Le HTML transmis ne contient pas de table centrale documentée qui conserve chaque envoi, son canal et son résultat. Le tableau ne doit pas simuler les statuts envoyés, échoués, remis ou lus. Cette section restera vide jusqu’à ce que la source de journalisation réelle (table/Edge Function/provider) soit identifiée.'},
-    reminders:{heading:'Historique des rappels non connecté',body:'Les règles de rappels et la prévention des doublons doivent être conservées dans la fonction existante. Le HTML transmis ne fournit pas un schéma complet du journal serveur des rappels ; aucun rappel ne sera planifié, envoyé ou relancé depuis cette page tant que ce mécanisme n’aura pas été audité.'},
-    campaigns:{heading:'Envoi collectif désactivé par sécurité',body:'Aucun module Mail collectif ni fournisseur d’e-mail serveur réutilisable n’a été identifié dans ce HTML autonome. L’envoi exige une Edge Function, un fournisseur configuré côté serveur, un journal par destinataire, une protection anti-doublon et un stockage privé pour les PDF. Aucun courriel ne sera envoyé, aucune pièce jointe ne sera téléversée et aucune adresse ne sera exposée depuis cette vue.'}
-  }[section];
-  el.innerHTML=`<section class="tr-admin-panel"><div class="tr-admin-panel-head"><div><h2>${trAdminEscape(content.heading)}</h2><p class="tr-admin-muted">Fonctionnalité volontairement non activée tant que son backend réel n’a pas été vérifié.</p></div><span class="tr-admin-chip warn">En attente d’intégration serveur</span></div><div class="tr-admin-callout" style="margin-bottom:0"><strong>Aucune action ne sera déclenchée</strong>${trAdminEscape(content.body)}</div></section>`;
+  if(section==='notifications'){
+    el.innerHTML=`<section class="tr-admin-panel"><div class="tr-admin-empty-state tr-admin-empty-state-compact"><span class="tr-admin-empty-icon">${trAdminIcon('bell')}</span><h2>Historique des notifications indisponible</h2><p>Les événements et statuts ne sont affichés que lorsqu’ils peuvent être vérifiés.</p></div></section>`;
+    return;
+  }
+  const title=section==='reminders'?'Historique des rappels non disponible':'Cette rubrique n’est pas disponible';
+  el.innerHTML=`<section class="tr-admin-panel"><div class="tr-admin-empty-state tr-admin-empty-state-compact"><span class="tr-admin-empty-icon">${trAdminIcon(section==='reminders'?'calendar-clock':'inbox')}</span><h2>${trAdminEscape(title)}</h2><p>Les données nécessaires ne sont pas disponibles depuis les sources actuellement raccordées. Aucun résultat fictif n’est affiché.</p></div></section>`;
 }
-const TR_ADMIN_EMAIL_TEMPLATE_DEFAULTS={primary:'#DDAF4B',secondary:'#F5F7FC',header:'#101827',footer:'#F5F7FC',intro:'Bonjour,\n\nNous souhaitons vous partager une information importante de la part de TerangaResto.',signature:'L’équipe TerangaResto'};
+const TR_ADMIN_EMAIL_TEMPLATE_DEFAULTS={primary:'#356AE6',secondary:'#13A89E',header:'#111827',footer:'#F4F7FB',tagline:'Le partenaire digital de votre restaurant',intro:'Bonjour,\n\nNous souhaitons vous partager une information importante de la part de TerangaResto.',signature:'L’équipe TerangaResto'};
 function trAdminEmailTemplateDesignerHtml(){
   const d=TR_ADMIN_EMAIL_TEMPLATE_DEFAULTS;
   const colorField=(id,label,value)=>`<div class="tr-admin-template-field"><label for="${id}">${label}</label><div class="tr-admin-color-field"><input id="${id}" type="color" value="${value}" oninput="trAdminEmailTemplatePreview()" aria-label="${label}"><code>${value}</code></div></div>`;
-  return trAdminPanel('Personnaliser les modèles e-mail',`<div class="tr-admin-callout"><strong>Mode prévisualisation uniquement</strong>Cette console HTML ne dispose pas encore d’une action backend dédiée pour enregistrer et réutiliser durablement ces préférences. Les contrôles ci-dessous modifient l’aperçu dans cette page seulement : aucun changement n’est envoyé à la base et aucun modèle actif n’est remplacé.</div><div class="tr-admin-template-layout"><div><div class="tr-admin-template-fields">${colorField('trAdminTplPrimary','Couleur principale',d.primary)}${colorField('trAdminTplSecondary','Couleur secondaire',d.secondary)}${colorField('trAdminTplHeader','Couleur de l’en-tête',d.header)}${colorField('trAdminTplFooter','Couleur du pied de page',d.footer)}<div class="tr-admin-template-field" style="grid-column:1/-1"><label for="trAdminTplIntro">Texte de présentation</label><textarea id="trAdminTplIntro" class="tr-admin-textarea" oninput="trAdminEmailTemplatePreview()" maxlength="2000">${trAdminEscape(d.intro)}</textarea></div><div class="tr-admin-template-field" style="grid-column:1/-1"><label for="trAdminTplSignature">Signature</label><input id="trAdminTplSignature" class="tr-admin-input" value="${trAdminEscape(d.signature)}" oninput="trAdminEmailTemplatePreview()" maxlength="160"></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:13px"><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminEmailTemplateReset()">Réinitialiser l’aperçu</button><span class="tr-admin-chip warn">Non enregistré</span></div></div><div class="tr-admin-template-preview-wrap"><p class="tr-admin-muted" style="margin:0 0 10px;font-weight:750;color:#536178">APERÇU DU MODÈLE</p><div id="trAdminEmailTemplatePreviewHost" aria-live="polite"></div></div></div>`,'Les changements sont temporaires. Pour rendre les modèles réutilisables par les e-mails Resend et le Mail collectif Gmail, il faut une persistance serveur dédiée et un branchement du générateur de modèles.');
+  return trAdminPanel('Personnaliser les modèles e-mail',`<div class="tr-admin-inline-note is-warning"><strong>Aperçu temporaire.</strong> Cette interface peut préparer et visualiser les personnalisations, mais aucune action serveur existante ne permet de les enregistrer durablement ni de les réutiliser dans les e-mails. Aucun modèle actif ne sera remplacé.</div><div class="tr-admin-template-layout"><div><div class="tr-admin-template-fields">${colorField('trAdminTplPrimary','Couleur principale',d.primary)}${colorField('trAdminTplSecondary','Couleur secondaire',d.secondary)}${colorField('trAdminTplHeader','Couleur de l’en-tête',d.header)}${colorField('trAdminTplFooter','Couleur du pied de page',d.footer)}<div class="tr-admin-template-field" style="grid-column:1/-1"><label for="trAdminTplTagline">Description sous le nom</label><input id="trAdminTplTagline" class="tr-admin-input" value="${trAdminEscape(d.tagline)}" oninput="trAdminEmailTemplatePreview()" maxlength="180"></div><div class="tr-admin-template-field" style="grid-column:1/-1"><label for="trAdminTplIntro">Texte de présentation</label><textarea id="trAdminTplIntro" class="tr-admin-textarea" oninput="trAdminEmailTemplatePreview()" maxlength="2000">${trAdminEscape(d.intro)}</textarea></div><div class="tr-admin-template-field" style="grid-column:1/-1"><label for="trAdminTplSignature">Signature autorisée</label><input id="trAdminTplSignature" class="tr-admin-input" value="${trAdminEscape(d.signature)}" oninput="trAdminEmailTemplatePreview()" maxlength="160"></div></div><div class="tr-admin-template-actions"><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminEmailTemplateReset()">Réinitialiser l’aperçu</button><span class="tr-admin-chip warn">Non enregistré</span></div></div><div class="tr-admin-template-preview-wrap"><p class="tr-admin-muted tr-admin-template-eyebrow">APERÇU DU MODÈLE</p><div id="trAdminEmailTemplatePreviewHost" aria-live="polite"></div></div></div>`,'La persistance doit être ajoutée côté serveur dans une mission distincte. Cette page ne prétend pas sauvegarder les modifications.');
 }
 function trAdminEmailTemplateRead(id,fallback,max=2000){const el=document.getElementById(id);return String(el?.value??fallback).slice(0,max);}
 function trAdminEmailTemplateHex(id,fallback){const value=trAdminEmailTemplateRead(id,fallback,7);return /^#[0-9a-f]{6}$/i.test(value)?value:fallback;}
@@ -4885,14 +5128,15 @@ function trAdminEmailTemplatePreview(){
   const host=document.getElementById('trAdminEmailTemplatePreviewHost');if(!host)return;
   const d=TR_ADMIN_EMAIL_TEMPLATE_DEFAULTS;
   const primary=trAdminEmailTemplateHex('trAdminTplPrimary',d.primary),secondary=trAdminEmailTemplateHex('trAdminTplSecondary',d.secondary),header=trAdminEmailTemplateHex('trAdminTplHeader',d.header),footer=trAdminEmailTemplateHex('trAdminTplFooter',d.footer);
+  const tagline=trAdminEscape(trAdminEmailTemplateRead('trAdminTplTagline',d.tagline,180));
   const intro=trAdminEscape(trAdminEmailTemplateRead('trAdminTplIntro',d.intro)).replace(/\n/g,'<br>');
   const signature=trAdminEscape(trAdminEmailTemplateRead('trAdminTplSignature',d.signature,160));
   [['trAdminTplPrimary',primary],['trAdminTplSecondary',secondary],['trAdminTplHeader',header],['trAdminTplFooter',footer]].forEach(([id,value])=>{const code=document.querySelector(`#view-admin-console #${id}`)?.closest('.tr-admin-color-field')?.querySelector('code');if(code)code.textContent=value;});
-  host.innerHTML=`<div class="tr-admin-template-preview"><div class="tr-admin-template-preview-head" style="background:${header};border-bottom:5px solid ${primary}"><strong>Teranga<span style="color:${primary}">Resto</span></strong><span style="color:${secondary}">Le partenaire digital de votre restaurant</span></div><div class="tr-admin-template-preview-body" style="background:#fff">${intro}<div class="tr-admin-template-preview-sign" style="color:${header}">${signature}</div></div><div class="tr-admin-template-preview-foot" style="background:${footer};border-top:1px solid ${secondary}"><a href="https://www.terangaresto.com" style="color:${header}">www.terangaresto.com</a> · <span style="color:${header}">Contacter TerangaResto</span></div></div>`;
+  host.innerHTML=`<div class="tr-admin-template-preview"><div class="tr-admin-template-preview-head" style="background:${header};border-bottom:5px solid ${primary}"><strong>Teranga<span style="color:${primary}">Resto</span></strong><span style="color:${secondary}">${tagline}</span></div><div class="tr-admin-template-preview-body" style="background:#fff">${intro}<div class="tr-admin-template-preview-sign" style="color:${header}">${signature}</div></div><div class="tr-admin-template-preview-foot" style="background:${footer};border-top:1px solid ${secondary}"><a href="https://www.terangaresto.com" style="color:${header}">www.terangaresto.com</a> · <span style="color:${header}">Contacter TerangaResto</span></div></div>`;
 }
 function trAdminEmailTemplateReset(){
   const d=TR_ADMIN_EMAIL_TEMPLATE_DEFAULTS;
-  for(const [id,key] of [['trAdminTplPrimary','primary'],['trAdminTplSecondary','secondary'],['trAdminTplHeader','header'],['trAdminTplFooter','footer'],['trAdminTplIntro','intro'],['trAdminTplSignature','signature']]){const el=document.getElementById(id);if(el)el.value=d[key];}
+  for(const [id,key] of [['trAdminTplPrimary','primary'],['trAdminTplSecondary','secondary'],['trAdminTplHeader','header'],['trAdminTplFooter','footer'],['trAdminTplTagline','tagline'],['trAdminTplIntro','intro'],['trAdminTplSignature','signature']]){const el=document.getElementById(id);if(el)el.value=d[key];}
   trAdminEmailTemplatePreview();
 }
 
@@ -4950,8 +5194,8 @@ async function trAdminLoadSection(section){
         ]);
         result=auditResult;
         if(token!==trAdminLoadToken)return;
-        const allow='<p class="tr-admin-muted">Les deux seules adresses acceptées par le code serveur sont <strong>pdiop4656@gmail.com</strong> et <strong>jawlinersenegal@gmail.com</strong>. Leur accès est de nouveau vérifié côté serveur pour chaque requête. La liste autorisée ne prouve pas, à elle seule, que les deux comptes existent dans Supabase Auth.</p>';
-        const security=trAdminPanel('Accès administrateur',`<div class="tr-admin-detail-grid"><div class="tr-admin-detail-item"><span>Compte connecté</span><strong>${trAdminEscape(trAdminState.identity?.email||'—')}</strong></div><div class="tr-admin-detail-item"><span>Contrôle d’autorisation</span><strong>Vérification serveur à chaque opération</strong></div><div class="tr-admin-detail-item"><span>Clé privilégiée</span><strong>Conservée côté serveur uniquement</strong></div><div class="tr-admin-detail-item"><span>Modifications globales</span><strong>Aucune depuis cette vue</strong></div></div>${allow}`,'Aucun formulaire de réglage décoratif ou de changement d’abonnement n’a été ajouté.');
+        const allow='<p class="tr-admin-muted">L’accès est limité aux comptes autorisés dans la configuration serveur. L’autorisation est revérifiée côté serveur pour chaque requête.</p>';
+        const security=trAdminPanel('Accès administrateur',`<div class="tr-admin-detail-grid"><div class="tr-admin-detail-item"><span>Session administrateur</span><strong>Autorisée et vérifiée</strong></div><div class="tr-admin-detail-item"><span>Contrôle d’autorisation</span><strong>Vérification serveur à chaque opération</strong></div><div class="tr-admin-detail-item"><span>Clé privilégiée</span><strong>Conservée côté serveur uniquement</strong></div><div class="tr-admin-detail-item"><span>Modifications globales</span><strong>Aucune depuis cette vue</strong></div></div>${allow}`,'Aucun formulaire de réglage décoratif ou de changement d’abonnement n’a été ajouté.');
         const auditRows=(result.rows||[]).map(row=>`<tr><td>${trAdminEscape(trAdminDate(row.created_at))}</td><td>${trAdminEscape(row.actor_email||'—')}</td><td>${trAdminEscape(row.action||'—')}</td><td>${trAdminEscape([row.target_type,row.target_id].filter(Boolean).join(' · ')||'Plateforme')}</td><td>${trAdminStatus(row.result)}</td></tr>`).join('');
         const auditTable=`${(result.rows||[]).length?`<div class="tr-admin-table-wrap"><table><thead><tr><th>Date et heure</th><th>Compte</th><th>Action</th><th>Cible</th><th>Résultat</th></tr></thead><tbody>${auditRows}</tbody></table></div>`:'<div class="tr-admin-empty">Aucune action enregistrée dans le journal pour le moment.</div>'}${trAdminPagination(result)}<p class="tr-admin-muted">Le journal enregistre les appels administratifs pris en charge par cette Edge Function. Il ne remplace pas les journaux métier des notifications ou des rappels qui restent à auditer.</p>`;
         content.innerHTML=`<div id="trAdminGmailSettingsHost">${trAdminGmailSettingsHtml(gmailResult)}</div>`+trAdminEmailTemplateDesignerHtml()+security+trAdminPanel('Journal d’activité administratif',auditTable,'Historique paginé des accès et opérations passés par cette interface.');trAdminEmailTemplatePreview();return;
@@ -4963,15 +5207,18 @@ async function trAdminLoadSection(section){
       if(token!==trAdminLoadToken)return;trAdminState.overview=result;trAdminRenderOverview(result,section==='reports');return;
     }
     const args={page:trAdminState.page,page_size:trAdminState.pageSize,search:trAdminState.search,plan:trAdminState.plan,status:trAdminState.status,created_from:trAdminState.createdFrom,created_to:trAdminState.createdTo,...(section==='payments'?{...trAdminPeriodArgs(),restaurant_id:trAdminState.restaurantId}:{})};
-    if(section==='detail')result=await trAdminRequest('restaurant_detail',{restaurant_id:trAdminState.detailId});
-    else if(section==='restaurants')result=await trAdminRequest('restaurants',args);
-    else if(section==='subscriptions')result=await trAdminRequest('subscriptions',args);
-    else if(section==='payments')result=await trAdminRequest('payments',args);
-    else if(section==='domains')result=await trAdminRequest('domains',args);
-    else if(section==='channels')result=await trAdminRequest('channels',args);
-    else throw new Error('Cette section n’est pas prise en charge.');
+    let overviewForSection=null;
+    if(section==='detail'){
+      result=await trAdminRequest('restaurant_detail',{restaurant_id:trAdminState.detailId});
+    }else if(['restaurants','subscriptions','payments','domains','channels'].includes(section)){
+      const listPromise=trAdminRequest(section,args);
+      const overviewPromise=trAdminRequest('overview',trAdminPeriodArgs()).catch(()=>null);
+      const loaded=await Promise.all([listPromise,overviewPromise]);
+      result=loaded[0];overviewForSection=loaded[1];
+      if(overviewForSection)trAdminState.overview=overviewForSection;
+    }else throw new Error('Cette section n’est pas prise en charge.');
     if(token!==trAdminLoadToken)return;trAdminState.list=result;
-    if(section==='detail')trAdminRenderDetail(result);else if(section==='payments')trAdminRenderPayments(result);else trAdminRenderRestaurants(result,section);
+    if(section==='detail')trAdminRenderDetail(result);else if(section==='payments')trAdminRenderPayments(result,overviewForSection);else trAdminRenderRestaurants(result,section,overviewForSection);
   }catch(error){
     if(token!==trAdminLoadToken)return;
     if(!trAdminSessionVerified){if(content)content.innerHTML='';return;}
@@ -6410,7 +6657,7 @@ function setView(view){
   document.getElementById('quickAddBtn').style.display = view==='dashboard' ? 'inline-flex' : 'none';
   if(view==='admin-console'){
     trAdminSetHeader(trAdminState.section);
-    if(trAdminState.identity?.email){const identity=document.getElementById('trAdminIdentity');if(identity)identity.textContent=trAdminState.identity.email;}
+    const identity=document.getElementById('trAdminIdentity');if(identity)identity.textContent='Session administrateur vérifiée';
     trAdminRenderNav();
   }
   if(view==='dashboard') {
