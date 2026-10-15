@@ -5009,7 +5009,117 @@ function trAdminCampaignBuildEmailHtml(body,templateInput=TR_ADMIN_EMAIL_TEMPLAT
   const formatText=value=>escape(value).replace(/https:\/\/[^\s<]+/g,url=>`<a href="${url}" style="color:${d.primary_color};text-decoration:underline;word-break:break-word">${url}</a>`).replace(/\r?\n/g,'<br>');
   const intro=d.intro_text.trim()?`<p style="margin:0 0 16px;line-height:1.7">${formatText(d.intro_text)}</p>`:'';
   const message=String(body??'').trim().split(/\n{2,}/).filter(Boolean).map(part=>`<p style="margin:0 0 16px;line-height:1.75;color:#273444">${formatText(part)}</p>`).join('');
-  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>TerangaResto</title></head><body style="margin:0;padding:0;background:${d.footer_color};font-family:Arial,Helvetica,sans-serif;color:#273444"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;background:${d.footer_color}"><tr><td align="center" style="padding:24px 10px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;border-collapse:separate;background:#fff;border-radius:12px;overflow:hidden"><tr><td style="background:${d.header_color};padding:25px 28px;border-bottom:5px solid ${d.primary_color}"><div style="font-size:24px;font-weight:800;color:#fff">Teranga<span style="color:${d.primary_color}">Resto</span></div><div style="margin-top:7px;font-size:11px;color:${d.secondary_color}">${escape(d.tagline)}</div></td></tr><tr><td style="padding:28px">${intro}${message}<p style="margin:24px 0 0;font-weight:700;color:${d.header_color}">${escape(d.signature)}</p></td></tr><tr><td style="padding:18px 28px;background:${d.footer_color};border-top:1px solid ${d.secondary_color};font-size:12px"><a href="https://www.terangaresto.com" style="color:${d.header_color}">www.terangaresto.com</a> · <a href="mailto:terangaresto221@gmail.com" style="color:${d.header_color}">Contacter TerangaResto</a></td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>TerangaResto</title></head><body style="margin:0;padding:0;background:${d.footer_color};font-family:Arial,Helvetica,sans-serif;color:#273444"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;background:${d.footer_color}"><tr><td align="center" style="padding:24px 10px"><table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;border-collapse:separate;background:#fff;border-radius:12px;overflow:hidden"><tr><td style="background:${d.header_color};padding:25px 28px;border-bottom:5px solid ${d.primary_color}"><div style="font-size:24px;font-weight:800;color:#fff">Teranga<span style="color:${d.primary_color}">Resto</span></div><div style="margin-top:7px;font-size:11px;color:${d.secondary_color}">${escape(d.tagline)}</div></td></tr><tr><td style="padding:28px">${intro}${message}<p style="margin:24px 0 0;font-weight:700;color:${d.header_color}">${escape(d.signature)}</p></td></tr><tr><td style="padding:18px 28px;background:${d.footer_color};border-top:1px solid ${d.secondary_color};font-size:12px"><a href="https://www.terangaresto.com" style="color:${d.header_color}">www.terangaresto.com</a> · <a href="mailto:terangaresto221@gmail.com" style="color:${d.header_color}">Contacter TerangaResto</a></td></tr></table></td></tr></table>
+<style id="ta-dashboard-v3-polish">
+#view-ambassadors .ta-dashboard-v2{max-width:1120px;margin:0 auto;padding:clamp(10px,2vw,24px)}
+#view-ambassadors .ta-dash-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:nowrap}
+#view-ambassadors .ta-profile-intro{flex:1;min-width:0}
+#view-ambassadors .ta-dash-actions{flex-shrink:0;display:flex;gap:9px;align-items:center}
+#view-ambassadors .ta-icon-action.ta-icon-only{width:46px;height:46px;min-height:46px;padding:10px;display:inline-flex;align-items:center;justify-content:center;border-radius:14px;background:#fffaf1;color:#805315;border:1px solid #ecd8b7}
+#view-ambassadors .ta-icon-action svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-notif-count{position:absolute;top:-6px;right:-6px;margin:0;width:21px;height:21px;padding:0;background:#b91c1c;border:2px solid #fff}
+#view-ambassadors .ta-profile-strip{display:flex;align-items:center;gap:clamp(12px,2vw,28px);margin:16px 0 14px;padding:0 8px;background:transparent;border:0;border-radius:0;min-width:0}
+#view-ambassadors .ta-profile-mini.ta-profile-plain{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:8px 0;border:0;border-radius:0;background:transparent;box-shadow:none}
+#view-ambassadors .ta-profile-mini.ta-profile-plain>div{min-width:0;display:flex;flex-direction:column;gap:2px}
+#view-ambassadors .ta-profile-mini.ta-profile-plain strong{font-size:clamp(18px,2.4vw,28px);line-height:1.1;letter-spacing:-.035em;color:#211a14}
+#view-ambassadors .ta-profile-mini.ta-profile-plain small{font-size:13px;color:#5d554a;margin:0;order:2}
+#view-ambassadors .ta-profile-mini.ta-profile-plain .ta-inline-code{font-size:clamp(17px,2vw,24px);color:#805315;letter-spacing:.045em;overflow-wrap:anywhere}
+#view-ambassadors .ta-metric-symbol{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#fff3d8;display:flex;align-items:center;justify-content:center;color:#b77912}
+#view-ambassadors .ta-metric-symbol svg{width:30px;height:30px;fill:currentColor;stroke:currentColor;stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-profile-separator{width:1px;height:42px;background:#d8b06b;flex:0 0 1px}
+#view-ambassadors .ta-copy-code-icon{width:40px;height:40px;flex:0 0 40px;border:1px solid #efdfc2;background:#fff5df;color:#805315;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#view-ambassadors .ta-copy-code-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-balance-hero{min-height:118px;border-radius:18px;padding:18px clamp(16px,2.4vw,27px);background:linear-gradient(105deg,#c98b20,#f3bd43);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;margin:6px 0 14px;box-shadow:0 9px 24px #8b5e191c;flex-wrap:nowrap}
+#view-ambassadors .ta-balance-left{display:flex;align-items:center;gap:14px;min-width:0}
+#view-ambassadors .ta-balance-icon{width:58px;height:58px;border-radius:15px;background:#805008;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 58px}
+#view-ambassadors .ta-balance-icon svg{width:41px;height:41px;fill:none;stroke:currentColor;stroke-width:3.1;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-balance-copy{min-width:0}
+#view-ambassadors .ta-balance-hero small{display:block;color:#fff8e8;font-weight:700;font-size:14px}
+#view-ambassadors .ta-balance-hero strong{font-size:clamp(22px,3.8vw,42px);line-height:1.2;display:block;margin-top:4px;overflow-wrap:anywhere;white-space:nowrap}
+#view-ambassadors .ta-withdraw-open{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#fff!important;color:#332719!important;border:0!important;border-radius:13px!important;padding:13px clamp(12px,2vw,23px)!important;min-height:48px;font-weight:900!important;white-space:nowrap;flex:0 0 auto}
+#view-ambassadors .ta-primary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:0 0 17px}
+#view-ambassadors .ta-primary-card,#view-ambassadors .ta-primary-shortcut{min-width:0;min-height:112px;border-radius:17px;padding:14px;display:flex;align-items:center;gap:12px;overflow:hidden}
+#view-ambassadors .ta-primary-card{border:1px solid transparent}
+#view-ambassadors .ta-earned-card{background:#e7f7ed;border-color:#d3efde;color:#145c35}
+#view-ambassadors .ta-pending-card{background:#fff0f0;border-color:#f9dddd;color:#bc2020}
+#view-ambassadors .ta-primary-card>div{min-width:0}
+#view-ambassadors .ta-primary-card small{display:block;font-size:13px;font-weight:750;line-height:1.3;margin-bottom:7px;color:inherit}
+#view-ambassadors .ta-primary-card strong{display:block;font-size:clamp(16px,1.65vw,23px);font-weight:900;line-height:1.2;letter-spacing:-.035em;overflow-wrap:anywhere;color:inherit}
+#view-ambassadors .ta-primary-icon{display:flex;align-items:center;justify-content:center;width:52px;height:52px;flex:0 0 52px;border-radius:14px;background:#fff9;}
+#view-ambassadors .ta-primary-icon svg{width:35px;height:35px;fill:none;stroke:currentColor;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-earned-card .ta-primary-icon{background:#b9efd0;color:#087a40}
+#view-ambassadors .ta-earned-card .ta-primary-icon svg rect{fill:currentColor;stroke:currentColor}
+#view-ambassadors .ta-pending-card .ta-primary-icon{background:#ffdede;color:#d71920}
+#view-ambassadors .ta-primary-shortcut{border:1px solid #e4e9f6;background:#edf3ff;color:#121d3a;text-align:left;font:inherit;font-weight:850;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+#view-ambassadors .ta-primary-shortcut:hover{transform:translateY(-1px);box-shadow:0 8px 22px #17274712}
+#view-ambassadors .ta-primary-shortcut .ta-primary-icon{background:#1760e9;color:#fff}
+#view-ambassadors .ta-stat-shortcut .ta-primary-icon svg rect{fill:currentColor;stroke:currentColor}
+#view-ambassadors .ta-primary-shortcut.ta-history-shortcut{background:#f5edff;border-color:#e9dcff}
+#view-ambassadors .ta-history-shortcut .ta-primary-icon{background:#7938df;color:#fff}
+#view-ambassadors .ta-primary-shortcut>span:last-child{font-size:15px;line-height:1.3}
+#view-ambassadors .ta-notifications-card{margin-top:0;border:1px solid #eee6da;border-radius:18px;background:#fff;padding:17px}
+#view-ambassadors .ta-notifications-card h2{display:flex;align-items:center;gap:10px;margin:0}
+#view-ambassadors .ta-notification-heading-icon{width:35px;height:35px;display:inline-flex;align-items:center;justify-content:center;background:#fff2d7;border-radius:11px;color:#b77912}
+#view-ambassadors .ta-notification-heading-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#view-ambassadors .ta-dash-notification{padding:14px 6px;border-top:1px solid #f1ece4}
+#view-ambassadors .ta-notification-bullet{background:#fff2d7;color:#b77912}
+#view-ambassadors .ta-forgot-password{margin:-4px 0 14px;text-align:right;font-size:13px}
+#view-ambassadors .ta-forgot-password a{color:#956214;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+#view-ambassadors .ta-forgot-password a[aria-disabled=true]{pointer-events:none;opacity:.6}
+#view-ambassadors .ta-recovery-card{max-width:530px;margin:24px auto}
+#view-ambassadors .ta-recovery-card .ta-field{margin-bottom:13px}
+@media(max-width:850px){#view-ambassadors .ta-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#view-ambassadors .ta-primary-card,#view-ambassadors .ta-primary-shortcut{min-height:104px}#view-ambassadors .ta-primary-card strong{font-size:clamp(17px,2.5vw,23px)}}
+@media(max-width:620px){
+ #view-ambassadors .ta-dashboard-v2{padding:8px}
+ #view-ambassadors .ta-dash-top{align-items:center;gap:10px;flex-wrap:nowrap}
+ #view-ambassadors .ta-avatar{width:60px;height:60px;flex-basis:60px}
+ #view-ambassadors .ta-dash-actions{width:auto;justify-content:flex-end;gap:6px}
+ #view-ambassadors .ta-icon-action.ta-icon-only{width:40px;height:40px;min-height:40px;padding:8px}
+ #view-ambassadors .ta-icon-action svg{width:22px;height:22px}
+ #view-ambassadors .ta-profile-strip{gap:10px;margin-top:12px;padding:0}
+ #view-ambassadors .ta-profile-mini.ta-profile-plain{gap:7px}
+ #view-ambassadors .ta-metric-symbol{width:33px;height:33px;flex-basis:33px;border-radius:10px}
+ #view-ambassadors .ta-metric-symbol svg{width:24px;height:24px}
+ #view-ambassadors .ta-profile-mini.ta-profile-plain strong{font-size:18px}
+ #view-ambassadors .ta-profile-mini.ta-profile-plain small{font-size:11px}
+ #view-ambassadors .ta-profile-mini.ta-profile-plain .ta-inline-code{font-size:clamp(13px,3.8vw,18px);letter-spacing:.02em}
+ #view-ambassadors .ta-copy-code-icon{width:32px;height:32px;flex-basis:32px}
+ #view-ambassadors .ta-copy-code-icon svg{width:18px;height:18px}
+ #view-ambassadors .ta-profile-separator{height:36px}
+ #view-ambassadors .ta-balance-hero{flex-wrap:nowrap;align-items:center;gap:8px;padding:13px 11px;min-height:88px}
+ #view-ambassadors .ta-balance-left{gap:8px;flex:1}
+ #view-ambassadors .ta-balance-icon{width:40px;height:40px;flex-basis:40px;border-radius:11px}
+ #view-ambassadors .ta-balance-icon svg{width:30px;height:30px;stroke-width:3}
+ #view-ambassadors .ta-balance-hero small{font-size:11px}
+ #view-ambassadors .ta-balance-hero strong{font-size:clamp(16px,4.2vw,22px);white-space:normal;letter-spacing:-.025em}
+ #view-ambassadors .ta-withdraw-open{padding:9px 9px!important;min-height:42px;font-size:12px!important;gap:4px;max-width:43%;white-space:normal;text-align:center;line-height:1.2}
+ #view-ambassadors .ta-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:13px}
+ #view-ambassadors .ta-primary-card,#view-ambassadors .ta-primary-shortcut{min-height:93px;padding:10px;gap:9px;border-radius:14px}
+ #view-ambassadors .ta-primary-icon{width:42px;height:42px;flex-basis:42px;border-radius:11px}
+ #view-ambassadors .ta-primary-icon svg{width:29px;height:29px}
+ #view-ambassadors .ta-primary-card small{font-size:11px;margin-bottom:6px}
+ #view-ambassadors .ta-primary-card strong{font-size:clamp(14px,3.6vw,18px)}
+ #view-ambassadors .ta-primary-shortcut>span:last-child{font-size:13px}
+ #view-ambassadors .ta-notifications-card{padding:12px}
+ #view-ambassadors .ta-notifications-card h2{font-size:18px!important}
+ #view-ambassadors .ta-settings-grid{grid-template-columns:1fr}
+}
+@media(max-width:360px){
+ #view-ambassadors .ta-dash-top{align-items:flex-start}
+ #view-ambassadors .ta-avatar{width:50px;height:50px;flex-basis:50px}
+ #view-ambassadors .ta-profile-intro{gap:8px}
+ #view-ambassadors .ta-profile-intro h1{font-size:22px!important}
+ #view-ambassadors .ta-profile-strip{gap:7px}
+ #view-ambassadors .ta-copy-code-icon{display:none}
+ #view-ambassadors .ta-balance-icon{display:none}
+ #view-ambassadors .ta-withdraw-open{font-size:11px!important;max-width:45%}
+ #view-ambassadors .ta-primary-card,#view-ambassadors .ta-primary-shortcut{gap:6px;padding:8px}
+ #view-ambassadors .ta-primary-icon{width:34px;height:34px;flex-basis:34px}
+ #view-ambassadors .ta-primary-card strong{font-size:13px}
+}
+</style>
+
+</body></html>`;
 }
 function trAdminCampaignUpdatePreview(){
   const subject=document.getElementById('trAdminCampaignSubject');const body=document.getElementById('trAdminCampaignBody');
@@ -14061,6 +14171,10 @@ function speakAiText(text,button){
 (function(){
   const API='ambassador-api';
   let taOtpResendInterval=null;
+  let taRecoveryResendInterval=null;
+  let taRecoveryEmail='';
+  let taRecoveryResendAt=0;
+  let taRecoverySession=null;
   let taState={mode:'public',busy:false,profile:null,data:null,adminTab:'overview',adminSearch:'',adminStatus:'',adminPage:1,adminPageSize:20,adminTotal:0,adminWithdrawalPage:1,adminWithdrawalPageSize:20,adminWithdrawalTotal:0,adminDetail:null,adminDetailId:null,adminDetailPages:{referrals:1,ledger:1,withdrawals:1},withdrawals:null,pendingSignup:null,otpResendAvailableAt:0,pages:{referrals:1,ledger:1,withdrawals:1,notifications:1}};
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function money(v){return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v)||0)+' FCFA';}
@@ -14145,8 +14259,119 @@ function speakAiText(text,button){
   };
   async function renderAuth(mode){
     taState.mode=mode;
-    setContent(topBack()+`<div class="ta-card" style="max-width:530px;margin:24px auto"><p class="ta-eyebrow">Programme partenaire</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">${mode==='signup'?'Devenir ambassadeur':'Bon retour'}</h1><p class="ta-muted" style="margin-bottom:24px">Créez votre espace partenaire pour suivre vos recommandations et vos commissions. Pour sécuriser votre inscription, nous vous enverrons un code de confirmation à votre adresse e-mail.</p>${mode==='signup'?'<label for="taName">Nom complet</label><input class="ta-field" id="taName" autocomplete="name" placeholder="Votre nom complet" required><label for="taSignupCode">Choisissez votre code promo (10 lettres)</label><input class="ta-field" id="taSignupCode" autocomplete="off" inputmode="text" minlength="10" maxlength="10" pattern="[A-Za-z]{10}" placeholder="Ex. MAMADOUABC" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,\'\').slice(0,10)" required><p class="ta-muted" style="font-size:12px;margin-top:-7px">Utilisez exactement 10 lettres, sans chiffre ni espace. Le code doit être disponible.</p>':''}<label for="taEmail">Adresse e-mail</label><input class="ta-field" id="taEmail" type="email" autocomplete="email" placeholder="vous@exemple.com" required><label for="taPassword">Mot de passe</label><div class="ta-password-wrap"><input class="ta-field" id="taPassword" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" placeholder="${mode==='signup'?'Au moins 8 caractères':'Votre mot de passe'}" ${mode==='signup'?'oninput="trAmbassadorPasswordStrength(this)" minlength="8"':''} required><button type="button" class="ta-password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false" onclick="trAmbassadorTogglePassword()" title="Afficher le mot de passe">Afficher</button></div>${mode==='signup'?'<label for="taPasswordConfirm">Confirmer le mot de passe</label><input class="ta-field" id="taPasswordConfirm" type="password" autocomplete="new-password" placeholder="Saisissez à nouveau le mot de passe" minlength="8" required><div class="ta-strength"><div style="display:flex;justify-content:space-between;gap:8px"><span class="ta-muted">Force du mot de passe</span><b id="taStrengthLabel" class="ta-muted">Non évaluée</b></div><div class="ta-strength-track"><div id="taStrengthBar" class="ta-strength-bar" data-level="weak"></div></div><p class="ta-muted" style="margin-top:6px;font-size:11px">Indicateur fondé sur la longueur et la diversité des caractères. Les règles de sécurité Supabase restent appliquées côté serveur.</p></div>':''}<button class="ta-btn" onclick="trAmbassadorSubmitAuth('${mode}')">${mode==='signup'?'Créer mon compte':'Se connecter'}</button><p id="taAuthMsg" class="ta-muted" aria-live="polite" style="margin-top:12px"></p><p class="ta-muted" style="margin-top:16px">${mode==='signup'?'Vous avez déjà un compte ?':'Pas encore de compte ?'} <a href="#" onclick="trAmbassadorAuth('${mode==='signup'?'login':'signup'}');return false" style="color:#245b48;font-weight:800">${mode==='signup'?'Se connecter':'Devenir ambassadeur'}</a></p></div>`);
+    setContent(topBack()+`<div class="ta-card" style="max-width:530px;margin:24px auto"><p class="ta-eyebrow">Programme partenaire</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">${mode==='signup'?'Devenir ambassadeur':'Bon retour'}</h1><p class="ta-muted" style="margin-bottom:24px">${mode==='signup'?'Créez votre espace partenaire pour suivre vos recommandations et vos commissions. Un code de confirmation sera envoyé à votre adresse e-mail.':'Connectez-vous à votre espace partenaire pour suivre vos recommandations, vos commissions et vos demandes de retrait.'}</p>${mode==='signup'?'<label for="taName">Nom complet</label><input class="ta-field" id="taName" autocomplete="name" placeholder="Votre nom complet" required><label for="taSignupCode">Choisissez votre code promo (10 lettres)</label><input class="ta-field" id="taSignupCode" autocomplete="off" inputmode="text" minlength="10" maxlength="10" pattern="[A-Za-z]{10}" placeholder="Ex. MAMADOUABC" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,\'\').slice(0,10)" required><p class="ta-muted" style="font-size:12px;margin-top:-7px">Utilisez exactement 10 lettres, sans chiffre ni espace. Le code doit être disponible.</p>':''}<label for="taEmail">Adresse e-mail</label><input class="ta-field" id="taEmail" type="email" autocomplete="email" placeholder="vous@exemple.com" required><label for="taPassword">Mot de passe</label><div class="ta-password-wrap"><input class="ta-field" id="taPassword" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" placeholder="${mode==='signup'?'Au moins 8 caractères':'Votre mot de passe'}" ${mode==='signup'?'oninput="trAmbassadorPasswordStrength(this)" minlength="8"':''} required><button type="button" class="ta-password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false" onclick="trAmbassadorTogglePassword()" title="Afficher le mot de passe">Afficher</button></div>${mode==='signup'?'<label for="taPasswordConfirm">Confirmer le mot de passe</label><input class="ta-field" id="taPasswordConfirm" type="password" autocomplete="new-password" placeholder="Saisissez à nouveau le mot de passe" minlength="8" required><div class="ta-strength"><div style="display:flex;justify-content:space-between;gap:8px"><span class="ta-muted">Force du mot de passe</span><b id="taStrengthLabel" class="ta-muted">Non évaluée</b></div><div class="ta-strength-track"><div id="taStrengthBar" class="ta-strength-bar" data-level="weak"></div></div><p class="ta-muted" style="margin-top:6px;font-size:11px">Indicateur fondé sur la longueur et la diversité des caractères. Les règles de sécurité Supabase restent appliquées côté serveur.</p></div>':'<p class="ta-forgot-password"><a href="#" onclick="trAmbassadorForgotPassword();return false">Mot de passe oublié ?</a></p>'}<button class="ta-btn" onclick="trAmbassadorSubmitAuth('${mode}')">${mode==='signup'?'Créer mon compte':'Se connecter'}</button><p id="taAuthMsg" class="ta-muted" aria-live="polite" style="margin-top:12px"></p><p class="ta-muted" style="margin-top:16px">${mode==='signup'?'Vous avez déjà un compte ?':'Pas encore de compte ?'} <a href="#" onclick="trAmbassadorAuth('${mode==='signup'?'login':'signup'}');return false" style="color:#245b48;font-weight:800">${mode==='signup'?'Se connecter':'Devenir ambassadeur'}</a></p></div>`);
   }
+  // Récupération du mot de passe ambassadeur : même service Supabase Auth
+  // que le reste de TerangaResto, rendu dans la vue ambassadeur sans détourner le formulaire principal.
+  window.trAmbassadorForgotPassword=async()=>{
+    const email=(document.getElementById('taEmail')?.value||'').trim().toLowerCase();
+    const msg=document.getElementById('taAuthMsg');
+    if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      if(msg)msg.textContent='Saisissez votre adresse e-mail, puis cliquez sur « Mot de passe oublié ? ».';
+      document.getElementById('taEmail')?.focus();return;
+    }
+    const link=document.querySelector('.ta-forgot-password a');
+    if(link){link.setAttribute('aria-disabled','true');link.style.pointerEvents='none';link.style.opacity='.6';link.textContent='Envoi du code…';}
+    try{
+      const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:getPublicSiteOrigin()});
+      if(error)throw error;
+      taRecoveryEmail=email;
+      taRecoveryResendAt=Date.now()+30000;
+      renderAmbassadorRecoveryOtp('Demande acceptée. Consultez votre boîte de réception et vos courriers indésirables.');
+      startAmbassadorRecoveryCountdown(30);
+    }catch(e){
+      if(msg)msg.textContent=supabaseErrorFr(e,'Impossible d’envoyer le code de réinitialisation. Réessayez plus tard.');
+      if(link){link.setAttribute('aria-disabled','false');link.style.pointerEvents='';link.style.opacity='';link.textContent='Mot de passe oublié ?';}
+    }
+  };
+  function startAmbassadorRecoveryCountdown(seconds=30){
+    if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);
+    let remaining=Math.max(0,Math.ceil(Number(seconds)||0));
+    const tick=()=>{
+      const btn=document.getElementById('taRecoveryResendBtn');
+      const label=document.getElementById('taRecoveryResendLabel');
+      if(!btn||!label){if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);taRecoveryResendInterval=null;return;}
+      btn.disabled=remaining>0;btn.style.opacity=remaining>0?'.55':'';btn.style.cursor=remaining>0?'not-allowed':'';
+      label.textContent=remaining>0?`Renvoyer le code (${remaining}s)`:'Renvoyer le code';
+      if(remaining<=0){if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);taRecoveryResendInterval=null;return;}
+      remaining--;
+    };
+    tick();if(remaining>0)taRecoveryResendInterval=setInterval(tick,1000);
+  }
+  function renderAmbassadorRecoveryOtp(message=''){
+    taState.mode='recovery-otp';
+    setContent(topBack()+`<div class="ta-card ta-recovery-card"><p class="ta-eyebrow">Sécurité du compte</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">Réinitialiser le mot de passe</h1><p class="ta-muted" style="margin-bottom:20px">Un code de réinitialisation a été demandé pour <b>${esc(taRecoveryEmail)}</b>. Saisissez le code reçu pour choisir un nouveau mot de passe.</p><label for="taRecoveryOtp">Code de vérification</label><input class="ta-field" id="taRecoveryOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="Code à 8 chiffres" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter')trAmbassadorVerifyRecoveryOtp()"><button id="taRecoveryVerifyBtn" class="ta-btn" onclick="trAmbassadorVerifyRecoveryOtp()">Vérifier le code</button><button id="taRecoveryResendBtn" class="ta-btn secondary" style="margin-left:8px" onclick="trAmbassadorResendRecoveryOtp()"><span id="taRecoveryResendLabel">Renvoyer le code</span></button><p id="taRecoveryMsg" class="ta-muted" aria-live="polite" style="margin-top:12px">${esc(message)}</p><p class="ta-muted" style="margin-top:14px">Le code expire. Si vous ne le recevez pas, vérifiez les courriers indésirables avant de demander un nouvel envoi.</p><button class="ta-btn secondary" style="margin-top:10px" onclick="trAmbassadorBackToLogin()">Retour à la connexion</button></div>`);
+    startAmbassadorRecoveryCountdown(Math.max(0,Math.ceil((taRecoveryResendAt-Date.now())/1000)));
+    requestAnimationFrame(()=>document.getElementById('taRecoveryOtp')?.focus());
+  }
+  window.trAmbassadorResendRecoveryOtp=async()=>{
+    const msg=document.getElementById('taRecoveryMsg');
+    const wait=Math.ceil((taRecoveryResendAt-Date.now())/1000);
+    if(wait>0){startAmbassadorRecoveryCountdown(wait);if(msg)msg.textContent=`Patientez encore ${wait} seconde(s) avant de renvoyer le code.`;return;}
+    const btn=document.getElementById('taRecoveryResendBtn');if(btn)btn.disabled=true;
+    if(msg)msg.textContent='Demande de renvoi en cours…';
+    try{
+      const {error}=await supabaseClient.auth.resetPasswordForEmail(taRecoveryEmail,{redirectTo:getPublicSiteOrigin()});
+      if(error)throw error;
+      taRecoveryResendAt=Date.now()+30000;startAmbassadorRecoveryCountdown(30);
+      if(msg)msg.textContent='Demande d’envoi acceptée. Consultez votre boîte de réception et vos courriers indésirables.';
+    }catch(e){
+      if(msg)msg.textContent=supabaseErrorFr(e,'Impossible de renvoyer le code de réinitialisation.');
+      if(btn){btn.disabled=false;btn.style.opacity='';btn.style.cursor='';}
+    }
+  };
+  window.trAmbassadorVerifyRecoveryOtp=async()=>{
+    const token=(document.getElementById('taRecoveryOtp')?.value||'').trim();
+    const msg=document.getElementById('taRecoveryMsg');
+    const btn=document.getElementById('taRecoveryVerifyBtn');
+    if(!/^\d{8}$/.test(token)){if(msg)msg.textContent='Entrez le code de réinitialisation à 8 chiffres.';return;}
+    if(btn){btn.disabled=true;btn.textContent='Vérification…';}
+    try{
+      const {data,error}=await supabaseClient.auth.verifyOtp({email:taRecoveryEmail,token,type:'recovery'});
+      if(error)throw error;
+      if(!data?.session)throw new Error('Supabase n’a pas établi la session de récupération. Demandez un nouveau code.');
+      taRecoverySession=data.session;
+      const {data:sessionData}=await supabaseClient.auth.getSession();
+      if(!sessionData?.session||sessionData.session.user?.id!==data.session.user?.id){
+        const {error:setError}=await supabaseClient.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+        if(setError)throw setError;
+      }
+      if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);taRecoveryResendInterval=null;
+      renderAmbassadorNewPassword();
+    }catch(e){
+      if(msg)msg.textContent=supabaseErrorFr(e,'Code incorrect ou expiré. Vérifiez le code et réessayez.');
+      if(btn){btn.disabled=false;btn.textContent='Vérifier le code';}
+    }
+  };
+  function renderAmbassadorNewPassword(){
+    taState.mode='recovery-new-password';
+    setContent(topBack()+`<div class="ta-card ta-recovery-card"><p class="ta-eyebrow">Sécurité du compte</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">Choisir un nouveau mot de passe</h1><p class="ta-muted" style="margin-bottom:20px">Votre code est vérifié. Choisissez maintenant un mot de passe d’au moins 8 caractères.</p><label for="taNewRecoveryPassword">Nouveau mot de passe</label><input class="ta-field" id="taNewRecoveryPassword" type="password" autocomplete="new-password" minlength="8" placeholder="8 caractères minimum"><label for="taNewRecoveryPasswordConfirm">Confirmer le nouveau mot de passe</label><input class="ta-field" id="taNewRecoveryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="Saisissez-le à nouveau" onkeydown="if(event.key==='Enter')trAmbassadorSaveRecoveredPassword()"><button class="ta-btn" onclick="trAmbassadorSaveRecoveredPassword()">Enregistrer le nouveau mot de passe</button><p id="taRecoverySaveMsg" class="ta-muted" aria-live="polite" style="margin-top:12px"></p></div>`);
+    requestAnimationFrame(()=>document.getElementById('taNewRecoveryPassword')?.focus());
+  }
+  window.trAmbassadorSaveRecoveredPassword=async()=>{
+    const pw=document.getElementById('taNewRecoveryPassword')?.value||'';
+    const pw2=document.getElementById('taNewRecoveryPasswordConfirm')?.value||'';
+    const msg=document.getElementById('taRecoverySaveMsg');
+    if(pw.length<8){if(msg)msg.textContent='Le nouveau mot de passe doit contenir au moins 8 caractères.';return;}
+    if(pw!==pw2){if(msg)msg.textContent='Les deux mots de passe ne correspondent pas.';return;}
+    if(msg)msg.textContent='Enregistrement…';
+    try{
+      const {error}=await supabaseClient.auth.updateUser({password:pw});
+      if(error)throw error;
+      if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);taRecoveryResendInterval=null;
+      await supabaseClient.auth.signOut({scope:'local'});
+      const email=taRecoveryEmail;
+      taRecoveryEmail='';taRecoverySession=null;taRecoveryResendAt=0;
+      await renderAuth('login');
+      const emailInput=document.getElementById('taEmail');if(emailInput)emailInput.value=email;
+      const authMsg=document.getElementById('taAuthMsg');if(authMsg)authMsg.textContent='Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.';
+    }catch(e){if(msg)msg.textContent=supabaseErrorFr(e,'Impossible d’enregistrer le nouveau mot de passe.');}
+  };
+  window.trAmbassadorBackToLogin=()=>{
+    if(taRecoveryResendInterval)clearInterval(taRecoveryResendInterval);taRecoveryResendInterval=null;
+    taRecoveryEmail='';taRecoverySession=null;taRecoveryResendAt=0;renderAuth('login');
+  };
+
   window.trAmbassadorTogglePassword=()=>{
     const input=document.getElementById('taPassword');
     const button=document.querySelector('.ta-password-toggle');
@@ -14402,7 +14627,6 @@ function speakAiText(text,button){
     const d=taState.data,p=d.profile,b=Array.isArray(d.balance)?d.balance[0]:d.balance||{};
     const refs=d.referrals||[],ledger=d.ledger||[],withdrawals=d.withdrawals||[],notifications=d.notifications||[],monthly=d.monthly_commissions||[];
     const code=String(p.code||'');
-    const referralUrl=`${location.origin}/?ambassador=${encodeURIComponent(code)}`;
     const unread=notifications.filter(n=>!n.read_at).length;
     const totalEarned=(Number(b.total_commissions)||0)+(Number(b.total_bonus)||0);
     const avatar=String(p.avatar_url||'');
@@ -14410,16 +14634,14 @@ function speakAiText(text,button){
     const graph=monthly.length?`<div style="display:flex;align-items:flex-end;gap:10px;min-height:170px;padding:14px 4px 0;border-bottom:1px solid #e7e2d8">${monthly.map(m=>{const value=Number(m.amount)||0;const h=value>0?Math.max(8,Math.round(value/Math.max(1,...monthly.map(x=>Number(x.amount)||0))*110)):3;const dt=new Date(String(m.month_start||'')+'T00:00:00');const label=Number.isNaN(dt.getTime())?'—':dt.toLocaleDateString('fr-FR',{month:'short'});return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:150px" title="${esc(label)} : ${esc(money(value))}"><small style="font-size:10px;text-align:center;white-space:nowrap">${value?esc(money(value)):''}</small><div style="width:min(44px,80%);height:${h}px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#d2b46a,#2d6a4f)"></div><span style="font-size:11px;color:#66736a;text-transform:capitalize">${esc(label)}</span></div>`;}).join('')}</div>`:'<p class="ta-muted">Aucune commission mensuelle enregistrée pour le moment.</p>';
     const notificationRows=notifications.map(n=>`<div class="ta-dash-notification ${n.read_at?'':'ta-notification-unread'}"><div class="ta-notification-bullet" aria-hidden="true">🔔</div><div style="min-width:0;flex:1"><b>${esc(n.title)}</b><p class="ta-muted" style="margin-top:4px">${esc(n.message)}</p><small>${date(n.created_at)} · ${n.read_at?'Lue':'Nouvelle'}</small></div></div>`);
     setContent(`<div class="ta-dashboard-v2">
-      <div class="ta-dash-top"><div class="ta-profile-intro">${avatarHtml}<div style="min-width:0"><p class="ta-eyebrow" style="margin-bottom:4px">ESPACE AMBASSADEUR</p><h1 style="font-size:clamp(25px,4vw,34px);margin:0;line-height:1.15">Bonjour ${esc(p.full_name)}</h1><p class="ta-muted" style="margin-top:5px">Partenaire TerangaResto</p></div></div><div class="ta-dash-actions"><button class="ta-icon-action" onclick="trAmbassadorToggleNotifications()" aria-label="Voir les notifications">🔔 Notifications${unread?`<span class="ta-notif-count">${unread}</span>`:''}</button><button class="ta-icon-action" onclick="trAmbassadorToggleSettings()">⚙ Paramètres</button></div></div>
+      <div class="ta-dash-top"><div class="ta-profile-intro">${avatarHtml}<div style="min-width:0"><p class="ta-eyebrow" style="margin-bottom:4px">ESPACE AMBASSADEUR</p><h1 style="font-size:clamp(25px,4vw,34px);margin:0;line-height:1.15">Bonjour ${esc(p.full_name)}</h1><p class="ta-muted" style="margin-top:5px">Partenaire TerangaResto</p></div></div><div class="ta-dash-actions"><button class="ta-icon-action ta-icon-only" onclick="trAmbassadorToggleNotifications()" aria-label="Voir les notifications" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>${unread?`<span class="ta-notif-count">${unread}</span>`:''}</button><button class="ta-icon-action ta-icon-only" onclick="trAmbassadorToggleSettings()" aria-label="Paramètres" title="Paramètres"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-2.6v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6.3v-2.6h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.2h2.6v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v2.6h-.2a1.7 1.7 0 0 0-1.5 1Z"/></svg></button></div></div>
       <div id="taSettingsPanel" class="ta-settings-panel" hidden><div class="ta-row" style="justify-content:space-between;align-items:center"><h2 style="font-size:22px">Paramètres du profil</h2><button class="ta-btn secondary" onclick="trAmbassadorToggleSettings(false)">Fermer</button></div><div class="ta-settings-grid"><div><label for="taEditName">Nom complet</label><input class="ta-field" id="taEditName" autocomplete="name" maxlength="120" value="${esc(p.full_name)}"><label for="taEditCode">Code promo personnel</label><input class="ta-field" id="taEditCode" maxlength="10" minlength="10" value="${esc(code)}" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,10)"><small class="ta-muted">Exactement 10 lettres. Votre ancien code restera dans l’historique des recommandations déjà enregistrées.</small></div><div><label for="taAvatarFile">Photo de profil (facultative)</label><input class="ta-field" id="taAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><small class="ta-muted">PNG, JPG ou WebP, 2 Mo maximum. Sans photo, vos initiales s’affichent.</small><p id="taProfileMsg" class="ta-msg" aria-live="polite"></p></div></div><div class="ta-row" style="flex-wrap:wrap"><button class="ta-btn" onclick="trAmbassadorSaveProfile()">Enregistrer les changements</button><button class="ta-btn secondary" onclick="trAmbassadorRefresh()">Actualiser</button><button class="ta-btn secondary" onclick="trAmbassadorLogout()">Déconnexion</button></div></div>
-      <div class="ta-profile-strip"><div class="ta-profile-mini"><div><small>Restaurants recommandés</small><strong>${Number(d.referrals_count)||0}</strong></div><span aria-hidden="true" style="font-size:25px;color:#bd811c">▤</span></div><div class="ta-profile-mini"><div style="min-width:0"><small>Mon code promo</small><strong class="ta-inline-code">${esc(code)}</strong></div><button class="ta-btn" style="padding:10px 12px;white-space:nowrap" onclick="trAmbassadorCopyCode()">Copier</button></div></div>
-      <section class="ta-balance-hero"><div style="display:flex;align-items:center;gap:14px;min-width:0"><div class="ta-balance-icon" aria-hidden="true">▣</div><div><small>Solde disponible</small><strong>${money(b.available_balance)}</strong></div></div><button class="ta-btn ta-withdraw-open" onclick="trAmbassadorOpenWithdrawal()">Demander un retrait&nbsp; ›</button></section>
-      <div class="ta-dash-two-stats"><div class="ta-dash-stat"><small>Total gagné</small><strong>${money(totalEarned)}</strong></div><div class="ta-dash-stat"><small>Retraits en attente</small><strong>${money(b.pending_withdrawals)}</strong></div></div>
-      <div class="ta-shortcuts"><button class="ta-shortcut" onclick="trAmbassadorTogglePanel('taStatsPanel')"><span class="ta-shortcut-icon" aria-hidden="true">▥</span><span>Mes statistiques</span></button><button class="ta-shortcut" onclick="trAmbassadorTogglePanel('taHistoryPanel')"><span class="ta-shortcut-icon" aria-hidden="true">◴</span><span>Historique complet</span></button></div>
-      <section class="ta-personal-link"><div style="display:flex;align-items:center;gap:12px"><span class="ta-shortcut-icon" style="width:42px;height:42px;flex-basis:42px" aria-hidden="true">↗</span><div><b>Mon lien personnel</b><p class="ta-muted" style="margin-top:3px">Partagez ce lien ; le code sera proposé au restaurant lors de son parcours de souscription.</p></div></div><div class="ta-personal-link-row"><div class="ta-personal-link-url" id="taReferralUrl">${esc(referralUrl)}</div><button class="ta-btn secondary" onclick="trAmbassadorCopyReferralLink()">Copier le lien</button></div></section>
+      <div class="ta-profile-strip"><div class="ta-profile-mini ta-profile-plain"><span class="ta-metric-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 14 16 5l12 9v14H4Z"/><path d="M2 14h28M12 28V18h8v10"/></svg></span><div><strong>${Number(d.referrals_count)||0}</strong><small>Restaurants recommandés</small></div></div><span class="ta-profile-separator" aria-hidden="true"></span><div class="ta-profile-mini ta-profile-plain ta-code-plain"><span class="ta-metric-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M18 4h10v10L14 28 4 18Z"/><circle cx="23" cy="9" r="1.8"/></svg></span><div style="min-width:0"><small>Mon code promo</small><strong class="ta-inline-code">${esc(code)}</strong></div><button class="ta-copy-code-icon" style="padding:8px 10px;white-space:nowrap" aria-label="Copier mon code promo" title="Copier mon code promo" onclick="trAmbassadorCopyCode()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h3"/></svg></button></div></div>
+      <section class="ta-balance-hero"><div class="ta-balance-left"><div class="ta-balance-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M7 13.5h28a4 4 0 0 1 4 4V21h-7a7 7 0 0 0 0 14h7v2.5a4 4 0 0 1-4 4H10a5 5 0 0 1-5-5V17.5a4 4 0 0 1 4-4Z"/><path d="M7 13.5 28 6h7a4 4 0 0 1 4 4v4M32 28h.2"/></svg></div><div class="ta-balance-copy"><small>Solde disponible</small><strong>${money(b.available_balance)}</strong></div></div><button class="ta-btn ta-withdraw-open" onclick="trAmbassadorOpenWithdrawal()"><span>Demander un retrait</span><span aria-hidden="true">›</span></button></section>
+      <div class="ta-primary-grid"><div class="ta-primary-card ta-earned-card"><span class="ta-primary-icon" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="4" y="22" width="8" height="14" rx="2"/><rect x="16" y="13" width="8" height="23" rx="2"/><rect x="28" y="4" width="8" height="32" rx="2"/></svg></span><div><small>Total gagné</small><strong>${money(totalEarned)}</strong></div></div><div class="ta-primary-card ta-pending-card"><span class="ta-primary-icon" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="15"/><path d="M20 11v10l7 4"/></svg></span><div><small>Retraits en attente</small><strong>${money(b.pending_withdrawals)}</strong></div></div><button class="ta-primary-shortcut ta-stat-shortcut" onclick="trAmbassadorTogglePanel('taStatsPanel')"><span class="ta-primary-icon" aria-hidden="true"><svg viewBox="0 0 40 40"><rect x="3" y="23" width="8" height="13" rx="2"/><rect x="16" y="14" width="8" height="22" rx="2"/><rect x="29" y="4" width="8" height="32" rx="2"/></svg></span><span>Mes statistiques</span></button><button class="ta-primary-shortcut ta-history-shortcut" onclick="trAmbassadorTogglePanel('taHistoryPanel')"><span class="ta-primary-icon" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M8 13a14 14 0 1 1-2 13M6 6v9h9M20 11v10l7 4"/></svg></span><span>Historique complet</span></button></div>
+      <section id="taNotificationsPanel" class="ta-card ta-dash-section ta-notifications-card"><div class="ta-row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:21px"><span class="ta-notification-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span>Nouvelles notifications</h2><div class="ta-row"><button class="ta-btn secondary" onclick="trAmbassadorToggleNotifications()">${taState.showAllNotifications?'Voir les dernières':'Voir tout'}</button>${notifications.some(n=>!n.read_at)?'<button class="ta-btn secondary" onclick="trAmbassadorMarkNotificationsRead()">Tout marquer comme lu</button>':''}</div></div>${notifications.length?notificationRows.map((row,i)=>`<div ${i>=3&&!taState.showAllNotifications?'hidden':''}>${row}</div>`).join(''):'<p class="ta-muted" style="margin-top:8px">Aucune notification pour le moment.</p>'}${dashboardPager('notifications',Number(d.notifications_page)||1,Number(d.notifications_count)||0,Number(d.page_size)||50)}</section>
       <section id="taStatsPanel" class="ta-card ta-dash-section" hidden><div class="ta-row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h2 style="font-size:22px">Mes statistiques</h2><span class="ta-muted">${Number(d.referrals_count)||0} restaurant(s) associé(s)</span></div><div class="ta-dash-two-stats" style="margin-top:12px"><div class="ta-dash-stat"><small>Commissions validées</small><strong>${money(b.total_commissions)}</strong></div><div class="ta-dash-stat"><small>Bonus reçus</small><strong>${money(b.total_bonus)}</strong></div></div><h3 style="font-size:18px;margin:20px 0 8px">Évolution mensuelle des commissions</h3>${graph}<h3 style="font-size:18px;margin:20px 0 8px">Restaurants recommandés</h3>${refs.length?'<div class="ta-table-wrap"><table class="ta-table"><thead><tr><th>Restaurant</th><th>Date</th></tr></thead><tbody>'+refs.map(r=>`<tr><td>${esc(r.restaurants?.name||'Restaurant')}</td><td>${date(r.attributed_at)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="ta-muted">Aucun restaurant associé pour le moment.</p>'}${dashboardPager('referrals',Number(d.referrals_page)||1,Number(d.referrals_count)||0,Number(d.page_size)||50)}</section>
       <section id="taHistoryPanel" class="ta-card ta-dash-section" hidden><h2 style="font-size:22px">Historique complet</h2><h3 style="font-size:17px;margin:16px 0 8px">Commissions et opérations</h3>${p.history_visible?(ledger.length?'<div class="ta-table-wrap"><table class="ta-table"><thead><tr><th>Date</th><th>Opération</th><th>Montant</th><th>Détail</th></tr></thead><tbody>'+ledger.map(x=>`<tr><td>${date(x.created_at)}</td><td>${esc(x.entry_type)}</td><td>${money(x.amount)}</td><td>${esc(x.note)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="ta-muted">Aucune opération enregistrée.</p>'):'<p class="ta-muted">L’historique détaillé n’est pas activé pour votre compte.</p>'}${p.history_visible?dashboardPager('ledger',Number(d.ledger_page)||1,Number(d.ledger_count)||0,Number(d.page_size)||50):''}<h3 style="font-size:17px;margin:22px 0 8px">Mes demandes de retrait</h3>${withdrawals.length?'<div class="ta-table-wrap"><table class="ta-table"><thead><tr><th>Date</th><th>Montant demandé</th><th>Frais (1 %)</th><th>Montant à recevoir</th><th>Moyen</th><th>Statut</th></tr></thead><tbody>'+withdrawals.map(x=>`<tr><td>${date(x.requested_at)}</td><td>${money(x.amount)}</td><td>${money(x.fee_amount??0)}</td><td>${money(x.payout_amount??x.amount)}</td><td>${esc(x.payment_method)}</td><td>${esc(x.status)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="ta-muted">Aucune demande de retrait enregistrée.</p>'}${dashboardPager('withdrawals',Number(d.withdrawals_page)||1,Number(d.withdrawals_count)||0,Number(d.page_size)||50)}</section>
-      <section id="taNotificationsPanel" class="ta-card ta-dash-section"><div class="ta-row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="font-size:21px">Nouvelles notifications</h2><div class="ta-row"><button class="ta-btn secondary" onclick="trAmbassadorToggleNotifications()">${taState.showAllNotifications?'Voir les dernières':'Voir tout'}</button>${notifications.some(n=>!n.read_at)?'<button class="ta-btn secondary" onclick="trAmbassadorMarkNotificationsRead()">Tout marquer comme lu</button>':''}</div></div>${notifications.length?notificationRows.map((row,i)=>`<div ${i>=3&&!taState.showAllNotifications?'hidden':''}>${row}</div>`).join(''):'<p class="ta-muted" style="margin-top:8px">Aucune notification pour le moment.</p>'}${dashboardPager('notifications',Number(d.notifications_page)||1,Number(d.notifications_count)||0,Number(d.page_size)||50)}</section>
       <div id="taWithdrawalModal" class="ta-withdraw-modal-backdrop" hidden onclick="if(event.target===this)trAmbassadorCloseWithdrawal()"><section class="ta-withdraw-modal" role="dialog" aria-modal="true" aria-labelledby="taWithdrawalTitle"><div class="ta-row" style="justify-content:space-between;align-items:center"><h2 id="taWithdrawalTitle" style="font-size:24px">Demander un retrait</h2><button type="button" class="ta-btn secondary" onclick="trAmbassadorCloseWithdrawal()">Fermer</button></div><p class="ta-muted" style="margin:8px 0 14px">Solde disponible : <b>${money(b.available_balance)}</b>. Minimum : <b>2 000 FCFA</b>.</p><label for="taWithdrawName">Nom du bénéficiaire</label><input class="ta-field" id="taWithdrawName" autocomplete="name" maxlength="120" placeholder="Nom et prénom du bénéficiaire"><label for="taWithdrawAmount">Montant demandé (FCFA)</label><input class="ta-field" id="taWithdrawAmount" type="number" min="2000" step="1" max="${Number(b.available_balance)||0}" placeholder="2000" oninput="trAmbassadorUpdateWithdrawalFee()"><label for="taWithdrawMethod">Moyen de paiement</label><select class="ta-field" id="taWithdrawMethod" onchange="trAmbassadorUpdateWithdrawalFee()"><option value="Wave" selected>Wave</option><option value="Orange Money">Orange Money</option></select><label for="taWithdrawIdentifier">Numéro de téléphone du bénéficiaire</label><input class="ta-field" id="taWithdrawIdentifier" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="Ex. 77 123 45 67"><div id="taWithdrawalFeeSummary" class="ta-fee-summary" aria-live="polite">Des frais de transfert de 1 % seront retenus pour les paiements Wave et Orange Money. Le bénéficiaire reçoit le montant demandé, moins les frais.</div><p class="ta-muted" style="margin-bottom:12px">Après votre demande, le traitement peut prendre de 24 à 48 heures. Le montant demandé est réservé pendant le traitement.</p><button class="ta-btn" style="width:100%" onclick="trAmbassadorRequestWithdrawal()">Envoyer la demande</button><p id="taWithdrawMsg" class="ta-msg" aria-live="polite" style="margin-top:10px"></p></section></div>
     </div>`);
     trAmbassadorUpdateWithdrawalFee();
