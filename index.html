@@ -177,7 +177,8 @@ body.storefront-active .gnav{ display:none; }
 
 .ta-password-wrap{position:relative;display:flex;align-items:center}
 .ta-password-wrap .ta-field{width:100%;padding-right:54px}
-.ta-password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;border-radius:8px;background:transparent;color:#242018;font-size:21px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.ta-password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);min-width:66px;height:36px;padding:0 8px;border:1px solid #d8c8ad;border-radius:8px;background:#fffaf1;color:#493719;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.ta-password-toggle:hover{background:#f7ead0}
 .ta-password-toggle:focus-visible{outline:2px solid #c58b24;outline-offset:2px}
 .ta-calc-result>span:first-child{color:#252a23!important;font-weight:750!important;opacity:1!important}
 .ta-calc-result-hint{color:#5c6259!important;opacity:1!important}
@@ -14059,6 +14060,7 @@ function speakAiText(text,button){
 <script>
 (function(){
   const API='ambassador-api';
+  let taOtpResendInterval=null;
   let taState={mode:'public',busy:false,profile:null,data:null,adminTab:'overview',adminSearch:'',adminStatus:'',adminPage:1,adminPageSize:20,adminTotal:0,adminWithdrawalPage:1,adminWithdrawalPageSize:20,adminWithdrawalTotal:0,adminDetail:null,adminDetailId:null,adminDetailPages:{referrals:1,ledger:1,withdrawals:1},withdrawals:null,pendingSignup:null,otpResendAvailableAt:0,pages:{referrals:1,ledger:1,withdrawals:1,notifications:1}};
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function money(v){return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v)||0)+' FCFA';}
@@ -14110,15 +14112,27 @@ function speakAiText(text,button){
         if(name.length<2)throw new Error('Indiquez votre nom complet.');
         if(password.length<8)throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
         if(password!==passwordConfirm)throw new Error('Les deux mots de passe ne correspondent pas.');
-        const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{name},emailRedirectTo:(typeof getPublicSiteOrigin==='function'?getPublicSiteOrigin():window.location.origin)}});
+        const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:getPublicSiteOrigin()}});
         if(error)throw error;
-        taState.pendingSignup={email,name};taState.otpResendAvailableAt=Date.now()+30000;
         const user=data?.user||null;
-        const confirmed=!!(user?.email_confirmed_at||user?.confirmed_at);
+        if(!user)throw new Error("Supabase n'a pas retourné de compte. Vérifiez l'adresse e-mail puis réessayez.");
+        // Supabase may deliberately return a user with no identities when this
+        // email is already registered, to prevent account enumeration. No fresh
+        // signup OTP is sent in that case. Do not falsely tell the person a code
+        // was sent; ask them to sign in to the existing identity instead.
+        if(Array.isArray(user.identities)&&user.identities.length===0){
+          taState.pendingSignup=null;
+          taState.otpResendAvailableAt=0;
+          if(msg)msg.textContent="Cette adresse e-mail est déjà associée à un compte. Cliquez sur « Se connecter » ci-dessous, puis ouvrez l’espace Ambassadeurs pour créer votre profil partenaire.";
+          return;
+        }
+        const confirmed=!!(user.email_confirmed_at||user.confirmed_at);
         if(data?.session&&confirmed){
           await call('register',{full_name:name});taState.pendingSignup=null;await loadDashboard();
         }else{
-          renderOtp();
+          taState.pendingSignup={email,name};
+          taState.otpResendAvailableAt=Date.now()+30000;
+          renderOtp('Inscription enregistrée. Vérifiez votre boîte de réception et vos courriers indésirables pour trouver le code de confirmation.');
         }
       }else{
         const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;
@@ -14128,7 +14142,7 @@ function speakAiText(text,button){
   };
   async function renderAuth(mode){
     taState.mode=mode;
-    setContent(topBack()+`<div class="ta-card" style="max-width:530px;margin:24px auto"><p class="ta-eyebrow">Programme partenaire</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">${mode==='signup'?'Devenir ambassadeur':'Bon retour'}</h1><p class="ta-muted" style="margin-bottom:24px">Créez votre espace partenaire pour suivre vos recommandations et vos commissions. Pour sécuriser votre inscription, nous vous enverrons un code de confirmation à votre adresse e-mail.</p>${mode==='signup'?'<label for="taName">Nom complet</label><input class="ta-field" id="taName" autocomplete="name" placeholder="Votre nom complet" required>':''}<label for="taEmail">Adresse e-mail</label><input class="ta-field" id="taEmail" type="email" autocomplete="email" placeholder="vous@exemple.com" required><label for="taPassword">Mot de passe</label><div class="ta-password-wrap"><input class="ta-field" id="taPassword" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" placeholder="${mode==='signup'?'Au moins 8 caractères':'Votre mot de passe'}" ${mode==='signup'?'oninput="trAmbassadorPasswordStrength(this)" minlength="8"':''} required><button type="button" class="ta-password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false" onclick="trAmbassadorTogglePassword()" title="Afficher le mot de passe">◉</button></div>${mode==='signup'?'<label for="taPasswordConfirm">Confirmer le mot de passe</label><input class="ta-field" id="taPasswordConfirm" type="password" autocomplete="new-password" placeholder="Saisissez à nouveau le mot de passe" minlength="8" required><div class="ta-strength"><div style="display:flex;justify-content:space-between;gap:8px"><span class="ta-muted">Force du mot de passe</span><b id="taStrengthLabel" class="ta-muted">Non évaluée</b></div><div class="ta-strength-track"><div id="taStrengthBar" class="ta-strength-bar" data-level="weak"></div></div><p class="ta-muted" style="margin-top:6px;font-size:11px">Indicateur fondé sur la longueur et la diversité des caractères. Les règles de sécurité Supabase restent appliquées côté serveur.</p></div>':''}<button class="ta-btn" onclick="trAmbassadorSubmitAuth('${mode}')">${mode==='signup'?'Créer mon compte':'Se connecter'}</button><p id="taAuthMsg" class="ta-muted" aria-live="polite" style="margin-top:12px"></p><p class="ta-muted" style="margin-top:16px">${mode==='signup'?'Vous avez déjà un compte ?':'Pas encore de compte ?'} <a href="#" onclick="trAmbassadorAuth('${mode==='signup'?'login':'signup'}');return false" style="color:#245b48;font-weight:800">${mode==='signup'?'Se connecter':'Devenir ambassadeur'}</a></p></div>`);
+    setContent(topBack()+`<div class="ta-card" style="max-width:530px;margin:24px auto"><p class="ta-eyebrow">Programme partenaire</p><h1 style="font-size:clamp(28px,4vw,38px);margin:16px 0 8px">${mode==='signup'?'Devenir ambassadeur':'Bon retour'}</h1><p class="ta-muted" style="margin-bottom:24px">Créez votre espace partenaire pour suivre vos recommandations et vos commissions. Pour sécuriser votre inscription, nous vous enverrons un code de confirmation à votre adresse e-mail.</p>${mode==='signup'?'<label for="taName">Nom complet</label><input class="ta-field" id="taName" autocomplete="name" placeholder="Votre nom complet" required>':''}<label for="taEmail">Adresse e-mail</label><input class="ta-field" id="taEmail" type="email" autocomplete="email" placeholder="vous@exemple.com" required><label for="taPassword">Mot de passe</label><div class="ta-password-wrap"><input class="ta-field" id="taPassword" type="password" autocomplete="${mode==='signup'?'new-password':'current-password'}" placeholder="${mode==='signup'?'Au moins 8 caractères':'Votre mot de passe'}" ${mode==='signup'?'oninput="trAmbassadorPasswordStrength(this)" minlength="8"':''} required><button type="button" class="ta-password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false" onclick="trAmbassadorTogglePassword()" title="Afficher le mot de passe">Afficher</button></div>${mode==='signup'?'<label for="taPasswordConfirm">Confirmer le mot de passe</label><input class="ta-field" id="taPasswordConfirm" type="password" autocomplete="new-password" placeholder="Saisissez à nouveau le mot de passe" minlength="8" required><div class="ta-strength"><div style="display:flex;justify-content:space-between;gap:8px"><span class="ta-muted">Force du mot de passe</span><b id="taStrengthLabel" class="ta-muted">Non évaluée</b></div><div class="ta-strength-track"><div id="taStrengthBar" class="ta-strength-bar" data-level="weak"></div></div><p class="ta-muted" style="margin-top:6px;font-size:11px">Indicateur fondé sur la longueur et la diversité des caractères. Les règles de sécurité Supabase restent appliquées côté serveur.</p></div>':''}<button class="ta-btn" onclick="trAmbassadorSubmitAuth('${mode}')">${mode==='signup'?'Créer mon compte':'Se connecter'}</button><p id="taAuthMsg" class="ta-muted" aria-live="polite" style="margin-top:12px"></p><p class="ta-muted" style="margin-top:16px">${mode==='signup'?'Vous avez déjà un compte ?':'Pas encore de compte ?'} <a href="#" onclick="trAmbassadorAuth('${mode==='signup'?'login':'signup'}');return false" style="color:#245b48;font-weight:800">${mode==='signup'?'Se connecter':'Devenir ambassadeur'}</a></p></div>`);
   }
   window.trAmbassadorTogglePassword=()=>{
     const input=document.getElementById('taPassword');
@@ -14139,7 +14153,8 @@ function speakAiText(text,button){
     button.setAttribute('aria-pressed',String(reveal));
     button.setAttribute('aria-label',reveal?'Masquer le mot de passe':'Afficher le mot de passe');
     button.setAttribute('title',reveal?'Masquer le mot de passe':'Afficher le mot de passe');
-    button.style.opacity=reveal?'1':'.72';
+    button.textContent=reveal?'Masquer':'Afficher';
+    button.style.opacity='1';
   };
 
   window.trAmbassadorPasswordStrength=(input)=>{
@@ -14161,11 +14176,31 @@ function speakAiText(text,button){
     if(bar){bar.dataset.level=level;bar.style.width=(pw?Math.max(10,score*20):0)+'%';}
     return {score,level,label:name};
   };
+  function startAmbassadorOtpResendCountdown(seconds=30){
+    if(taOtpResendInterval)clearInterval(taOtpResendInterval);
+    let remaining=Math.max(0,Math.ceil(Number(seconds)||0));
+    const tick=()=>{
+      const btn=document.getElementById('taResendOtpBtn');
+      const label=document.getElementById('taResendOtpLabel');
+      if(!btn||!label){if(taOtpResendInterval)clearInterval(taOtpResendInterval);taOtpResendInterval=null;return;}
+      btn.disabled=remaining>0;
+      btn.style.opacity=remaining>0?'.55':'';
+      btn.style.cursor=remaining>0?'not-allowed':'';
+      label.textContent=remaining>0?`Renvoyer le code (${remaining}s)`:'Renvoyer le code';
+      if(remaining<=0){if(taOtpResendInterval)clearInterval(taOtpResendInterval);taOtpResendInterval=null;return;}
+      remaining--;
+    };
+    tick();
+    if(remaining>0)taOtpResendInterval=setInterval(tick,1000);
+  }
   function renderOtp(message=''){
     const pending=taState.pendingSignup;
     if(!pending){renderAuth('signup');return;}
     taState.mode='otp';
-    setContent(topBack()+`<div class="ta-card" style="max-width:500px;margin:25px auto"><h1 style="font-size:28px;margin-bottom:8px">Vérifiez votre adresse e-mail</h1><p class="ta-muted">Un code de confirmation à 8 chiffres a été envoyé à <b>${esc(pending.email)}</b>. Saisissez-le ci-dessous pour activer votre espace partenaire. Si vous ne le voyez pas, vérifiez les courriers indésirables ou demandez un nouvel envoi.</p><label for="taOtpToken">Code de vérification</label><input class="ta-field" id="taOtpToken" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="12345678"><button class="ta-btn" onclick="trAmbassadorVerifyOtp()">Vérifier le code</button><button class="ta-btn secondary" style="margin-left:8px" onclick="trAmbassadorResendOtp()">Renvoyer le code</button><p id="taOtpMsg" class="ta-muted" aria-live="polite" style="margin-top:12px">${esc(message)}</p><p class="ta-muted" style="margin-top:14px">Votre espace partenaire sera activé dès que votre adresse e-mail aura été confirmée.</p></div>`);
+    const remaining=Math.max(0,Math.ceil((Number(taState.otpResendAvailableAt||0)-Date.now())/1000));
+    setContent(topBack()+`<div class="ta-card" style="max-width:500px;margin:25px auto"><h1 style="font-size:28px;margin-bottom:8px">Vérifiez votre adresse e-mail</h1><p class="ta-muted">Un code de confirmation à 8 chiffres doit arriver à <b>${esc(pending.email)}</b>. Consultez votre boîte de réception et vos courriers indésirables. Vous pourrez demander un nouvel envoi après 30 secondes.</p><label for="taOtpToken">Code de vérification</label><input class="ta-field" id="taOtpToken" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="12345678" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" onkeydown="if(event.key==='Enter')trAmbassadorVerifyOtp()"><button id="taVerifyOtpBtn" class="ta-btn" onclick="trAmbassadorVerifyOtp()">Vérifier le code</button><button id="taResendOtpBtn" class="ta-btn secondary ta-otp-resend-btn" style="margin-left:8px" onclick="trAmbassadorResendOtp()"><span id="taResendOtpLabel">Renvoyer le code</span></button><p id="taOtpMsg" class="ta-muted" aria-live="polite" style="margin-top:12px">${esc(message)}</p><p class="ta-muted" style="margin-top:14px">Votre espace partenaire sera activé dès que votre adresse e-mail aura été confirmée.</p></div>`);
+    startAmbassadorOtpResendCountdown(remaining);
+    requestAnimationFrame(()=>document.getElementById('taOtpToken')?.focus());
   }
   window.trAmbassadorVerifyOtp=async()=>{
     const pending=taState.pendingSignup;
@@ -14196,12 +14231,31 @@ function speakAiText(text,button){
     }catch(e){if(msg)msg.textContent=e.message||'Impossible de vérifier le code. Réessayez.';}
   };
   window.trAmbassadorResendOtp=async()=>{
-    const pending=taState.pendingSignup;const msg=document.getElementById('taOtpMsg');
+    const pending=taState.pendingSignup;
+    const msg=document.getElementById('taOtpMsg');
+    const btn=document.getElementById('taResendOtpBtn');
     if(!pending){if(msg)msg.textContent='La demande de vérification a expiré. Recommencez l’inscription.';return;}
-    if(Date.now()<taState.otpResendAvailableAt){if(msg)msg.textContent='Patientez quelques secondes avant de demander un nouveau code.';return;}
-    if(msg)msg.textContent='Envoi du code…';
-    try{const {error}=await supabaseClient.auth.resend({type:'signup',email:pending.email,options:{emailRedirectTo:(typeof getPublicSiteOrigin==='function'?getPublicSiteOrigin():window.location.origin)}});if(error)throw error;taState.otpResendAvailableAt=Date.now()+30000;if(msg)msg.textContent='Demande d’envoi acceptée. Consultez votre boîte de réception et vos courriers indésirables. Si le message n’arrive pas, l’envoi e-mail doit être vérifié dans la configuration d’authentification.';}
-    catch(e){if(msg)msg.textContent=e.message||'Impossible de renvoyer le code pour le moment.';}
+    const waitMs=Number(taState.otpResendAvailableAt||0)-Date.now();
+    if(waitMs>0){
+      startAmbassadorOtpResendCountdown(Math.ceil(waitMs/1000));
+      if(msg)msg.textContent='Patientez jusqu’à la fin du compte à rebours avant de demander un nouveau code.';
+      return;
+    }
+    if(btn){btn.disabled=true;btn.style.opacity='.65';btn.style.cursor='not-allowed';}
+    if(msg)msg.textContent='Demande de renvoi en cours…';
+    try{
+      const {error}=await supabaseClient.auth.resend({type:'signup',email:pending.email,options:{emailRedirectTo:(typeof getPublicSiteOrigin==='function'?getPublicSiteOrigin():window.location.origin)}});
+      if(error)throw error;
+      taState.otpResendAvailableAt=Date.now()+30000;
+      startAmbassadorOtpResendCountdown(30);
+      if(msg)msg.textContent='La demande de renvoi a été acceptée. Consultez votre boîte de réception et vos courriers indésirables.';
+    }catch(e){
+      const raw=String(e?.message||'');
+      if(msg)msg.textContent=/rate.?limit|too many|after.*second|email rate/i.test(raw)
+        ?'Trop de demandes rapprochées. Attendez un instant avant de réessayer.'
+        :raw||'Impossible de renvoyer le code pour le moment. Vérifiez la configuration e-mail Supabase si le problème persiste.';
+      if(btn){btn.disabled=false;btn.style.opacity='';btn.style.cursor='';}
+    }
   };
   window.trAmbassadorCreateProfile=async()=>{
     const name=document.getElementById('taExistingName')?.value?.trim()||'';
