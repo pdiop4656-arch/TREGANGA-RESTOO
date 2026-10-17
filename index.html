@@ -3220,6 +3220,49 @@ document.addEventListener('touchstart', unlockAudioOnce, {once:true});
    au moment d'ouvrir la fenêtre. Usage conforme : état pratique côté
    client, jamais une donnée métier stockée à la place de Supabase. */
 const MY_ORDERS_KEY = 'tg_my_orders';
+function orderItemsLabelHtml(items){
+  return (Array.isArray(items)?items:[]).map(item=>{
+    const pair=orderItemNameQty(item);
+    return `${escapeHtml(pair[1])}× ${escapeHtml(pair[0])}`;
+  }).join(', ');
+}
+document.addEventListener('click', event=>{
+  const target=event.target instanceof Element ? event.target : null;
+  if(!target) return;
+  const category=target.closest('[data-set-active-category]');
+  if(category){ event.preventDefault(); setActiveCategory(category.dataset.setActiveCategory||'all'); return; }
+  const openProduct=target.closest('[data-open-product-id]');
+  if(openProduct){ event.preventDefault(); openProductModal(openProduct.dataset.openProductId||''); return; }
+  const quickAdd=target.closest('[data-quick-add-product-id]');
+  if(quickAdd){ event.preventDefault(); quickAddToCart(quickAdd.dataset.quickAddProductId||''); return; }
+  const qtyButton=target.closest('[data-cart-qty-key]');
+  if(qtyButton){ event.preventDefault(); changeLineQty(qtyButton.dataset.cartQtyKey||'', Number(qtyButton.dataset.cartQtyDelta)||0); return; }
+  const removeButton=target.closest('[data-cart-remove-key]');
+  if(removeButton){ event.preventDefault(); removeLine(removeButton.dataset.cartRemoveKey||''); return; }
+  const orderButton=target.closest('[data-open-order-number]');
+  if(orderButton){ event.preventDefault(); openOrderDetailByNum(orderButton.dataset.openOrderNumber||''); return; }
+  const track=target.closest('[data-track-order-num]');
+  if(track){
+    event.preventDefault();
+    if(track.dataset.closeConfirmation==='1') document.getElementById('confirmationOverlay')?.classList.add('hidden');
+    void openOrderTrackingDetail(track.dataset.trackOrderNum||'',track.dataset.trackOrderPhone||'');
+    return;
+  }
+  const review=target.closest('[data-review-order-num]');
+  if(review){
+    event.preventDefault();
+    if(review.dataset.closeConfirmation==='1') document.getElementById('confirmationOverlay')?.classList.add('hidden');
+    if(review.dataset.closeReviewOrders==='1') closeReviewOrdersModal();
+    void openReviewModal(review.dataset.reviewOrderNum||'');
+    return;
+  }
+  const reviewFromList=target.closest('[data-review-close-order-num]');
+  if(reviewFromList){
+    event.preventDefault();
+    closeReviewOrdersModal();
+    void openReviewModal(reviewFromList.dataset.reviewCloseOrderNum||'');
+  }
+});
 function getMyOrders(){
   if(!RESTAURANT.id) return [];
   try{
@@ -3294,14 +3337,14 @@ async function openTrackOrderModal(){
     </div>
     ${results.map(({ref,row}) => {
       if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;">
-        <p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p>
+        <p style="font-size:13px;color:var(--ink-faint);">Commande #${escapeHtml(ref.num)} — introuvable.</p>
       </div>`;
-      const itemsLabel = (row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
-      return `<button type="button" onclick="openOrderTrackingDetail('${row.num}','${ref.phone}')"
+      const itemsLabel = orderItemsLabelHtml(row.items);
+      return `<button type="button" data-track-order-num="${escapeAttr(row.num)}" data-track-order-phone="${escapeAttr(ref.phone)}"
         class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;cursor:pointer;">
         <div class="flex items-center justify-between" style="margin-bottom:6px;">
-          <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
-          <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+          <span class="font-tabular font-display" style="font-size:15px;">#${escapeHtml(row.num)}</span>
+          <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${escapeHtml(ORDER_STATUS_LABELS[row.status]||row.status||'')}</span>
         </div>
         <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
         <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;">
@@ -3358,15 +3401,15 @@ function renderOrderTrackingDetail(row, phone){
   const itemsLabel = (row.items||[]).map(orderItemNameQty);
   body.innerHTML = `
     <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-      <button class="btn" style="background:var(--amber);color:#fff;min-height:52px;" onclick="openOrderTrackingDetail('${row.num}','${phone||''}')">
-        ${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
+      <button class="btn" style="background:var(--amber);color:#fff;min-height:52px;" data-track-order-num="${escapeAttr(row.num)}" data-track-order-phone="${escapeAttr(phone||'')}"
+        >${ic('receipt',18)} <span style="margin-left:6px;">Suivi commande</span>
       </button>
-      <button class="btn btn-outline" style="min-height:52px;" onclick="openReviewModal('${row.num}')">
+      <button class="btn btn-outline" style="min-height:52px;" data-review-order-num="${escapeAttr(row.num)}">
         ${ic('star',18)} <span style="margin-left:6px;">Avis client</span>
       </button>
     </div>
     <div class="text-center" style="margin-bottom:18px;">
-      <p class="font-tabular font-display" style="font-size:22px;">#${row.num}</p>
+      <p class="font-tabular font-display" style="font-size:22px;">#${escapeHtml(row.num)}</p>
       <p class="resto-name" style="font-size:12.5px;color:var(--ink-faint);margin-top:2px;">${escapeHtml(RESTO_NAME)}</p>
     </div>
     ${row.status==='cancelled' ? `<div class="card" style="padding:14px;text-align:center;background:rgba(200,60,40,.06);margin-bottom:14px;">${ic('x',22,{stroke:'var(--terracotta)'})}<p style="font-size:13px;color:var(--terracotta);margin-top:6px;">Cette commande a été annulée.</p></div>` : `
@@ -3394,9 +3437,9 @@ function renderOrderTrackingDetail(row, phone){
     </div>`}
     <div class="card" style="padding:14px;margin-bottom:12px;">
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;">Votre commande</p>
-      ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${q}× ${n}</p>`).join('')}
+      ${itemsLabel.map(([n,q])=>`<p style="font-size:13px;color:var(--ink-soft);padding:3px 0;">${escapeHtml(q)}× ${escapeHtml(n)}</p>`).join('')}
       <div class="flex justify-between" style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;font-size:13.5px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
-      ${delivery && row.address ? `<div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',13,{stroke:'var(--ink-faint)'})}</span><span style="font-size:12.5px;color:var(--ink-soft);">${escapeAttr(row.address)}</span></div>` : ''}
+      ${delivery && row.address ? `<div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;display:flex;align-items:flex-start;gap:7px;"><span style="flex-shrink:0;margin-top:1px;">${ic('home',13,{stroke:'var(--ink-faint)'})}</span><span style="font-size:12.5px;color:var(--ink-soft);">${escapeHtml(row.address)}</span></div>` : ''}
     </div>
     <div style="margin-top:12px;">
       <button class="btn btn-outline w-full" onclick="openTrackOrderModal()">${ic('arrowLeft',14)} Toutes mes commandes</button>
@@ -3456,12 +3499,12 @@ async function openReviewOrdersModal(){
     </div>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;text-align:center;">Sélectionnez la commande sur laquelle vous souhaitez laisser un avis.</p>` +
     results.map(({ref,row})=>{
-      if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${ref.num} — introuvable.</p></div>`;
-      const itemsLabel=(row.items||[]).map(orderItemNameQty).map(([n,q])=>`${q}× ${n}`).join(', ');
-      return `<button onclick="closeReviewOrdersModal();openReviewModal('${row.num}')" class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;">
+      if(!row) return `<div class="card" style="padding:14px;margin-bottom:10px;"><p style="font-size:13px;color:var(--ink-faint);">Commande #${escapeHtml(ref.num)} — introuvable.</p></div>`;
+      const itemsLabel=orderItemsLabelHtml(row.items);
+      return `<button type="button" data-review-close-order-num="${escapeAttr(row.num)}" class="card" style="padding:14px;margin-bottom:10px;text-align:left;width:100%;display:block;">
         <div class="flex items-center justify-between" style="margin-bottom:6px;">
-          <span class="font-tabular font-display" style="font-size:15px;">#${row.num}</span>
-          <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${ORDER_STATUS_LABELS[row.status]||row.status}</span>
+          <span class="font-tabular font-display" style="font-size:15px;">#${escapeHtml(row.num)}</span>
+          <span class="pill ${toneClass(ORDER_STATUS_TONE[row.status])}">${escapeHtml(ORDER_STATUS_LABELS[row.status]||row.status||'')}</span>
         </div>
         <p style="font-size:12px;color:var(--ink-faint);">${itemsLabel}</p>
         <div class="flex justify-between" style="margin-top:8px;font-size:13px;font-weight:600;"><span>Total</span><span class="font-tabular">${fmt(row.total)}</span></div>
@@ -4239,7 +4282,7 @@ function applyPublicProductPhotoRows(photoRows){
 
 function publicProductPhotoMarkup(p){
   return p.photo
-    ? `<img src="${safeImageSrc(p.photo)}" alt="${escapeAttr(p.name)}" class="product-img" loading="lazy">`
+    ? `<img src="${escapeAttr(safeImageSrc(p.photo))}" alt="${escapeAttr(p.name)}" class="product-img" loading="lazy">`
     : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[p.cat]||'fa-utensils'}" style="font-size:2rem;color:var(--primary);"></i></div>`;
 }
 
@@ -4339,17 +4382,21 @@ async function findMyRestaurantId(p_knownUserId){
 
 /* ---------------- MULTI-RESTAURANT + CHECKLIST ---------------- */
 async function loadAccessibleRestaurants(userId=currentUser?.id){
-  if(!userId){ accessibleRestaurants=[]; return []; }
+  accessibleRestaurants=[];
+  if(!userId) return [];
   const [ownedRes,staffRes]=await Promise.all([
     supabaseClient.from('restaurants').select('id,name,slug,plan,subscription_status,owner_id,created_at').eq('owner_id',userId).order('created_at',{ascending:true}),
     supabaseClient.from('staff').select('restaurant_id').eq('user_id',userId).eq('status','Actif')
   ]);
+  if(ownedRes?.error) throw ownedRes.error;
+  if(staffRes?.error) throw staffRes.error;
   const rows=[],seen=new Set();
   (ownedRes?.data||[]).forEach(r=>{if(!r?.id||seen.has(r.id))return;seen.add(r.id);rows.push({...r,access_kind:'owner'});});
   const ids=[...new Set((staffRes?.data||[]).map(x=>x?.restaurant_id).filter(Boolean))].filter(x=>!seen.has(x));
   if(ids.length){
     const {data,error}=await supabaseClient.from('restaurants').select('id,name,slug,plan,subscription_status,owner_id,created_at').in('id',ids);
-    if(!error)(data||[]).forEach(r=>{if(!r?.id||seen.has(r.id))return;seen.add(r.id);rows.push({...r,access_kind:'staff'});});
+    if(error) throw error;
+    (data||[]).forEach(r=>{if(!r?.id||seen.has(r.id))return;seen.add(r.id);rows.push({...r,access_kind:'staff'});});
   }
   accessibleRestaurants=rows;
   return rows;
@@ -4441,13 +4488,27 @@ function renderRestaurantSwitcher(){
 }
 async function switchActiveRestaurant(rid,section=null){
   const target=accessibleRestaurants.find(r=>String(r.id)===String(rid));if(!target){toast('Restaurant inaccessible.');return false;}
-  const oldRid=activeRestaurantId; activeRestaurantId=String(rid);
+  activeRestaurantId=String(rid);
   if(currentUser?.id){try{localStorage.setItem('tg_last_restaurant_'+String(currentUser.id),String(rid));}catch(e){}}
   const dc=document.getElementById('dashContent');if(dc)dc.innerHTML=`<div class="empty-state" style="max-width:460px;margin:40px auto;text-align:center;">${ic('loader',28,{className:'spin',stroke:'var(--amber-deep)'})}<h2 class="font-display" style="font-size:18px;margin-top:14px;">Chargement du restaurant…</h2><p style="font-size:13px;color:var(--ink-soft);margin-top:6px;">Les données sont en cours de chargement.</p></div>`;
   PRODUCTS.length=0;DEMO_ORDERS.length=0;staffState.length=0;REVIEWS.length=0;catsState={};catsHomeVisible={};
-  const [ok,access]=await Promise.all([loadRestaurantCore(rid,true,true),resolveRealAccess(rid,currentUser.id)]);
+  let access=null, ok=false;
+  try{
+    // Vérifier d'abord le droit réel lié à la session courante, puis seulement
+    // charger les données du restaurant. La liste du navigateur n'est pas une autorisation.
+    access=await resolveRealAccess(rid,currentUser?.id||null);
+    if(access) ok=await loadRestaurantCore(rid,true,true);
+  }catch(e){ console.error('Changement de restaurant refusé/échoué :',e?.message||e); }
   if(String(activeRestaurantId)!==String(rid)) return false;
-  if(!ok||!access){activeRestaurantId=oldRid;toast('Impossible de charger ce restaurant.');return false;}
+  if(!ok||!access){
+    activeRestaurantId=null;viewerIsStaff=false;
+    PRODUCTS.length=0;DEMO_ORDERS.length=0;staffState.length=0;REVIEWS.length=0;catsState={};catsHomeVisible={};
+    if(dc) dc.replaceChildren();
+    if(currentUser?.id){try{localStorage.removeItem('tg_last_restaurant_'+String(currentUser.id));}catch(_e){}}
+    setView('landing');
+    toast('Accès refusé ou données indisponibles. Reconnectez-vous ou choisissez un restaurant autorisé.');
+    return false;
+  }
   viewerIsStaff=true;setView('dashboard');renderRestaurantSwitcher();setDashSection(section||'overview');
   void loadRestaurantCatalogSecondaryData(rid);void loadRestaurantSecondaryData(rid);return true;
 }
@@ -5807,21 +5868,29 @@ async function submitLogin(){
   const password=document.getElementById('loginPassword')?.value||'';
   if(!email||!password){toast('Entrez votre e-mail et votre mot de passe.');return;}
   setLoginVerifying(true);
-  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
-  if(error){setLoginVerifying(false);toast(supabaseErrorFr(error,'Connexion impossible.'));return;}
-  currentUser=data.user;viewerIsStaff=true;state.dashSection=requestedDashSection()||'overview';
-  if(isAdminRouteRequested()){
-    setLoginVerifying(false);
-    await initializeAdminConsole();
-    return;
-  }
   try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error) throw error;
+    if(!data?.user?.id) throw new Error('La connexion n’a pas retourné de compte valide.');
+    currentUser=data.user;viewerIsStaff=true;state.dashSection=requestedDashSection()||'overview';
+    if(isAdminRouteRequested()){
+      await initializeAdminConsole();
+      return;
+    }
     const rows=await loadAccessibleRestaurants(data.user.id);
-    if(!rows.length){setLoginVerifying(false);viewerIsStaff=false;closeLogin();startOnboarding();return;}
+    if(!rows.length){viewerIsStaff=false;closeLogin();startOnboarding();return;}
     const last=(()=>{try{return localStorage.getItem('tg_last_restaurant_'+String(data.user.id));}catch(e){return null;}})();
     const target=rows.find(r=>String(r.id)===String(last))||rows.find(r=>r.access_kind==='owner')||rows[0];
-    await switchActiveRestaurant(target.id,state.dashSection);setLoginVerifying(false);closeLogin();hideRestoSplash();hideAuthCheckSplash();toast('Connecté — bienvenue sur votre tableau de bord.');
-  }catch(e){console.error('Connexion — chargement des restaurants:',e);viewerIsStaff=false;setLoginVerifying(false);toast('Impossible de charger votre espace. Réessayez.');}
+    const switched=await switchActiveRestaurant(target.id,state.dashSection);
+    if(!switched) throw new Error('L’accès au restaurant n’a pas pu être confirmé. Réessayez.');
+    closeLogin();hideRestoSplash();hideAuthCheckSplash();toast('Connecté — bienvenue sur votre tableau de bord.');
+  }catch(e){
+    console.error('Connexion — chargement des restaurants:',e);
+    viewerIsStaff=false;
+    toast(supabaseErrorFr(e,'Impossible de charger votre espace. Réessayez.'));
+  }finally{
+    setLoginVerifying(false);
+  }
 }
 async function submitInviteAccept(){
   const email = document.getElementById('inviteEmail')?.value.trim().toLowerCase() || '';
@@ -5891,8 +5960,18 @@ async function submitInviteAccept(){
 }
 
 async function signOutSupabase(){
-  await supabaseClient.auth.signOut();
-  currentUser = null;
+  try{
+    const {error}=await supabaseClient.auth.signOut({scope:'local'});
+    if(error) throw error;
+  }finally{
+    // Ne jamais conserver un ancien espace privé visible en mémoire après la déconnexion.
+    currentUser = null;
+    accessibleRestaurants = [];
+    activeRestaurantId = null;
+    viewerIsStaff = false;
+    const dashContent=document.getElementById('dashContent');
+    if(dashContent) dashContent.replaceChildren();
+  }
 }
 </script>
 
@@ -6452,7 +6531,7 @@ const DAY_LABELS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi',
 function productThumb(p,size){
   size = size||44;
   if(p.photo){
-    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;"></span>`;
+    return `<span style="display:inline-flex;width:${size}px;height:${size}px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="${escapeAttr(safeImageSrc(p.photo))}" style="width:100%;height:100%;object-fit:cover;"></span>`;
   }
   return icBadge(CAT_ICON[p.cat]||'utensils', {size, bg:'var(--cream-deep)', color:'var(--amber-deep)', round:false});
 }
@@ -6790,7 +6869,7 @@ function renderSidebarLogo(){
   const el = document.getElementById('sbLogoBadge');
   if(!el) return;
   el.innerHTML = RESTAURANT.logoDataUrl
-    ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${escapeAttr(safeImageSrc(RESTAURANT.logoDataUrl))}" style="width:100%;height:100%;object-fit:cover;">`
     : ic('chefHat', 17, {stroke:'var(--amber-deep)'});
 }
 
@@ -7937,7 +8016,12 @@ async function verifyOnboardingOtp(){
   }
 }
 function savePendingOnboarding(){
-  try{ localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(obState)); }catch(e){ /* stockage indisponible — pas bloquant */ }
+  // Les mots de passe restent uniquement en mémoire, jamais dans localStorage.
+  // Cela efface aussi les anciennes copies lors de la prochaine sauvegarde.
+  try{
+    const safeState = {...obState, accountPassword:'', accountPassword2:''};
+    localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(safeState));
+  }catch(e){ /* stockage indisponible — pas bloquant */ }
 }
 function savePendingOnboardingIfNeeded(){
   if(obState.emailConfirmationPending) savePendingOnboarding();
@@ -7945,9 +8029,23 @@ function savePendingOnboardingIfNeeded(){
 function loadPendingOnboarding(){
   try{
     const raw = localStorage.getItem(PENDING_ONBOARDING_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if(!raw) return null;
+    const saved = JSON.parse(raw);
+    if(!saved || typeof saved !== 'object' || Array.isArray(saved)){
+      localStorage.removeItem(PENDING_ONBOARDING_KEY);
+      return null;
+    }
+    // Nettoyage de sécurité des données laissées par les anciennes versions.
+    if('accountPassword' in saved || 'accountPassword2' in saved){
+      saved.accountPassword = '';
+      saved.accountPassword2 = '';
+      localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify(saved));
+    }
+    return saved;
   }catch(e){ return null; }
 }
+// Scrub à chaque ouverture, même si la session active évite le parcours de reprise OTP.
+try{ loadPendingOnboarding(); }catch(e){}
 function clearPendingOnboarding(){
   try{ localStorage.removeItem(PENDING_ONBOARDING_KEY); }catch(e){ /* rien à nettoyer */ }
 }
@@ -7980,7 +8078,7 @@ async function obNext(){
   const password2=document.getElementById('obAccountPassword2')?.value||'';
   if(name.length<2){toast('Entrez votre nom complet.');return;}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Entrez une adresse e-mail valide.');return;}
-  if(password.length<8){toast('Le mot de passe doit contenir au moins 8 caractères.');return;}
+  const passwordError=validateStrongPassword(password);if(passwordError){toast(passwordError);return;}
   if(password!==password2){toast('Les deux mots de passe ne correspondent pas.');return;}
   Object.assign(obState,{accountName:name,accountEmail:email,accountPassword:password,accountPassword2:password2,emailConfirmationPending:false,pendingEmail:email});
   savePendingOnboarding();
@@ -7988,7 +8086,12 @@ async function obNext(){
   try{
     const {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{full_name:name,ambassador_code:desiredCode},emailRedirectTo:getPublicSiteOrigin()}});
     if(error){toast(supabaseErrorFr(error,'Impossible de créer votre compte.'));return;}
-    currentUser=data?.user||null;
+    if(data?.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+      toast('Cette adresse e-mail est déjà associée à un compte. Connectez-vous ou utilisez la récupération du mot de passe.');
+      return;
+    }
+    if(!data?.user?.id){toast('Supabase n’a pas confirmé la création du compte. Réessayez.');return;}
+    currentUser=data.user;
     otpPendingEmail=email; otpPendingName=name;
     if(!data?.session){
       obState.emailConfirmationPending=true; obState.pendingEmail=email; savePendingOnboarding();
@@ -8267,6 +8370,11 @@ function safeImageSrc(value){
   if(/^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(v)) return v;
   return isSafeHttpUrl(v) ? v : '';
 }
+function safeCssUrl(value){
+  // Empêche une URL d'échapper à url('...') lorsqu'elle vient d'un réglage
+  // du restaurant. La source reste limitée aux images HTTP(S)/data autorisées.
+  return safeImageSrc(value).replace(/[\\'"()\r\n]/g, ch => encodeURIComponent(ch));
+}
 
 function validateStrongPassword(pw){
   if(pw.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
@@ -8446,7 +8554,7 @@ function renderStorefrontHero(){
   // Logo (header + menu mobile) — vrai logo du restaurateur, sinon une
   // icône générique. Nom du restaurant à côté, comme le thème d'origine.
   const logoHtml = (RESTAURANT.logoDataUrl
-    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
+    ? `<div class="logo-icon" style="overflow:hidden;padding:0;"><img src="${escapeAttr(safeImageSrc(RESTAURANT.logoDataUrl))}" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'"></div>`
     : `<div class="logo-icon"><i class="fa-solid fa-utensils"></i></div>`) + `<span class="resto-name"></span>`;
   document.getElementById('tgLogo').innerHTML = logoHtml;
   document.getElementById('tgMobileLogo').innerHTML = logoHtml;
@@ -8456,7 +8564,7 @@ function renderStorefrontHero(){
   // sous-titre personnalisables (RESTAURANT.heroTitle/heroSubtitle),
   // sinon un texte générique honnête plutôt qu'un faux storytelling.
   document.getElementById('tgHeroBg').style.backgroundImage = RESTAURANT.coverDataUrl
-    ? `url('${safeImageSrc(RESTAURANT.coverDataUrl)}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
+    ? `url('${safeCssUrl(RESTAURANT.coverDataUrl)}')` : `linear-gradient(135deg,#2b1810,#4a2c1a)`;
   document.getElementById('tgHeroTitle').textContent = RESTAURANT.heroTitle || `Bienvenue chez ${RESTO_NAME}`;
   document.getElementById('tgHeroSubtitle').textContent = RESTAURANT.heroSubtitle || `${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}`;
   document.getElementById('tgMenuTitle').textContent = 'Le menu de ' + RESTO_NAME;
@@ -8478,7 +8586,7 @@ function renderStorefrontHero(){
       gallerySection.innerHTML = `<div class="container">
         <div class="section-title"><span>Découvrez le restaurant</span><h2>Quelques vues</h2></div>
         <div style="display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;">
-          ${galleryPhotos.map((ph,i)=>`<a href="${safeImageSrc(ph)}" target="_blank" rel="noreferrer" style="display:block;flex:0 0 min(320px,82vw);aspect-ratio:1.6;overflow:hidden;border-radius:var(--radius-md);scroll-snap-align:start;border:1px solid var(--border);background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06);"><img src="${safeImageSrc(ph)}" alt="Vue ${i+1} de ${escapeAttr(RESTAURANT.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></a>`).join('')}
+          ${galleryPhotos.map((ph,i)=>`<a href="${safeImageSrc(ph)}" target="_blank" rel="noreferrer" style="display:block;flex:0 0 min(320px,82vw);aspect-ratio:1.6;overflow:hidden;border-radius:var(--radius-md);scroll-snap-align:start;border:1px solid var(--border);background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06);"><img src="${escapeAttr(safeImageSrc(ph))}" alt="Vue ${i+1} de ${escapeAttr(RESTAURANT.name)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></a>`).join('')}
         </div>
       </div>`;
     }else{
@@ -8506,8 +8614,8 @@ function renderStorefrontHero(){
       </div>` +
       homeCats.map(c=>{
         const cover = (PRODUCTS.find(p=>p.cat===c && p.active && p.photo)||{}).photo;
-        return `<div class="category-item ${state.activeCategory===c?'active':''}" onclick="setActiveCategory('${c}')">
-          <div class="category-img">${cover?`<img src="${safeImageSrc(cover)}" alt="${escapeAttr(catsState[c])}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
+        return `<div class="category-item ${state.activeCategory===c?'active':''}" data-set-active-category="${escapeAttr(c)}">
+          <div class="category-img">${cover?`<img src="${escapeAttr(safeImageSrc(cover))}" alt="${escapeAttr(catsState[c])}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--light-bg);"><i class="fa-solid ${CAT_FA_ICON[c]||'fa-utensils'}" style="color:var(--primary);font-size:1.3rem;"></i></div>`}</div>
           <span class="category-name">${escapeHtml(catsState[c])}</span>
         </div>`;
       }).join('');
@@ -8518,7 +8626,7 @@ function renderStorefrontHero(){
   const open = isOpenNow();
   openPill.innerHTML = `<span class="pill ${open?'pill-forest':'pill-terracotta'}" style="margin-bottom:1rem;">${open?'Ouvert maintenant':'Fermé actuellement'}</span>`;
   document.getElementById('tgHoursList').innerHTML = RESTAURANT.hours.map((h,i)=>
-    `<li class="hours-item"><span>${DAY_LABELS_FULL[i]}</span><strong>${h.open ? h.from+' - '+h.to : 'Fermé'}</strong></li>`
+    `<li class="hours-item"><span>${escapeHtml(DAY_LABELS_FULL[i])}</span><strong>${h.open ? `${escapeHtml(h.from)} - ${escapeHtml(h.to)}` : 'Fermé'}</strong></li>`
   ).join('');
 
   // Contact — vraies données (Paramètres)
@@ -8529,9 +8637,13 @@ function renderStorefrontHero(){
   // Réseaux sociaux — uniquement ceux activés, liens réellement collés par
   // le restaurateur (WhatsApp reste construit automatiquement à partir du numéro).
   function normalizeUrl(v){
-    v = (v||'').trim();
-    if(!v) return '#';
-    return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+    const raw = String(v||'').trim();
+    if(!raw) return '#';
+    const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+    try{
+      const parsed = new URL(candidate, location.origin);
+      return ['https:','http:'].includes(parsed.protocol) ? parsed.href : '#';
+    }catch(_e){ return '#'; }
   }
   const socialHrefMap = {
     whatsapp: whatsappLink(),
@@ -8541,7 +8653,7 @@ function renderStorefrontHero(){
   };
   const activeSocials = ['whatsapp','instagram','tiktok','facebook'].filter(k=>RESTAURANT.social[k]?.enabled && RESTAURANT.social[k]?.value?.trim());
   document.getElementById('sfSocialIcons').innerHTML = activeSocials.map(k=>
-    `<a href="${socialHrefMap[k]}" target="_blank" rel="noreferrer">${socialLogo(k,28)}</a>`
+    `<a href="${escapeAttr(socialHrefMap[k])}" target="_blank" rel="noopener noreferrer">${socialLogo(k,28)}</a>`
   ).join('');
 
   // Localisation — vraie carte intégrée (iframe Google Maps sans clé
@@ -8558,9 +8670,9 @@ function renderStorefrontHero(){
     const mapLinkHref = RESTAURANT.mapsLink.trim() ? normalizeUrl(RESTAURANT.mapsLink) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
     mapEl.innerHTML = `
       <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);margin-top:0.75rem;">
-        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${RESTO_NAME}"></iframe>
+        <iframe src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed" width="100%" height="220" style="border:0;display:block;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de ${escapeAttr(RESTO_NAME)}"></iframe>
       </div>
-      <a href="${mapLinkHref}" target="_blank" rel="noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Itinéraire sur Google Maps</a>`;
+      <a href="${escapeAttr(mapLinkHref)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="margin-top:0.75rem;"><i class="fa-solid fa-map-location-dot"></i> Itinéraire sur Google Maps</a>`;
   } else {
     mapEl.innerHTML = '';
   }
@@ -8602,16 +8714,16 @@ function tgSearchProducts(q){
 function productCardHtml(p){
   return `
   <div class="product-card" style="${!p.available?'opacity:.6;':''}">
-    <div class="product-img-wrapper" data-public-product-id="${escapeAttr(p.id)}" onclick='openProductModal("${p.id}")'>
+    <div class="product-img-wrapper" data-public-product-id="${escapeAttr(p.id)}" data-open-product-id="${escapeAttr(p.id)}">
       ${publicProductPhotoMarkup(p)}
       ${!p.available ? `<span class="badge" style="position:absolute;top:0.6rem;left:0.6rem;background:var(--dark);color:#fff;">Rupture</span>` : ''}
     </div>
     <div class="product-content">
-      <h3 class="product-title" onclick='openProductModal("${p.id}")'>${escapeHtml(p.name)}</h3>
+      <h3 class="product-title" data-open-product-id="${escapeAttr(p.id)}">${escapeHtml(p.name)}</h3>
       <p class="product-desc">${escapeHtml(p.desc||'')}</p>
       <div class="product-footer">
         <span class="product-price">${fmt(p.price)}</span>
-        <button class="add-cart-btn" onclick='event.stopPropagation();quickAddToCart("${p.id}")' aria-label="Ajouter ${escapeAttr(p.name)}"><i class="fa-solid fa-plus"></i></button>
+        <button class="add-cart-btn" data-quick-add-product-id="${escapeAttr(p.id)}" aria-label="Ajouter ${escapeAttr(p.name)}"><i class="fa-solid fa-plus"></i></button>
       </div>
     </div>
   </div>`;
@@ -8653,7 +8765,8 @@ function renderProductSections(){
 let modalProduct = null, modalVariant = null, modalQty = 1;
 
 function openProductModal(id){
-  modalProduct = PRODUCTS.find(p=>p.id===id);
+  modalProduct = PRODUCTS.find(p=>String(p.id)===String(id));
+  if(!modalProduct){ toast('Ce produit n’est plus disponible. Actualisez le menu puis réessayez.'); return; }
   if(!modalProduct.available){ toast('Ce produit est actuellement en rupture de stock.'); return; }
   modalVariant = null;
   modalPhotoIndex = 0;
@@ -8675,10 +8788,10 @@ function renderProductModal(){
   const unit = p.price + (modalVariant?modalVariant.delta:0);
   document.getElementById('productModalBody').innerHTML = `
     <div style="position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--cream-deep),var(--cream));display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      ${activePhoto ? `<img src="${safeImageSrc(activePhoto)}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
+      ${activePhoto ? `<img src="${escapeAttr(safeImageSrc(activePhoto))}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[p.cat]||'utensils', 60, {stroke:'var(--amber-deep)'})}
       <button onclick="closeProductModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;">${ic('x',16)}</button>
     </div>
-    ${photos.length>1?`<div style="display:flex;gap:8px;overflow-x:auto;padding:10px 22px 0;background:#fff;">${photos.map((ph,i)=>`<button type="button" onclick="setModalPhotoIndex(${i})" aria-label="Voir la photo ${i+1}" style="flex:0 0 58px;width:58px;height:58px;padding:0;border-radius:10px;overflow:hidden;border:2px solid ${i===modalPhotoIndex?'var(--amber-deep)':'var(--cream-line)'};background:#fff;"><img src="${safeImageSrc(ph)}" alt="" style="width:100%;height:100%;object-fit:cover;"></button>`).join('')}</div>`:''}
+    ${photos.length>1?`<div style="display:flex;gap:8px;overflow-x:auto;padding:10px 22px 0;background:#fff;">${photos.map((ph,i)=>`<button type="button" onclick="setModalPhotoIndex(${i})" aria-label="Voir la photo ${i+1}" style="flex:0 0 58px;width:58px;height:58px;padding:0;border-radius:10px;overflow:hidden;border:2px solid ${i===modalPhotoIndex?'var(--amber-deep)':'var(--cream-line)'};background:#fff;"><img src="${escapeAttr(safeImageSrc(ph))}" alt="" style="width:100%;height:100%;object-fit:cover;"></button>`).join('')}</div>`:''}
     <div style="padding:22px;">
       <h2 class="font-display" style="font-size:20px;">${escapeHtml(p.name)}</h2>
       <p style="font-size:13.5px;color:var(--ink-soft);margin:6px 0;">${escapeHtml(p.desc || 'Aucune description pour le moment.')}</p>
@@ -8769,8 +8882,9 @@ function openCart(){ renderCart(); document.getElementById('cartDrawerOverlay').
 function closeCart(){ document.getElementById('cartDrawerOverlay').classList.add('hidden'); }
 
 function changeLineQty(key, delta){
-  const line = state.cart.find(l=>l.key===key);
-  line.qty += delta;
+  const line = state.cart.find(l=>String(l.key)===String(key));
+  if(!line || !Number.isFinite(Number(delta))) return;
+  line.qty += Number(delta);
   if(line.qty<=0) state.cart = state.cart.filter(l=>l.key!==key);
   renderCart(); updateFloatingCartButton();
 }
@@ -8787,20 +8901,20 @@ function renderCart(){
   }
   linesEl.innerHTML = state.cart.map(l=>`
     <div class="flex gap-3" style="margin-bottom:16px;">
-      <div style="width:56px;height:56px;border-radius:14px;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${l.photo ? `<img src="${l.photo}" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[l.cat]||'utensils',22,{stroke:'var(--amber-deep)'})}</div>
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${l.photo ? `<img src="${escapeAttr(safeImageSrc(l.photo))}" alt="" style="width:100%;height:100%;object-fit:cover;">` : ic(CAT_ICON[l.cat]||'utensils',22,{stroke:'var(--amber-deep)'})}</div>
       <div style="flex:1;min-width:0;">
-        <p style="font-size:13.5px;font-weight:600;">${l.name}</p>
-        ${l.variant?`<p style="font-size:11.5px;color:var(--ink-faint);">${l.variant.name}</p>`:''}
+        <p style="font-size:13.5px;font-weight:600;">${escapeHtml(l.name)}</p>
+        ${l.variant?`<p style="font-size:11.5px;color:var(--ink-faint);">${escapeHtml(l.variant.name)}</p>`:''}
         <div class="flex items-center justify-between" style="margin-top:6px;">
           <div class="flex items-center gap-2" style="border:1px solid var(--cream-line);border-radius:999px;padding:2px 8px;">
-            <button onclick="changeLineQty('${l.key}',-1)" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('minus',12)}</button>
-            <span class="font-tabular" style="font-size:12px;width:14px;text-align:center;">${l.qty}</span>
-            <button onclick="changeLineQty('${l.key}',1)" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('plus',12)}</button>
+            <button data-cart-qty-key="${escapeAttr(l.key)}" data-cart-qty-delta="-1" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('minus',12)}</button>
+            <span class="font-tabular" style="font-size:12px;width:14px;text-align:center;">${Math.max(1, Number(l.qty)||1)}</span>
+            <button data-cart-qty-key="${escapeAttr(l.key)}" data-cart-qty-delta="1" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">${ic('plus',12)}</button>
           </div>
           <span class="font-tabular" style="font-size:13px;">${fmt(cartLineTotal(l))}</span>
         </div>
       </div>
-      <button onclick="removeLine('${l.key}')" style="color:var(--terracotta);height:fit-content;">${ic('trash',15)}</button>
+      <button data-cart-remove-key="${escapeAttr(l.key)}" style="color:var(--terracotta);height:fit-content;">${ic('trash',15)}</button>
     </div>`).join('');
 
   const sub = cartSubtotal();
@@ -8921,10 +9035,10 @@ function renderCheckout(){
   if(step===0){
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Vos informations</h1>
       <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div><label class="field-label" style="${c.requiredField==='firstName'?'color:var(--terracotta);':''}">Prénom <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" value="${c.firstName}" oninput="ckField('firstName',this.value)" style="${c.requiredField==='firstName'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}"></div>
-        <div><label class="field-label" style="${c.requiredField==='lastName'?'color:var(--terracotta);':''}">Nom <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" value="${c.lastName}" oninput="ckField('lastName',this.value)" style="${c.requiredField==='lastName'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}"></div>
+        <div><label class="field-label" style="${c.requiredField==='firstName'?'color:var(--terracotta);':''}">Prénom <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" value="${escapeAttr(c.firstName)}" oninput="ckField('firstName',this.value)" style="${c.requiredField==='firstName'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}"></div>
+        <div><label class="field-label" style="${c.requiredField==='lastName'?'color:var(--terracotta);':''}">Nom <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" value="${escapeAttr(c.lastName)}" oninput="ckField('lastName',this.value)" style="${c.requiredField==='lastName'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}"></div>
       </div>
-      <label class="field-label" style="${c.requiredField==='phone'?'color:var(--terracotta);':''}">Téléphone <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" placeholder="770000000" value="${c.phone}" oninput="ckPhoneInput(this)" style="${c.requiredField==='phone'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}">`;
+      <label class="field-label" style="${c.requiredField==='phone'?'color:var(--terracotta);':''}">Téléphone <span style="color:var(--terracotta);font-weight:700;">*</span></label><input required class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" placeholder="770000000" value="${escapeAttr(c.phone)}" oninput="ckPhoneInput(this)" style="${c.requiredField==='phone'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}">`;
   } else if(step===1){
     const opts = [['dine_in','utensils','Sur place'],['takeaway','package','À emporter']];
     if(RESTAURANT.delivery.enabled && enabledDeliveryModes().length>0) opts.push(['delivery','bike','Livraison']);
@@ -8939,8 +9053,8 @@ function renderCheckout(){
           <div style="display:flex;justify-content:center;color:${c.orderType===key?'var(--amber-deep)':'var(--ink-soft)'};">${ic(icon,22)}</div><div style="font-size:11.5px;font-weight:600;margin-top:6px;">${label}</div></button>`).join('')}
       </div>
       ${c.orderType==='dine_in'?`<label class="field-label" style="${c.requiredField==='table'?'color:var(--terracotta);':''}">Numéro de table <span style="color:var(--terracotta);font-weight:700;">*</span></label>
-        <input required class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex : 12" value="${c.table}" oninput="ckTableInput(this)" style="${c.requiredField==='table'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}">
-        ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${c.tableError}</p>`:''}`:''}
+        <input required class="field-input" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ex : 12" value="${escapeAttr(c.table)}" oninput="ckTableInput(this)" style="${c.requiredField==='table'?'border-color:var(--terracotta);background:var(--terracotta-soft);':''}">
+        ${c.tableError?`<p style="font-size:11.5px;color:var(--terracotta);margin-top:5px;display:flex;align-items:center;gap:5px;">${ic('alertTriangle',13)}${escapeHtml(c.tableError)}</p>`:''}`:''}
       ${c.orderType==='delivery'?`
         ${modes.length>1?`<label class="field-label">Type de livraison</label>
         <div class="grid" style="grid-template-columns:repeat(${modes.length},1fr);gap:8px;margin-bottom:14px;">
@@ -8982,7 +9096,7 @@ function renderCheckout(){
   } else if(step===3){
     body = `<h1 class="font-display" style="font-size:20px;margin-bottom:16px;">Confirmez votre commande</h1>
       <div class="card" style="padding:16px;margin-bottom:20px;">
-        ${state.cart.map(l=>`<div class="flex justify-between" style="font-size:13.5px;margin-bottom:8px;"><span style="color:var(--ink-soft);">${l.qty} × ${l.name}${l.variant?' ('+l.variant.name+')':''}</span><span class="font-tabular">${fmt(cartLineTotal(l))}</span></div>`).join('')}
+        ${state.cart.map(l=>`<div class="flex justify-between" style="font-size:13.5px;margin-bottom:8px;"><span style="color:var(--ink-soft);">${Math.max(1,Number(l.qty)||1)} × ${escapeHtml(l.name)}${l.variant?' ('+escapeHtml(l.variant.name)+')':''}</span><span class="font-tabular">${fmt(cartLineTotal(l))}</span></div>`).join('')}
         <div style="border-top:1px solid var(--cream-line);margin-top:8px;padding-top:8px;">
           <div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);"><span>Sous-total</span><span class="font-tabular">${fmt(sub)}</span></div>
           ${fee>0?`<div class="flex justify-between" style="font-size:13.5px;color:var(--ink-soft);"><span>Livraison</span><span class="font-tabular">${fmt(fee)}</span></div>`:''}
@@ -8990,7 +9104,7 @@ function renderCheckout(){
         </div>
       </div>
       <label class="field-label">Une précision pour le restaurant ? (facultatif)</label>
-      <textarea class="field-input" id="ckNotes" rows="2" placeholder="Ex : sans piment, sonnette cassée, livrer au portail..." style="margin-bottom:18px;" oninput="ckField('notes',this.value)">${c.notes||''}</textarea>
+      <textarea class="field-input" id="ckNotes" rows="2" placeholder="Ex : sans piment, sonnette cassée, livrer au portail..." style="margin-bottom:18px;" oninput="ckField('notes',this.value)">${escapeHtml(c.notes||'')}</textarea>
       <button id="submitOrderBtn" class="btn btn-secondary btn-lg w-full" onclick="submitOrder()">${ic('check',16)} Confirmer la commande</button>`;
   }
 
@@ -9011,38 +9125,36 @@ function renderCheckout(){
    première est encore en cours. */
 let orderSubmitInFlight = false;
 
-/* Réception locale des commandes : aucune RPC/SQL/Supabase n'est utilisée.
-   Cela permet au tableau de bord ouvert dans un autre onglet du même navigateur
-   de voir immédiatement une commande créée sur le site public. */
-function receiveLocalOrder(order){
-  if(!order || String(order.restaurant_id||'') !== String(RESTAURANT.id||'')) return;
-  if(DEMO_ORDERS.some(o=>String(o.id)===String(order.id))) return;
-  DEMO_ORDERS.unshift(order);
-  refreshNotifDot();
-  if(RESTAURANT.notificationsEnabled){
-    toast(ic('bell',14)+` Nouvelle commande — #${order.num} (${fmt(order.total)})`, true);
-    playNotificationSound();
-    showBrowserNotification(order);
-  }
-  if(typeof state.dashSection !== 'undefined' && state.dashSection==='orders'){
-    try{ renderDashSection('orders'); }catch(e){}
-  }
+/* Signal inter-onglets : les données personnelles d'une commande ne sont
+   pas sérialisées dans localStorage/BroadcastChannel. L'autre onglet recharge
+   ses données avec sa propre session Supabase et ses politiques RLS. */
+let lastLocalOrderSignalKey='';
+let lastLocalOrderSignalAt=0;
+async function refreshRestaurantAfterLocalOrderSignal(restaurantId){
+  const rid=String(restaurantId||'');
+  if(!rid || !viewerIsStaff || !currentUser?.id || state.view!=='dashboard' || String(activeRestaurantId)!==rid || String(RESTAURANT.id||'')!==rid) return;
+  try{ await loadRestaurantSecondaryData(rid); }
+  catch(e){ console.warn('Actualisation inter-onglets des commandes:',e?.message||'échec'); }
 }
-
+function handleLocalOrderSignal(payload){
+  if(!payload || payload.type!=='NEW_ORDER') return;
+  const rid=String(payload.restaurantId||'');
+  if(!rid || rid!==String(RESTAURANT.id||'')) return;
+  const key=`${rid}:${String(payload.orderId||payload.at||'')}`;
+  const now=Date.now();
+  if(key===lastLocalOrderSignalKey && now-lastLocalOrderSignalAt<1500) return;
+  lastLocalOrderSignalKey=key;lastLocalOrderSignalAt=now;
+  void refreshRestaurantAfterLocalOrderSignal(rid);
+}
 (function initLocalOrderBus(){
   try{
     if('BroadcastChannel' in window){
       if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
-      window.__terangaOrderChannel.onmessage = ev => {
-        if(ev.data && ev.data.type==='NEW_ORDER') receiveLocalOrder(ev.data.order);
-      };
+      window.__terangaOrderChannel.onmessage = ev => handleLocalOrderSignal(ev.data);
     }
     window.addEventListener('storage', ev=>{
       if(ev.key!=='teranga_order_event' || !ev.newValue) return;
-      try{
-        const payload=JSON.parse(ev.newValue);
-        receiveLocalOrder(payload.order);
-      }catch(e){}
+      try{ handleLocalOrderSignal(JSON.parse(ev.newValue)); }catch(e){}
     });
   }catch(e){ console.warn('Canal local de commandes indisponible:',e); }
 })();
@@ -9208,15 +9320,13 @@ async function submitOrderInternal(){
     }
 
     try{
-      const orderStorageKey = 'teranga_local_orders_' + String(RESTAURANT.id||'default');
-      const existing = JSON.parse(localStorage.getItem(orderStorageKey)||'[]');
-      existing.unshift({...orderSnapshot});
-      localStorage.setItem(orderStorageKey, JSON.stringify(existing.slice(0,500)));
+      const signal={type:'NEW_ORDER',restaurantId:String(RESTAURANT.id||''),orderId:String(saved.id),at:Date.now()};
       if('BroadcastChannel' in window){
         if(!window.__terangaOrderChannel) window.__terangaOrderChannel = new BroadcastChannel('teranga-orders');
-        window.__terangaOrderChannel.postMessage({type:'NEW_ORDER', restaurantId:RESTAURANT.id, order:{...orderSnapshot}});
+        window.__terangaOrderChannel.postMessage(signal);
       }
-      localStorage.setItem('teranga_order_event', JSON.stringify({restaurantId:RESTAURANT.id, order:{...orderSnapshot}, at:Date.now()}));
+      // Seul un identifiant technique est conservé pour notifier les autres onglets.
+      localStorage.setItem('teranga_order_event', JSON.stringify(signal));
     }catch(e){ console.warn('Diffusion locale de commande:',e); }
 
     renderConfirmation();
@@ -9255,11 +9365,11 @@ function renderConfirmation(){
     <div class="text-center" style="margin-bottom:28px;">
       <div style="display:flex;justify-content:center;color:var(--forest);margin-bottom:10px;">${ic('checkCircle',40)}</div>
       <h1 class="font-display" style="font-size:22px;">Commande envoyée</h1>
-      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${o.firstName||''} ! Votre commande #${o.num} a bien été reçue par <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
+      <p style="font-size:13.5px;color:var(--ink-soft);margin-top:6px;">Merci ${escapeHtml(o.firstName||'')} ! Votre commande #${escapeHtml(o.num)} a bien été reçue par <span class="resto-name">${escapeHtml(RESTO_NAME)}</span>.</p>
     </div>
     <div class="card" style="padding:18px;">
       <div class="flex justify-between items-center" style="margin-bottom:12px;">
-        <span class="font-tabular font-display" style="font-size:16px;">#${o.num}</span>
+        <span class="font-tabular font-display" style="font-size:16px;">#${escapeHtml(o.num)}</span>
         <span class="pill pill-amber">Nouvelle</span>
       </div>
       ${o.items.map(orderItemLine).join('')}
@@ -9272,8 +9382,8 @@ function renderConfirmation(){
     </div>
     <button class="btn btn-ghost w-full" style="margin-top:20px;" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');">Retourner au menu</button>
     <div class="grid order-action-tabs" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-      <button class="btn" style="background:var(--ink);color:var(--cream);" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openOrderTrackingDetail('${o.num}','${o.phone||''}');">${ic('receipt',15)} Suivre ma commande</button>
-      <button class="btn btn-outline" onclick="document.getElementById('confirmationOverlay').classList.add('hidden');openReviewModal('${o.num}');">${ic('star',15)} Avis client</button>
+      <button type="button" class="btn" style="background:var(--ink);color:var(--cream);" data-track-order-num="${escapeAttr(o.num)}" data-track-order-phone="${escapeAttr(o.phone||'')}" data-close-confirmation="1">${ic('receipt',15)} Suivre ma commande</button>
+      <button type="button" class="btn btn-outline" data-review-order-num="${escapeAttr(o.num)}" data-close-confirmation="1">${ic('star',15)} Avis client</button>
     </div>`;
   hydrateIcons(document.getElementById('confirmationBody'));
 }
@@ -9416,7 +9526,7 @@ function toggleNotifPanel(){
           <button type="button" onclick="closeNotifPanel();setDashSection('orders')" style="width:100%;text-align:left;padding:12px 10px;border-radius:12px;display:flex;gap:10px;align-items:flex-start;color:#fff;background:${i===0?'rgba(232,135,30,.10)':'transparent'};">
             <span style="width:32px;height:32px;border-radius:10px;background:rgba(232,135,30,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#F5B24E;">${ic('receipt',16)}</span>
             <span style="min-width:0;flex:1;"><strong style="font-size:12.5px;display:block;">Commande #${String(o.num||'').replace(/</g,'&lt;')}</strong><span style="font-size:11.5px;color:rgba(255,255,255,.72);display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${String(o.client||'Client').replace(/</g,'&lt;')} · ${fmt(Number(o.total)||0)}</span><span style="font-size:10.5px;color:rgba(255,255,255,.45);display:block;margin-top:3px;">${timeAgo(new Date(o.createdAt||Date.now()))}</span></span>
-            <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="flex-shrink:0;">${ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle'}</span>
+            <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="flex-shrink:0;">${escapeHtml(ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle')}</span>
           </button>`).join('') : `<div style="padding:28px 14px;text-align:center;color:rgba(255,255,255,.55);font-size:12.5px;">Aucune commande pour le moment.</div>`}
       </div>
     </div>`;
@@ -9439,15 +9549,21 @@ function markNotifsSeen(){
 async function logoutDashboard(){
   simulatedRole = null;
   simulatedPermissions = null;
-  realAccessKind = 'owner';
-  realAccessRole = 'Administrateur';
+  realAccessKind = null;
+  realAccessRole = null;
   realAccessPermissions = null;
-  await signOutSupabase();
-  unsubscribeOrdersRealtime();
-  unsubscribeReviewsRealtime();
-  viewerIsStaff = false;
-  try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
-  setView('landing');
+  try{ await signOutSupabase(); }
+  catch(e){ console.error('Déconnexion locale:',e?.message||'échec'); }
+  finally{
+    unsubscribeOrdersRealtime();
+    unsubscribeReviewsRealtime();
+    accessibleRestaurants=[];
+    activeRestaurantId=null;
+    currentUser=null;
+    viewerIsStaff=false;
+    try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
+    setView('landing');
+  }
   toast('Déconnecté.');
 }
 
@@ -9863,9 +9979,9 @@ function dashOverview(){
     <div class="card" style="padding:18px;">
       <div class="flex justify-between items-center" style="margin-bottom:12px;"><h2 class="font-display" style="font-size:16px;">Commandes récentes</h2><a href="#" onclick="setDashSection('orders');return false;" style="font-size:12px;color:var(--amber-ink);font-weight:600;display:flex;align-items:center;gap:3px;">Tout voir ${ic('arrowRight',12)}</a></div>
       ${periodOrders.length===0 ? `<p style="font-size:13px;color:var(--ink-faint);text-align:center;padding:20px 0;">Aucune commande sur cette période.</p>` : periodOrders.slice(0,5).map(o=>`<div class="flex items-center justify-between" style="padding:9px 0;border-top:1px solid var(--cream-line);">
-        <div><p class="font-tabular" style="font-size:13px;font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
+        <div><p class="font-tabular" style="font-size:13px;font-weight:600;">#${escapeHtml(o.num)}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></div>
         <span class="font-tabular" style="font-size:13px;">${fmt(o.total)}</span>
-        <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span>
+        <span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${escapeHtml(ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle')}</span>
       </div>`).join('')}
     </div>
     <div class="card" style="padding:18px;">
@@ -9974,7 +10090,7 @@ function dashOrders(){
   <h1 class="font-display" style="font-size:24px;margin-bottom:4px;">Commandes</h1>
   <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px;">Toutes les commandes reçues par ${escapeHtml(RESTO_NAME)}.</p>
   ${DEMO_ORDERS.length===0 ? `<div class="empty-state">${ic('receipt',26,{stroke:'var(--amber-deep)'})}<p style="margin-top:10px;font-size:13.5px;color:var(--ink-soft);">Aucune commande pour le moment.</p><p style="font-size:12px;color:var(--ink-faint);margin-top:4px;">Les commandes passées sur votre site public apparaîtront ici automatiquement.</p></div>` : `
-  <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${orderSearch}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
+  <div style="position:relative;max-width:280px;margin-bottom:12px;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);">${ic('search',14)}</span><input class="field-input" style="padding-left:34px;" placeholder="Rechercher (nom, n° commande)..." value="${escapeAttr(orderSearch)}" oninput="orderSearch=this.value;document.getElementById('ordersTableBody').innerHTML=ordersRowsHtml();"></div>
   <div class="flex gap-2 overflow-x-auto" style="margin-bottom:14px;">
     ${ORDER_STATUS_FILTERS.map(([key,label])=>`<button class="pill ${orderStatusFilter===key?'pill-ink':'pill-neutral'}" style="cursor:pointer;flex-shrink:0;" onclick="orderStatusFilter='${key}';renderDashSection('orders');">${label}</button>`).join('')}
   </div>
@@ -9990,11 +10106,15 @@ function dashOrders(){
   </div>`;
 }
 function filteredOrders(){
-  const q = orderSearch.trim().toLowerCase();
-  return DEMO_ORDERS.filter(o =>
-    (orderStatusFilter==='all' || o.status===orderStatusFilter) &&
-    (!q || o.client.toLowerCase().includes(q) || o.num.includes(q) || o.phone.includes(q))
-  );
+  const q = String(orderSearch||'').trim().toLowerCase();
+  return DEMO_ORDERS.filter(o => {
+    if(!o || typeof o!=='object') return false;
+    const client=String(o.client||'').toLowerCase();
+    const num=String(o.num||'').toLowerCase();
+    const phone=String(o.phone||'').toLowerCase();
+    return (orderStatusFilter==='all' || o.status===orderStatusFilter) &&
+      (!q || client.includes(q) || num.includes(q) || phone.includes(q));
+  });
 }
 function ordersRowsHtml(){
   const list = filteredOrders();
@@ -10002,12 +10122,12 @@ function ordersRowsHtml(){
   return list.map((o)=>{
     const i = DEMO_ORDERS.indexOf(o);
     return `<tr onclick="openOrderDetail(${i})">
-      <td><p class="font-tabular" style="font-weight:600;">#${o.num}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
+      <td><p class="font-tabular" style="font-weight:600;">#${escapeHtml(o.num)}</p><p style="font-size:11px;color:var(--ink-faint);">${timeAgo(o.createdAt)}</p></td>
       <td style="color:var(--ink-soft);">${escapeHtml(o.client)}</td>
       <td style="color:var(--ink-soft);">${escapeHtml(orderDisplayType(o))}</td>
       <td><div class="flex items-center gap-2">${paymentMark(o.pay,20)}<span class="pill ${toneClass(PAY_STATUS_TONE[o.payStatus])}">${PAY_STATUS_LABELS[o.payStatus]}</span></div></td>
       <td class="font-tabular">${fmt(o.total)}</td>
-      <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${ORDER_STATUS_LABELS[o.status]}</span></td>
+      <td><span class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}">${escapeHtml(ORDER_STATUS_LABELS[o.status]||o.status||'Nouvelle')}</span></td>
     </tr>`;
   }).join('');
 }
@@ -10107,7 +10227,7 @@ function openOrderDetail(i){
             <div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Sous-total</span><span class="font-tabular">${hasPricedItems?fmt(subtotal):'—'}</span></div>
             ${delivery?`<div style="display:flex;justify-content:space-between;font-size:13px;color:#C9D2E2;margin-bottom:8px;"><span>Livraison</span><span class="font-tabular">${fmt(deliveryFee)}</span></div>`:''}
             <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);"><span>Total à payer</span><span class="font-tabular" style="color:#F5B24E;">${fmt(o.total)}</span></div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${paymentMark(o.pay,21)}<span style="font-size:12.5px;color:#C9D2E2;">${orderDisplayPayment(o.pay)}</span><span class="pill" style="margin-left:auto;${o.payStatus==='paid'?'background:#234B32;color:#8DE0A8;':'background:rgba(232,135,30,.16);color:#F5B24E;'}">${PAY_STATUS_LABELS[o.payStatus]||o.payStatus}</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${paymentMark(o.pay,21)}<span style="font-size:12.5px;color:#C9D2E2;">${orderDisplayPayment(o.pay)}</span><span class="pill" style="margin-left:auto;${o.payStatus==='paid'?'background:#234B32;color:#8DE0A8;':'background:rgba(232,135,30,.16);color:#F5B24E;'}">${escapeHtml(PAY_STATUS_LABELS[o.payStatus]||o.payStatus||'Statut inconnu')}</span></div>
           </div>
         </div>
         ${action?`<button type="button" onclick="changeOrderStatus(${i},'${action.next}',event)" class="btn btn-secondary btn-lg w-full" style="margin-top:2px;">${ic(action.icon,16)} ${action.label}</button>`:''}
@@ -10153,22 +10273,15 @@ function changeOrderStatus(i, newStatus, ev){
   persistOrderUpdate(o);
   return false;
 }
-/* Une ligne de commande peut être soit l'ancien format hérité
-   [nom, quantité] (commandes créées avant l'ajout des variantes/ids
-   réels aux commandes), soit le nouveau format riche
-   {productId, name, variant, price, qty} — gère les deux sans erreur. */
-function orderItemLine(it){
-  const isLegacy = Array.isArray(it);
-  const name = isLegacy ? it[0] : it.name;
-  const qty = isLegacy ? it[1] : it.qty;
-  const variant = isLegacy ? null : it.variant;
-  return `<div class="flex justify-between" style="font-size:13.5px;padding:6px 0;border-top:1px solid var(--cream-line);"><span>${qty} × ${escapeHtml(name)}${variant?` <span style="color:var(--ink-faint);">(${escapeHtml(variant)})</span>`:''}</span></div>`;
-}
+/* Le rendu complet orderItemLine est défini une seule fois plus haut et
+   fournit aussi les prix unitaires et totaux dans la confirmation. */
 /* Même logique que orderItemLine, mais renvoie juste [nom, quantité] —
    utilisé par les calculs (produits les plus vendus, etc.) qui n'ont
    pas besoin d'affichage, seulement des valeurs. */
 function orderItemNameQty(it){
-  return Array.isArray(it) ? it : [it.name, it.qty];
+  if(Array.isArray(it)) return [it[0] ?? '', it[1] ?? 1];
+  if(it && typeof it==='object') return [it.name ?? '', it.qty ?? 1];
+  return [String(it ?? ''), 1];
 }
 
 /* ---------------- CAISSE (POS) ---------------- */
@@ -10220,7 +10333,7 @@ function dashPos(){
     <table class="data-table">
       <thead><tr><th>Commande</th><th>Date</th><th>Paiement</th><th style="text-align:right;">Montant</th></tr></thead>
       <tbody>
-        ${paid.map(o=>`<tr><td class="font-tabular">#${o.num}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${orderDisplayPayment(o.pay)}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
+        ${paid.map(o=>`<tr><td class="font-tabular">#${escapeHtml(o.num)}</td><td style="color:var(--ink-faint);font-size:12px;">${o.createdAt.toLocaleDateString('fr-FR')} ${o.createdAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td><td>${orderDisplayPayment(o.pay)}</td><td class="font-tabular" style="text-align:right;">${fmt(o.total)}</td></tr>`).join('')}
       </tbody>
       <tfoot><tr style="font-weight:700;"><td colspan="3">Total</td><td class="font-tabular" style="text-align:right;">${fmt(total)}</td></tr></tfoot>
     </table>`}
@@ -10499,20 +10612,21 @@ function productsListHtml(){
 }
 
 function toggleProductActive(id){
-  const p = PRODUCTS.find(x=>x.id===id); p.active = !p.active;
+  const p = PRODUCTS.find(x=>String(x.id)===String(id)); if(!p){toast('Ce produit n’est plus disponible. Actualisez le catalogue.');return;} p.active = !p.active;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   toast(p.active ? `${p.name} est de nouveau visible sur le site public.` : `${p.name} est masqué du site public.`);
   persistProduct(p);
 }
 function toggleProductAvailable(id){
-  const p = PRODUCTS.find(x=>x.id===id); p.available = !p.available;
+  const p = PRODUCTS.find(x=>String(x.id)===String(id)); if(!p){toast('Ce produit n’est plus disponible. Actualisez le catalogue.');return;} p.available = !p.available;
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
   if(state.view==='storefront') renderProductSections();
   persistProduct(p);
 }
 function deleteProduct(id){
-  const p = PRODUCTS.find(x=>x.id===id);
+  const p = PRODUCTS.find(x=>String(x.id)===String(id));
+  if(!p){toast('Ce produit n’est plus disponible. Actualisez le catalogue.');return;}
   if(!confirm(`Supprimer « ${p.name} » ?`)) return;
   const idx = PRODUCTS.indexOf(p); PRODUCTS.splice(idx,1);
   document.getElementById('productsList').innerHTML = productsListHtml(); hydrateIcons();
@@ -10590,7 +10704,7 @@ function renderProductForm(){
               const ph=(f.photos||[])[i]||null;
               return `<div style="position:relative;aspect-ratio:1/1;min-width:0;">
                 <button type="button" onclick="${ph?`pfReplacePhoto(${i})`:`pfPickPhotos()`}" aria-label="${ph?`Remplacer la photo ${i+1}`:`Ajouter la photo ${i+1}`}" style="width:100%;height:100%;border-radius:14px;overflow:hidden;border:2px ${ph?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;background:var(--cream-deep);">
-                  ${ph ? `<img src="${safeImageSrc(ph)}" alt="Photo ${i+1}" style="width:100%;height:100%;object-fit:cover;">` : ic('plus',22,{stroke:'var(--amber-deep)'})}
+                  ${ph ? `<img src="${escapeAttr(safeImageSrc(ph))}" alt="Photo ${i+1}" style="width:100%;height:100%;object-fit:cover;">` : ic('plus',22,{stroke:'var(--amber-deep)'})}
                 </button>
                 ${ph?`<button type="button" aria-label="Supprimer la photo ${i+1}" title="Supprimer" onclick="pfRemovePhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:24px;height:24px;border-radius:999px;background:#EF4444;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.28);z-index:5;font:700 16px/16px Arial,sans-serif;"><span aria-hidden="true">×</span></button>`:''}
                 ${i===0 && ph?`<span style="position:absolute;left:6px;bottom:6px;padding:3px 6px;border-radius:7px;background:rgba(43,24,16,.82);color:#fff;font-size:9px;font-weight:700;">Principale</span>`:''}
@@ -10601,16 +10715,16 @@ function renderProductForm(){
           <p style="font-size:10.5px;color:var(--ink-faint);margin-top:5px;">Jusqu’à 3 photos : une photo principale + 2 photos supplémentaires. Sélection multiple possible depuis votre appareil.</p>
         </div>
         <label class="field-label">Nom</label>
-        <input class="field-input" style="margin-bottom:12px;" value="${f.name}" oninput="pfField('name',this.value)" placeholder="Ex : Thiéboudienne">
+        <input class="field-input" style="margin-bottom:12px;" value="${escapeAttr(f.name)}" oninput="pfField('name',this.value)" placeholder="Ex : Thiéboudienne">
         <label class="field-label">Description</label>
-        <textarea class="field-input" rows="2" style="margin-bottom:12px;" oninput="pfField('desc',this.value)" placeholder="Facultatif">${f.desc}</textarea>
+        <textarea class="field-input" rows="2" style="margin-bottom:12px;" oninput="pfField('desc',this.value)" placeholder="Facultatif">${escapeHtml(f.desc)}</textarea>
         <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div><label class="field-label">Prix (FCFA)</label><input class="field-input" type="number" value="${f.price}" oninput="pfField('price',this.value)"></div>
           <div><label class="field-label">Préparation (min)</label><input class="field-input" type="number" value="${f.prep}" oninput="pfField('prep',this.value)"></div>
         </div>
         <label class="field-label">Catégorie</label>
         <select class="field-input" style="margin-bottom:14px;" onchange="pfField('cat',this.value);renderProductForm();">
-          ${Object.entries(catsState).map(([k,l])=>`<option value="${k}" ${f.cat===k?'selected':''}>${l}</option>`).join('')}
+          ${Object.entries(catsState).map(([k,l])=>`<option value="${escapeAttr(k)}" ${f.cat===k?'selected':''}>${escapeHtml(l)}</option>`).join('')}
         </select>
         <div class="flex gap-6">
           <label class="flex items-center gap-2" style="font-size:13px;"><input type="checkbox" ${f.active?'checked':''} onchange="pfField('active',this.checked)"> Actif (visible publiquement)</label>
@@ -10697,11 +10811,11 @@ function renderLibraryList(){
         const added = isInMyProducts(item);
         return `<div class="flex items-center gap-3" style="padding:9px 0;border-top:1px solid var(--cream-line);">
           <span style="width:44px;height:44px;border-radius:10px;overflow:hidden;flex-shrink:0;background:var(--cream-deep);display:flex;align-items:center;justify-content:center;">
-            ${item.photo ? `<img src="${item.photo}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : ic(CAT_ICON[item.cat]||'utensils',18,{stroke:'var(--amber-deep)'})}
+            ${item.photo ? `<img src="${escapeAttr(safeImageSrc(item.photo))}" alt="" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : ic(CAT_ICON[item.cat]||'utensils',18,{stroke:'var(--amber-deep)'})}
           </span>
           <div style="flex:1;min-width:0;">
-            <p style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</p>
-            <p style="font-size:11px;color:var(--ink-faint);">${catsState[item.cat]||item.cat} · ${fmt(item.price)}</p>
+            <p style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.name)}</p>
+            <p style="font-size:11px;color:var(--ink-faint);">${escapeHtml(catsState[item.cat]||item.cat)} · ${fmt(item.price)}</p>
           </div>
           <button class="btn ${added?'btn-outline':'btn-secondary'} btn-sm" style="flex-shrink:0;" onclick="toggleLibraryItem(${i})">
             ${added ? ic('check',14,{stroke:'var(--forest)'}) + ' Ajouté' : ic('plus',14) }
@@ -10897,7 +11011,7 @@ function variantsCardHtml(){
   </div>
   ${p.variants.length===0?`<p style="text-align:center;color:var(--ink-faint);font-size:13px;padding:20px 0;">Aucune variante pour ce produit.</p>`:
     p.variants.map((v,i)=>`<div class="flex items-center gap-3" style="padding:8px 0;border-top:1px solid var(--cream-line);">
-      <span style="color:var(--amber);">${ic('star',14,{fill:'currentColor',stroke:'none'})}</span><span style="flex:1;font-size:13.5px;">${v.name}</span>
+      <span style="color:var(--amber);">${ic('star',14,{fill:'currentColor',stroke:'none'})}</span><span style="flex:1;font-size:13.5px;">${escapeHtml(v.name)}</span>
       <span class="font-tabular" style="font-size:13px;color:var(--ink-soft);">${v.delta>=0?'+':''}${fmt(v.delta)}</span>
       <button onclick="removeVariant(${i})" style="color:var(--terracotta);">${ic('trash',14)}</button>
     </div>`).join('')}`;
@@ -11047,8 +11161,8 @@ function customersRowsHtml(query){
     // dans la liste générale des commandes.
     const inProgress = DEMO_ORDERS.filter(o=>o.phone===c.phone && !['completed','cancelled'].includes(o.status));
     return `<tr>
-      <td>${c.name}</td><td class="font-tabular" style="color:var(--ink-soft);">${c.phone}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
-      <td>${inProgress.length ? inProgress.map(o=>`<button onclick="openOrderDetailByNum('${o.num}')" class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="margin:2px;cursor:pointer;">#${o.num}</button>`).join('') : `<span style="color:var(--ink-faint);font-size:12px;">—</span>`}</td>
+      <td>${escapeHtml(c.name)}</td><td class="font-tabular" style="color:var(--ink-soft);">${escapeHtml(c.phone)}</td><td>${c.orders}</td><td class="font-tabular">${fmt(c.spent)}</td><td style="color:var(--ink-faint);font-size:12px;">${timeAgo(c.lastOrder)}</td>
+      <td>${inProgress.length ? inProgress.map(o=>`<button data-open-order-number="${escapeAttr(o.num)}" class="pill ${toneClass(ORDER_STATUS_TONE[o.status])}" style="margin:2px;cursor:pointer;">#${escapeHtml(o.num)}</button>`).join('') : `<span style="color:var(--ink-faint);font-size:12px;">—</span>`}</td>
     </tr>`;
   }).join('');
 }
@@ -11731,14 +11845,14 @@ function libraryCardsHtml(){
 
   if(libraryTab!=='products'){
     cards.push(libCardShell({
-      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      imageHtml: RESTAURANT.logoDataUrl ? `<img src="${escapeAttr(safeImageSrc(RESTAURANT.logoDataUrl))}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
       name:'Logo', meta: RESTAURANT.logoDataUrl ? 'Image active' : 'Aucune image',
       actions: RESTAURANT.logoDataUrl
         ? `<button onclick="pickLogo()">${ic('pencil',13)}</button><button onclick="RESTAURANT.logoDataUrl=null;renderDashSection('library');renderSidebarLogo();toast('Logo supprimé')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
         : `<button onclick="pickLogo()" style="color:var(--amber-ink);">${ic('upload',13)}</button>`,
     }));
     cards.push(libCardShell({
-      imageHtml: RESTAURANT.coverDataUrl ? `<img src="${RESTAURANT.coverDataUrl}" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
+      imageHtml: RESTAURANT.coverDataUrl ? `<img src="${escapeAttr(safeImageSrc(RESTAURANT.coverDataUrl))}" alt="" style="width:100%;height:100%;object-fit:cover;">` : `<span class="lib-empty">${ic('image',22,{stroke:'var(--ink-faint)'})}</span>`,
       name:'Couverture', meta: RESTAURANT.coverDataUrl ? 'Image active' : 'Aucune image',
       actions: RESTAURANT.coverDataUrl
         ? `<button onclick="pickCover()">${ic('pencil',13)}</button><button onclick="RESTAURANT.coverDataUrl=null;renderDashSection('library');toast('Couverture supprimée')" style="color:var(--terracotta);">${ic('trash',13)}</button>`
@@ -11749,7 +11863,7 @@ function libraryCardsHtml(){
   if(libraryTab!=='brand'){
     PRODUCTS.forEach(p=>{
       cards.push(libCardShell({
-        imageHtml: p.photo ? `<img src="${safeImageSrc(p.photo)}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
+        imageHtml: p.photo ? `<img src="${escapeAttr(safeImageSrc(p.photo))}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:var(--amber-ink);">${ic(CAT_ICON[p.cat]||'utensils',24)}</span>`,
         name: p.name, meta: (p.photo?'Photo produit':'Aucune image') + ' — ' + (catsState[p.cat]||''),
         actions: `<button onclick="setDashSection('products');openProductForm('${p.id}')">${ic('pencil',13)}</button>`,
       }));
@@ -12041,19 +12155,19 @@ function settingsBodyHtml(){
     <label class="field-label">Nom du restaurant</label><input class="field-input" id="setName" value="${escapeAttr(RESTAURANT.name)}" style="margin-bottom:14px;">
     <label class="field-label">Type de restaurant</label>
     <select class="field-input" id="setType" style="margin-bottom:14px;">
-      ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option ${RESTAURANT.type===t?'selected':''}>${t}</option>`).join('')}
+      ${['Cuisine sénégalaise','Fast-food','Café / Pâtisserie','Grillades','Autre'].map(t=>`<option value="${escapeAttr(t)}" ${RESTAURANT.type===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
     </select>
     <div class="grid tr-settings-phone-city-row" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div><label class="field-label">Téléphone</label>${countryPickerHtml('setPhone',RESTAURANT.phone,'77 123 45 67')}</div>
-      <div><label class="field-label">Ville</label><input class="field-input" id="setCity" value="${RESTAURANT.city}"></div>
+      <div><label class="field-label">Ville</label><input class="field-input" id="setCity" value="${escapeAttr(RESTAURANT.city)}"></div>
     </div>
-    <label class="field-label">Adresse</label><input class="field-input" id="setAddress" value="${RESTAURANT.address}" style="margin-bottom:14px;">
+    <label class="field-label">Adresse</label><input class="field-input" id="setAddress" value="${escapeAttr(RESTAURANT.address)}" style="margin-bottom:14px;">
     <div class="card" style="padding:14px 16px;margin-bottom:14px;background:var(--cream);">
       <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Titre d'accueil (Hero)</p>
       <label class="field-label">Titre principal</label>
-      <input class="field-input" id="setHeroTitle" placeholder="Bienvenue chez ${RESTAURANT.name||'votre restaurant'}" value="${RESTAURANT.heroTitle}" style="margin-bottom:10px;">
+      <input class="field-input" id="setHeroTitle" placeholder="Bienvenue chez ${escapeAttr(RESTAURANT.name||'votre restaurant')}" value="${escapeAttr(RESTAURANT.heroTitle)}" style="margin-bottom:10px;">
       <label class="field-label">Sous-titre</label>
-      <input class="field-input" id="setHeroSubtitle" placeholder="${RESTAURANT.type||'Cuisine locale'}${RESTAURANT.city?' · '+RESTAURANT.city:''}" value="${RESTAURANT.heroSubtitle}">
+      <input class="field-input" id="setHeroSubtitle" placeholder="${escapeAttr((RESTAURANT.type||'Cuisine locale')+(RESTAURANT.city?' · '+RESTAURANT.city:''))}" value="${escapeAttr(RESTAURANT.heroSubtitle)}">
       <p style="font-size:11px;color:var(--ink-faint);margin-top:8px;">Laissez vide pour utiliser un texte généré automatiquement à partir du nom, du type et de la ville.</p>
     </div>
     <div class="flex gap-3" id="setLogoCardWrap">
@@ -12061,7 +12175,7 @@ function settingsBodyHtml(){
         <label class="field-label w-full">Logo</label>
         <div style="position:relative;width:100%;">
           <button onclick="pickLogo()" style="width:100%;aspect-ratio:1;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.logoDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface);">
-            ${RESTAURANT.logoDataUrl?`<img src="${safeImageSrc(RESTAURANT.logoDataUrl)}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
+            ${RESTAURANT.logoDataUrl?`<img src="${escapeAttr(safeImageSrc(RESTAURANT.logoDataUrl))}" style="width:100%;height:100%;object-fit:cover;">`:`${ic('upload',20,{stroke:'var(--ink-faint)'})}<span style="font-size:10px;color:var(--ink-faint);">Ajouter</span>`}
           </button>
           ${RESTAURANT.logoDataUrl?`<button onclick="RESTAURANT.logoDataUrl=null;applyRestaurantVisuals();toast('Logo supprimé')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
         </div>
@@ -12070,7 +12184,7 @@ function settingsBodyHtml(){
       <div class="flex-col items-center" id="setCoverCard" style="flex:2;">
         <label class="field-label w-full">Couverture</label>
         <div style="position:relative;width:100%;">
-          <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${RESTAURANT.coverDataUrl}') center/cover no-repeat`:'var(--surface)'};">
+          <button onclick="pickCover()" style="width:100%;aspect-ratio:2.6;border-radius:14px;overflow:hidden;border:2px ${RESTAURANT.coverDataUrl?'solid var(--cream-line)':'dashed var(--cream-line)'};display:flex;align-items:center;justify-content:center;gap:6px;background:${RESTAURANT.coverDataUrl?`#2b1810 url('${safeCssUrl(RESTAURANT.coverDataUrl)}') center/cover no-repeat`:'var(--surface)'};">
             ${RESTAURANT.coverDataUrl?'':`${ic('upload',18,{stroke:'var(--ink-faint)'})}<span style="font-size:11px;color:var(--ink-faint);">Ajouter une couverture</span>`}
           </button>
           ${RESTAURANT.coverDataUrl?`<button onclick="RESTAURANT.coverDataUrl=null;applyRestaurantVisuals();toast('Couverture supprimée')" style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:999px;background:#EF4444;color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:5;">${ic('x',12)}</button>`:''}
@@ -12089,9 +12203,9 @@ function settingsBodyHtml(){
     return `<div class="flex items-center gap-3 flex-wrap" style="padding:9px 0;border-top:1px solid var(--cream-line);">
       <span style="width:84px;font-size:13.5px;font-weight:500;">${d}</span>
       <div class="toggle ${h.open?'on':''}" onclick="RESTAURANT.hours[${i}].open=!RESTAURANT.hours[${i}].open;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
-      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.from}" onchange="RESTAURANT.hours[${i}].from=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">
+      ${h.open ? `<input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${escapeAttr(h.from)}" onchange="RESTAURANT.hours[${i}].from=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">
         <span style="color:var(--ink-faint);font-size:12px;">à</span>
-        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${h.to}" onchange="RESTAURANT.hours[${i}].to=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">`
+        <input type="time" class="field-input" style="width:110px;padding:6px 10px;" value="${escapeAttr(h.to)}" onchange="RESTAURANT.hours[${i}].to=this.value;restaurantSetupMeta.hoursConfigured=true;syncRestaurantSetupMetaToSocial();persistRestaurant();">`
         : `<span style="font-size:12px;color:var(--ink-faint);">Fermé</span>`}
     </div>`;
   }).join('')}
@@ -12116,8 +12230,8 @@ function settingsBodyHtml(){
     </div>
     ${RESTAURANT.delivery.enabled?`
     <div class="grid tg-delivery-main-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
-      <div><label class="field-label">Frais de livraison (FCFA)</label><input class="field-input" id="setDeliveryFee" type="number" value="${RESTAURANT.delivery.fee}"></div>
-      <div><label class="field-label">Commande minimum (FCFA)</label><input class="field-input" id="setDeliveryMin" type="number" value="${RESTAURANT.delivery.min}"></div>
+      <div><label class="field-label">Frais de livraison (FCFA)</label><input class="field-input" id="setDeliveryFee" type="number" value="${escapeAttr(RESTAURANT.delivery.fee)}"></div>
+      <div><label class="field-label">Commande minimum (FCFA)</label><input class="field-input" id="setDeliveryMin" type="number" value="${escapeAttr(RESTAURANT.delivery.min)}"></div>
     </div>
     <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-faint);margin-bottom:10px;">Modes de livraison</p>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;max-width:480px;">Le paiement à la livraison n'a de sens que lorsqu'une vraie remise physique est assurée. Activez-le uniquement pour un mode qui le permet réellement.</p>
@@ -12250,7 +12364,7 @@ function settingsBodyHtml(){
         <span style="flex:1;font-size:13.5px;font-weight:600;">Google Maps</span>
       </div>
       <label class="field-label" style="font-size:11px;">Lien Google Maps</label>
-      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${RESTAURANT.mapsLink}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;" onchange="persistRestaurant();">
+      <input class="field-input" id="mapsLinkInput" placeholder="https://maps.google.com/?q=..." value="${escapeAttr(RESTAURANT.mapsLink)}" style="margin-bottom:14px;" oninput="RESTAURANT.mapsLink=this.value;" onchange="persistRestaurant();">
       <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:12px;">
         <span style="font-size:13.5px;font-weight:500;">Afficher la localisation sur le site public</span>
         <div class="toggle ${RESTAURANT.showMap?'on':''}" onclick="RESTAURANT.showMap=!RESTAURANT.showMap;renderDashSection('settings');persistRestaurant();"><div class="dot"></div></div>
@@ -13256,19 +13370,43 @@ document.querySelectorAll('.logo-asset').forEach(img=>{ img.src = LOGO_SRC; });
   hydrateIcons();
 })();
 
+/* Nettoyage défensif lors d'une déconnexion ou d'un changement de compte.
+   L'auth Supabase est partagée entre les vues dans cet onglet : aucun ancien
+   tableau de bord ne doit rester rendu après un changement d'identité. */
+function clearPrivateClientStateForAuthChange(){
+  accessibleRestaurants=[];
+  activeRestaurantId=null;
+  viewerIsStaff=false;
+  simulatedRole=null;simulatedPermissions=null;
+  realAccessKind=null;realAccessRole=null;realAccessPermissions=null;
+  try{unsubscribeOrdersRealtime();}catch(e){}
+  try{unsubscribeReviewsRealtime();}catch(e){}
+  try{PRODUCTS.length=0;}catch(e){}
+  try{DEMO_ORDERS.length=0;}catch(e){}
+  try{staffState.length=0;}catch(e){}
+  try{REVIEWS.length=0;}catch(e){}
+  try{catsState={};catsHomeVisible={};}catch(e){}
+  try{if(typeof paymentsHistory!=='undefined')paymentsHistory=[];}catch(e){}
+  const dashContent=document.getElementById('dashContent');if(dashContent)dashContent.replaceChildren();
+  ['orderDetailOverlay','trackOrderOverlay','reviewOverlay','reviewOrdersOverlay','confirmationOverlay'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));
+  trAdminSessionVerified=false;
+  trAdminState.identity=null;trAdminState.overview=null;trAdminState.list=null;
+  const adminContent=document.getElementById('trAdminContent');if(adminContent)adminContent.replaceChildren();
+}
+
 /* Recharge automatiquement les données quand l'état de connexion
    change ailleurs (autre onglet, expiration de session, etc.). */
 supabaseClient.auth.onAuthStateChange((event, session) => {
   if(event === 'SIGNED_OUT'){
     currentUser = null;
-    trAdminSessionVerified = false;
-    trAdminState.identity = null;
-    trAdminState.overview = null;trAdminState.list = null;
-    const adminContent=document.getElementById('trAdminContent');if(adminContent)adminContent.innerHTML='';
+    clearPrivateClientStateForAuthChange();
     if(state.view==='admin-console'){
       trAdminSetLoginMode(false);
       setView('landing');
       toast('Session terminée : l’administration est verrouillée.');
+    }else if(state.view==='dashboard'){
+      setView('landing');
+      toast('Session terminée. Reconnectez-vous pour rouvrir votre espace.');
     }
   }
   if(event === 'PASSWORD_RECOVERY' && session){ showPasswordRecoveryFormFromSession(session); return; }
@@ -13277,14 +13415,18 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   // partir de l'URL de retour du lien de confirmation (comportement
   // par défaut, "detectSessionInUrl") et déclenche SIGNED_IN à ce
   // moment précis — potentiellement avant, après, ou en même temps que
-  // le premier appel de restoreSession() au chargement de la page. Ne
-  // pas se fier à un seul de ces deux déclencheurs : les DEUX tentent
-  // de reprendre l'onboarding en attente, et tryResumePendingOnboarding()
-  // est conçue pour être sûre à appeler plusieurs fois (garde-fou
-  // resumingOnboarding + la sauvegarde locale est supprimée dès la
-  // première réussite, donc un second appel ne trouve simplement plus
-  // rien à reprendre).
+  // le premier appel de restoreSession() au chargement de la page.
   if(event === 'SIGNED_IN' && session){
+    const previousUserId=String(currentUser?.id||'');
+    const nextUserId=String(session.user?.id||'');
+    const hasPrivateState=!!activeRestaurantId || accessibleRestaurants.length>0 || state.view==='dashboard' || state.view==='admin-console';
+    if((previousUserId && nextUserId && previousUserId!==nextUserId) || (!previousUserId && hasPrivateState)){
+      clearPrivateClientStateForAuthChange();
+      if(state.view==='dashboard' || state.view==='admin-console'){
+        if(state.view==='admin-console')trAdminSetLoginMode(false);
+        setView('landing');
+      }
+    }
     currentUser = session.user;
     // L’entrée admin est un parcours distinct : ne pas laisser un ancien
     // onboarding en attente détourner la navigation pendant une connexion admin.
@@ -14233,7 +14375,7 @@ function speakAiText(text,button){
     if(msg)msg.textContent='';if(btn){btn.disabled=true;btn.textContent=mode==='signup'?'Création du compte…':'Connexion…';}
     try{
       if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error('Entrez une adresse e-mail valide.');
-      if(password.length<8)throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+      const passwordError=validateStrongPassword(password);if(passwordError)throw new Error(passwordError);
       if(mode==='signup'){
         if(password!==passwordConfirm)throw new Error('Les deux mots de passe ne correspondent pas.');
         const session=await currentAuthSession();
@@ -14722,6 +14864,14 @@ function speakAiText(text,button){
   function dashboardInitials(name){
     return String(name||'A').trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join('')||'A';
   }
+  function safeAmbassadorSocialUrl(value){
+    try{
+      const url=new URL(String(value||''));
+      const host=url.hostname.toLowerCase();
+      const allowed=host==='instagram.com'||host.endsWith('.instagram.com')||host==='tiktok.com'||host.endsWith('.tiktok.com');
+      return url.protocol==='https:'&&allowed?url.href:'';
+    }catch(e){return '';}
+  }
   function renderDashboard(){
     const d=taState.data||{},p=d.profile||{},b=Array.isArray(d.balance)?(d.balance[0]||{}):(d.balance||{});
     const refs=d.referrals||[],ledger=d.ledger||[],withdrawals=d.withdrawals||[],notifications=d.notifications||[],monthly=d.monthly_commissions||[];
@@ -14881,7 +15031,7 @@ function speakAiText(text,button){
      const withdrawals=count>0?`<section class="ta-admin-detail-section" id="taAdminDetailWithdrawalsSection"><h3>Demandes de retrait (${count})</h3><p class="ta-muted">Les montants proviennent des demandes enregistrées. Confirmez un paiement uniquement après le transfert réel.</p>${rows.length?`<div class="ta-table-wrap ta-admin-wide-table"><table class="ta-table"><thead><tr><th>Date</th><th>Brut demandé</th><th>Frais 1 %</th><th>Net à verser</th><th>Moyen</th><th>Bénéficiaire</th><th>Téléphone / identifiant</th><th>Statut</th><th>Action</th></tr></thead><tbody>${rows.map(w=>`<tr><td>${date(w.requested_at)}</td><td>${money(w.amount)}</td><td>${w.fee_amount!=null?money(w.fee_amount):'À vérifier côté serveur'}</td><td><b>${w.payout_amount!=null?money(w.payout_amount):'À vérifier côté serveur'}</b></td><td>${esc(w.payment_method||'—')}</td><td>${esc(w.payout_name||'—')}</td><td class="ta-admin-break">${esc(w.payout_identifier||'—')}</td><td>${({pending:'En attente',processing:'En traitement',paid:'Payé',rejected:'Rejeté'})[w.status]||esc(w.status||'Inconnu')}</td><td>${['pending','processing'].includes(w.status)?`<div class="ta-admin-row-actions">${w.status==='pending'?`<button class="ta-btn secondary" onclick="trAmbassadorAdminWithdrawalAmount('${esc(w.id)}')">Modifier montant</button>`:''}<button class="ta-btn ta-btn-success" onclick="trAmbassadorAdminWithdrawal('${esc(w.id)}','paid')">Confirmer paiement</button><button class="ta-btn secondary" onclick="trAmbassadorAdminWithdrawal('${esc(w.id)}','rejected')">Rejeter</button></div>`:'<span class="ta-muted">Finalisée</span>'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="ta-muted">Aucune ligne sur cette page.</p>'}${adminDetailPager('withdrawals',Number(d.withdrawals_page)||1,count,Number(d.page_size)||25)}</section>`:'';
      return `<section id="taAdminAmbassadorDetail" class="ta-card ta-admin-ambassador-detail" style="margin-top:18px;scroll-margin-top:24px" aria-labelledby="taAdminDetailTitle">
        <div class="ta-admin-detail-header"><div><span class="ta-eyebrow">FICHE AMBASSADEUR</span><h2 id="taAdminDetailTitle">${esc(p.full_name||'Ambassadeur')}</h2></div><button class="ta-btn secondary" onclick="trAmbassadorAdminCloseDetail()">Fermer la fiche</button></div>
-       <div class="ta-admin-identity"><span><b>E-mail</b>${esc(p.email||'—')}</span><span><b>Code ambassadeur</b><strong class="ta-admin-code">${esc(p.code||'—')}</strong></span><span><b>Statut</b>${esc(p.status==='active'?'Actif':p.status==='suspended'?'Suspendu':p.status||'Inconnu')}</span><span><b>Profil social</b>${p.social_link?`<a href="${esc(p.social_link)}" target="_blank" rel="noopener noreferrer">Ouvrir le profil ↗</a>`:'Non renseigné'}</span></div>
+       <div class="ta-admin-identity"><span><b>E-mail</b>${esc(p.email||'—')}</span><span><b>Code ambassadeur</b><strong class="ta-admin-code">${esc(p.code||'—')}</strong></span><span><b>Statut</b>${esc(p.status==='active'?'Actif':p.status==='suspended'?'Suspendu':p.status||'Inconnu')}</span><span><b>Profil social</b>${safeAmbassadorSocialUrl(p.social_link)?`<a href="${esc(safeAmbassadorSocialUrl(p.social_link))}" target="_blank" rel="noopener noreferrer">Ouvrir le profil ↗</a>`:'Non renseigné'}</span></div>
        <div class="ta-grid ta-admin-financial-grid">${metric('Commissions',d.balance?.total_commissions,'commissions')}${metric('Disponible',d.balance?.available_balance,'available_balance')}${metric('Retraits en attente',d.balance?.pending_withdrawals,'pending_withdrawals')}</div>
        <p class="ta-admin-backend-note">Toute correction des commissions ou du solde crée une écriture compensatrice et une trace d’audit côté serveur. Le total des retraits en attente reste calculé à partir des demandes individuelles, qui seules peuvent être corrigées.</p>
        <section class="ta-admin-detail-section"><span class="ta-eyebrow">ACTIONS SENSIBLES</span><h3>Actions nécessitant une autorisation distincte</h3><div class="ta-admin-action-grid">${action('bonus','Ajouter un bonus','Ajouter un bonus')}${action('adjustment','Correction négative','Effectuer la correction','ta-action-negative')}${action('suspend',p.status==='active'?'Suspendre le compte':'Réactiver le compte',p.status==='active'?'Suspendre':'Réactiver','secondary')}${action('delete','Suppression définitive','Supprimer définitivement','secondary')}</div></section>
