@@ -1155,6 +1155,7 @@ body{min-width:0;}
       </header>
       <div id="trAdminNotice" class="tr-admin-notice" role="status" aria-live="polite" hidden></div>
       <div id="trAdminContent" class="tr-admin-content"><div class="tr-admin-loading"><span class="tr-admin-spinner"></span><p>Vérification de l’accès administratif…</p></div></div>
+      <div id="trAdminSystemHealthRoot" class="tr-admin-content" hidden aria-live="polite" aria-busy="false"></div>
       <footer class="tr-admin-footer">Données administratives privées · Tous les accès aux données sont validés côté serveur.</footer>
     </main>
   </div>
@@ -4558,7 +4559,8 @@ const TR_ADMIN_SECTIONS = [
   {id:'reminders', label:'Rappels d’abonnement', icon:'calendar-clock', title:'Rappels d’abonnement', subtitle:'Historique des rappels consignés, en lecture seule.'},
   {id:'campaigns', label:'Mail collectif', icon:'send', title:'Mail collectif', subtitle:'Préparation, sélection, contrôle de quota et suivi des campagnes Gmail.'},
   {id:'reports', label:'Rapports et statistiques', icon:'chart', title:'Rapports et statistiques', subtitle:'Synthèse structurée des indicateurs réellement disponibles.'},
-  {id:'settings', label:'Sécurité et paramètres', icon:'shield-cog', title:'Sécurité et paramètres', subtitle:'Contrôles d’accès, connexion Gmail, journal administratif et personnalisation des modèles.'}
+  {id:'settings', label:'Sécurité et paramètres', icon:'shield-cog', title:'Sécurité et paramètres', subtitle:'Contrôles d’accès, connexion Gmail, journal administratif et personnalisation des modèles.'},
+  {id:'system-health', label:'Santé du système', icon:'shield-cog', title:'Santé du système', subtitle:'Contrôles techniques ponctuels, sources mesurées et incidents; les services non vérifiés restent explicitement inconnus.'}
 ];
 let trAdminSessionVerified = false;
 let trAdminInitializing = null;
@@ -4656,6 +4658,7 @@ function trAdminLockConsole(message){
   trAdminStopUserCounterRefresh();
   trAdminSessionVerified=false;trAdminState.identity=null;trAdminState.overview=null;trAdminState.list=null;
   const content=document.getElementById('trAdminContent');if(content)content.innerHTML='';
+  trAdminSetSystemHealthVisibility('');
   trAdminSetLoginMode(isAdminRouteRequested());
   setView('landing');
   if(isAdminRouteRequested()){trAdminSetLoginMode(true);openLogin('login');}
@@ -4707,6 +4710,7 @@ function trAdminOpenSection(section){
   if(section!=='campaigns')trAdminCampaignStopProgressPolling();
   if(!TR_ADMIN_SECTIONS.some(x=>x.id===section))return;
   trAdminCloseMobileNav();
+  trAdminSetSystemHealthVisibility(section);
   if(typeof trAdminCampaignState!=='undefined'&&trAdminCampaignState.historySelectedIds)trAdminCampaignState.historySelectedIds.clear();
   if(section==='campaigns'&&trAdminCampaignState.campaignId){trAdminCampaignState.campaignId='';trAdminCampaignState.detailPage=1;trAdminCampaignStopProgressPolling();}
   trAdminState.section=section;trAdminState.page=1;trAdminState.search='';trAdminState.plan='';trAdminState.status='';trAdminState.createdFrom='';trAdminState.createdTo='';trAdminState.restaurantId='';trAdminState.detailId='';
@@ -4717,6 +4721,7 @@ function trAdminLeave(){
   trAdminStopUserCounterRefresh();trAdminCampaignStopProgressPolling();
   trAdminSessionVerified=false;trAdminState.identity=null;trAdminState.overview=null;trAdminState.list=null;
   const content=document.getElementById('trAdminContent');if(content)content.innerHTML='';
+  trAdminSetSystemHealthVisibility('');
   trAdminSetLoginMode(false);
   try{const u=new URL(location.href);u.searchParams.delete('admin');history.replaceState({},'',u.pathname+u.search+u.hash);}catch(_e){}
   setView('landing');hideRestoSplash();
@@ -5539,6 +5544,76 @@ async function trAdminGmailVerify(){if(!trAdminSessionVerified)return;try{await 
 async function trAdminGmailDisconnect(){if(!trAdminSessionVerified||!confirm('Déconnecter le compte Gmail utilisé uniquement pour les campagnes collectives ? Les e-mails automatiques ne seront pas modifiés.'))return;try{const result=await trAdminRequest('gmail_disconnect');toast(result?.message||'Connexion Gmail supprimée.');await trAdminGmailReloadSettings();}catch(error){toast(String(error?.message||'Impossible de déconnecter Gmail.'),false);}}
 if(!window.__trAdminGmailOAuthMessageBound){window.__trAdminGmailOAuthMessageBound=true;window.addEventListener('message',event=>{let expected='';try{expected=new URL(SUPABASE_URL).origin;}catch{}if(!expected||event.origin!==expected||event.data?.type!=='TR_ADMIN_GMAIL_OAUTH'||!['success','error','cancelled'].includes(event.data?.status))return;if(event.data.status==='success')toast(String(event.data.message||'Gmail connecté et vérifié.'));else toast(String(event.data.message||'Connexion Gmail non finalisée.'),false);if(trAdminSessionVerified&&trAdminState.section==='settings')void trAdminGmailReloadSettings();});}
 
+function trAdminSetSystemHealthVisibility(section){
+  const standard=document.getElementById('trAdminContent');
+  const health=document.getElementById('trAdminSystemHealthRoot');
+  const active=section==='system-health';
+  if(standard)standard.hidden=active;
+  if(health){
+    health.hidden=!active;
+    health.setAttribute('aria-busy','false');
+    if(!active)health.innerHTML='';
+  }
+}
+function trAdminHealthStatusLabel(status){
+  return ({healthy:'Sain',warning:'Avertissement',critical:'Critique',unknown:'Inconnu'})[String(status||'unknown')]||'Inconnu';
+}
+function trAdminHealthStatusClass(status){
+  return ['healthy','warning','critical','unknown'].includes(String(status))?String(status):'unknown';
+}
+function trAdminHealthRender(checks,incidents,unverified,checkedAt,cached,cacheSeconds){
+  const serviceAccent={site:'#3267a8',supabase_data_api:'#7c52b8',system_health_api:'#b58520',vercel_deployments:'#27394f',resend_api:'#167c78'};
+  const safeChecks=Array.isArray(checks)?checks:[];
+  const safeIncidents=Array.isArray(incidents)?incidents:[];
+  const safeUnverified=Array.isArray(unverified)?unverified:[];
+  const critical=safeChecks.filter(x=>x.status==='critical').length;
+  const warnings=safeChecks.filter(x=>x.status==='warning').length;
+  const unknown=safeChecks.filter(x=>trAdminHealthStatusClass(x.status)==='unknown').length;
+  const activeIncidents=safeIncidents.filter(x=>!x.resolved_at).length;
+  const overall=critical?'critical':warnings?'warning':unknown||!safeChecks.length?'unknown':'healthy';
+  const overallText=critical?'Incident critique parmi les contrôles exécutés':warnings?'Avertissement parmi les contrôles exécutés':unknown?'État global inconnu : certains contrôles ne sont pas concluants':safeChecks.length?'Tous les contrôles exécutés sont sains':'Aucun contrôle disponible';
+  const cards=safeChecks.map(check=>{
+    const key=String(check.service_key||'');
+    const status=trAdminHealthStatusClass(check.status);
+    const accent=serviceAccent[key]||'#68758a';
+    const measurement=check.measurement&&typeof check.measurement==='object'?check.measurement:{};
+    const metricParts=[];
+    if(Number.isFinite(Number(check.latency_ms))&&check.latency_ms!==null)metricParts.push(`${Math.round(Number(check.latency_ms))} ms mesurés`);
+    if(Number.isInteger(Number(check.http_status))&&check.http_status!==null)metricParts.push(`HTTP ${Number(check.http_status)}`);
+    if(measurement.deployment_state)metricParts.push(`Déploiement ${String(measurement.deployment_state)}`);
+    if(measurement.created_at)metricParts.push(`Créé le ${trAdminDate(measurement.created_at)}`);
+    const metrics=metricParts.length?`<div class="tr-health-metrics">${metricParts.map(item=>`<span>${trAdminEscape(item)}</span>`).join('')}</div>`:'<p class="tr-health-no-metric">Aucune latence ou mesure chiffrée disponible pour ce contrôle.</p>';
+    return `<article class="tr-health-service-card"><div class="tr-health-service-head"><span class="tr-health-ring" style="--tr-health-accent:${accent}" aria-hidden="true"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="17" fill="none" stroke="currentColor" stroke-width="4"/></svg></span><div class="tr-health-service-title"><h3>${trAdminEscape(check.service_name||key||'Service')}</h3><span class="tr-health-status tr-health-status-${status}">${trAdminEscape(trAdminHealthStatusLabel(status))}</span></div></div><p class="tr-health-service-message">${trAdminEscape(check.message||'Aucun détail fourni.')}</p>${metrics}<p class="tr-health-checked">Dernier contrôle : ${trAdminEscape(trAdminDate(check.checked_at||checkedAt))}</p><details class="tr-health-method"><summary>Source, méthode et limites</summary><dl><dt>Source</dt><dd>${trAdminEscape(check.source||'Non documentée')}</dd><dt>Méthode</dt><dd>${trAdminEscape(check.method||'Non documentée')}</dd><dt>Formule et règle d’état</dt><dd>${trAdminEscape(check.formula||'Aucune formule documentée')}</dd><dt>Période</dt><dd>${trAdminEscape(check.period||'Instantané')}</dd><dt>Limites</dt><dd>${trAdminEscape(check.limitations||'Non documentées')}</dd></dl></details></article>`;
+  }).join('');
+  const incidentRows=safeIncidents.length?safeIncidents.map(item=>`<tr><td>${trAdminEscape(trAdminDate(item.started_at))}</td><td>${trAdminEscape(item.service_name||item.service_key||'Service')}</td><td><span class="tr-health-status tr-health-status-${trAdminHealthStatusClass(item.severity)}">${trAdminEscape(trAdminHealthStatusLabel(item.severity))}</span></td><td>${trAdminEscape(item.message||'—')}</td><td>${item.resolved_at?`Résolu le ${trAdminEscape(trAdminDate(item.resolved_at))}`:'<strong>En cours</strong>'}</td></tr>`).join(''):'<tr><td colspan="5">Aucun incident enregistré dans les contrôles réellement exécutés.</td></tr>';
+  const unknownRows=safeUnverified.length?safeUnverified.map(item=>`<article class="tr-health-unverified-item"><div><strong>${trAdminEscape(item.name||'Service')}</strong><span class="tr-health-status tr-health-status-unknown">Non vérifié</span></div><p>${trAdminEscape(item.reason||'Aucune méthode de contrôle disponible.')}</p><small>Source / motif : ${trAdminEscape(item.source||'Non confirmé')}</small></article>`).join(''):'<p class="tr-health-muted">Tous les contrôles présentés ont une source de mesure déclarée. Cela ne garantit pas une couverture exhaustive de la plateforme.</p>';
+  return `<div class="tr-health-page"><div class="tr-health-toolbar"><div><p class="tr-health-eyebrow">SUPERVISION TECHNIQUE</p><h2>État vérifié des services</h2><p>Une carte n’affiche un état coloré que si un contrôle réel a été exécuté. Aucun score global ni pourcentage estimé n’est calculé.</p></div><div class="tr-health-toolbar-meta"><span class="tr-health-status tr-health-status-${overall}">${trAdminEscape(overallText)}</span><span>Relevé : ${trAdminEscape(trAdminDate(checkedAt))}</span>${cached?`<span>Relevé mis en cache (${Number(cacheSeconds)||60} s maximum)</span>`:'<span>Nouveau relevé enregistré</span>'}</div></div><div class="tr-health-legend" aria-label="Légende des statuts"><span><i class="tr-health-legend-dot healthy"></i>Sain</span><span><i class="tr-health-legend-dot warning"></i>Avertissement</span><span><i class="tr-health-legend-dot critical"></i>Critique</span><span><i class="tr-health-legend-dot unknown"></i>Inconnu / non vérifié</span></div><div class="tr-health-summary"><div><span>Contrôles exécutés</span><strong>${safeChecks.length}</strong></div><div><span>Contrôles critiques</span><strong>${critical}</strong></div><div><span>Avertissements mesurés</span><strong>${warnings}</strong></div><div><span>Incidents actifs</span><strong>${activeIncidents}</strong></div></div><section class="tr-health-section"><div class="tr-health-section-head"><h2>Services contrôlés</h2><p>La couleur de l’anneau identifie le service; le badge séparé décrit la gravité de son état.</p></div><div class="tr-health-service-grid">${cards||'<div class="tr-health-empty">Aucun contrôle réel n’a pu être affiché.</div>'}</div></section><section class="tr-health-section"><div class="tr-health-section-head"><h2>Historique des incidents</h2><p>Historique des avertissements et incidents critiques enregistrés. Un statut inconnu ne ferme pas un incident actif.</p></div><div class="tr-health-table-wrap"><table class="tr-health-table"><thead><tr><th>Début</th><th>Service</th><th>Gravité</th><th>Message</th><th>État</th></tr></thead><tbody>${incidentRows}</tbody></table></div></section><section class="tr-health-section"><div class="tr-health-section-head"><h2>Services non vérifiés</h2><p>Ces services restent gris tant qu’une source sûre et vérifiable n’est pas disponible. Aucun test métier n’est déclenché pour les faire passer au vert.</p></div><div class="tr-health-unverified-grid">${unknownRows}</div></section><p class="tr-health-footnote">Politique de mesure : historique des contrôles conservé 90 jours et incidents résolus conservés 180 jours. L’actualisation manuelle peut réutiliser un relevé pendant ${Number(cacheSeconds)||60} secondes afin de limiter les appels externes. Les mesures sont ponctuelles et ne représentent pas une disponibilité sur 24 heures.</p></div>`;
+}
+async function trAdminLoadSystemHealth(token){
+  const host=document.getElementById('trAdminSystemHealthRoot');
+  if(!host||!trAdminSessionVerified||trAdminState.section!=='system-health')return;
+  host.hidden=false;host.setAttribute('aria-busy','true');
+  host.innerHTML='<div class="tr-admin-loading"><span class="tr-admin-spinner"></span><p>Contrôle des services configurés…</p></div>';
+  try{
+    const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+    const accessToken=sessionData?.session?.access_token;
+    if(sessionError||!accessToken)throw new Error('Session expirée. Reconnectez-vous pour consulter la santé du système.');
+    const {data,error}=await supabaseClient.functions.invoke('system-health-api',{body:{action:'snapshot'},headers:{Authorization:`Bearer ${accessToken}`}});
+    if(error||!data?.ok){
+      const serverMessage=data?.message||data?.error?.message;
+      throw new Error(String(serverMessage||error?.message||'L’API Santé du système est indisponible. Vérifiez la migration et les journaux serveur.'));
+    }
+    if(token!==trAdminLoadToken||trAdminState.section!=='system-health')return;
+    const result=data.result||{};
+    host.innerHTML=trAdminHealthRender(result.checks,result.incidents,result.unverified_services,result.checked_at,result.cached,result.cache_seconds);
+  }catch(error){
+    if(token!==trAdminLoadToken||trAdminState.section!=='system-health')return;
+    host.innerHTML=`<section class="tr-health-error"><h2>Supervision indisponible</h2><p>${trAdminEscape(error?.message||'Le relevé n’a pas pu être chargé.')}</p><p>Ce message ne prouve pas une panne des autres services. Vérifiez que la migration additive est appliquée, que system-health-api est déployée en préproduction et que ses secrets serveur sont configurés.</p><button type="button" class="tr-admin-btn tr-admin-btn-light" onclick="trAdminRefresh()">Réessayer</button></section>`;
+  }finally{
+    if(token===trAdminLoadToken&&trAdminState.section==='system-health')host.setAttribute('aria-busy','false');
+  }
+}
+
 async function trAdminLoadSection(section){
   if(section!=='overview')trAdminStopUserCounterRefresh();
   if(section!=='campaigns')trAdminCampaignStopProgressPolling();
@@ -5549,10 +5624,12 @@ async function trAdminLoadSection(section){
     if(title)title.textContent='Fiche restaurant';
     if(subtitle)subtitle.textContent='Informations administratives utiles, sans consultation des commandes individuelles.';
   }
-  trAdminSetNotice('',false);trAdminRenderLoading();
+  trAdminSetNotice('',false);trAdminSetSystemHealthVisibility(section);
+  if(section!=='system-health')trAdminRenderLoading();
   const content=document.getElementById('trAdminContent');
   try{
     let result;
+    if(section==='system-health'){await trAdminLoadSystemHealth(token);return;}
     if(['notifications','reminders','campaigns','settings'].includes(section)){
       if(token!==trAdminLoadToken)return;
       if(section==='reminders'){await trAdminLoadReminderSection(token);return;}
@@ -15573,6 +15650,69 @@ body.ta-ambassador-dashboard-mode #platformHeader{display:none!important}
 @media(prefers-reduced-motion:reduce){#trAdminContent .ta-safety-switch .ta-switch-knob{transition:none}}
 </style>
 
+<style id="tr-admin-system-health-styles">
+#view-admin-console #trAdminSystemHealthRoot[hidden]{display:none!important}
+#view-admin-console #trAdminSystemHealthRoot{min-width:0;animation:trAdminEnter .18s ease both}
+#trAdminSystemHealthRoot .tr-health-page{--tr-health-ink:#18263a;--tr-health-muted:#627086;--tr-health-line:#dfe5ed;color:var(--tr-health-ink);min-width:0;padding:0 0 24px}
+#trAdminSystemHealthRoot .tr-health-page *{box-sizing:border-box}
+#trAdminSystemHealthRoot .tr-health-toolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;padding:20px;border:1px solid var(--tr-health-line);border-radius:16px;background:linear-gradient(135deg,#fff,#f4f7fb)}
+#trAdminSystemHealthRoot .tr-health-eyebrow{font-size:10px;font-weight:850;letter-spacing:.13em;color:#8d6a21;margin:0 0 7px}
+#trAdminSystemHealthRoot .tr-health-toolbar h2{font-size:clamp(20px,2.4vw,28px);line-height:1.2;margin:0;color:var(--tr-health-ink)}
+#trAdminSystemHealthRoot .tr-health-toolbar p:not(.tr-health-eyebrow){font-size:12px;line-height:1.6;color:var(--tr-health-muted);max-width:690px;margin:8px 0 0}
+#trAdminSystemHealthRoot .tr-health-toolbar-meta{display:flex;flex-direction:column;align-items:flex-start;gap:7px;font-size:11px;color:var(--tr-health-muted);min-width:180px}
+#trAdminSystemHealthRoot .tr-health-status{display:inline-flex;align-items:center;justify-content:center;width:max-content;max-width:100%;padding:5px 9px;border-radius:99px;font-size:10px;line-height:1.3;font-weight:800;border:1px solid transparent;white-space:normal}
+#trAdminSystemHealthRoot .tr-health-status-healthy{color:#17623b;background:#e5f5eb;border-color:#b5e1c5}
+#trAdminSystemHealthRoot .tr-health-status-warning{color:#8a4b00;background:#fff1d6;border-color:#f1d39b}
+#trAdminSystemHealthRoot .tr-health-status-critical{color:#9a2424;background:#fde8e8;border-color:#f4baba}
+#trAdminSystemHealthRoot .tr-health-status-unknown{color:#586477;background:#eef1f5;border-color:#d8dee7}
+#trAdminSystemHealthRoot .tr-health-legend{display:flex;flex-wrap:wrap;gap:14px;margin:14px 2px 16px;color:var(--tr-health-muted);font-size:11px}
+#trAdminSystemHealthRoot .tr-health-legend>span{display:inline-flex;align-items:center;gap:6px}
+#trAdminSystemHealthRoot .tr-health-legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+#trAdminSystemHealthRoot .tr-health-legend-dot.healthy{background:#198754}#trAdminSystemHealthRoot .tr-health-legend-dot.warning{background:#d97706}#trAdminSystemHealthRoot .tr-health-legend-dot.critical{background:#dc2626}#trAdminSystemHealthRoot .tr-health-legend-dot.unknown{background:#98a2b3}
+#trAdminSystemHealthRoot .tr-health-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 26px}
+#trAdminSystemHealthRoot .tr-health-summary>div{padding:15px;border:1px solid var(--tr-health-line);border-radius:13px;background:#fff;min-width:0}
+#trAdminSystemHealthRoot .tr-health-summary span{display:block;color:var(--tr-health-muted);font-size:10px;line-height:1.4}
+#trAdminSystemHealthRoot .tr-health-summary strong{display:block;margin-top:8px;color:var(--tr-health-ink);font-size:clamp(20px,2.5vw,29px);line-height:1.1;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-section{margin-top:26px}
+#trAdminSystemHealthRoot .tr-health-section-head{margin-bottom:12px}
+#trAdminSystemHealthRoot .tr-health-section-head h2{margin:0;font-size:18px;color:var(--tr-health-ink)}
+#trAdminSystemHealthRoot .tr-health-section-head p{margin:5px 0 0;color:var(--tr-health-muted);font-size:11px;line-height:1.5}
+#trAdminSystemHealthRoot .tr-health-service-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#trAdminSystemHealthRoot .tr-health-service-card{min-width:0;padding:16px;border:1px solid var(--tr-health-line);border-radius:14px;background:#fff;box-shadow:0 4px 16px rgba(24,39,75,.025)}
+#trAdminSystemHealthRoot .tr-health-service-head{display:flex;align-items:center;gap:11px;min-width:0}
+#trAdminSystemHealthRoot .tr-health-ring{display:grid;place-items:center;width:46px;height:46px;flex:0 0 46px;border-radius:50%;color:var(--tr-health-accent);background:color-mix(in srgb,var(--tr-health-accent) 8%,white);border:1px solid color-mix(in srgb,var(--tr-health-accent) 24%,white)}
+#trAdminSystemHealthRoot .tr-health-ring svg{width:34px;height:34px}
+#trAdminSystemHealthRoot .tr-health-service-title{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+#trAdminSystemHealthRoot .tr-health-service-title h3{margin:0;font-size:14px;line-height:1.4;overflow-wrap:anywhere;color:var(--tr-health-ink)}
+#trAdminSystemHealthRoot .tr-health-service-message{margin:12px 0 0;font-size:12px;line-height:1.6;color:#35445a;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-metrics{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+#trAdminSystemHealthRoot .tr-health-metrics span{display:inline-flex;padding:5px 7px;border-radius:7px;background:#f1f4f8;color:#425168;font-size:10px;font-weight:750}
+#trAdminSystemHealthRoot .tr-health-no-metric{font-size:10px;color:var(--tr-health-muted);margin:10px 0 0;line-height:1.5}
+#trAdminSystemHealthRoot .tr-health-checked{font-size:10px;color:var(--tr-health-muted);margin:11px 0 0}
+#trAdminSystemHealthRoot .tr-health-method{margin-top:12px;border-top:1px solid #edf0f4;padding-top:9px}
+#trAdminSystemHealthRoot .tr-health-method summary{font-size:10px;font-weight:800;color:#46556a;cursor:pointer}
+#trAdminSystemHealthRoot .tr-health-method dl{display:grid;grid-template-columns:115px minmax(0,1fr);gap:7px 10px;margin:10px 0 0;font-size:10px;line-height:1.55}
+#trAdminSystemHealthRoot .tr-health-method dt{font-weight:800;color:#59687c}
+#trAdminSystemHealthRoot .tr-health-method dd{margin:0;color:#3f4c60;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--tr-health-line);border-radius:12px;background:#fff}
+#trAdminSystemHealthRoot .tr-health-table{width:100%;border-collapse:collapse;min-width:740px;font-size:11px}
+#trAdminSystemHealthRoot .tr-health-table th,#trAdminSystemHealthRoot .tr-health-table td{padding:11px 10px;text-align:left;vertical-align:top;border-bottom:1px solid #e9edf3;line-height:1.5}
+#trAdminSystemHealthRoot .tr-health-table th{background:#f5f7fa;color:#536178;font-size:9px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+#trAdminSystemHealthRoot .tr-health-table tr:last-child td{border-bottom:0}
+#trAdminSystemHealthRoot .tr-health-unverified-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#trAdminSystemHealthRoot .tr-health-unverified-item{border:1px solid var(--tr-health-line);border-radius:12px;padding:12px;background:#f9fafb;min-width:0}
+#trAdminSystemHealthRoot .tr-health-unverified-item>div{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+#trAdminSystemHealthRoot .tr-health-unverified-item strong{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-unverified-item p{margin:8px 0;color:#48566b;font-size:11px;line-height:1.55;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-unverified-item small{display:block;color:var(--tr-health-muted);font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+#trAdminSystemHealthRoot .tr-health-footnote{margin-top:18px;color:var(--tr-health-muted);font-size:10px;line-height:1.6}
+#trAdminSystemHealthRoot .tr-health-empty,#trAdminSystemHealthRoot .tr-health-error{border:1px solid var(--tr-health-line);border-radius:14px;padding:18px;background:#fff}
+#trAdminSystemHealthRoot .tr-health-error h2{margin:0 0 8px;color:#9a2424;font-size:18px}
+#trAdminSystemHealthRoot .tr-health-error p{font-size:12px;color:#536178;line-height:1.6}
+@media(max-width:820px){#trAdminSystemHealthRoot .tr-health-service-grid{grid-template-columns:1fr}#trAdminSystemHealthRoot .tr-health-unverified-grid{grid-template-columns:1fr}}
+@media(max-width:560px){#trAdminSystemHealthRoot .tr-health-toolbar{padding:14px}#trAdminSystemHealthRoot .tr-health-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#trAdminSystemHealthRoot .tr-health-summary>div{padding:12px}#trAdminSystemHealthRoot .tr-health-service-card{padding:13px}#trAdminSystemHealthRoot .tr-health-method dl{grid-template-columns:1fr;gap:3px}#trAdminSystemHealthRoot .tr-health-method dd{margin-bottom:7px}}
+@media(prefers-reduced-motion:reduce){#trAdminSystemHealthRoot{animation:none}}
+</style>
 </body>
 </html>
 
