@@ -2785,6 +2785,36 @@ function restaurantSlugFromLocation(){
   return new URLSearchParams(location.search).get('resto');
 }
 
+// Empêche une lecture publique Supabase qui ne répond jamais de laisser
+// l'écran de chargement bloqué. Les délais dépassés restent des erreurs :
+// ils ne sont jamais interprétés comme une boutique chargée ou vide.
+function awaitPublicStorefrontQuery(query, timeoutMs=12000){
+  return new Promise(resolve=>{
+    let settled=false;
+    let timer=null;
+    let controller=null;
+    const finish=result=>{
+      if(settled)return;
+      settled=true;
+      if(timer!==null)clearTimeout(timer);
+      resolve(result && typeof result==='object' ? result : {data:null,error:new Error('Réponse invalide lors du chargement de la boutique.')});
+    };
+    try{
+      if(typeof AbortController==='function')controller=new AbortController();
+      const request=controller && query && typeof query.abortSignal==='function'
+        ? query.abortSignal(controller.signal)
+        : query;
+      timer=setTimeout(()=>{
+        try{controller?.abort();}catch(e){}
+        finish({data:null,error:new Error('Le chargement de la boutique a dépassé le délai prévu. Vérifiez la connexion puis rechargez la page.')});
+      },timeoutMs);
+      Promise.resolve(request).then(finish,error=>finish({data:null,error:error instanceof Error?error:new Error('La lecture de la boutique a échoué.')}));
+    }catch(error){
+      finish({data:null,error:error instanceof Error?error:new Error('La lecture de la boutique a échoué.')});
+    }
+  });
+}
+
 /* Résolution publique d'un domaine personnalisé.
    - Les hôtes TerangaResto restent gérés par le routage existant.
    - Un domaine personnalisé actif est prioritaire sur ?resto= et sur la session.
@@ -2815,11 +2845,11 @@ async function resolvePublicRestaurantFromHostname(){
   const host = normaliseDomainePublic(rawHost);
 
   try{
-    const {data,error} = await supabaseClient
+    const {data,error} = await awaitPublicStorefrontQuery(supabaseClient
       .from('restaurants')
       .select('id,slug,social')
       .eq('social->>custom_domain_status','active')
-      .eq('social->>custom_domain',host);
+      .eq('social->>custom_domain',host));
 
     if(error){
       console.error('Résolution du domaine personnalisé:', error);
@@ -4120,14 +4150,14 @@ async function preloadRestaurantPublicBySlug(slug){
   const clean = slugify(slug);
   if(!clean) return {clean,found:false};
 
-  const restaurantResult = await supabaseClient.from('restaurants').select(
+  const restaurantResult = await awaitPublicStorefrontQuery(supabaseClient.from('restaurants').select(
     'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
     'address,city,phone,hours,delivery,social,show_map,maps_link,' +
     'notifications_enabled,order_notification_email,order_notification_email_verified,' +
     'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
     'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
     'plan,payment_toggles'
-  ).eq('slug', clean).maybeSingle();
+  ).eq('slug', clean).maybeSingle());
 
   if(restaurantResult.error || !restaurantResult.data){
     return {clean,found:false,error:restaurantResult.error||null};
@@ -4136,14 +4166,14 @@ async function preloadRestaurantPublicBySlug(slug){
   const restaurantId = restaurantResult.data.id;
   const reviewsPromise = supabaseClient.from('reviews').select('*').eq('restaurant_id', restaurantId).eq('is_published', true).order('created_at', {ascending:false});
   const [categoriesResult, productsResult] = await Promise.all([
-    supabaseClient.from('categories').select(
+    awaitPublicStorefrontQuery(supabaseClient.from('categories').select(
       'key,label,visible_on_home,sort_order'
-    ).eq('restaurant_id', restaurantId).order('sort_order'),
-    supabaseClient.from('products').select(
+    ).eq('restaurant_id', restaurantId).order('sort_order')),
+    awaitPublicStorefrontQuery(supabaseClient.from('products').select(
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
-    ).eq('restaurant_id', restaurantId).order('created_at')
+    ).eq('restaurant_id', restaurantId).order('created_at'))
   ]);
-  const categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
+  const categoryCoverPhotosPromise = loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
 
   return {
     clean,
@@ -4152,7 +4182,7 @@ async function preloadRestaurantPublicBySlug(slug){
     restaurantResult,
     categoriesResult,
     productsResult,
-    categoryCoverPhotos,
+    categoryCoverPhotosPromise,
     reviewsPromise
   };
 }
@@ -4176,30 +4206,32 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   let categoriesResult;
   let productsResult;
   let categoryCoverPhotos = [];
+  let categoryCoverPhotosPromise = null;
 
   if(preloaded){
     restaurantResult = preloaded.restaurantResult;
     categoriesResult = preloaded.categoriesResult;
     productsResult = preloaded.productsResult;
     categoryCoverPhotos = Array.isArray(preloaded.categoryCoverPhotos) ? preloaded.categoryCoverPhotos : [];
+    categoryCoverPhotosPromise = preloaded.categoryCoverPhotosPromise || null;
   }else{
     [restaurantResult, categoriesResult, productsResult] = await Promise.all([
-    supabaseClient.from('restaurants').select(
+    awaitPublicStorefrontQuery(supabaseClient.from('restaurants').select(
       'id,created_at,name,slug,type,primary_color,secondary_color,text_color,' +
       'address,city,phone,hours,delivery,social,show_map,maps_link,' +
       'notifications_enabled,order_notification_email,order_notification_email_verified,' +
       'order_notification_email_pending,order_notification_channel,is_published,hero_title,hero_subtitle,logo_data_url,cover_data_url,' +
       'subscription_status,billing_cycle,trial_ends_at,current_period_end,last_renewed_at,' +
       'plan,payment_toggles'
-    ).eq('id', restaurantId).single(),
-    supabaseClient.from('categories').select(
+    ).eq('id', restaurantId).single()),
+    awaitPublicStorefrontQuery(supabaseClient.from('categories').select(
       'key,label,visible_on_home,sort_order'
-    ).eq('restaurant_id', restaurantId).order('sort_order'),
-    supabaseClient.from('products').select(
+    ).eq('restaurant_id', restaurantId).order('sort_order')),
+    awaitPublicStorefrontQuery(supabaseClient.from('products').select(
       'id,name,desc,price,cat,prep,active,available,variants,variants_required,stock,threshold'
-    ).eq('restaurant_id', restaurantId).order('created_at')
+    ).eq('restaurant_id', restaurantId).order('created_at'))
   ]);
-    categoryCoverPhotos = await loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
+    categoryCoverPhotosPromise = loadPublicCategoryCoverPhotos(restaurantId, categoriesResult.data || [], productsResult.data || []);
   }
 
   if(restaurantResult.error || categoriesResult.error || productsResult.error || !restaurantResult.data){
@@ -4280,9 +4312,15 @@ async function loadRestaurantPublicFast(restaurantId, skipRealtimeSubscribe=fals
   abonSelectedPlan = null;
   abonSelectedCycle = null;
 
-  // Les photos nécessaires aux couvertures des catégories visibles font
-  // partie du premier affichage ; toutes les autres restent différées.
-  applyPublicProductPhotoRows(categoryCoverPhotos);
+  // Les photos de couverture sont secondaires : leur réponse ne bloque plus
+  // le premier affichage. Elles sont appliquées si elles arrivent ensuite.
+  if(categoryCoverPhotos.length)applyPublicProductPhotoRows(categoryCoverPhotos);
+  if(categoryCoverPhotosPromise){
+    Promise.resolve(categoryCoverPhotosPromise).then(rows=>{
+      if(String(RESTAURANT.id||'')!==String(restaurantId||''))return;
+      if(Array.isArray(rows)&&rows.length)applyPublicProductPhotoRows(rows);
+    }).catch(error=>console.warn('Chargement différé des photos de couverture:',error));
+  }
   loadRestaurantPublicImagesFast(restaurantId, categoryCoverPhotos.map(x => String(x.id)));
   loadRestaurantPublicReviewsSecondaryData(restaurantId, preloaded?.reviewsPromise || null);
   if(!skipRealtimeSubscribe) subscribeToPublicRealtime(restaurantId);
@@ -5764,6 +5802,13 @@ async function restoreSession(){
       viewerIsStaff = false;
       hideAuthCheckSplash();
 
+      if(hostnameTarget.error){
+        markPublicLoadError(hostnameTarget.slug || '', hostnameTarget.restaurantId || '');
+        setView('storefront');
+        hideRestoSplash();
+        return;
+      }
+
       if(hostnameTarget.restaurantId){
         restoSplashProgress(45);
 
@@ -5804,7 +5849,10 @@ async function restoreSession(){
       const preloaded = publicQrPreload ? await publicQrPreload : null;
       let found = false;
 
-      if(preloaded?.found){
+      if(preloaded?.error){
+        markPublicLoadError(restoSlug);
+        found = true;
+      }else if(preloaded?.found){
         found = await loadRestaurantPublicFast(
           preloaded.restaurantId,
           false,
@@ -5869,6 +5917,15 @@ async function restoreSession(){
     currentUser = null;
     viewerIsStaff = false;
     try{ localStorage.removeItem('tg_returning_user'); }catch(_e){}
+    // Pour une URL de boutique directe, une exception inattendue doit afficher
+    // l'état technique prévu, pas révéler la page d'accueil comme faux succès.
+    try{
+      const failedPublicSlug=restaurantSlugFromLocation();
+      if(failedPublicSlug || !isKnownPlatformHost(location.hostname)){
+        markPublicLoadError(failedPublicSlug || '');
+        setView('storefront');
+      }
+    }catch(publicError){console.error('Échec de récupération de la boutique:',publicError);}
     hideAuthCheckSplash();
     hideRestoSplash();
   }
@@ -7877,7 +7934,7 @@ async function loadRestaurantPublicGateState(slug){
      - erreur => problème technique : on affiche une erreur de lecture,
                  jamais un faux état métier "indisponible". */
   try{
-    const {data, error} = await supabaseClient.rpc('is_slug_available', {p_slug: slug});
+    const {data, error} = await awaitPublicStorefrontQuery(supabaseClient.rpc('is_slug_available', {p_slug: slug}));
     if(error){
       markPublicLoadError(slug);
       console.error('is_slug_available:', error);
@@ -7914,11 +7971,11 @@ async function loadRestaurantBySlug(slug){
   const clean = slugify(slug);
   if(!clean) return false;
 
-  const {data, error} = await supabaseClient
+  const {data, error} = await awaitPublicStorefrontQuery(supabaseClient
     .from('restaurants')
     .select('id')
     .eq('slug', clean)
-    .maybeSingle();
+    .maybeSingle());
 
   if(error){
     markPublicLoadError(clean);
@@ -7933,10 +7990,15 @@ async function loadRestaurantBySlug(slug){
   if(await loadRestaurantPublicGateState(clean)) return true;
 
   try{
-    const {data:redirectRows} = await supabaseClient
+    const {data:redirectRows, error:redirectError} = await awaitPublicStorefrontQuery(supabaseClient
       .from('restaurants')
       .select('id,social')
-      .contains('social', {slug_redirects:[{slug:clean}]});
+      .contains('social', {slug_redirects:[{slug:clean}]}));
+    if(redirectError){
+      markPublicLoadError(clean);
+      console.warn('Redirection ancien sous-domaine:', redirectError);
+      return true;
+    }
 
     const now = Date.now();
     const row = (redirectRows || []).find(r => {
@@ -8561,7 +8623,7 @@ async function createRestaurantAndPay(){
 
   const row = await createRestaurantFromOnboarding();
   if(!row){
-    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)}`; hydrateIcons(); }
     return;
   }
   clearPendingOnboarding();
@@ -13240,7 +13302,7 @@ function abonCardHtml(){
   </div>
   <div style="border-top:1px solid var(--cream-line);padding-top:14px;">
     <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} ${cycle==='annual'?'/ an':'/mois'}</p></div>
-    <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech</button>
+    <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)}</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
     <p style="font-size:12px;color:var(--ink-soft);">${freeForbidden?'Le forfait Gratuit n’est plus disponible après un paiement Starter ou Premium.':'Aucun paiement requis pour le forfait Gratuit.'}</p>
@@ -13401,7 +13463,7 @@ async function startPayTechCheckout(plan){
       data, error, RESTAURANT.id, plan, cycle,
       "Impossible de démarrer le paiement PayTech. Réessayez après avoir vérifié la connexion."
     );
-    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)} avec PayTech`; hydrateIcons(); }
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)}`; hydrateIcons(); }
     return;
   }
   // La clé est conservée jusqu'à une réponse terminale du serveur. Si la
@@ -15515,8 +15577,9 @@ window.trAmbassadorAdminOpen=()=>{taClearAllArms();taState.adminDetail=null;taSt
   function ensureCodeField(buttonId){
     const button=document.getElementById(buttonId),boxId='trAmbassadorCodeBox_'+buttonId,inputId='trAmbassadorCodeInput_'+buttonId;
     if(!button||document.getElementById(boxId))return;
-    const box=document.createElement('details');box.id=boxId;box.className='tr-ambassador-code-box';
-    box.innerHTML='<summary>Vous avez un code ambassadeur ?</summary><label for="'+inputId+'" style="display:block;font-size:12px;margin-top:8px">Code promotionnel (facultatif)</label><input id="'+inputId+'" autocomplete="off" maxlength="24" placeholder="Code alphanumérique (6 à 15 caractères pour les nouveaux codes)"><div class="ta-msg" aria-live="polite"></div><p style="font-size:11px;color:#777;margin-top:5px">Un code invalide ne bloque pas votre paiement et ne crée aucune attribution.</p>';
+    const box=document.createElement('div');box.id=boxId;box.className='tr-ambassador-code-box';
+    box.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #eadcc2;border-radius:12px;background:#fffaf2;min-width:0;max-width:100%;box-sizing:border-box;';
+    box.innerHTML='<label for="'+inputId+'" style="display:block;font-size:12px;font-weight:700;margin:0 0 6px;color:#805514">Code ambassadeur (facultatif)</label><input id="'+inputId+'" autocomplete="off" maxlength="24" placeholder="Saisissez le code de votre ambassadeur" style="display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #d9d1c3;border-radius:9px;background:#fff;font-size:14px;color:#2b1810"><div class="ta-msg" aria-live="polite"></div><p style="font-size:11px;color:#777;margin:6px 0 0">Facultatif : un code invalide ne bloque pas le paiement et ne crée aucune attribution.</p>';
     button.parentNode.insertBefore(box,button);
     try{const urlCode=new URLSearchParams(location.search).get('ambassador');const codeInput=box.querySelector('input');if(urlCode&&codeInput)codeInput.value=urlCode.toUpperCase().replace(/\s+/g,'').slice(0,24);}catch{}
     const input=box.querySelector('input');let timer;
