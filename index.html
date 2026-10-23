@@ -8629,8 +8629,7 @@ async function createRestaurantAndPay(){
   clearPendingOnboarding();
 
   if(btn) btn.innerHTML = 'Préparation du paiement PayTech…';
-  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, obState.plan, cycle, ambassadorCodeForThisCheckout);
-  const ambassadorOffer = window.trAmbassadorGetOffer ? window.trAmbassadorGetOffer('obPayBtn', ambassadorCodeForThisCheckout, obState.plan, cycle) : {base_amount:price,discount_amount:0,amount:price,offer_quote_checked:!ambassadorCodeForThisCheckout,offer_quote_code:ambassadorCodeForThisCheckout};
+  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, obState.plan, cycle);
   savePayTechReturnSection('abonnement');
   // Le montant réellement facturé est déterminé côté serveur par
   // paytech-checkout à partir de "plan" (le forfait explicitement
@@ -8647,31 +8646,15 @@ async function createRestaurantAndPay(){
       customer_phone: customerPhone,
       client_device: clientDevice,
       ambassador_code: ambassadorCodeForThisCheckout,
-      expected_base_amount: ambassadorOffer.base_amount,
-      expected_discount_amount: ambassadorOffer.discount_amount,
-      expected_amount: ambassadorOffer.amount,
-      offer_quote_checked: ambassadorOffer.offer_quote_checked,
-      offer_quote_code: ambassadorOffer.offer_quote_code,
       checkout_idempotency_key: checkoutIdempotencyKey,
     },
   });
   const mobileRedirectUrl = clientDevice === 'mobile' && isSafeHttpUrl(data?.mobile_redirect_url) ? data.mobile_redirect_url : '';
   const paymentUrl = mobileRedirectUrl || data?.redirect_url;
-  if(!error && data?.checkout_state === 'offer_changed'){
-    try { window.sessionStorage.setItem('tr_ambassador_checkout_code_v1', ambassadorCodeForThisCheckout); } catch {}
-    abonSelectedPlan = obState.plan === 'pro' ? 'pro' : 'starter';
-    abonSelectedCycle = cycle;
-    viewerIsStaff = true;
-    setView('dashboard');
-    setDashSection('abonnement');
-    toast('Le code ou le montant a changé pendant la vérification. Vérifiez le nouveau tarif affiché, puis cliquez de nouveau sur le paiement.');
-    return;
-  }
   if(error || !data || !paymentUrl){
     explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, obState.plan, cycle,
-      "Impossible de démarrer le paiement PayTech. Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez reprendre depuis Abonnement.",
-      ambassadorCodeForThisCheckout
+      "Impossible de démarrer le paiement PayTech. Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez reprendre depuis Abonnement."
     );
     viewerIsStaff = true;
     setView('dashboard');
@@ -13315,10 +13298,10 @@ function abonCardHtml(){
   </div>
   <div class="card" style="padding:14px 16px;margin-bottom:16px;background:rgba(232,135,30,.08);border:1.5px dashed var(--amber);">
     <p style="font-size:12.5px;color:var(--amber-ink);display:flex;align-items:center;gap:8px;">${ic('shield',15)}<b>Paiement immédiat et sécurisé via PayTech.</b></p>
-    <p id="abonPaymentDescription" style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)} ${cycle==='annual'?'/an':'/mois'}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:6px;">Vous allez être redirigé vers PayTech pour régler ${fmt(price)} ${cycle==='annual'?'/an':'/mois'}. Ce forfait ne s'active qu'après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.</p>
   </div>
   <div style="border-top:1px solid var(--cream-line);padding-top:14px;">
-    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p id="abonTotalAmountDisplay" class="font-tabular font-display" style="font-size:22px;">${fmt(price)} ${cycle==='annual'?'/ an':'/mois'}</p></div>
+    <div style="margin-bottom:14px;"><p style="font-size:11px;color:var(--ink-faint);">Total</p><p class="font-tabular font-display" style="font-size:22px;">${fmt(price)} ${cycle==='annual'?'/ an':'/mois'}</p></div>
     <button id="paytechBtn" class="btn btn-secondary btn-lg" style="width:100%;" onclick="abonApplyPlan()">${ic('externalLink',15)} Payer ${fmt(price)}</button>
   </div>` : `
   <div class="flex items-center justify-between" style="border-top:1px solid var(--cream-line);padding-top:14px;">
@@ -13378,13 +13361,11 @@ function trPayTechNewAttemptUuid(){
   const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
-function trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode=''){
-  const base = `${trPayTechAttemptKeyPrefix}${String(restaurantId)}:${String(plan).toLowerCase()}:${String(cycle).toLowerCase()}`;
-  const code = String(ambassadorCode||'').toUpperCase().replace(/\s+/g,'').slice(0,24);
-  return code ? `${base}:ambassador:${encodeURIComponent(code)}` : base;
+function trPayTechAttemptStorageKey(restaurantId, plan, cycle){
+  return `${trPayTechAttemptKeyPrefix}${String(restaurantId)}:${String(plan).toLowerCase()}:${String(cycle).toLowerCase()}`;
 }
-function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=''){
-  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode);
+function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle){
+  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle);
   const cached = trPayTechAttemptMemory.get(scope);
   if(cached && TR_PAYTECH_ATTEMPT_UUID_RE.test(cached)) return cached;
   let saved = '';
@@ -13409,16 +13390,16 @@ function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=
   catch { try { window.sessionStorage.setItem(scope, fresh); } catch { /* fallback mémoire pour cette page */ } }
   return fresh;
 }
-function clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=''){
-  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode);
+function clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle){
+  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle);
   trPayTechAttemptMemory.delete(scope);
   try { window.localStorage.removeItem(scope); } catch { /* stockage persistant indisponible */ }
   try { window.sessionStorage.removeItem(scope); } catch { /* ancienne clé V4, si présente */ }
 }
-function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage, ambassadorCode=''){
+function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage){
   const state = String(data?.checkout_state || '');
   if(state === 'rejected' || state === 'confirmed'){
-    clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode);
+    clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle);
     toast(String(data?.error || (state === 'confirmed' ? 'Cette tentative est déjà confirmée. Vérifiez votre abonnement.' : fallbackMessage)));
     return;
   }
@@ -13446,9 +13427,8 @@ async function startPayTechCheckout(plan){
   savePayTechReturnSection('abonnement');
   const btn = document.getElementById('paytechBtn');
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
-  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, plan, cycle, ambassadorCodeForThisCheckout);
+  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, plan, cycle);
   const price = priceForPlanCycle(plan, cycle);
-  const ambassadorOffer = window.trAmbassadorGetOffer ? window.trAmbassadorGetOffer('paytechBtn', ambassadorCodeForThisCheckout, plan, cycle) : {base_amount:price,discount_amount:0,amount:price,offer_quote_checked:!ambassadorCodeForThisCheckout,offer_quote_code:ambassadorCodeForThisCheckout};
   const paymentMethod = String(abonPaymentMethod||'').trim();
   const customerName = String(abonCustomerName||'').trim();
   const customerPhone = String(abonCustomerPhone||'').replace(/\D/g,'');
@@ -13473,29 +13453,17 @@ async function startPayTechCheckout(plan){
       customer_phone: customerPhone,
       client_device: clientDevice,
       ambassador_code: ambassadorCodeForThisCheckout,
-      expected_base_amount: ambassadorOffer.base_amount,
-      expected_discount_amount: ambassadorOffer.discount_amount,
-      expected_amount: ambassadorOffer.amount,
-      offer_quote_checked: ambassadorOffer.offer_quote_checked,
-      offer_quote_code: ambassadorOffer.offer_quote_code,
       checkout_idempotency_key: checkoutIdempotencyKey,
     },
   });
   const mobileRedirectUrl = clientDevice === 'mobile' && isSafeHttpUrl(data?.mobile_redirect_url) ? data.mobile_redirect_url : '';
   const paymentUrl = mobileRedirectUrl || data?.redirect_url;
-  if(!error && data?.checkout_state === 'offer_changed'){
-    if(window.trAmbassadorApplyQuote)window.trAmbassadorApplyQuote('paytechBtn',data,ambassadorCodeForThisCheckout,plan,cycle);
-    if(btn){btn.disabled=false;btn.innerHTML=`${ic('externalLink',15)} Payer ${fmt(Number(data.amount ?? price))}`;hydrateIcons();}
-    toast('Le tarif a été revérifié. Contrôlez le nouveau montant affiché puis cliquez de nouveau pour continuer.');
-    return;
-  }
   if(error || !data || !paymentUrl){
     explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, plan, cycle,
-      "Impossible de démarrer le paiement PayTech. Réessayez après avoir vérifié la connexion.",
-      ambassadorCodeForThisCheckout
+      "Impossible de démarrer le paiement PayTech. Réessayez après avoir vérifié la connexion."
     );
-    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(Number(ambassadorOffer.amount ?? price))}`; hydrateIcons(); }
+    if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(price)}`; hydrateIcons(); }
     return;
   }
   // La clé est conservée jusqu'à une réponse terminale du serveur. Si la
@@ -15604,97 +15572,31 @@ window.trAmbassadorAdminOpen=()=>{taClearAllArms();taState.adminDetail=null;taSt
     const originalAdminLoad=trAdminLoadSection;
     window.trAdminLoadSection=async function(section){if(section==='ambassadors'){if(!trAdminSessionVerified)return;taStopRealtime();taState.mode='admin';renderAdmin();return;}if(taState.mode==='admin'){taStopAdminRealtime();taState.mode='public';}return originalAdminLoad(section);};
   }
-  // Subscription-only ambassador discount quote: all discount eligibility and
-  // payable amounts come from paytech-checkout, never from browser-side logic.
-  const TR_AMBASSADOR_CHECKOUT_CODE_KEY='tr_ambassador_checkout_code_v1';
-  function trAmbassadorNormalizeCode(value){return String(value||'').toUpperCase().replace(/\s+/g,'').slice(0,24);}
-  function trAmbassadorPlanCycle(buttonId){
-    if(buttonId==='obPayBtn')return {plan:(typeof obState!=='undefined'&&obState.plan==='pro')?'pro':'starter',cycle:(typeof obState!=='undefined'&&obState.billing==='annual')?'annual':'monthly'};
-    return {plan:(typeof abonSelectedPlan!=='undefined'&&abonSelectedPlan==='pro')?'pro':'starter',cycle:(typeof abonSelectedCycle!=='undefined'&&abonSelectedCycle==='annual')?'annual':'monthly'};
-  }
-  function trAmbassadorApplyQuote(buttonId,quote,code,plan,cycle,verificationFailed=false){
-    const inputId='trAmbassadorCodeInput_'+buttonId,box=document.getElementById('trAmbassadorCodeBox_'+buttonId);
-    const input=document.getElementById(inputId),current=trAmbassadorPlanCycle(buttonId);
-    if(!box||!input||trAmbassadorNormalizeCode(input.value)!==trAmbassadorNormalizeCode(code)||String(current.plan)!==String(plan)||String(current.cycle)!==String(cycle))return;
-    const base=Number(quote?.base_amount),discount=Number(quote?.discount_amount),amount=Number(quote?.amount);
-    const price=priceForPlanCycle(plan,cycle);
-    const validAmounts=Number.isSafeInteger(base)&&Number.isSafeInteger(discount)&&Number.isSafeInteger(amount)&&base>=0&&discount>=0&&amount>=0&&base-discount===amount;
-    const verified=!verificationFailed&&validAmounts&&quote?.offer_quote_checked===true;
-    box.dataset.offerChecked=verified?'true':'false';
-    box.dataset.offerCode=trAmbassadorNormalizeCode(code);
-    box.dataset.offerPlan=String(plan);
-    box.dataset.offerCycle=String(cycle);
-    box.dataset.offerBaseAmount=String(verified?base:price);
-    box.dataset.offerDiscountAmount=String(verified?discount:0);
-    box.dataset.offerAmount=String(verified?amount:price);
-    box.dataset.offerValid=verified&&quote?.valid===true&&quote?.discount_applied===true?'true':'false';
-    box.dataset.offerVerificationError=(!verified||quote?.verification_error===true)?'true':'false';
-    const msg=box.querySelector('.ta-msg'),preview=box.querySelector('.ta-price-preview');
-    if(msg){
-      if(!code){msg.textContent='';msg.className='ta-msg';msg.style.color='';}
-      else if(!verified||quote?.verification_error===true){msg.textContent='Impossible de vérifier ce code pour le moment. Aucune réduction ne sera appliquée. Vous pouvez continuer au tarif normal.';msg.className='ta-msg bad';msg.style.color='#b42318';}
-      else if(quote?.valid===true&&quote?.discount_applied===true){msg.textContent='Code ambassadeur validé ! Vous bénéficiez d’une réduction de 10 %.';msg.className='ta-msg good';msg.style.color='#167447';}
-      else{msg.textContent='Code ambassadeur invalide ou non actif. Aucune réduction ne sera appliquée. Vous pouvez continuer au tarif normal.';msg.className='ta-msg bad';msg.style.color='#b42318';}
-    }
-    const showBase=verified?base:price,showDiscount=verified?discount:0,showAmount=verified?amount:price,suffix=cycle==='annual'?'/ an':'/mois';
-    if(preview){preview.textContent=showDiscount>0?('Tarif applicable : '+fmt(showBase)+' − remise de 10 % ('+fmt(showDiscount)+') = '+fmt(showAmount)+' '+suffix):('Montant à payer : '+fmt(showAmount)+' '+suffix);}
-    if(buttonId==='paytechBtn'){
-      const total=document.getElementById('abonTotalAmountDisplay'),description=document.getElementById('abonPaymentDescription'),btn=document.getElementById('paytechBtn');
-      if(total)total.textContent=fmt(showAmount)+' '+suffix;
-      if(description)description.textContent='Vous allez être redirigé vers PayTech pour régler '+fmt(showAmount)+' '+suffix+'. Ce forfait ne s’active qu’après confirmation réelle du paiement — jamais avant, jamais automatiquement. Aucun essai gratuit sur Starter ou Premium.';
-      if(btn&&!btn.disabled){btn.innerHTML=`${ic('externalLink',15)} Payer ${fmt(showAmount)}`;hydrateIcons();}
-    }else{
-      const btn=document.getElementById('obPayBtn');
-      if(btn&&!btn.disabled){btn.innerHTML=`${ic('externalLink',15)} Payer ${fmt(showAmount)}`;hydrateIcons();}
-    }
-  }
-  window.trAmbassadorApplyQuote=trAmbassadorApplyQuote;
-  window.trAmbassadorGetOffer=(buttonId,code,plan,cycle)=>{
-    const normalized=trAmbassadorNormalizeCode(code),box=document.getElementById('trAmbassadorCodeBox_'+buttonId),base=priceForPlanCycle(plan,cycle);
-    if(!normalized)return {base_amount:base,discount_amount:0,amount:base,offer_quote_checked:true,offer_quote_code:''};
-    const checked=!!box&&box.dataset.offerChecked==='true'&&box.dataset.offerCode===normalized&&box.dataset.offerPlan===String(plan)&&box.dataset.offerCycle===String(cycle);
-    if(!checked)return {base_amount:base,discount_amount:0,amount:base,offer_quote_checked:false,offer_quote_code:normalized};
-    return {base_amount:Number(box.dataset.offerBaseAmount),discount_amount:Number(box.dataset.offerDiscountAmount),amount:Number(box.dataset.offerAmount),offer_quote_checked:true,offer_quote_code:normalized};
-  };
+  // Insert code field into the two subscription-payment paths. Validation is informational:
+  // invalid or unavailable codes never disable PayTech's payment button.
   function ensureCodeField(buttonId){
     const button=document.getElementById(buttonId),boxId='trAmbassadorCodeBox_'+buttonId,inputId='trAmbassadorCodeInput_'+buttonId;
     if(!button||document.getElementById(boxId))return;
     const box=document.createElement('div');box.id=boxId;box.className='tr-ambassador-code-box';
     box.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #eadcc2;border-radius:12px;background:#fffaf2;min-width:0;max-width:100%;box-sizing:border-box;';
-    box.innerHTML='<label for="'+inputId+'" style="display:block;font-size:12px;font-weight:700;margin:0 0 6px;color:#805514">Code ambassadeur (facultatif)</label><input id="'+inputId+'" autocomplete="off" maxlength="24" placeholder="Saisissez le code de votre ambassadeur" style="display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #d9d1c3;border-radius:9px;background:#fff;font-size:14px;color:#2b1810"><div class="ta-msg" aria-live="polite"></div><div class="ta-price-preview" aria-live="polite" style="font-size:12px;font-weight:700;color:#5e4928;margin-top:7px">Montant à payer : —</div><p style="font-size:11px;color:#777;margin:6px 0 0">Facultatif : un code invalide ou une indisponibilité n’empêche pas le paiement au tarif normal.</p>';
+    box.innerHTML='<label for="'+inputId+'" style="display:block;font-size:12px;font-weight:700;margin:0 0 6px;color:#805514">Code ambassadeur (facultatif)</label><input id="'+inputId+'" autocomplete="off" maxlength="24" placeholder="Saisissez le code de votre ambassadeur" style="display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #d9d1c3;border-radius:9px;background:#fff;font-size:14px;color:#2b1810"><div class="ta-msg" aria-live="polite"></div><p style="font-size:11px;color:#777;margin:6px 0 0">Facultatif : un code invalide ne bloque pas le paiement et ne crée aucune attribution.</p>';
     button.parentNode.insertBefore(box,button);
-    const input=box.querySelector('input');let timer=null,sequence=0;
-    let initialCode='';
-    try{initialCode=new URLSearchParams(location.search).get('ambassador')||window.sessionStorage.getItem(TR_AMBASSADOR_CHECKOUT_CODE_KEY)||'';}catch{}
-    if(initialCode)input.value=trAmbassadorNormalizeCode(initialCode);
-    const refreshPrice=()=>{const cfg=trAmbassadorPlanCycle(buttonId),base=priceForPlanCycle(cfg.plan,cfg.cycle);box.dataset.offerChecked='false';box.dataset.offerCode=trAmbassadorNormalizeCode(input.value);box.dataset.offerPlan=cfg.plan;box.dataset.offerCycle=cfg.cycle;box.dataset.offerBaseAmount=String(base);box.dataset.offerDiscountAmount='0';box.dataset.offerAmount=String(base);box.dataset.offerValid='false';box.dataset.offerVerificationError=input.value.trim()?'true':'false';const msg=box.querySelector('.ta-msg');if(msg){msg.textContent='';msg.className='ta-msg';msg.style.color='';}const preview=box.querySelector('.ta-price-preview');if(preview)preview.textContent='Montant à payer : '+fmt(base)+' '+(cfg.cycle==='annual'?'/ an':'/mois');if(buttonId==='paytechBtn'){const total=document.getElementById('abonTotalAmountDisplay');if(total)total.textContent=fmt(base)+' '+(cfg.cycle==='annual'?'/ an':'/mois');const desc=document.getElementById('abonPaymentDescription');if(desc)desc.textContent='Vous allez être redirigé vers PayTech pour régler '+fmt(base)+' '+(cfg.cycle==='annual'?'/ an':'/mois')+'. Ce forfait ne s’active qu’après confirmation réelle du paiement. Aucun essai gratuit sur Starter ou Premium.';}}
-    async function validateCurrentCode(){
-      const code=trAmbassadorNormalizeCode(input.value),cfg=trAmbassadorPlanCycle(buttonId),thisSequence=++sequence;
-      clearTimeout(timer);
-      try{if(code)window.sessionStorage.setItem(TR_AMBASSADOR_CHECKOUT_CODE_KEY,code);else window.sessionStorage.removeItem(TR_AMBASSADOR_CHECKOUT_CODE_KEY);}catch{}
-      refreshPrice();
-      if(!code){trAmbassadorApplyQuote(buttonId,{base_amount:priceForPlanCycle(cfg.plan,cfg.cycle),discount_amount:0,amount:priceForPlanCycle(cfg.plan,cfg.cycle),offer_quote_checked:true,valid:false,discount_applied:false},'',cfg.plan,cfg.cycle);return;}
-      const msg=box.querySelector('.ta-msg');if(msg){msg.textContent='Vérification du code…';msg.className='ta-msg wait';msg.style.color='#946716';}
-      timer=setTimeout(async()=>{
-        try{
-          const restaurantId=(typeof RESTAURANT!=='undefined'&&RESTAURANT?.id)||(typeof activeRestaurantId!=='undefined'&&activeRestaurantId)||(typeof obState!=='undefined'&&(obState.restaurantId||obState.createdRestaurantId))||'';
-          const {data,error}=await supabaseClient.functions.invoke('paytech-checkout',{body:{action:'quote_ambassador_code',restaurant_id:String(restaurantId),plan:cfg.plan,billing_cycle:cfg.cycle,ambassador_code:code}});
-          if(thisSequence!==sequence||trAmbassadorNormalizeCode(input.value)!==code)return;
-          if(error||!data||data.checkout_state!=='quote')trAmbassadorApplyQuote(buttonId,null,code,cfg.plan,cfg.cycle,true);
-          else trAmbassadorApplyQuote(buttonId,data,code,cfg.plan,cfg.cycle,false);
-        }catch(e){if(thisSequence===sequence&&trAmbassadorNormalizeCode(input.value)===code)trAmbassadorApplyQuote(buttonId,null,code,cfg.plan,cfg.cycle,true);}
-      },300);
-    }
-    input.addEventListener('input',validateCurrentCode);
-    // Immediately quote a URL-prefilled or restored code; the checkout always rechecks it server-side.
-    validateCurrentCode();
+    try{const urlCode=new URLSearchParams(location.search).get('ambassador');const codeInput=box.querySelector('input');if(urlCode&&codeInput)codeInput.value=urlCode.toUpperCase().replace(/\s+/g,'').slice(0,24);}catch{}
+    const input=box.querySelector('input');let timer;
+    input.addEventListener('input',()=>{clearTimeout(timer);const code=input.value.trim();const msg=box.querySelector('.ta-msg');if(!code){msg.textContent='';msg.className='ta-msg';return;}msg.textContent='Vérification…';msg.className='ta-msg wait';timer=setTimeout(async()=>{
+      try{const restaurantId=(typeof RESTAURANT!=='undefined'&&RESTAURANT?.id)||(typeof activeRestaurantId!=='undefined'&&activeRestaurantId)||(typeof obState!=='undefined'&&(obState.restaurantId||obState.createdRestaurantId))||'';const r=await call('validate_code',{code,restaurant_id:String(restaurantId)});if(input.value.trim()!==code)return;msg.textContent=r.valid?('Code ambassadeur validé. '+(restaurantId?'Il sera revérifié au démarrage du paiement.':'Son admissibilité sera confirmée au paiement.')):'Code ambassadeur invalide ou inactif. Vous pouvez continuer votre paiement sans ce code.';msg.className='ta-msg '+(r.valid?'good':'bad');}
+      catch(e){msg.textContent='Vérification momentanément indisponible. Vous pouvez continuer le paiement sans validation du code.';msg.className='ta-msg wait';}
+    },350);});
   }
   window.trAmbassadorGetCode=(buttonId)=>{
     const allowed={obPayBtn:'trAmbassadorCodeInput_obPayBtn',paytechBtn:'trAmbassadorCodeInput_paytechBtn'};
-    if(allowed[buttonId])return trAmbassadorNormalizeCode(document.getElementById(allowed[buttonId])?.value||'');
+    // The caller identifies the active checkout path before it changes views.
+    // This retains the chosen code if the onboarding dialog is cleared next,
+    // without accidentally reading the other flow's hidden/stale value.
+    if(allowed[buttonId])return document.getElementById(allowed[buttonId])?.value?.trim()?.toUpperCase()||'';
     const candidates=['trAmbassadorCodeInput_obPayBtn','trAmbassadorCodeInput_paytechBtn'].map(id=>document.getElementById(id)).filter(Boolean);
     const visible=candidates.find(el=>el.value.trim()&&el.getClientRects().length>0&&!el.closest('details:not([open])'));
-    return trAmbassadorNormalizeCode(visible?.value||'');
+    return visible?.value?.trim()?.toUpperCase()||'';
   };
   const observer=new MutationObserver(()=>{ensureCodeField('paytechBtn');ensureCodeField('obPayBtn');});
   observer.observe(document.body,{childList:true,subtree:true});
