@@ -8697,7 +8697,7 @@ async function createRestaurantAndPay(){
       trSavePendingPayTechPlanIntent(RESTAURANT.id,obState.plan,cycle,ambassadorCodeForThisCheckout);
     }
     trClearIntentIfPayTechReportsPreviousPaymentPaid(data,RESTAURANT.id);
-    explainPayTechCheckoutFailure(
+    await explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, obState.plan, cycle,
       "Impossible de démarrer le paiement PayTech. Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez reprendre depuis Abonnement.",
       ambassadorCodeForThisCheckout, paymentMethod
@@ -13510,22 +13510,59 @@ function clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCod
   try { window.localStorage.removeItem(scope); } catch { /* stockage persistant indisponible */ }
   try { window.sessionStorage.removeItem(scope); } catch { /* ancienne clé V4, si présente */ }
 }
-function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage, ambassadorCode='', paymentMethod=''){
-  const state = String(data?.checkout_state || '');
+async function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage, ambassadorCode='', paymentMethod=''){
+  // Supabase FunctionsHttpError/FunctionsRelayError retain the response in
+  // error.context. Read a clone so the original response remains untouched.
+  let errorPayload = null;
+  let httpStatus = null;
+  try {
+    const response = error?.context;
+    if(response && typeof response.clone === 'function'){
+      const copy = response.clone();
+      httpStatus = Number(copy.status) || null;
+      const raw = await copy.text();
+      if(raw){ try { errorPayload = JSON.parse(raw); } catch { errorPayload = null; } }
+    }
+  } catch(parseError) {
+    console.warn('Unable to read paytech-checkout error response', parseError);
+  }
+  const result = data || errorPayload || null;
+  const state = String(result?.checkout_state || '');
+  const reference = String(result?.ref_command || '').trim();
+  const detail = String(result?.error || result?.message || '').trim();
+  const code = String(result?.code || result?.error_code || '').trim();
+  const diagnosticId = String(result?.diagnostic_id || '').trim();
+  const codeSuffix = code ? ` Code : ${code}.` : '';
+  const diagnosticSuffix = diagnosticId ? ` Référence technique : ${diagnosticId}.` : '';
+  const referenceSuffix = reference && !detail.includes(reference) ? ` Référence : ${reference}.` : '';
+  if(error){
+    console.error('paytech-checkout invocation failed', {
+      http_status:httpStatus,
+      error_name:String(error?.name || 'unknown').slice(0,100),
+      error_message:String(error?.message || '').slice(0,180),
+      code:code || null,
+      diagnostic_id:diagnosticId || null,
+      ref_command:reference || null,
+    });
+  }
   if(state === 'rejected' || state === 'confirmed'){
     clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode, paymentMethod);
-    toast(String(data?.error || (state === 'confirmed' ? 'Cette tentative est déjà confirmée. Vérifiez votre abonnement.' : fallbackMessage)));
+    toast(`${detail || (state === 'confirmed' ? 'Cette tentative est déjà confirmée. Vérifiez votre abonnement.' : fallbackMessage)}${codeSuffix}${diagnosticSuffix}`);
     return;
   }
-  if(['indeterminate','submitting','ready','unknown'].includes(state) || (!data && error)){
-    const reference = String(data?.ref_command || '').trim();
-    const detail = String(data?.error || '').trim();
-    const fallback = 'La connexion a été interrompue ou PayTech n’a pas confirmé le résultat. Aucun nouveau paiement ne sera lancé tant que la tentative précédente reste incertaine.';
-    const suffix = reference && !detail.includes(reference) ? ` Référence : ${reference}.` : '';
-    toast(`${detail || fallback}${suffix}`);
+  if(['indeterminate','submitting','ready','unknown'].includes(state) || (!data && !!error)){
+    const fallback = 'La connexion a été interrompue ou le résultat n’a pas été confirmé. Aucun nouveau paiement ne sera lancé tant que la tentative précédente reste incertaine.';
+    const statusSuffix = httpStatus ? ` Réponse technique : HTTP ${httpStatus}.` : '';
+    toast(`${detail || fallback}${referenceSuffix}${codeSuffix}${diagnosticSuffix}${!diagnosticId && error ? statusSuffix : ''}`);
     return;
   }
-  toast(fallbackMessage);
+  if(error || !data){
+    const fallback = 'Le service de paiement ne répond pas correctement. Aucun nouveau paiement n’a été lancé.';
+    const statusSuffix = httpStatus ? ` Réponse technique : HTTP ${httpStatus}.` : '';
+    toast(`${detail || fallback}${codeSuffix}${diagnosticSuffix}${!diagnosticId && error ? statusSuffix : ''}`);
+    return;
+  }
+  toast(`${fallbackMessage}${codeSuffix}${diagnosticSuffix}`);
 }
 
 /* ---------------- Reprise / annulation d'une tentative ----------------
@@ -13713,7 +13750,7 @@ async function startPayTechCheckout(plan){
       trSavePendingPayTechPlanIntent(RESTAURANT.id,plan,cycle,ambassadorCodeForThisCheckout);
     }
     trClearIntentIfPayTechReportsPreviousPaymentPaid(data,RESTAURANT.id);
-    explainPayTechCheckoutFailure(
+    await explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, plan, cycle,
       "Impossible de démarrer le paiement PayTech. Réessayez après avoir vérifié la connexion.",
       ambassadorCodeForThisCheckout, paymentMethod
