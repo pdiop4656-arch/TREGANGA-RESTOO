@@ -13528,116 +13528,114 @@ function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, f
   toast(fallbackMessage);
 }
 
-/* ---------------- Récupération explicite d'une tentative PayTech ----------------
-   Continuer ouvre uniquement l'URL déjà enregistrée. Le choix Annuler ouvre cette
-   même page PayTech pour que l'utilisateur y annule réellement la tentative. Le
-   bouton de vérification rappelle le checkout choisi : le serveur ne le crée que
-   si PayTech confirme que l'ancienne tentative est terminée. */
-function trShowPendingPayTechChoice(data, requestedOffer, onRecheck){
-  const oldUrl = isSafeHttpUrl(data?.previous_checkout_url) ? String(data.previous_checkout_url).trim() : '';
-  const oldPlanRaw = String(data?.previous_plan || 'starter').toLowerCase();
-  const oldPlan = oldPlanRaw === 'pro' || oldPlanRaw === 'premium' ? 'Premium' : 'Starter';
-  const oldAmount = Number(data?.previous_amount);
-  const oldAmountText = Number.isSafeInteger(oldAmount) && oldAmount >= 0 ? `${fmt(oldAmount)} FCFA` : 'montant à vérifier';
-  const oldCycleRaw = String(data?.previous_billing_cycle || 'monthly').toLowerCase();
-  const oldCycle = oldCycleRaw === 'annual' ? 'annuel' : 'mensuel';
-  const oldPaymentMethod = String(data?.previous_target_payment || '').trim();
-  const newPlan = String(requestedOffer?.plan || 'starter').toLowerCase() === 'pro' ? 'Premium' : 'Starter';
-  const newCycle = String(requestedOffer?.cycle || 'monthly').toLowerCase() === 'annual' ? 'annuel' : 'mensuel';
-  const newAmount = Number(requestedOffer?.requestedAmount);
-  const newAmountText = Number.isSafeInteger(newAmount) && newAmount >= 0 ? `${fmt(newAmount)} FCFA` : 'montant à vérifier';
-  const priorMessage = String(data?.error || 'Une tentative PayTech reste non résolue. Aucun nouveau paiement n’a été créé.');
-  const providerStatus = String(data?.provider_status || 'unknown').toLowerCase();
-  const statusConfirmedPending = providerStatus === 'pending';
-
-  const existing = document.getElementById('trPayTechPendingChoiceOverlay');
-  if(existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'trPayTechPendingChoiceOverlay';
-  overlay.setAttribute('role','dialog');
-  overlay.setAttribute('aria-modal','true');
-  overlay.setAttribute('aria-labelledby','trPayTechPendingChoiceTitle');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(8,14,28,.76);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
-
-  const panel = document.createElement('div');
-  panel.style.cssText = 'width:min(100%,560px);max-height:90vh;max-height:90dvh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:18px;padding:clamp(14px,4vw,22px);box-sizing:border-box;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:inherit;color:#172033;';
-  const title = document.createElement('h2');
-  title.id = 'trPayTechPendingChoiceTitle';
-  title.textContent = statusConfirmedPending ? 'Une tentative de paiement est encore ouverte' : 'Le statut de l’ancienne tentative reste à vérifier';
-  title.style.cssText = 'margin:0 0 10px;font-size:clamp(18px,4vw,20px);line-height:1.3;font-weight:800;color:#111827;';
-  const message = document.createElement('p');
-  message.textContent = priorMessage;
-  message.style.cssText = 'margin:0 0 14px;font-size:13px;line-height:1.55;color:#4b5563;overflow-wrap:anywhere;';
-
-  const summary = document.createElement('div');
-  summary.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 14px;';
-  function summaryCard(label,value,accent){
-    const card=document.createElement('div');
-    card.style.cssText=`min-width:0;padding:11px 12px;border:1px solid ${accent?'#f3d5a3':'#e5e7eb'};border-radius:12px;background:${accent?'#fff8eb':'#f9fafb'};`;
-    const small=document.createElement('div');small.textContent=label;small.style.cssText='font-size:11px;line-height:1.4;color:#6b7280;margin-bottom:3px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;';
-    const big=document.createElement('div');big.textContent=value;big.style.cssText='font-size:14px;line-height:1.45;color:#111827;font-weight:800;overflow-wrap:anywhere;';
-    card.append(small,big);return card;
+/* ---------------- Reprise / annulation d'une tentative ----------------
+   L'écran reste court et sans marque de prestataire. L'annulation est demandée
+   côté serveur ; un nouveau paiement n'est proposé qu'après confirmation. */
+async function trCancelPendingPayTechAttempt(refCommand, requestedOffer, quiet=false){
+  const plan=String(requestedOffer?.plan||abonSelectedPlan||'starter').toLowerCase();
+  const cycle=String(requestedOffer?.cycle||abonSelectedCycle||'monthly').toLowerCase()==='annual'?'annual':'monthly';
+  const {data,error}=await supabaseClient.functions.invoke('paytech-checkout',{
+    body:{action:'cancel_pending',restaurant_id:RESTAURANT.id,ref_command:String(refCommand||''),plan,billing_cycle:cycle}
+  });
+  if(error||!data){
+    if(!quiet)toast('Impossible de confirmer l’annulation. Aucun nouveau paiement n’a été lancé.');
+    return false;
   }
-  const oldPaymentSummary = `${oldPlan} · ${oldAmountText} · ${oldCycle}${oldPaymentMethod ? ` · ${oldPaymentMethod}` : ' · moyen non enregistré'}`;
-  summary.append(
-    summaryCard('Ancienne tentative — à résoudre',oldPaymentSummary,false),
-    summaryCard('Nouveau choix — pas encore lancé',`${newPlan} · ${newAmountText} · ${newCycle}`,true)
-  );
+  if(data.checkout_state==='cancelled'){
+    if(!quiet)toast('Tentative annulée.');
+    return true;
+  }
+  if(data.checkout_state==='confirmed'){
+    if(!quiet)toast('Cette tentative est déjà payée. Aucun nouveau paiement n’a été lancé.');
+    return false;
+  }
+  if(!quiet)toast(String(data.error||'Annulation non confirmée. Aucun nouveau paiement n’a été lancé.'));
+  return false;
+}
 
-  const safety = document.createElement('p');
-  safety.textContent = statusConfirmedPending
-    ? 'Ne payez pas les deux offres. Le bouton rouge ouvre l’ancienne page PayTech : annulez la tentative chez PayTech, puis revenez ici. Le nouveau paiement ne démarrera qu’après confirmation serveur de la fin de l’ancienne tentative.'
-    : 'Le statut PayTech n’est pas confirmé. Le bouton rouge ouvre la page enregistrée pour vérifier ou annuler la tentative chez PayTech. Il ne l’annule pas automatiquement. Revenez ensuite et demandez une nouvelle vérification ; aucun nouveau checkout ne sera créé tant que l’ancienne tentative reste incertaine.';
-  safety.style.cssText = 'margin:0 0 14px;padding:11px 12px;border-left:3px solid #d97706;background:#fffbeb;color:#78350f;font-size:12px;line-height:1.55;border-radius:8px;overflow-wrap:anywhere;';
+function trShowPendingPayTechChoice(data, requestedOffer, onRecheck){
+  const oldUrl=isSafeHttpUrl(data?.previous_checkout_url)?String(data.previous_checkout_url).trim():'';
+  const oldPlanRaw=String(data?.previous_plan||'starter').toLowerCase();
+  const oldPlan=oldPlanRaw==='pro'||oldPlanRaw==='premium'?'Premium':'Starter';
+  const oldAmount=Number(data?.previous_amount);
+  const oldAmountText=Number.isSafeInteger(oldAmount)&&oldAmount>=0?`${fmt(oldAmount)} FCFA`:'montant à vérifier';
+  const newPlanRaw=String(requestedOffer?.plan||'starter').toLowerCase();
+  const newPlan=newPlanRaw==='pro'||newPlanRaw==='premium'?'Premium':'Starter';
+  const newCycle=String(requestedOffer?.cycle||'monthly').toLowerCase()==='annual'?'annuel':'mensuel';
+  const newAmount=Number(requestedOffer?.requestedAmount);
+  const newAmountText=Number.isSafeInteger(newAmount)&&newAmount>=0?`${fmt(newAmount)} FCFA`:'montant à vérifier';
+  const providerStatus=String(data?.provider_status||'unknown').toLowerCase();
+  const statusConfirmedPending=providerStatus==='pending';
 
-  const actions = document.createElement('div');
-  actions.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr);gap:9px;width:100%;';
+  document.getElementById('trPayTechPendingChoiceOverlay')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='trPayTechPendingChoiceOverlay';
+  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-labelledby','trPayTechPendingChoiceTitle');
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(8,14,28,.76);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
+  const panel=document.createElement('div');
+  panel.style.cssText='width:min(100%,500px);max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:18px;padding:clamp(16px,4vw,22px);box-sizing:border-box;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:inherit;color:#172033;';
+  const title=document.createElement('h2');title.id='trPayTechPendingChoiceTitle';
+  title.textContent=statusConfirmedPending?'Une tentative est en cours':'Vérification nécessaire';
+  title.style.cssText='margin:0 0 8px;font-size:clamp(18px,4vw,21px);line-height:1.3;font-weight:800;color:#111827;';
+  const message=document.createElement('p');
+  message.textContent=statusConfirmedPending
+    ?`La tentative ${oldPlan} à ${oldAmountText} est encore active. Reprends-la ou annule-la avant de payer un autre forfait.`
+    :`Le statut de la tentative ${oldPlan} à ${oldAmountText} n’est pas confirmé. Aucun nouveau paiement ne sera lancé avant vérification.`;
+  message.style.cssText='margin:0 0 8px;font-size:13px;line-height:1.5;color:#4b5563;overflow-wrap:anywhere;';
+  const choice=document.createElement('p');
+  choice.textContent=`Forfait sélectionné : ${newPlan} · ${newAmountText} · ${newCycle}.`;
+  choice.style.cssText='margin:0 0 14px;font-size:13px;line-height:1.45;font-weight:700;color:#111827;';
+  const safety=document.createElement('p');
+  safety.textContent='Ne paie pas les deux tentatives. Le nouveau paiement ne démarre qu’après confirmation de l’annulation.';
+  safety.style.cssText='margin:0 0 14px;padding:10px 12px;border-left:3px solid #d97706;background:#fffbeb;color:#78350f;font-size:12px;line-height:1.45;border-radius:8px;';
+  const actions=document.createElement('div');
+  actions.style.cssText='display:grid;grid-template-columns:minmax(0,1fr);gap:9px;width:100%;';
+  const allButtons=[];
   function actionButton(label,variant,handler,disabled=false){
-    const button=document.createElement('button');
-    button.type='button';button.textContent=label;button.disabled=disabled;
-    const base='display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.4;font-weight:800;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer;box-sizing:border-box;touch-action:manipulation;';
+    const button=document.createElement('button');button.type='button';button.textContent=label;button.disabled=disabled;
+    const base='display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.35;font-weight:800;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer;box-sizing:border-box;touch-action:manipulation;';
     const styles={primary:'background:#0f1830;color:#fff;border:1px solid #0f1830;',cancel:'background:#b91c1c;color:#fff;border:1px solid #991b1b;',neutral:'background:#fff;color:#374151;border:1px solid #d1d5db;'};
     button.style.cssText=base+(styles[variant]||styles.neutral)+(disabled?'opacity:.45;cursor:not-allowed;':'');
-    button.addEventListener('click',handler);
-    return button;
+    button.addEventListener('click',handler);allButtons.push(button);return button;
   }
-  const openPrevious = (forCancel)=>{
-    if(!oldUrl){toast('L’URL de l’ancienne tentative n’est pas disponible. Contactez l’assistance avec la référence affichée.');return;}
-    let opened=null;
-    try{opened=window.open(oldUrl,'_blank');if(opened)opened.opener=null;}catch{}
-    if(!opened){
-      toast('Le navigateur ouvre PayTech dans cet onglet. Revenez ensuite sur TerangaResto pour vérifier le statut.');
-      window.location.href=oldUrl;
-      return;
-    }
-    toast(forCancel
-      ? 'Dans PayTech, annulez l’ancienne tentative sans la payer. Revenez ici et cliquez sur « J’ai annulé sur PayTech — vérifier ». '
-      : 'Ancienne page PayTech ouverte. Aucun nouveau paiement n’a été créé.');
-  };
-  if(statusConfirmedPending){
-    actions.append(actionButton(`Reprendre le paiement existant — ${oldAmountText}`, 'primary',()=>openPrevious(false),!oldUrl));
-  }
-  // Dedicated cancel button stays directly below the existing-payment action and
-  // remains full-width/tap-friendly on both mobile and desktop.
-  if(oldUrl){
-    actions.append(actionButton('Annuler l’ancienne tentative — ouvrir PayTech', 'cancel',()=>openPrevious(true),false));
-  }
-  actions.append(
-    actionButton(`J’ai annulé sur PayTech — vérifier avant ${newPlan}`, 'neutral',()=>{
+  const setBusy=(busy)=>{for(const b of allButtons)b.disabled=busy||b.dataset.done==='true';};
+  let cancelled=false;
+  const resumeButton=oldUrl&&statusConfirmedPending?actionButton(`Reprendre ${oldPlan} — ${oldAmountText}`,'primary',()=>{window.location.href=oldUrl;}):null;
+  if(resumeButton)actions.append(resumeButton);
+  const cancelButton=actionButton(`Annuler la tentative ${oldPlan} — ${oldAmountText}`,'cancel',async()=>{
+    setBusy(true);
+    try{
+      const ok=await trCancelPendingPayTechAttempt(data?.ref_command,requestedOffer,false);
+      if(ok){
+        cancelled=true;cancelButton.textContent='Tentative annulée';cancelButton.dataset.done='true';
+        cancelButton.style.cssText+='background:#166534;border-color:#166534;';
+        if(resumeButton){resumeButton.disabled=true;resumeButton.dataset.done='true';}
+        safety.textContent=`Tentative annulée. Tu peux maintenant payer ${newPlan} à ${newAmountText}.`;
+      }
+    }catch(e){console.error('Subscription attempt cancellation failed',e);toast('Impossible de confirmer l’annulation. Aucun nouveau paiement n’a été lancé.');}
+    finally{setBusy(false);}
+  });
+  if(!data?.ref_command)cancelButton.disabled=true;
+  actions.append(cancelButton);
+  const payButton=actionButton(`Payer ${newPlan} — ${newAmountText}`,'neutral',async()=>{
+    setBusy(true);
+    try{
+      if(!cancelled){
+        const ok=await trCancelPendingPayTechAttempt(data?.ref_command,requestedOffer,true);
+        if(!ok){toast('Annulation non confirmée. Aucun nouveau paiement n’a été lancé.');return;}
+        cancelled=true;
+      }
       overlay.remove();
-      try{Promise.resolve(typeof onRecheck==='function'?onRecheck():null).catch(e=>{console.error('PayTech pending checkout retry failed',e);toast('Impossible de vérifier cette tentative. Aucun nouveau paiement n’a été lancé.');});}
-      catch(e){console.error('PayTech pending checkout retry failed',e);toast('Impossible de vérifier cette tentative. Aucun nouveau paiement n’a été lancé.');}
-    },false)
-  );
-  const footer = document.createElement('div');
-  footer.style.cssText='display:flex;justify-content:flex-end;margin-top:12px;';
-  const close= document.createElement('button');close.type='button';close.textContent='Fermer pour le moment';
+      if(typeof onRecheck==='function')await onRecheck();
+    }catch(e){console.error('Subscription checkout after cancellation failed',e);toast('Impossible de lancer le forfait choisi. Aucun paiement supplémentaire n’a été créé.');}
+    finally{setBusy(false);}
+  });
+  actions.append(payButton);
+  const footer=document.createElement('div');footer.style.cssText='display:flex;justify-content:flex-end;margin-top:10px;';
+  const close=document.createElement('button');close.type='button';close.textContent='Plus tard';
   close.style.cssText='min-height:40px;padding:7px 9px;background:transparent;border:0;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;';
-  close.addEventListener('click',()=>overlay.remove());
-  footer.appendChild(close);
-  panel.append(title,message,summary,safety,actions,footer);
-  overlay.appendChild(panel);
+  close.addEventListener('click',()=>overlay.remove());footer.appendChild(close);
+  panel.append(title,message,choice,safety,actions,footer);overlay.appendChild(panel);
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);
 }
