@@ -13489,6 +13489,20 @@ async function startPayTechCheckout(plan){
     toast('Le tarif a été revérifié. Contrôlez le nouveau montant affiché puis cliquez de nouveau pour continuer.');
     return;
   }
+  // A provider checkout that is still running cannot be safely changed in our
+  // database: PayTech may still accept payment for its original amount. Ask before
+  // reopening the saved checkout so the user can cancel it before switching offers.
+  if(!error && data?.checkout_state === 'previous_checkout_requires_cancel'){
+    const oldCheckoutUrl = isSafeHttpUrl(data?.previous_checkout_url) ? String(data.previous_checkout_url).trim() : '';
+    const message = String(data?.error || 'Une ancienne tentative PayTech est toujours active. Annulez-la avant de changer de forfait.');
+    if(btn){btn.disabled=false;btn.innerHTML=`${ic('externalLink',15)} Payer ${fmt(Number(ambassadorOffer.amount ?? price))}`;hydrateIcons();}
+    if(oldCheckoutUrl && confirm(`${message}\n\nCliquez sur OK pour ouvrir l’ancienne page PayTech et l’annuler. N’effectuez pas le paiement sur cette ancienne offre.`)){
+      window.location.href = oldCheckoutUrl;
+    }else{
+      toast(message);
+    }
+    return;
+  }
   if(error || !data || !paymentUrl){
     explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, plan, cycle,
