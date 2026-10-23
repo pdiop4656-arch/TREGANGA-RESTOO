@@ -13516,9 +13516,9 @@ function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, f
 }
 
 /* ---------------- Choix entre reprise et nouvelle offre ----------------
-   Exactement deux boutons visibles. La reprise utilise l'URL persistée de l'ancienne
-   tentative. Le nouveau choix passe par paytech-checkout, qui ne poursuit qu'après
-   confirmation serveur de la clôture de l'ancienne session. */
+   Exactement deux boutons visibles. « Reprendre » ouvre directement l'URL stockée,
+   sans appel serveur ni nouvelle tentative. « Payer » demande une nouvelle référence;
+   la fermeture de l'ancienne page est tentée au mieux, sans bloquer le nouveau choix. */
 function trShowPendingPayTechChoice(data, requestedOffer){
   const oldUrl=isSafeHttpUrl(data?.previous_checkout_url)?String(data.previous_checkout_url).trim():'';
   const oldPlanRaw=String(data?.previous_plan||'starter').toLowerCase();
@@ -13547,7 +13547,7 @@ function trShowPendingPayTechChoice(data, requestedOffer){
   title.textContent='Choisir le paiement';
   title.style.cssText='margin:0 0 8px;font-size:clamp(18px,4vw,21px);line-height:1.3;font-weight:800;color:#111827;';
   const message=document.createElement('p');
-  message.textContent=`Une tentative ${oldPlan} de ${oldAmountText} est encore enregistrée. Pour éviter un double débit, le nouveau paiement ${newPlan} à ${newAmountText} (${newCycle}) ne démarrera qu’après confirmation de l’annulation de l’ancienne tentative. Appuyez sur « Reprendre » pour ouvrir l’ancienne page, annulez-la chez PayTech, revenez ici, puis choisissez de nouveau « Payer ».`;
+  message.textContent=`Une tentative ${oldPlan} de ${oldAmountText} est encore enregistrée. « Reprendre » rouvre cette tentative sans en créer une autre. « Payer » crée une nouvelle tentative ${newPlan} à ${newAmountText} (${newCycle}), avec une nouvelle référence. La fermeture de l’ancienne page est tentée, mais peut ne pas être confirmée : ne payez pas sur les deux pages.`;
   message.style.cssText='margin:0 0 16px;font-size:13px;line-height:1.55;color:#4b5563;overflow-wrap:anywhere;';
   const actions=document.createElement('div');
   actions.style.cssText=`display:grid;grid-template-columns:${window.matchMedia('(min-width:560px)').matches?'repeat(2,minmax(0,1fr)':'minmax(0,1fr)'};gap:9px;width:100%;`;
@@ -13563,11 +13563,12 @@ function trShowPendingPayTechChoice(data, requestedOffer){
     if(!oldUrl){toast('L’URL de reprise n’est pas disponible. Actualisez la page ou contactez l’assistance.');return;}
     window.location.href=oldUrl;
   },!oldUrl);
-  // Use one fresh idempotency key for this modal instance; retries reuse this key.
+  // La clé n'est créée que si le bouton Payer est utilisé, puis conservée pour
+  // que les clics de reprise après une erreur réseau réutilisent la même requête.
   let switchKey='';
-  try{switchKey=trPayTechNewAttemptUuid();}catch{switchKey='';}
   const payButton=actionButton(`Payer ${newPlan} — ${newAmountText}`,'secondary',async()=>{
     if(!oldRef){toast('Référence de l’ancienne tentative manquante. Actualisez la page puis réessayez.');return;}
+    if(!switchKey){try{switchKey=trPayTechNewAttemptUuid();}catch{switchKey='';}}
     if(!switchKey){toast('Impossible de générer une référence sécurisée. Actualisez la page puis réessayez.');return;}
     setBusy(true);
     try{
@@ -13686,6 +13687,11 @@ async function startPayTechCheckout(plan, checkoutOptions={}){
     );
     if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(Number(ambassadorOffer.amount ?? price))}`; hydrateIcons(); }
     return false;
+  }
+  // Le nouveau checkout a sa propre référence. Si l'ancienne page n'a pas pu être
+  // confirmée fermée, avertir avant la navigation : ne pas payer sur les deux pages.
+  if(data?.previous_checkout_close_unconfirmed){
+    alert('La nouvelle tentative a été créée avec une référence distincte. PayTech n’a pas confirmé la fermeture de l’ancienne page : ne validez pas de paiement sur l’ancienne page, afin d’éviter un double débit.');
   }
   // La clé est conservée jusqu'à une réponse terminale du serveur. Si la
   // navigation échoue, le même identifiant permet de retrouver l'URL stockée.
