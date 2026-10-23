@@ -8629,7 +8629,7 @@ async function createRestaurantAndPay(){
   clearPendingOnboarding();
 
   if(btn) btn.innerHTML = 'Préparation du paiement PayTech…';
-  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, obState.plan, cycle, ambassadorCodeForThisCheckout);
+  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, obState.plan, cycle, ambassadorCodeForThisCheckout, paymentMethod);
   const ambassadorOffer = window.trAmbassadorGetOffer ? window.trAmbassadorGetOffer('obPayBtn', ambassadorCodeForThisCheckout, obState.plan, cycle) : {base_amount:price,discount_amount:0,amount:price,offer_quote_checked:!ambassadorCodeForThisCheckout,offer_quote_code:ambassadorCodeForThisCheckout};
   savePayTechReturnSection('abonnement');
   // Le montant réellement facturé est déterminé côté serveur par
@@ -8669,19 +8669,38 @@ async function createRestaurantAndPay(){
   }
   if(!error && data?.checkout_state === 'previous_checkout_requires_cancel'){
     try { window.sessionStorage.setItem('tr_ambassador_checkout_code_v1', ambassadorCodeForThisCheckout); } catch {}
+    trSavePendingPayTechPlanIntent(RESTAURANT.id,obState.plan,cycle,ambassadorCodeForThisCheckout);
     abonSelectedPlan = obState.plan === 'pro' ? 'pro' : 'starter';
     abonSelectedCycle = cycle;
     viewerIsStaff = true;
     setView('dashboard');
     setDashSection('abonnement');
-    trShowPendingPayTechChoice(data,{plan:obState.plan,cycle,requestedAmount:Number(ambassadorOffer.amount??price)},()=>startPayTechCheckout(abonSelectedPlan));
+    // dashAbonnement() resets its method selection on render. Restore the exact
+    // onboarding choice so the explicit re-check button cannot stop before server verification.
+    abonPaymentMethod = paymentMethod;
+    abonCustomerName = customerName;
+    abonCustomerPhone = customerPhone;
+    const restoredAbonCard = document.getElementById('abonCard');
+    if(restoredAbonCard){restoredAbonCard.innerHTML=abonCardHtml();hydrateIcons(restoredAbonCard);}
+    trShowPendingPayTechChoice(data,{plan:obState.plan,cycle,requestedAmount:Number(ambassadorOffer.amount??price)},async()=>{
+      abonSelectedPlan = obState.plan === 'pro' ? 'pro' : 'starter';
+      abonSelectedCycle = cycle;
+      abonPaymentMethod = paymentMethod;
+      abonCustomerName = customerName;
+      abonCustomerPhone = customerPhone;
+      await startPayTechCheckout(abonSelectedPlan);
+    });
     return;
   }
   if(error || !data || !paymentUrl){
+    if(String(data?.code||'')==='PREVIOUS_CHECKOUT_STILL_UNRESOLVED'||String(data?.checkout_state||'')==='indeterminate'||!data||error){
+      trSavePendingPayTechPlanIntent(RESTAURANT.id,obState.plan,cycle,ambassadorCodeForThisCheckout);
+    }
+    trClearIntentIfPayTechReportsPreviousPaymentPaid(data,RESTAURANT.id);
     explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, obState.plan, cycle,
       "Impossible de démarrer le paiement PayTech. Votre restaurant a été créé et son site public est accessible ; le forfait payant reste en attente de paiement. Vous pouvez reprendre depuis Abonnement.",
-      ambassadorCodeForThisCheckout
+      ambassadorCodeForThisCheckout, paymentMethod
     );
     viewerIsStaff = true;
     setView('dashboard');
@@ -13250,6 +13269,69 @@ let abonPaymentMethod = '';
 let abonCustomerName = '';
 let abonCustomerPhone = '';
 
+
+/* Intention de changement de forfait : conservée localement pendant qu'une
+   tentative PayTech précédente doit encore être réconciliée. Elle ne crée pas
+   de paiement et ne remplace jamais le montant calculé par le serveur. */
+const TR_PAYTECH_PENDING_INTENT_PREFIX = 'tr_paytech_pending_plan_intent_v1:';
+function trPayTechPendingIntentStorageKey(restaurantId){
+  return TR_PAYTECH_PENDING_INTENT_PREFIX + String(restaurantId || '');
+}
+function trSavePendingPayTechPlanIntent(restaurantId, plan, cycle, ambassadorCode=''){
+  const normalizedPlan = String(plan || '').toLowerCase();
+  const normalizedCycle = String(cycle || '').toLowerCase();
+  if(!restaurantId || !['starter','pro'].includes(normalizedPlan) || !['monthly','annual'].includes(normalizedCycle)) return false;
+  let code = String(ambassadorCode || '').toUpperCase().replace(/\s+/g,'').slice(0,24);
+  if(!code){try{code=String(window.sessionStorage.getItem('tr_ambassador_checkout_code_v1')||'').toUpperCase().replace(/\s+/g,'').slice(0,24);}catch{}}
+  const intent = {version:1,restaurant_id:String(restaurantId),plan:normalizedPlan,cycle:normalizedCycle,ambassador_code:code,saved_at:Date.now()};
+  const key = trPayTechPendingIntentStorageKey(restaurantId);
+  const serialized = JSON.stringify(intent);
+  try{window.localStorage.setItem(key,serialized);return true;}catch{}
+  try{window.sessionStorage.setItem(key,serialized);return true;}catch{}
+  return false;
+}
+function trReadPendingPayTechPlanIntent(restaurantId){
+  if(!restaurantId)return null;
+  const key=trPayTechPendingIntentStorageKey(restaurantId);
+  let serialized='';
+  try{serialized=window.localStorage.getItem(key)||'';}catch{}
+  if(!serialized){try{serialized=window.sessionStorage.getItem(key)||'';}catch{}}
+  if(!serialized)return null;
+  try{
+    const value=JSON.parse(serialized);
+    const valid=value&&value.version===1&&String(value.restaurant_id)===String(restaurantId)
+      &&['starter','pro'].includes(String(value.plan))&&['monthly','annual'].includes(String(value.cycle))
+      &&Number.isFinite(Number(value.saved_at))&&Date.now()-Number(value.saved_at)<=30*24*60*60*1000;
+    if(!valid){trClearPendingPayTechPlanIntent(restaurantId);return null;}
+    return value;
+  }catch{trClearPendingPayTechPlanIntent(restaurantId);return null;}
+}
+function trClearPendingPayTechPlanIntent(restaurantId){
+  if(!restaurantId)return;
+  const key=trPayTechPendingIntentStorageKey(restaurantId);
+  try{window.localStorage.removeItem(key);}catch{}
+  try{window.sessionStorage.removeItem(key);}catch{}
+}
+function trRestorePendingPayTechPlanIntent(){
+  const restaurantId=String(RESTAURANT?.id||'');
+  const intent=trReadPendingPayTechPlanIntent(restaurantId);
+  if(!intent)return null;
+  if(abonSelectedPlan===null)abonSelectedPlan=String(intent.plan);
+  if(abonSelectedCycle===null)abonSelectedCycle=String(intent.cycle);
+  if(intent.ambassador_code){try{window.sessionStorage.setItem('tr_ambassador_checkout_code_v1',String(intent.ambassador_code));}catch{}}
+  return intent;
+}
+function trRememberSelectedPayTechPlanIntent(){
+  const restaurantId=String(RESTAURANT?.id||'');
+  if(!restaurantId)return;
+  trSavePendingPayTechPlanIntent(restaurantId,abonSelectedPlan,abonSelectedCycle,'');
+}
+function trClearIntentIfPayTechReportsPreviousPaymentPaid(data,restaurantId){
+  if(String(data?.code||'')==='PREVIOUS_CHECKOUT_PROVIDER_PAID'||String(data?.checkout_state||'')==='confirmed'){
+    trClearPendingPayTechPlanIntent(restaurantId);
+  }
+}
+
 const SUBSCRIPTION_STATUS_LABELS = {
   trialing:"Essai gratuit", active:"Actif", cancelled:"Annulé", expired:"Expiré", pending_payment:"En attente de paiement",
 };
@@ -13259,6 +13341,7 @@ const SUBSCRIPTION_STATUS_TONE = {
 
 function dashAbonnement(){
   abonPaymentMethod = '';
+  trRestorePendingPayTechPlanIntent();
   if(abonSelectedPlan===null) abonSelectedPlan = (state.plan==='starter'||state.plan==='pro') ? state.plan : 'starter';
   if(abonSelectedCycle===null) abonSelectedCycle = RESTAURANT.billingCycle==='annual' ? 'annual' : 'monthly';
   const status = computeEffectiveSubscriptionStatus();
@@ -13301,16 +13384,16 @@ function abonCardHtml(){
   return `
   <p style="font-size:13.5px;font-weight:600;margin-bottom:10px;">Choisir un forfait</p>
   <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
-    <button ${freeForbidden?'disabled title="Le forfait Gratuit n’est plus disponible après un premier paiement Starter ou Premium."':''} onclick="${freeForbidden?'return false;':"abonSelectedPlan='free';document.getElementById('abonCard').innerHTML=abonCardHtml();"}" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}${freeForbidden?'opacity:.55;cursor:not-allowed;':''}border-radius:14px;padding:12px;text-align:left;">
+    <button ${freeForbidden?'disabled title="Le forfait Gratuit n’est plus disponible après un premier paiement Starter ou Premium."':''} onclick="${freeForbidden?'return false;':"abonSelectedPlan='free';trClearPendingPayTechPlanIntent(RESTAURANT.id);document.getElementById('abonCard').innerHTML=abonCardHtml();"}" style="border:2px solid ${abonSelectedPlan==='free'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='free'?'background:rgba(232,135,30,.05);':''}${freeForbidden?'opacity:.55;cursor:not-allowed;':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Gratuit</p><p style="font-size:11.5px;color:var(--ink-faint);">0 FCFA</p></button>
-    <button onclick="abonSelectedPlan='starter';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='starter'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='starter'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+    <button onclick="abonSelectedPlan='starter';trRememberSelectedPayTechPlanIntent();document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='starter'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='starter'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Starter</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(STARTER_PRICE)}/mois</p></button>
-    <button onclick="abonSelectedPlan='pro';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
+    <button onclick="abonSelectedPlan='pro';trRememberSelectedPayTechPlanIntent();document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:2px solid ${abonSelectedPlan==='pro'?'var(--amber-deep)':'var(--cream-line)'};${abonSelectedPlan==='pro'?'background:rgba(232,135,30,.05);':''}border-radius:14px;padding:12px;text-align:left;">
       <p style="font-size:13px;font-weight:600;">Premium</p><p style="font-size:11.5px;color:var(--ink-faint);">${fmt(PREMIUM_PRICE)}/mois</p></button>
   </div>
   <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 16px;background:#fff;border:1px solid var(--cream-line);border-radius:999px;padding:5px;box-shadow:0 4px 14px rgba(43,24,16,.06);">
-    <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
-    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
+    <button type="button" aria-pressed="${cycle==='monthly'}" onclick="abonSelectedCycle='monthly';trRememberSelectedPayTechPlanIntent();document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='monthly'?'var(--amber-deep)':'transparent'};color:${cycle==='monthly'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;">Mensuel</button>
+    <button type="button" aria-pressed="${cycle==='annual'}" onclick="abonSelectedCycle='annual';trRememberSelectedPayTechPlanIntent();document.getElementById('abonCard').innerHTML=abonCardHtml();" style="border:0;background:${cycle==='annual'?'var(--amber-deep)':'transparent'};color:${cycle==='annual'?'#fff':'#000'};border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">Annuel <span style="border:1px solid ${cycle==='annual'?'#008000':'rgba(255,255,255,.45)'};border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#008000;">Économisez 16 %</span></button>
   </div>
   ${(abonSelectedPlan==='starter'||abonSelectedPlan==='pro') ? `
   <div style="margin-bottom:16px;">
@@ -13388,13 +13471,15 @@ function trPayTechNewAttemptUuid(){
   const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
-function trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode=''){
+function trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode='', paymentMethod=''){
   const base = `${trPayTechAttemptKeyPrefix}${String(restaurantId)}:${String(plan).toLowerCase()}:${String(cycle).toLowerCase()}`;
   const code = String(ambassadorCode||'').toUpperCase().replace(/\s+/g,'').slice(0,24);
-  return code ? `${base}:ambassador:${encodeURIComponent(code)}` : base;
+  const withCode = code ? `${base}:ambassador:${encodeURIComponent(code)}` : base;
+  const method = String(paymentMethod||'').trim();
+  return method ? `${withCode}:method:${encodeURIComponent(method)}` : withCode;
 }
-function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=''){
-  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode);
+function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode='', paymentMethod=''){
+  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode, paymentMethod);
   const cached = trPayTechAttemptMemory.get(scope);
   if(cached && TR_PAYTECH_ATTEMPT_UUID_RE.test(cached)) return cached;
   let saved = '';
@@ -13419,23 +13504,25 @@ function getPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=
   catch { try { window.sessionStorage.setItem(scope, fresh); } catch { /* fallback mémoire pour cette page */ } }
   return fresh;
 }
-function clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode=''){
-  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode);
+function clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode='', paymentMethod=''){
+  const scope = trPayTechAttemptStorageKey(restaurantId, plan, cycle, ambassadorCode, paymentMethod);
   trPayTechAttemptMemory.delete(scope);
   try { window.localStorage.removeItem(scope); } catch { /* stockage persistant indisponible */ }
   try { window.sessionStorage.removeItem(scope); } catch { /* ancienne clé V4, si présente */ }
 }
-function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage, ambassadorCode=''){
+function explainPayTechCheckoutFailure(data, error, restaurantId, plan, cycle, fallbackMessage, ambassadorCode='', paymentMethod=''){
   const state = String(data?.checkout_state || '');
   if(state === 'rejected' || state === 'confirmed'){
-    clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode);
+    clearPayTechCheckoutAttemptKey(restaurantId, plan, cycle, ambassadorCode, paymentMethod);
     toast(String(data?.error || (state === 'confirmed' ? 'Cette tentative est déjà confirmée. Vérifiez votre abonnement.' : fallbackMessage)));
     return;
   }
   if(['indeterminate','submitting','ready','unknown'].includes(state) || (!data && error)){
     const reference = String(data?.ref_command || '').trim();
-    const suffix = reference ? ` Référence : ${reference}.` : '';
-    toast(`La connexion a été interrompue ou PayTech n’a pas confirmé le résultat.${suffix} Ne lancez pas un autre paiement et gardez les mêmes options. Réessayez depuis ce bouton pour vérifier la même tentative ; si le problème persiste, transmettez la référence à l’assistance.`);
+    const detail = String(data?.error || '').trim();
+    const fallback = 'La connexion a été interrompue ou PayTech n’a pas confirmé le résultat. Aucun nouveau paiement ne sera lancé tant que la tentative précédente reste incertaine.';
+    const suffix = reference && !detail.includes(reference) ? ` Référence : ${reference}.` : '';
+    toast(`${detail || fallback}${suffix}`);
     return;
   }
   toast(fallbackMessage);
@@ -13454,11 +13541,14 @@ function trShowPendingPayTechChoice(data, requestedOffer, onRecheck){
   const oldAmountText = Number.isSafeInteger(oldAmount) && oldAmount >= 0 ? `${fmt(oldAmount)} FCFA` : 'montant à vérifier';
   const oldCycleRaw = String(data?.previous_billing_cycle || 'monthly').toLowerCase();
   const oldCycle = oldCycleRaw === 'annual' ? 'annuel' : 'mensuel';
+  const oldPaymentMethod = String(data?.previous_target_payment || '').trim();
   const newPlan = String(requestedOffer?.plan || 'starter').toLowerCase() === 'pro' ? 'Premium' : 'Starter';
   const newCycle = String(requestedOffer?.cycle || 'monthly').toLowerCase() === 'annual' ? 'annuel' : 'mensuel';
   const newAmount = Number(requestedOffer?.requestedAmount);
   const newAmountText = Number.isSafeInteger(newAmount) && newAmount >= 0 ? `${fmt(newAmount)} FCFA` : 'montant à vérifier';
-  const priorMessage = String(data?.error || 'Une tentative PayTech reste en attente. Aucun nouveau paiement n’a été créé.');
+  const priorMessage = String(data?.error || 'Une tentative PayTech reste non résolue. Aucun nouveau paiement n’a été créé.');
+  const providerStatus = String(data?.provider_status || 'unknown').toLowerCase();
+  const statusConfirmedPending = providerStatus === 'pending';
 
   const existing = document.getElementById('trPayTechPendingChoiceOverlay');
   if(existing) existing.remove();
@@ -13468,64 +13558,73 @@ function trShowPendingPayTechChoice(data, requestedOffer, onRecheck){
   overlay.setAttribute('role','dialog');
   overlay.setAttribute('aria-modal','true');
   overlay.setAttribute('aria-labelledby','trPayTechPendingChoiceTitle');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(8,14,28,.70);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(8,14,28,.76);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
 
   const panel = document.createElement('div');
-  panel.style.cssText = 'width:min(100%,560px);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:inherit;color:#172033;';
+  panel.style.cssText = 'width:min(100%,560px);max-height:90vh;max-height:90dvh;overflow:auto;overscroll-behavior:contain;background:#fff;border-radius:18px;padding:clamp(14px,4vw,22px);box-sizing:border-box;box-shadow:0 24px 80px rgba(0,0,0,.28);font-family:inherit;color:#172033;';
   const title = document.createElement('h2');
   title.id = 'trPayTechPendingChoiceTitle';
-  title.textContent = 'Une tentative de paiement est encore ouverte';
-  title.style.cssText = 'margin:0 0 10px;font-size:20px;line-height:1.3;font-weight:800;color:#111827;';
+  title.textContent = statusConfirmedPending ? 'Une tentative de paiement est encore ouverte' : 'Le statut de l’ancienne tentative reste à vérifier';
+  title.style.cssText = 'margin:0 0 10px;font-size:clamp(18px,4vw,20px);line-height:1.3;font-weight:800;color:#111827;';
   const message = document.createElement('p');
   message.textContent = priorMessage;
-  message.style.cssText = 'margin:0 0 14px;font-size:13px;line-height:1.55;color:#4b5563;';
+  message.style.cssText = 'margin:0 0 14px;font-size:13px;line-height:1.55;color:#4b5563;overflow-wrap:anywhere;';
 
   const summary = document.createElement('div');
-  summary.style.cssText = 'display:grid;grid-template-columns:1fr;gap:8px;margin:0 0 16px;';
+  summary.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 14px;';
   function summaryCard(label,value,accent){
     const card=document.createElement('div');
-    card.style.cssText=`padding:11px 12px;border:1px solid ${accent?'#f3d5a3':'#e5e7eb'};border-radius:12px;background:${accent?'#fff8eb':'#f9fafb'};`;
+    card.style.cssText=`min-width:0;padding:11px 12px;border:1px solid ${accent?'#f3d5a3':'#e5e7eb'};border-radius:12px;background:${accent?'#fff8eb':'#f9fafb'};`;
     const small=document.createElement('div');small.textContent=label;small.style.cssText='font-size:11px;line-height:1.4;color:#6b7280;margin-bottom:3px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;';
     const big=document.createElement('div');big.textContent=value;big.style.cssText='font-size:14px;line-height:1.45;color:#111827;font-weight:800;overflow-wrap:anywhere;';
     card.append(small,big);return card;
   }
+  const oldPaymentSummary = `${oldPlan} · ${oldAmountText} · ${oldCycle}${oldPaymentMethod ? ` · ${oldPaymentMethod}` : ' · moyen non enregistré'}`;
   summary.append(
-    summaryCard('Paiement existant à reprendre',`${oldPlan} · ${oldAmountText} · ${oldCycle}`,false),
-    summaryCard('Nouveau choix demandé — pas encore lancé',`${newPlan} · ${newAmountText} · ${newCycle}`,true)
+    summaryCard('Ancienne tentative — à résoudre',oldPaymentSummary,false),
+    summaryCard('Nouveau choix — pas encore lancé',`${newPlan} · ${newAmountText} · ${newCycle}`,true)
   );
 
   const safety = document.createElement('p');
-  safety.textContent = 'Ne payez pas les deux offres. Le bouton Annuler ne modifie pas silencieusement le statut : ouvrez la page PayTech, annulez-y l’ancienne tentative, puis revenez vérifier son état. Le nouveau paiement ne démarrera que si le serveur confirme l’échec ou l’annulation de l’ancien.';
-  safety.style.cssText = 'margin:0 0 16px;padding:11px 12px;border-left:3px solid #d97706;background:#fffbeb;color:#78350f;font-size:12px;line-height:1.55;border-radius:8px;';
+  safety.textContent = statusConfirmedPending
+    ? 'Ne payez pas les deux offres. Le bouton rouge ouvre l’ancienne page PayTech : annulez la tentative chez PayTech, puis revenez ici. Le nouveau paiement ne démarrera qu’après confirmation serveur de la fin de l’ancienne tentative.'
+    : 'Le statut PayTech n’est pas confirmé. Le bouton rouge ouvre la page enregistrée pour vérifier ou annuler la tentative chez PayTech. Il ne l’annule pas automatiquement. Revenez ensuite et demandez une nouvelle vérification ; aucun nouveau checkout ne sera créé tant que l’ancienne tentative reste incertaine.';
+  safety.style.cssText = 'margin:0 0 14px;padding:11px 12px;border-left:3px solid #d97706;background:#fffbeb;color:#78350f;font-size:12px;line-height:1.55;border-radius:8px;overflow-wrap:anywhere;';
 
   const actions = document.createElement('div');
-  actions.style.cssText = 'display:grid;grid-template-columns:1fr;gap:9px;';
+  actions.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr);gap:9px;width:100%;';
   function actionButton(label,variant,handler,disabled=false){
     const button=document.createElement('button');
     button.type='button';button.textContent=label;button.disabled=disabled;
-    const base='display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:11px 14px;border-radius:10px;font-size:13px;line-height:1.4;font-weight:800;text-align:center;white-space:normal;cursor:pointer;box-sizing:border-box;';
-    const styles={primary:'background:#0f1830;color:#fff;border:1px solid #0f1830;',secondary:'background:#fff7ed;color:#7c2d12;border:1px solid #fed7aa;',neutral:'background:#fff;color:#374151;border:1px solid #d1d5db;'};
-    button.style.cssText=base+styles[variant]+(disabled?'opacity:.45;cursor:not-allowed;':'');
+    const base='display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.4;font-weight:800;text-align:center;white-space:normal;overflow-wrap:anywhere;cursor:pointer;box-sizing:border-box;touch-action:manipulation;';
+    const styles={primary:'background:#0f1830;color:#fff;border:1px solid #0f1830;',cancel:'background:#b91c1c;color:#fff;border:1px solid #991b1b;',neutral:'background:#fff;color:#374151;border:1px solid #d1d5db;'};
+    button.style.cssText=base+(styles[variant]||styles.neutral)+(disabled?'opacity:.45;cursor:not-allowed;':'');
     button.addEventListener('click',handler);
     return button;
   }
   const openPrevious = (forCancel)=>{
-    if(!oldUrl){toast('L’URL de l’ancienne tentative n’est pas disponible. Vérifiez son état ou contactez l’assistance.');return;}
+    if(!oldUrl){toast('L’URL de l’ancienne tentative n’est pas disponible. Contactez l’assistance avec la référence affichée.');return;}
     let opened=null;
     try{opened=window.open(oldUrl,'_blank');if(opened)opened.opener=null;}catch{}
     if(!opened){
-      toast('Le navigateur a bloqué le nouvel onglet. La page PayTech va s’ouvrir dans cet onglet. Revenez ensuite sur TerangaResto pour vérifier l’état.');
+      toast('Le navigateur ouvre PayTech dans cet onglet. Revenez ensuite sur TerangaResto pour vérifier le statut.');
       window.location.href=oldUrl;
       return;
     }
     toast(forCancel
-      ? 'Dans le nouvel onglet PayTech, annulez l’ancienne tentative sans la payer. Revenez ensuite ici et cliquez sur « J’ai annulé — vérifier et continuer ». '
-      : 'La tentative PayTech déjà enregistrée a été rouverte. Aucun nouveau paiement n’a été créé.');
+      ? 'Dans PayTech, annulez l’ancienne tentative sans la payer. Revenez ici et cliquez sur « J’ai annulé sur PayTech — vérifier ». '
+      : 'Ancienne page PayTech ouverte. Aucun nouveau paiement n’a été créé.');
   };
+  if(statusConfirmedPending){
+    actions.append(actionButton(`Reprendre le paiement existant — ${oldAmountText}`, 'primary',()=>openPrevious(false),!oldUrl));
+  }
+  // Dedicated cancel button stays directly below the existing-payment action and
+  // remains full-width/tap-friendly on both mobile and desktop.
+  if(oldUrl){
+    actions.append(actionButton('Annuler l’ancienne tentative — ouvrir PayTech', 'cancel',()=>openPrevious(true),false));
+  }
   actions.append(
-    actionButton(`Continuer le paiement ${oldPlan} — ${oldAmountText}`, 'primary',()=>openPrevious(false),!oldUrl),
-    actionButton('Annuler l’ancienne tentative et changer de forfait', 'secondary',()=>openPrevious(true),!oldUrl),
-    actionButton(`J’ai annulé — vérifier et continuer vers ${newPlan}`, 'neutral',()=>{
+    actionButton(`J’ai annulé sur PayTech — vérifier avant ${newPlan}`, 'neutral',()=>{
       overlay.remove();
       try{Promise.resolve(typeof onRecheck==='function'?onRecheck():null).catch(e=>{console.error('PayTech pending checkout retry failed',e);toast('Impossible de vérifier cette tentative. Aucun nouveau paiement n’a été lancé.');});}
       catch(e){console.error('PayTech pending checkout retry failed',e);toast('Impossible de vérifier cette tentative. Aucun nouveau paiement n’a été lancé.');}
@@ -13534,7 +13633,7 @@ function trShowPendingPayTechChoice(data, requestedOffer, onRecheck){
   const footer = document.createElement('div');
   footer.style.cssText='display:flex;justify-content:flex-end;margin-top:12px;';
   const close= document.createElement('button');close.type='button';close.textContent='Fermer pour le moment';
-  close.style.cssText='padding:7px 9px;background:transparent;border:0;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;';
+  close.style.cssText='min-height:40px;padding:7px 9px;background:transparent;border:0;color:#6b7280;font-size:12px;font-weight:700;cursor:pointer;';
   close.addEventListener('click',()=>overlay.remove());
   footer.appendChild(close);
   panel.append(title,message,summary,safety,actions,footer);
@@ -13558,17 +13657,17 @@ async function startPayTechCheckout(plan){
   savePayTechReturnSection('abonnement');
   const btn = document.getElementById('paytechBtn');
   const cycle = abonSelectedCycle==='annual' ? 'annual' : 'monthly';
-  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, plan, cycle, ambassadorCodeForThisCheckout);
-  const price = priceForPlanCycle(plan, cycle);
-  const ambassadorOffer = window.trAmbassadorGetOffer ? window.trAmbassadorGetOffer('paytechBtn', ambassadorCodeForThisCheckout, plan, cycle) : {base_amount:price,discount_amount:0,amount:price,offer_quote_checked:!ambassadorCodeForThisCheckout,offer_quote_code:ambassadorCodeForThisCheckout};
   const paymentMethod = String(abonPaymentMethod||'').trim();
-  const customerName = String(abonCustomerName||'').trim();
-  const customerPhone = String(abonCustomerPhone||'').replace(/\D/g,'');
-  const clientDevice = window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
   if(!['Wave','Orange Money'].includes(paymentMethod)){
     toast('Choisissez Wave ou Orange Money pour continuer.');
     return;
   }
+  const checkoutIdempotencyKey = getPayTechCheckoutAttemptKey(RESTAURANT.id, plan, cycle, ambassadorCodeForThisCheckout, paymentMethod);
+  const price = priceForPlanCycle(plan, cycle);
+  const ambassadorOffer = window.trAmbassadorGetOffer ? window.trAmbassadorGetOffer('paytechBtn', ambassadorCodeForThisCheckout, plan, cycle) : {base_amount:price,discount_amount:0,amount:price,offer_quote_checked:!ambassadorCodeForThisCheckout,offer_quote_code:ambassadorCodeForThisCheckout};
+  const customerName = String(abonCustomerName||'').trim();
+  const customerPhone = String(abonCustomerPhone||'').replace(/\D/g,'');
+  const clientDevice = window.matchMedia('(max-width: 900px)').matches ? 'mobile' : 'desktop';
   if(btn){ btn.disabled = true; btn.textContent = 'Préparation du paiement PayTech…'; }
   // La session Supabase déjà ouverte est automatiquement jointe à l'appel Edge;
   // aucun aller-retour getSession() supplémentaire n'est nécessaire ici.
@@ -13605,15 +13704,21 @@ async function startPayTechCheckout(plan){
   // have explicit choices: resume the old attempt, open PayTech to cancel it,
   // or re-check after cancellation before creating the newly selected offer.
   if(!error && data?.checkout_state === 'previous_checkout_requires_cancel'){
+    trSavePendingPayTechPlanIntent(RESTAURANT.id,plan,cycle,ambassadorCodeForThisCheckout);
+    trClearIntentIfPayTechReportsPreviousPaymentPaid(data,RESTAURANT.id);
     if(btn){btn.disabled=false;btn.innerHTML=`${ic('externalLink',15)} Payer ${fmt(Number(ambassadorOffer.amount ?? price))}`;hydrateIcons();}
     trShowPendingPayTechChoice(data,{plan,cycle,requestedAmount:Number(ambassadorOffer.amount??price)},()=>startPayTechCheckout(plan));
     return;
   }
   if(error || !data || !paymentUrl){
+    if(String(data?.code||'')==='PREVIOUS_CHECKOUT_STILL_UNRESOLVED'||String(data?.checkout_state||'')==='indeterminate'||!data||error){
+      trSavePendingPayTechPlanIntent(RESTAURANT.id,plan,cycle,ambassadorCodeForThisCheckout);
+    }
+    trClearIntentIfPayTechReportsPreviousPaymentPaid(data,RESTAURANT.id);
     explainPayTechCheckoutFailure(
       data, error, RESTAURANT.id, plan, cycle,
       "Impossible de démarrer le paiement PayTech. Réessayez après avoir vérifié la connexion.",
-      ambassadorCodeForThisCheckout
+      ambassadorCodeForThisCheckout, paymentMethod
     );
     if(btn){ btn.disabled = false; btn.innerHTML = `${ic('externalLink',15)} Payer ${fmt(Number(ambassadorOffer.amount ?? price))}`; hydrateIcons(); }
     return;
