@@ -13547,7 +13547,7 @@ function trShowPendingPayTechChoice(data, requestedOffer){
   title.textContent='Choisir le paiement';
   title.style.cssText='margin:0 0 8px;font-size:clamp(18px,4vw,21px);line-height:1.3;font-weight:800;color:#111827;';
   const message=document.createElement('p');
-  message.textContent=`Une tentative ${oldPlan} de ${oldAmountText} existe déjà. Reprenez-la ou demandez le nouveau forfait ${newPlan} à ${newAmountText} (${newCycle}).`;
+  message.textContent=`Une tentative ${oldPlan} de ${oldAmountText} est encore enregistrée. Pour éviter un double débit, le nouveau paiement ${newPlan} à ${newAmountText} (${newCycle}) ne démarrera qu’après confirmation de l’annulation de l’ancienne tentative. Appuyez sur « Reprendre » pour ouvrir l’ancienne page, annulez-la chez PayTech, revenez ici, puis choisissez de nouveau « Payer ».`;
   message.style.cssText='margin:0 0 16px;font-size:13px;line-height:1.55;color:#4b5563;overflow-wrap:anywhere;';
   const actions=document.createElement('div');
   actions.style.cssText=`display:grid;grid-template-columns:${window.matchMedia('(min-width:560px)').matches?'repeat(2,minmax(0,1fr)':'minmax(0,1fr)'};gap:9px;width:100%;`;
