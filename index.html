@@ -600,9 +600,29 @@ button,a,input,select,textarea{font-family:inherit;}
     document.getElementById('restoSplash').classList.remove('hidden');
   }else if(__hasReturningDashboard){
     document.getElementById('authCheckSplash').classList.remove('hidden');
+    document.body.classList.add('auth-check-in-progress');
+    window.__trPublicNavigationChosenDuringSessionCheck=false;
+    window.__trPublicNavigationRequestedView=null;
+    // An explicit click on the public navigation is a user choice, not an auth result.
+    // Reveal the chosen public view and let session restoration finish without overriding it.
+    document.addEventListener('click',function(event){
+      if(typeof isAdminRouteRequested==='function'&&isAdminRouteRequested())return;
+      const control=event.target instanceof Element?event.target.closest('#platformHeader a, #platformHeader button'):null;
+      if(!control||control.id==='mobileMenuBtn')return;
+      if(!document.body.classList.contains('auth-check-in-progress')&&window.__trPublicNavigationChosenDuringSessionCheck!==true)return;
+      window.__trPublicNavigationChosenDuringSessionCheck=true;
+      const requestedView=typeof state!=='undefined'?state.view:'landing';
+      window.__trPublicNavigationRequestedView=['landing','pricing','onboarding'].includes(requestedView)?requestedView:'landing';
+      const splash=document.getElementById('authCheckSplash');
+      if(splash)splash.classList.add('hidden');
+      document.body.classList.remove('auth-check-in-progress');
+    });
   }
 </script>
-
+<style id="tr-public-navigation-during-session-check">
+/* Keep only the public navigation above the neutral session-check cover. */
+body.auth-check-in-progress #platformHeader{z-index:100000!important;}
+</style>
 <header class="gnav" id="platformHeader">
   <div class="gnav-inner">
     <a href="#" class="flex items-center gap-2" onclick="setView('landing');return false;">
@@ -4622,6 +4642,11 @@ async function switchActiveRestaurant(rid,section=null){
     if(access) ok=await loadRestaurantCore(rid,true,true);
   }catch(e){ console.error('Changement de restaurant refusé/échoué :',e?.message||e); }
   if(String(activeRestaurantId)!==String(rid)) return false;
+  if(window.__trPublicNavigationChosenDuringSessionCheck){
+    activeRestaurantId=null;viewerIsStaff=false;
+    if(dc)dc.replaceChildren();
+    return false;
+  }
   if(!ok||!access){
     activeRestaurantId=null;viewerIsStaff=false;
     PRODUCTS.length=0;DEMO_ORDERS.length=0;staffState.length=0;REVIEWS.length=0;catsState={};catsHomeVisible={};
@@ -5897,19 +5922,27 @@ async function restoreSession(){
     // PRIORITÉ 3 : session TerangaResto / dashboard.
     const {data:{session}}=await supabaseClient.auth.getSession();
     currentUser=session ? session.user : null;
+    if(trConsumePublicNavigationDuringSessionCheck())return;
     if(currentUser){
       const desiredSection=requestedDashSection()||'overview';
       viewerIsStaff=true;state.dashSection=desiredSection;
       try{
         const rows=await loadAccessibleRestaurants(currentUser.id);
+        if(trConsumePublicNavigationDuringSessionCheck())return;
         if(rows.length){
           let stored=null;try{stored=localStorage.getItem('tg_last_restaurant_'+String(currentUser.id));}catch(e){}
           const target=rows.find(r=>String(r.id)===String(stored))||rows.find(r=>r.access_kind==='owner')||rows[0];
           await switchActiveRestaurant(target.id,desiredSection);
+          if(trConsumePublicNavigationDuringSessionCheck())return;
           hideAuthCheckSplash();hideRestoSplash();return;
         }
-        if(await tryResumePendingOnboarding())return;
-      }catch(e){console.error('Chargement des restaurants du compte:',e);}
+        const resumedPendingOnboarding=await tryResumePendingOnboarding();
+        if(trConsumePublicNavigationDuringSessionCheck())return;
+        if(resumedPendingOnboarding)return;
+      }catch(e){
+        console.error('Chargement des restaurants du compte:',e);
+        if(trConsumePublicNavigationDuringSessionCheck())return;
+      }
       viewerIsStaff=false;setView('landing');
     }else{hideAuthCheckSplash();}
 
@@ -5926,13 +5959,18 @@ async function restoreSession(){
       return;
     }
 
-    if(await tryResumePendingOnboarding()) return;
+    const resumedPendingOnboarding=await tryResumePendingOnboarding();
+    if(trConsumePublicNavigationDuringSessionCheck())return;
+    if(resumedPendingOnboarding)return;
 
     try{ localStorage.removeItem('tg_returning_user'); }catch(e){}
     hideAuthCheckSplash();
     hideRestoSplash();
   }catch(e){
     console.error('Restauration session:', e);
+    const requestedPublicView=window.__trPublicNavigationChosenDuringSessionCheck===true?window.__trPublicNavigationRequestedView:null;
+    window.__trPublicNavigationChosenDuringSessionCheck=false;
+    window.__trPublicNavigationRequestedView=null;
     currentUser = null;
     viewerIsStaff = false;
     try{ localStorage.removeItem('tg_returning_user'); }catch(_e){}
@@ -5943,6 +5981,8 @@ async function restoreSession(){
       if(failedPublicSlug || !isKnownPlatformHost(location.hostname)){
         markPublicLoadError(failedPublicSlug || '');
         setView('storefront');
+      }else if(['landing','pricing','onboarding'].includes(requestedPublicView)&&typeof state!=='undefined'&&state.view!==requestedPublicView){
+        setView(requestedPublicView);
       }
     }catch(publicError){console.error('Échec de récupération de la boutique:',publicError);}
     hideAuthCheckSplash();
@@ -5970,6 +6010,17 @@ function hideRestoSplash(){
 function hideAuthCheckSplash(){
   const el = document.getElementById('authCheckSplash');
   if(el) el.classList.add('hidden');
+  document.body.classList.remove('auth-check-in-progress');
+}
+function trConsumePublicNavigationDuringSessionCheck(){
+  if(window.__trPublicNavigationChosenDuringSessionCheck!==true)return false;
+  const requested=window.__trPublicNavigationRequestedView;
+  window.__trPublicNavigationChosenDuringSessionCheck=false;
+  window.__trPublicNavigationRequestedView=null;
+  viewerIsStaff=false;
+  hideAuthCheckSplash();
+  if(['landing','pricing','onboarding'].includes(requested)&&typeof state!=='undefined'&&state.view!==requested)setView(requested);
+  return true;
 }
 </script>
 
@@ -15028,8 +15079,10 @@ function speakAiText(text,button){
   function money(v){return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(v)||0)+' FCFA';}
   function date(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});}
   async function call(action,args={}){
-    const {data:s,error:se}=await supabaseClient.auth.getSession();const token=s?.session?.access_token;
-    if(se||!token)throw new Error('Connectez-vous puis réessayez.');
+    const {data:s,error:se}=await supabaseClient.auth.getSession();
+    if(se)throw se;
+    const token=s?.session?.access_token;
+    if(!token){const e=new Error('Connectez-vous puis réessayez.');e.code='AUTH_REQUIRED';throw e;}
     const {data,error}=await supabaseClient.functions.invoke(API,{body:{action,...args},headers:{Authorization:'Bearer '+token}});
     if(error){
       // Supabase Functions often exposes non-2xx JSON only through error.context.
@@ -15528,25 +15581,88 @@ function speakAiText(text,button){
     taRealtimeChannel=channel;
     channel.subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Realtime Ambassadeur indisponible; la synchronisation périodique reste active.');});
   }
+  let taDashboardLoadInFlight=null;
+  let taDashboardRenderPending=false;
+  function taDashboardIsMounted(){
+    return typeof state!=='undefined'&&state.view==='ambassadors'&&taState.mode==='dashboard'&&!!root()?.querySelector('.ta-v4-dashboard');
+  }
+  function taDashboardSyncShouldPause(){
+    if(!taDashboardIsMounted())return false;
+    const settingsPanel=document.getElementById('taSettingsPanel');
+    if(settingsPanel&&!settingsPanel.hidden)return true;
+    const withdrawalModal=document.getElementById('taWithdrawalModal');
+    if(withdrawalModal&&!withdrawalModal.hidden)return true;
+    if(document.getElementById('taAdminActionModal'))return true;
+    const active=document.activeElement;
+    if(active&&/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)&&!active.closest('[hidden]'))return true;
+    return false;
+  }
+  function taDashboardDataSignature(data){
+    try{return JSON.stringify(data??null);}catch(e){return null;}
+  }
   async function loadDashboard(options={}){
-    taStopAdminRealtime();taState.mode='dashboard';setAmbassadorResume(true);if(!options.silent)setContent('<main class="ta-v4-loading"><div class="ta-v4-spinner"></div><p>Récupération de votre espace…</p></main>');
+    // Coalesce Realtime, polling, session restoration and explicit refreshes.
+    // Background syncs pause while a form/modal is in use, just like the existing timers.
+    if(options.silent&&taDashboardSyncShouldPause())return;
+    if(taDashboardLoadInFlight){
+      if(options.silent)return taDashboardLoadInFlight;
+      try{await taDashboardLoadInFlight;}catch(e){}
+    }
+    const currentLoad=loadDashboardRequest(options);
+    taDashboardLoadInFlight=currentLoad;
+    try{return await currentLoad;}
+    finally{if(taDashboardLoadInFlight===currentLoad)taDashboardLoadInFlight=null;}
+  }
+  async function loadDashboardRequest(options={}){
+    const dashboardWasMounted=taDashboardIsMounted();
+    taStopAdminRealtime();taState.mode='dashboard';setAmbassadorResume(true);
+    // Never replace an already-visible dashboard with a spinner during refresh.
+    if(!options.silent&&!dashboardWasMounted)setContent('<main class="ta-v4-loading"><div class="ta-v4-spinner"></div><p>Récupération de votre espace…</p></main>');
     try{
       const pages=taState.pages||{referrals:1,ledger:1,withdrawals:1,notifications:1};
-      taState.data=await call('dashboard',{referrals_page:pages.referrals,ledger_page:pages.ledger,withdrawals_page:pages.withdrawals,notifications_page:pages.notifications,page_size:50});
+      const previousData=taState.data;
+      const previousSignature=previousData===null||previousData===undefined?null:taDashboardDataSignature(previousData);
+      const latestData=await call('dashboard',{referrals_page:pages.referrals,ledger_page:pages.ledger,withdrawals_page:pages.withdrawals,notifications_page:pages.notifications,page_size:50});
+      const dataUnchanged=previousSignature!==null&&previousSignature===taDashboardDataSignature(latestData);
+      taState.data=latestData;
       taState.profile=taState.data.profile;
       if(!taState.profile?.onboarding_completed_at){taStopRealtime();await renderOnboarding();return;}
       taStartRealtime(taState.profile.id);
-      const preserveScrollY=options.silent?window.scrollY:null;
+      const dashboardStillMounted=taDashboardIsMounted();
+      // A successful response alone is not a reason to rebuild the visible DOM.
+      if(dataUnchanged&&dashboardStillMounted&&!taDashboardRenderPending)return;
+      // If a form or modal is being used, keep its DOM and inputs intact. The next
+      // refresh after it closes will render the newest authoritative data.
+      if(dashboardStillMounted&&taDashboardSyncShouldPause()){
+        if(!dataUnchanged)taDashboardRenderPending=true;
+        return;
+      }
+      const preserveScrollY=dashboardStillMounted?window.scrollY:null;
+      taDashboardRenderPending=false;
+      const active=document.activeElement;
+      const preserveFocusId=dashboardStillMounted&&active&&root()?.contains(active)?String(active.id||''):'';
       renderDashboard();
-      // Silent refreshes must not pull the user away from the section being read.
-      if(preserveScrollY!==null)requestAnimationFrame(()=>window.scrollTo({top:preserveScrollY,behavior:'instant' in window?'instant':'auto'}));
+      if(preserveScrollY!==null)requestAnimationFrame(()=>{
+        if(preserveFocusId){const next=document.getElementById(preserveFocusId);if(next&&typeof next.focus==='function')next.focus({preventScroll:true});}
+        window.scrollTo({top:preserveScrollY,behavior:'instant' in window?'instant':'auto'});
+      });
     }catch(e){
-      if(options.silent&&e?.code!=='PROFILE_SUSPENDED'){console.warn('Actualisation de l’espace ambassadeur différée :',e?.message||'erreur serveur');return;}
-      if(e?.code==='PROFILE_SUSPENDED'){
-        taState.mode='suspended';setContent(`<main class="ta-v4-message"><span class="ta-v4-eyebrow">ACCÈS TEMPORAIREMENT SUSPENDU</span><h1>Votre espace est suspendu</h1><p>Votre code et votre historique sont conservés. Contactez l’équipe TerangaResto pour plus d’informations.</p><button class="ta-v4-secondary" onclick="trAmbassadorLogout()">Se déconnecter</button></main>`);
-      }else if(e?.code==='PROFILE_NOT_FOUND'){
-        const {data}=await supabaseClient.auth.getUser();const email=String(data?.user?.email||'');
-        setContent(`<main class="ta-v4-message"><span class="ta-v4-eyebrow">ESPACE PARTENAIRE</span><h1>Bienvenue${email?' !':''}</h1><p>Votre compte TerangaResto est connecté. Activez votre espace ambassadeur pour recevoir votre code personnel et suivre vos résultats.</p><button class="ta-v4-primary" onclick="trAmbassadorActivateAccount()">Activer mon espace</button><p id="taActivationMsg" class="ta-v4-status" aria-live="polite"></p><button class="ta-v4-text-btn" onclick="trAmbassadorLogout()">Se déconnecter</button></main>`);
+      // Temporary failures preserve the current UI; explicit server-side access
+      // failures below must still remove private data and stop Realtime.
+      const accessCode=String(e?.code||'').toUpperCase();
+      const explicitAccessFailure=['PROFILE_SUSPENDED','PROFILE_NOT_FOUND','INVALID_SESSION','AUTH_REQUIRED','EMAIL_NOT_CONFIRMED','AMBASSADOR_FORBIDDEN','AMBASSADOR_ACCOUNT_DELETED','ACCOUNT_ROLE_CONFLICT'].includes(accessCode);
+      if((options.silent||dashboardWasMounted)&&!explicitAccessFailure){console.warn('Actualisation de l’espace ambassadeur différée :',e?.message||'erreur serveur');return;}
+      if(explicitAccessFailure){
+        taStopRealtime();
+        taDashboardRenderPending=false;
+        taState.data=null;taState.profile=null;
+        taState.mode=accessCode==='PROFILE_SUSPENDED'?'suspended':'public';
+      }
+      if(accessCode==='PROFILE_SUSPENDED'){
+        setContent(`<main class="ta-v4-message"><span class="ta-v4-eyebrow">ACCÈS TEMPORAIREMENT SUSPENDU</span><h1>Votre espace est suspendu</h1><p>Votre code et votre historique sont conservés. Contactez l’équipe TerangaResto pour plus d’informations.</p><button class="ta-v4-secondary" onclick="trAmbassadorLogout()">Se déconnecter</button></main>`);
+      }else if(accessCode==='PROFILE_NOT_FOUND'){
+        // Replace the private DOM immediately; do not await another network call here.
+        setContent(`<main class="ta-v4-message"><span class="ta-v4-eyebrow">ESPACE PARTENAIRE</span><h1>Bienvenue</h1><p>Votre compte TerangaResto est connecté. Activez votre espace ambassadeur pour recevoir votre code personnel et suivre vos résultats.</p><button class="ta-v4-primary" onclick="trAmbassadorActivateAccount()">Activer mon espace</button><p id="taActivationMsg" class="ta-v4-status" aria-live="polite"></p><button class="ta-v4-text-btn" onclick="trAmbassadorLogout()">Se déconnecter</button></main>`);
       }else{
         setContent(`<main class="ta-v4-message"><span class="ta-v4-eyebrow">ESPACE AMBASSADEUR</span><h1>Nous n’avons pas pu charger votre espace.</h1><p>${esc(e.message||'Service momentanément indisponible.')}</p><button class="ta-v4-primary" onclick="trAmbassadorRefresh()">Réessayer</button><button class="ta-v4-text-btn" onclick="trAmbassadorLogout()">Se déconnecter</button></main>`);
       }
@@ -15621,11 +15737,11 @@ function speakAiText(text,button){
     </main>`);
     trAmbassadorUpdateWithdrawalFee();
   }
-  window.trAmbassadorToggleSettings=(force)=>{const panel=document.getElementById('taSettingsPanel');if(!panel)return;panel.hidden=typeof force==='boolean'?!force:!panel.hidden;taState.openPanels.taSettingsPanel=!panel.hidden;if(!panel.hidden){document.getElementById('taEditName')?.focus();panel.scrollIntoView({behavior:'smooth',block:'nearest'});}};
+  window.trAmbassadorToggleSettings=(force)=>{const panel=document.getElementById('taSettingsPanel');if(!panel)return;panel.hidden=typeof force==='boolean'?!force:!panel.hidden;taState.openPanels.taSettingsPanel=!panel.hidden;if(!panel.hidden){document.getElementById('taEditName')?.focus();panel.scrollIntoView({behavior:'smooth',block:'nearest'});}else if(taDashboardRenderPending){const y=window.scrollY;taDashboardRenderPending=false;renderDashboard();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant' in window?'instant':'auto'}));}};
   window.trAmbassadorTogglePanel=(id)=>{const panel=document.getElementById(id);if(!panel)return;panel.hidden=!panel.hidden;if(Object.prototype.hasOwnProperty.call(taState.openPanels,id))taState.openPanels[id]=!panel.hidden;if(!panel.hidden)panel.scrollIntoView({behavior:'smooth',block:'start'});};
   window.trAmbassadorToggleNotifications=()=>{taState.showAllNotifications=!taState.showAllNotifications;renderDashboard();document.getElementById('taNotificationsPanel')?.scrollIntoView({behavior:'smooth',block:'start'});};
   window.trAmbassadorOpenWithdrawal=()=>{const m=document.getElementById('taWithdrawalModal');if(m){m.hidden=false;trAmbassadorUpdateWithdrawalFee();document.getElementById('taWithdrawName')?.focus();}};
-  window.trAmbassadorCloseWithdrawal=()=>{const m=document.getElementById('taWithdrawalModal');if(m)m.hidden=true;};
+  window.trAmbassadorCloseWithdrawal=()=>{const m=document.getElementById('taWithdrawalModal');if(m)m.hidden=true;if(taDashboardRenderPending&&taDashboardIsMounted()&&!taDashboardSyncShouldPause()){const y=window.scrollY;taDashboardRenderPending=false;renderDashboard();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant' in window?'instant':'auto'}));}};
   window.trAmbassadorUpdateWithdrawalFee=()=>{
     const amount=Number(document.getElementById('taWithdrawAmount')?.value||0),method=document.getElementById('taWithdrawMethod')?.value||'Wave',summary=document.getElementById('taWithdrawalFeeSummary');if(!summary)return;
     const valid=Number.isSafeInteger(amount)&&amount>=2000;const fee=valid?Math.round(amount*0.01):0;const payout=valid?amount-fee:0;
@@ -16040,9 +16156,9 @@ window.trAmbassadorAdminOpen=()=>{taClearAllArms();taState.adminDetail=null;taSt
         const routeWanted=forceRoute||hasAmbassadorResume();
         if(routeWanted){
           if(typeof originalSetView==='function'&&(typeof state==='undefined'||state.view!=='ambassadors'))originalSetView('ambassadors');
-          await loadDashboard();
+          await loadDashboard({silent:taDashboardIsMounted()});
         }else if(typeof state!=='undefined'&&state.view==='ambassadors'){
-          await loadDashboard();
+          await loadDashboard({silent:taDashboardIsMounted()});
         }
       }catch(e){console.warn('ambassador restore deferred',e?.message||'');}
     })();
@@ -16056,9 +16172,10 @@ window.trAmbassadorAdminOpen=()=>{taClearAllArms();taState.adminDetail=null;taSt
         if(typeof state!=='undefined'&&state.view==='ambassadors'){taState.mode='public';renderPublic();}
         return;
       }
-      if(session&&(['INITIAL_SESSION','SIGNED_IN','TOKEN_REFRESHED','USER_UPDATED'].includes(event))&&((typeof state!=='undefined'&&state.view==='ambassadors')||hasAmbassadorResume())){
+      if(session&&(['INITIAL_SESSION','SIGNED_IN','USER_UPDATED'].includes(event))&&((typeof state!=='undefined'&&state.view==='ambassadors')||hasAmbassadorResume())){
         // Defer outside the auth callback to avoid doing Supabase queries while
-        // the auth lock/callback is active. Rehydrate from the authoritative API.
+        // the auth lock/callback is active. TOKEN_REFRESHED only rotates credentials;
+        // load dashboard data on the periodic/Realtime path instead of rebuilding here.
         window.setTimeout(()=>{void restoreAmbassadorWorkspace(event==='INITIAL_SESSION'&&hasAmbassadorResume());},80);
       }
     });
